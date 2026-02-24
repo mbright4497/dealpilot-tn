@@ -1,9 +1,11 @@
+export const dynamic = 'force-dynamic'
+
 'use client'
 import { useState } from 'react';
-import { createBrowserClient } from '../../lib/supabase';
+import { createBrowserSupabaseClient } from '../../lib/supabase';
 
 export default function LoginPage(){
-  const supabase = createBrowserClient();
+  const supabase = createBrowserSupabaseClient();
   const [email,setEmail]=useState('');
   const [pass,setPass]=useState('');
   const [msg,setMsg]=useState('');
