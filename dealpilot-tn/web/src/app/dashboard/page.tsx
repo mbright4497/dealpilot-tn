@@ -30,13 +30,13 @@ export default function DashboardPage(){
 
     <div className="dp-card" style={{display:'flex',alignItems:'center',gap:'1.5rem',padding:'2rem'}}>
       <div className="dp-robot" style={{width:64,height:64,fontSize:'2rem',flexShrink:0}}>
-        <span role="img" aria-label="robot">\uD83E\uDD16</span>
+        <span role="img" aria-label="robot">{String.fromCodePoint(0x1F916)}</span>
       </div>
       <div>
         <div style={{fontSize:'1.1rem',fontWeight:600,marginBottom:'0.25rem'}}>Welcome to DealPilot</div>
         <div style={{color:'var(--muted)',fontSize:'0.875rem',lineHeight:1.6}}>
           Your AI-powered deal management platform for Tennessee real estate agents.
-          Track contacts, manage deals, score offers, and reference the RF401 Purchase &amp; Sale Agreement - all in one place.
+          Track contacts, manage deals, score offers, and reference the RF401 Purchase and Sale Agreement - all in one place.
         </div>
       </div>
     </div>
