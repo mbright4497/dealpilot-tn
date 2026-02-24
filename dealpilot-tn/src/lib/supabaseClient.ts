@@ -5,7 +5,8 @@ const getSupabaseUrl = () => process.env.SUPABASE_URL || process.env.NEXT_PUBLIC
 const getAnonKey = () => process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const getServiceRoleKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const createSupabaseClient = (key: string | undefined, fallback: SupabaseClient) => {
+// Accept fallback as any to allow test mocks that don't fully implement SupabaseClient
+const createSupabaseClient = (key: string | undefined, fallback: any): any => {
   const url = getSupabaseUrl();
   if (!url || !key) {
     return fallback;
@@ -17,5 +18,5 @@ const createSupabaseClient = (key: string | undefined, fallback: SupabaseClient)
   });
 };
 
-export const supabaseClient = createSupabaseClient(getAnonKey(), supabaseFallback.supabaseClient);
-export const supabaseAdmin = createSupabaseClient(getServiceRoleKey() || getAnonKey(), supabaseFallback.supabaseAdmin);
+export const supabaseClient: any = createSupabaseClient(getAnonKey(), supabaseFallback.supabaseClient);
+export const supabaseAdmin: any = createSupabaseClient(getServiceRoleKey() || getAnonKey(), supabaseFallback.supabaseAdmin);
