@@ -1,15 +1,20 @@
 'use client'
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '../../lib/supabase';
 
 export default function LoginPage(){
   const supabase = createBrowserSupabaseClient();
+  const router = useRouter();
   const [email,setEmail]=useState('');
   const [pass,setPass]=useState('');
   const [msg,setMsg]=useState('');
   const handle = async ()=>{
     const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) setMsg(String(error.message)); else setMsg('Logged in');
+    if (error) setMsg(String(error.message)); else {
+      setMsg('Logged in');
+      router.push('/dashboard');
+    }
   };
   return (<div className="p-6 max-w-md mx-auto">
     <h1 className="text-xl font-bold">Sign in</h1>
