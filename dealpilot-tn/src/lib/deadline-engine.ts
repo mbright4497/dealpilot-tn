@@ -2,7 +2,10 @@ import { supabaseAdmin } from './supabase';
 import type { TimelineEvent } from '../../src/types';
 
 export const persistTimelineEvents = async (dealId: string, events: TimelineEvent[]) => {
-  if (!events || events.length === 0) return;
+  // defensive: ensure we don't call Supabase when there's nothing to persist
+  if (!events || !Array.isArray(events) || events.length === 0) {
+    return;
+  }
   const payload = events.map(e => ({
     id: e.id,
     deal_id: dealId,
@@ -18,6 +21,8 @@ export const persistTimelineEvents = async (dealId: string, events: TimelineEven
       ...e.metadata
     }
   }));
+  // defensive: ensure we never call upsert with an empty payload (protects against mocks/tools)
+  if (!payload || !Array.isArray(payload) || payload.length === 0) return;
   await supabaseAdmin.from('deadlines').upsert(payload, { onConflict: 'id' });
 };
 
