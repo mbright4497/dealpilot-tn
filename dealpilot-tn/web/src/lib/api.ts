@@ -1,21 +1,34 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { createBrowserSupabaseClient } from './supabase';
 
-const headers = (token?:string)=>({ 'Content-Type':'application/json', ...(token?{ Authorization:`Bearer ${token}` }: {}) });
+const supabase = createBrowserSupabaseClient();
 
-export const get = async (path:string, token?:string)=> {
-  const res = await fetch(`${API_URL}${path}`, { headers: headers(token) });
-  return res.json();
+export const getAll = async (table: string) => {
+  const { data, error } = await supabase.from(table).select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
 };
-export const post = async (path:string, body:any, token?:string)=>{
-  const res = await fetch(`${API_URL}${path}`, { method:'POST', headers: headers(token), body: JSON.stringify(body) });
-  return res.json();
+
+export const getById = async (table: string, id: string) => {
+  const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+  if (error) throw error;
+  return data;
 };
-export const patch = async (path:string, body:any, token?:string)=>{
-  const res = await fetch(`${API_URL}${path}`, { method:'PATCH', headers: headers(token), body: JSON.stringify(body) });
-  return res.json();
+
+export const create = async (table: string, body: any) => {
+  const { data, error } = await supabase.from(table).insert(body).select().single();
+  if (error) throw error;
+  return data;
 };
-export const del = async (path:string, token?:string)=>{
-  const res = await fetch(`${API_URL}${path}`, { method:'DELETE', headers: headers(token) });
-  return res.json();
+
+export const update = async (table: string, id: string, body: any) => {
+  const { data, error } = await supabase.from(table).update(body).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
 };
-export default { get, post, patch, del };
+
+export const remove = async (table: string, id: string) => {
+  const { error } = await supabase.from(table).delete().eq('id', id);
+  if (error) throw error;
+};
+
+export default { getAll, getById, create, update, remove };
