@@ -7,7 +7,7 @@ const MOCK = [
   {id:3,address:'78 Pine Rd, Bristol, TN', client:'Carol', type:'Buyer', status:'Active', binding:'2026-02-15', closing:'2026-04-20'},
 ]
 
-export default function TransactionList(){
+export default function TransactionList({onOpenDeal}:{onOpenDeal?:(txId:number)=>void}){
   const [filter,setFilter]=useState('All')
   const [expanded,setExpanded]=useState<number|null>(null)
   const list = MOCK.filter(m=> filter==='All' || m.status===filter)
