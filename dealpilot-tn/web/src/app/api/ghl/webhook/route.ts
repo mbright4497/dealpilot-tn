@@ -2,14 +2,13 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
 function verifySignature(secret: string, body: string, sig: string){
   const h = crypto.createHmac('sha256', secret).update(body).digest('hex')
   return crypto.timingSafeEqual(Buffer.from(h), Buffer.from(sig))
 }
 
 export async function POST(req: Request){
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!)
   const raw = await req.text()
   const sig = req.headers.get('x-ghl-signature') || ''
   const secret = process.env.GHL_WEBHOOK_SECRET || ''
