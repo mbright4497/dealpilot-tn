@@ -1,5 +1,7 @@
 // TN Real Estate Form Schemas - RF401, RF403, RF404, RF421, RF651, RF625
-export type FieldType = 'text'|'number'|'date'|'boolean'|'select'|'array'
+// Complete field definitions mapped from actual TREC forms
+
+export type FieldType = 'text'|'number'|'date'|'boolean'|'select'|'array'|'textarea'
 
 export interface FormField {
   key: string
@@ -8,6 +10,7 @@ export interface FormField {
   options?: string[]
   required?: boolean
   hint?: string
+  section?: string
 }
 
 export interface FormSchema {
@@ -21,28 +24,99 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
   rf401: {
     id: 'rf401',
     name: 'RF401 - Residential Purchase & Sale Agreement',
-    description: 'Standard Tennessee residential purchase agreement for existing homes',
+    description: 'Standard Tennessee residential purchase agreement for existing homes (10-page TREC form)',
     fields: [
-      { key: 'buyer_names', label: 'Buyer Name(s)', type: 'array', required: true, hint: 'Full legal names of all buyers' },
-      { key: 'seller_names', label: 'Seller Name(s)', type: 'array', required: true, hint: 'Full legal names of all sellers' },
-      { key: 'property_address', label: 'Property Address', type: 'text', required: true },
-      { key: 'county', label: 'County', type: 'text', required: true },
-      { key: 'sale_price', label: 'Sale Price ($)', type: 'number', required: true },
-      { key: 'earnest_money', label: 'Earnest Money ($)', type: 'number', required: true },
-      { key: 'earnest_money_holder', label: 'Earnest Money Held By', type: 'text' },
-      { key: 'loan_type', label: 'Loan Type', type: 'select', options: ['Conventional','FHA','VA','USDA','Cash','Other'] },
-      { key: 'loan_amount', label: 'Loan Amount ($)', type: 'number' },
-      { key: 'binding_agreement_date', label: 'Binding Agreement Date', type: 'date' },
-      { key: 'closing_date', label: 'Closing Date', type: 'date', required: true },
-      { key: 'possession_date', label: 'Possession Date', type: 'date' },
-      { key: 'home_warranty', label: 'Home Warranty Included', type: 'boolean' },
-      { key: 'home_warranty_amount', label: 'Home Warranty Amount ($)', type: 'number' },
-      { key: 'inspection_days', label: 'Inspection Period (days)', type: 'number' },
-      { key: 'included_items', label: 'Included Items', type: 'text', hint: 'Appliances, fixtures, etc.' },
-      { key: 'excluded_items', label: 'Excluded Items', type: 'text' },
-      { key: 'seller_concessions', label: 'Seller Concessions ($)', type: 'number' },
+      // === Section 1: Purchase and Sale (Parties & Property) ===
+      { key: 'buyer_names', label: 'Buyer Name(s)', type: 'array', required: true, hint: 'Full legal names of all buyers', section: '1. Purchase and Sale' },
+      { key: 'seller_names', label: 'Seller Name(s)', type: 'array', required: true, hint: 'Full legal names of all sellers', section: '1. Purchase and Sale' },
+      { key: 'property_address', label: 'Property Address', type: 'text', required: true, section: '1. Purchase and Sale' },
+      { key: 'property_city', label: 'City', type: 'text', required: true, section: '1. Purchase and Sale' },
+      { key: 'property_zip', label: 'Zip Code', type: 'text', required: true, section: '1. Purchase and Sale' },
+      { key: 'county', label: 'County', type: 'text', required: true, section: '1. Purchase and Sale' },
+      { key: 'deed_book', label: 'Deed Book(s)', type: 'text', section: '1. Purchase and Sale' },
+      { key: 'deed_page', label: 'Deed Page(s)', type: 'text', section: '1. Purchase and Sale' },
+      { key: 'instrument_number', label: 'Instrument Number', type: 'text', section: '1. Purchase and Sale' },
+      { key: 'legal_description', label: 'Legal Description', type: 'textarea', hint: 'Additional legal description if needed', section: '1. Purchase and Sale' },
+      { key: 'garage_remotes_count', label: 'Number of Garage Remote Controls', type: 'number', hint: 'At least how many remotes', section: '1A. Included Items' },
+      { key: 'other_items_remain', label: 'Other Items That Remain with Property', type: 'textarea', hint: 'Items beyond standard inclusions that stay', section: '1B. Other Items Remain' },
+      { key: 'items_not_remaining', label: 'Items That Will NOT Remain', type: 'textarea', hint: 'Items seller is taking', section: '1C. Items Not Remaining' },
+      { key: 'leased_items', label: 'Leased Items', type: 'textarea', hint: 'e.g. security systems, water softener, fuel tank', section: '1D. Leased Items' },
+      { key: 'buyer_assumes_lease', label: 'Buyer Assumes Leased Items', type: 'boolean', section: '1D. Leased Items' },
+      { key: 'lease_not_assumed', label: 'Leased Item Buyer Does NOT Wish to Assume', type: 'text', section: '1D. Leased Items' },
+      // === Section 2: Purchase Price, Financing & Closing Expenses ===
+      { key: 'sale_price', label: 'Purchase Price ($)', type: 'number', required: true, section: '2. Purchase Price' },
+      { key: 'financing_contingency', label: 'Financing Contingency', type: 'select', options: ['Loan','Cash/Waived'], required: true, section: '2A. Financial Contingency' },
+      { key: 'loan_percent', label: 'Loan Percentage of Purchase Price (%)', type: 'number', hint: 'e.g. 95 for 95% LTV', section: '2A. Financial Contingency' },
+      { key: 'loan_type', label: 'Loan Type', type: 'select', options: ['Conventional','FHA','VA','USDA','Other'], section: '2A. Financial Contingency' },
+      { key: 'loan_type_other', label: 'Other Loan Type Description', type: 'text', section: '2A. Financial Contingency' },
+      { key: 'proof_of_funds_method', label: 'Proof of Funds Method (if cash)', type: 'text', hint: 'e.g. bank statement, commitment letter', section: '2B. Financing Waived' },
+      { key: 'appraisal_contingency', label: 'Appraisal Contingency', type: 'select', options: ['Not Contingent','Contingent on Appraised Value'], required: true, section: '2C. Appraisal' },
+      { key: 'title_expenses_paid_by', label: 'Title Expenses Paid By', type: 'text', hint: 'Who pays title search, mortgagee/owner policy', section: '2D. Closing Expenses' },
+      { key: 'closing_expense_modifications', label: 'Closing Expense Modifications', type: 'textarea', section: '2D. Closing Expenses' },
+      { key: 'buyer_closing_agency', label: "Buyer's Closing Agency", type: 'text', section: '2D. Closing Expenses' },
+      { key: 'seller_closing_agency', label: "Seller's Closing Agency", type: 'text', section: '2D. Closing Expenses' },
+      { key: 'seller_concessions', label: 'Seller Concessions ($)', type: 'number', section: '2D. Closing Expenses' },
+      // === Section 3: Earnest Money/Trust Money ===
+      { key: 'earnest_money', label: 'Earnest Money ($)', type: 'number', required: true, section: '3. Earnest Money' },
+      { key: 'earnest_money_days', label: 'Days After BAD to Pay Earnest Money', type: 'number', section: '3. Earnest Money' },
+      { key: 'earnest_money_holder', label: 'Earnest Money Holder Name', type: 'text', required: true, section: '3. Earnest Money' },
+      { key: 'earnest_money_holder_address', label: 'Earnest Money Holder Address', type: 'text', section: '3. Earnest Money' },
+      { key: 'earnest_money_method', label: 'Earnest Money Payment Method', type: 'text', hint: 'Check or other method', section: '3. Earnest Money' },
+      // === Section 4: Closing, Prorations, Assessments ===
+      { key: 'closing_date', label: 'Closing Date', type: 'date', required: true, section: '4A. Closing Date' },
+      { key: 'possession_type', label: 'Possession Type', type: 'select', options: ['At Closing','Temporary Occupancy Agreement'], required: true, section: '4A. Possession' },
+      { key: 'special_assessments', label: 'Special Assessments Terms', type: 'textarea', hint: 'Who pays special assessments if different from default', section: '4C. Special Assessments' },
+      { key: 'hoa_name', label: 'HOA/COA Name', type: 'text', section: '4E. Association Fees' },
+      { key: 'hoa_phone', label: 'HOA Phone', type: 'text', section: '4E. Association Fees' },
+      { key: 'hoa_email', label: 'HOA Email', type: 'text', section: '4E. Association Fees' },
+      { key: 'property_mgmt_company', label: 'Property Management Company', type: 'text', section: '4E. Association Fees' },
+      // === Section 5: Title and Conveyance ===
+      { key: 'deed_name', label: 'Name(s) on Deed', type: 'text', required: true, hint: 'Name(s) deed is to be made in', section: '5B. Deed' },
+      // === Section 6: Lead-Based Paint ===
+      { key: 'lead_based_paint', label: 'Lead-Based Paint Disclosure Applies', type: 'select', options: ['Does Not Apply','Applies (Pre-1978)'], section: '6. Lead-Based Paint' },
+      // === Section 7: Inspections ===
+      { key: 'inspection_period_days', label: 'Inspection Period (days after BAD)', type: 'number', required: true, hint: 'Number of days for inspections', section: '7D. Inspection Period' },
+      { key: 'resolution_period_days', label: 'Resolution Period (days)', type: 'number', required: true, hint: 'Days after repair list to reach agreement', section: '7D. Resolution Period' },
+      { key: 'wdi_exclusions', label: 'WDI Inspection Exclusions', type: 'text', hint: 'Structures excluded from wood destroying insect inspection', section: '7C. WDI Inspection' },
+      { key: 'waive_all_inspections', label: 'Waive All Inspections', type: 'boolean', section: '7E. Waiver' },
+      // === Section 8: Final Inspection ===
+      { key: 'final_inspection_days', label: 'Final Inspection Days Before Closing', type: 'number', hint: 'Days prior to closing for final walkthrough', section: '8. Final Inspection' },
+      // === Section 13: Home Protection Plan ===
+      { key: 'home_warranty', label: 'Home Protection Plan', type: 'select', options: ['Include','Waived'], section: '13. Home Protection' },
+      { key: 'home_warranty_paid_by', label: 'Home Warranty Paid By', type: 'text', hint: 'Buyer or Seller', section: '13. Home Protection' },
+      { key: 'home_warranty_amount', label: 'Home Warranty Amount ($)', type: 'number', section: '13. Home Protection' },
+      { key: 'home_warranty_provider', label: 'Home Warranty Plan Provider', type: 'text', section: '13. Home Protection' },
+      { key: 'home_warranty_ordered_by', label: 'Warranty Ordered By (Company)', type: 'text', section: '13. Home Protection' },
+      // === Section 17: Exhibits and Addenda ===
+      { key: 'exhibits_addenda', label: 'Exhibits and Addenda Attached', type: 'textarea', hint: 'List all addenda, exhibits, disclosures attached', section: '17. Exhibits & Addenda' },
+      // === Section 18: Special Stipulations ===
+      { key: 'special_stipulations', label: 'Special Stipulations', type: 'textarea', hint: 'Custom terms that override preceding paragraphs', section: '18. Special Stipulations' },
+      // === Section 19: Time Limit of Offer ===
+      { key: 'offer_expiration_date', label: 'Offer Expiration Date', type: 'date', section: '19. Time Limit' },
+      { key: 'offer_expiration_time', label: 'Offer Expiration Time', type: 'text', hint: 'e.g. 5:00 PM', section: '19. Time Limit' },
+      { key: 'offer_expiration_ampm', label: 'AM/PM', type: 'select', options: ['AM','PM'], section: '19. Time Limit' },
+      // === Signatures & Dates ===
+      { key: 'buyer_offer_date', label: 'Buyer Offer Date', type: 'date', section: 'Signatures' },
+      { key: 'seller_response', label: 'Seller Response', type: 'select', options: ['Accepts','Counters','Rejects'], section: 'Signatures' },
+      { key: 'binding_agreement_date', label: 'Binding Agreement Date', type: 'date', section: 'Signatures' },
+      // === Broker Information ===
+      { key: 'listing_company', label: 'Listing Company', type: 'text', section: 'Broker Info' },
+      { key: 'listing_company_address', label: 'Listing Firm Address', type: 'text', section: 'Broker Info' },
+      { key: 'listing_firm_license', label: 'Listing Firm License No.', type: 'text', section: 'Broker Info' },
+      { key: 'listing_firm_phone', label: 'Listing Firm Phone', type: 'text', section: 'Broker Info' },
+      { key: 'listing_licensee', label: 'Listing Licensee Name', type: 'text', section: 'Broker Info' },
+      { key: 'listing_licensee_number', label: 'Listing Licensee License No.', type: 'text', section: 'Broker Info' },
+      { key: 'listing_licensee_email', label: 'Listing Licensee Email', type: 'text', section: 'Broker Info' },
+      { key: 'selling_company', label: 'Selling Company', type: 'text', section: 'Broker Info' },
+      { key: 'selling_company_address', label: 'Selling Firm Address', type: 'text', section: 'Broker Info' },
+      { key: 'selling_firm_license', label: 'Selling Firm License No.', type: 'text', section: 'Broker Info' },
+      { key: 'selling_firm_phone', label: 'Selling Firm Phone', type: 'text', section: 'Broker Info' },
+      { key: 'selling_licensee', label: 'Selling Licensee Name', type: 'text', section: 'Broker Info' },
+      { key: 'selling_licensee_number', label: 'Selling Licensee License No.', type: 'text', section: 'Broker Info' },
+      { key: 'selling_licensee_email', label: 'Selling Licensee Email', type: 'text', section: 'Broker Info' },
     ]
   },
+  // === RF403: New Construction ===
   rf403: {
     id: 'rf403',
     name: 'RF403 - New Construction Purchase & Sale Agreement',
@@ -65,6 +139,7 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { key: 'binding_agreement_date', label: 'Binding Agreement Date', type: 'date' },
     ]
   },
+  // === RF404: Lot/Land ===
   rf404: {
     id: 'rf404',
     name: 'RF404 - Lot / Land Purchase & Sale Agreement',
@@ -87,6 +162,7 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { key: 'binding_agreement_date', label: 'Binding Agreement Date', type: 'date' },
     ]
   },
+  // === RF421: Residential Lease ===
   rf421: {
     id: 'rf421',
     name: 'RF421 - Residential Lease Agreement',
@@ -109,6 +185,7 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { key: 'renewal_terms', label: 'Renewal Terms', type: 'text' },
     ]
   },
+  // === RF651: Counter Offer ===
   rf651: {
     id: 'rf651',
     name: 'RF651 - Counter Offer',
@@ -123,11 +200,12 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { key: 'home_warranty', label: 'Home Warranty', type: 'boolean' },
       { key: 'home_warranty_amount', label: 'Home Warranty Amount ($)', type: 'number' },
       { key: 'possession_date', label: 'Possession Date', type: 'date' },
-      { key: 'additional_terms', label: 'Additional/Modified Terms', type: 'text', hint: 'Any other modified terms from original offer' },
+      { key: 'additional_terms', label: 'Additional/Modified Terms', type: 'textarea', hint: 'Any other modified terms' },
       { key: 'expiration_date', label: 'Counter Offer Expiration', type: 'date', required: true },
-      { key: 'expiration_time', label: 'Expiration Time', type: 'text', hint: 'e.g. 5:00 PM CST' },
+      { key: 'expiration_time', label: 'Expiration Time', type: 'text', hint: 'e.g. 5:00 PM EST' },
     ]
   },
+  // === RF625: VA/FHA Amendatory Clause ===
   rf625: {
     id: 'rf625',
     name: 'RF625 - VA/FHA Amendatory Clause & Real Estate Certification',
@@ -144,9 +222,9 @@ export const FORM_SCHEMAS: Record<string, FormSchema> = {
       { key: 'loan_amount', label: 'Loan Amount ($)', type: 'number' },
       { key: 'closing_date', label: 'Closing Date', type: 'date', required: true },
       { key: 'buyer_agent_name', label: "Buyer's Agent Name", type: 'text' },
-      { key: 'listing_agent_name', label: "Listing Agent Name", type: 'text' },
+      { key: 'listing_agent_name', label: 'Listing Agent Name', type: 'text' },
       { key: 'buyer_agent_company', label: "Buyer's Agent Company", type: 'text' },
-      { key: 'listing_agent_company', label: "Listing Agent Company", type: 'text' },
+      { key: 'listing_agent_company', label: 'Listing Agent Company', type: 'text' },
     ]
   }
 }
@@ -160,27 +238,31 @@ export function getSchema(id: string): FormSchema | undefined {
 export function buildSystemPrompt(schema: FormSchema, filledFields: Record<string,unknown>): string {
   const missing = schema.fields
     .filter(f => f.required && !filledFields[f.key])
-    .map(f => f.label)
+    .map(f => `${f.label} (${f.section || 'General'})`)
   const filled = schema.fields
     .filter(f => filledFields[f.key])
     .map(f => `${f.label}: ${filledFields[f.key]}`)
-
-  return `You are DealPilot AI, a Tennessee real estate transaction coordinator assistant built specifically for TN agents.
+  const sections = [...new Set(schema.fields.map(f => f.section).filter(Boolean))]
+  return `You are DealPilot AI, a Tennessee real estate transaction coordinator assistant.
 You are helping fill out the ${schema.name}.
 ${schema.description}
+
+Form sections: ${sections.join(', ')}
 
 Current filled fields:
 ${filled.length ? filled.join('\n') : 'None yet'}
 
-${missing.length ? `Required fields still needed: ${missing.join(', ')}` : 'All required fields are filled!'}
+${missing.length ? `Required fields still needed:\n${missing.join('\n')}` : 'All required fields are filled!'}
 
 Behavior rules:
-- Ask for one or two fields at a time in a natural, conversational way
+- Walk through the form section by section in order
+- Ask for 2-3 related fields at a time in a natural, conversational way
 - When the user provides info, confirm it and extract the exact values
 - Use Tennessee real estate terminology (TCA 62, TREC forms, etc.)
 - Flag any unusual terms (e.g. seller concessions over 6%, closing timelines under 14 days)
-- When all required fields are collected, summarize the completed form and ask for confirmation
-- You know Tennessee law (Title 62, Title 66), TREC forms, MLS rules, and TN agency disclosure rules
+- When all required fields are collected, summarize the completed form section by section
+- You know Tennessee law (Title 62, Title 66), TREC forms, MLS rules, and TN agency disclosure
 - Be concise, direct, and professional - built for working agents, not consumers
-- Never provide legal advice; recommend attorney review for complex clauses`
+- Never provide legal advice; recommend attorney review for complex clauses
+- After all fields are gathered, let the user know they can download the completed form as PDF`
 }
