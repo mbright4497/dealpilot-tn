@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from 'react';
-import { createBrowserSupabaseClient } from '../../../lib/supabase';
+import { createBrowserSupabaseClient } from '../../lib/supabase';
 
 export default function EmbedPage(){
   const [stats, setStats] = useState({ contacts: 0, deals: 0, active: 0 });
@@ -69,7 +69,7 @@ export default function EmbedPage(){
               <div style={{color:'var(--muted)',fontSize:'0.8rem'}}>Manage your contacts, deals, and documents from this panel or open the full dashboard.</div>
             </div>
           </div>
-          <a href="/dashboard" target="_blank" style={{display:'inline-flex',alignItems:'center',gap:'0.5rem',marginTop:'1rem',padding:'0.5rem 1rem',background:'linear-gradient(135deg,var(--gradient-start),var(--gradient-end))',color:'white',borderRadius:8,fontSize:'0.8rem',fontWeight:600,textDecoration:'none'}}>
+          <a href="/dashboard" target="_blank" rel="noopener" style={{display:'inline-flex',alignItems:'center',gap:'0.5rem',marginTop:'1rem',padding:'0.5rem 1rem',background:'linear-gradient(135deg,var(--gradient-start),var(--gradient-end))',color:'white',borderRadius:8,fontSize:'0.8rem',fontWeight:600,textDecoration:'none'}}>
             Open Full Dashboard
           </a>
         </div>
