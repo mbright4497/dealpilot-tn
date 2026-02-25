@@ -3,15 +3,58 @@ import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { getSchema, buildSystemPrompt, FORM_LIST } from '@/lib/formSchemas'
 
+const TC_SYSTEM_PROMPT = `You are DealPilot AI — a personal Transaction Coordinator assistant built exclusively for Tennessee real estate agents.
+
+You are NOT a generic chatbot. You are a licensed-level TC who knows:
+- Tennessee Real Estate Commission (TREC) forms inside and out
+- TCA Title 62 (licensing) and Title 66 (property/landlord-tenant)
+- Tennessee MLS rules including Clear Cooperation Policy
+- VA, FHA, USDA, and conventional loan requirements for TN transactions
+- TN agency disclosure requirements (RF301, RF302, RF303)
+- Earnest money rules: must be deposited within 3 business days per TN law
+- Typical TN closing timelines: 30-45 days conventional, 45-60 days VA/FHA
+- Tri-Cities, Knoxville, Nashville, Chattanooga, Memphis market practices
+- Tennessee property tax proration (taxes paid in arrears)
+- TN homestead exemption rules
+- Wire fraud prevention best practices
+
+Your personality:
+- Direct, confident, no fluff — you talk like a seasoned TC
+- Use TN-specific terminology naturally (BAD = Binding Agreement Date, etc.)
+- Proactively flag issues: seller concessions over 3% for conventional, closing under 21 days, missing earnest money deadlines
+- When you spot a potential problem, say it clearly: "Heads up — [issue]"
+- After collecting fields, summarize what you have and what's still needed
+- Celebrate milestones: "Nice — Section 1 is locked in. Moving to financing."
+
+Available TN REALTORS forms you help fill out:
+${FORM_LIST.map(f => '- ' + f.id.toUpperCase() + ': ' + f.name).join('\n')}
+
+Field Extraction Rules:
+- When the user provides form data, extract it into a JSON code block
+- Format: \`\`\`json\n{"field_key": "value"}\n\`\`\`
+- Only include fields you are confident about
+- For dates, use YYYY-MM-DD format
+- For money amounts, use numbers without $ or commas
+- For arrays (buyer_names, seller_names), use ["Name 1", "Name 2"]
+
+Beyond forms, you can help with:
+- Deal timeline calculations (inspection deadlines, closing dates)
+- Transaction checklists (what to do from contract to close)
+- TN-specific compliance questions
+- Comparing financing options for TN properties
+- Explaining TREC form sections in plain English
+
+Never provide legal advice. Always recommend attorney review for complex clauses.
+After all required fields are collected, tell the agent they can download the completed form as PDF.`
+
 export async function POST(req: Request) {
   const body = await req.json()
-  const { messages, formId, filledFields, dealId } = body
+  const { messages, formId, filledFields, dealId, action } = body
 
   if (!messages || !Array.isArray(messages)) {
     return NextResponse.json({ error: 'messages required' }, { status: 400 })
   }
 
-  // Lazy init clients
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' })
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,30 +62,8 @@ export async function POST(req: Request) {
   )
 
   try {
-    // Build system prompt based on selected form
-    let systemContent = `You are DealPilot AI, a Tennessee real estate transaction coordinator assistant built specifically for TN agents at iHome-KW and other TN brokerages.
-
-You have deep knowledge of:
-- Tennessee real estate law (Title 62, Title 66 TCA)
-- TREC (Tennessee Real Estate Commission) forms and rules
-- Tennessee MLS rules including Clear Cooperation
-- VA and FHA requirements for Tennessee transactions
-- TN agency disclosure requirements
-- Earnest money, escrow, and closing procedures in Tennessee
-- Tri-Cities, Nashville, Memphis, and Middle TN market practices
-
-Available TN contract forms you can help fill out:
-${FORM_LIST.map(f => `- ${f.id.toUpperCase()}: ${f.name}`).join('\n')}
-
-Behavior:
-- Be concise, direct, and practical - built for working agents, not consumers
-- When a user wants to fill out a form, ask for the form ID or help them choose
-- Ask for 1-2 fields at a time conversationally
-- Confirm values before saving
-- Flag risk items: seller concessions >6%, closing under 14 days, VA/FHA appraisal gaps
-- Never provide legal advice - recommend attorney review for complex clauses
-- Format field data as JSON in your response when you extract values
-- Tone: professional, calm, and confident`
+    // Build context-aware system prompt
+    let systemContent = TC_SYSTEM_PROMPT
 
     if (formId) {
       const schema = getSchema(formId)
@@ -51,12 +72,26 @@ Behavior:
       }
     }
 
+    // Add deal context if available
+    if (dealId) {
+      try {
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('*')
+          .eq('id', dealId)
+          .single()
+        if (deal) {
+          systemContent += `\n\nCurrent Deal Context:\n- Property: ${deal.property_address || 'Not set'}\n- Status: ${deal.status || 'Active'}\n- Price: $${deal.sale_price || 'TBD'}\n- Closing: ${deal.closing_date || 'TBD'}`
+        }
+      } catch { /* no deal context */ }
+    }
+
     if (!process.env.OPENAI_API_KEY) {
-      // Fallback response when no API key
       return NextResponse.json({
-        reply: "DealPilot AI is ready! To activate the AI assistant, please add your OPENAI_API_KEY to Vercel environment variables. I can help you fill out RF401, RF403, RF404, RF421, RF651, and RF625 forms.",
+        reply: "DealPilot AI is ready! Add your OPENAI_API_KEY to Vercel environment variables to activate. I can help fill out RF401, RF403, RF404, RF421, RF651, and RF625 forms, plus manage your transaction timeline and checklists.",
         extractedFields: null,
-        formSuggestion: null
+        formSuggestion: null,
+        quickActions: ['Fill out RF401', 'Start new deal', 'View checklist']
       })
     }
 
@@ -72,25 +107,24 @@ Behavior:
       model: 'gpt-4o-mini',
       messages: openaiMessages,
       temperature: 0.3,
-      max_tokens: 800,
+      max_tokens: 1200,
     })
 
     const reply = completion.choices[0]?.message?.content || 'I apologize, I could not generate a response.'
 
-    // Try to extract JSON field data from reply
+    // Extract JSON field data from reply
     let extractedFields: Record<string, unknown> | null = null
     let formSuggestion: string | null = null
+    const quickActions: string[] = []
 
     const jsonMatch = reply.match(/```json\n?([\s\S]*?)\n?```/)
     if (jsonMatch) {
       try {
         extractedFields = JSON.parse(jsonMatch[1])
-      } catch {
-        // ignore parse errors
-      }
+      } catch { /* ignore parse errors */ }
     }
 
-    // Detect form suggestion in reply
+    // Detect form suggestion
     const formIds = ['rf401','rf403','rf404','rf421','rf651','rf625']
     for (const fid of formIds) {
       if (reply.toLowerCase().includes(fid)) {
@@ -99,7 +133,22 @@ Behavior:
       }
     }
 
-    // Auto-save extracted fields to Supabase if we have a dealId
+    // Generate smart quick actions based on context
+    if (!formId) {
+      quickActions.push('Fill out RF401', 'New construction (RF403)', 'Counter offer (RF651)')
+    } else if (extractedFields) {
+      const schema = getSchema(formId)
+      const filled = { ...(filledFields || {}), ...extractedFields }
+      const missing = schema?.fields.filter(f => f.required && !filled[f.key]) || []
+      if (missing.length === 0) {
+        quickActions.push('Download PDF', 'Review all fields', 'Start new form')
+      } else {
+        const nextSection = missing[0]?.section || 'next section'
+        quickActions.push(`Continue to ${nextSection}`, 'Show progress', 'Skip to summary')
+      }
+    }
+
+    // Save to Supabase if we have a dealId
     if (extractedFields && dealId && formId) {
       try {
         await supabase
@@ -107,7 +156,7 @@ Behavior:
           .upsert({
             deal_id: dealId,
             document_type: formId,
-            field_values: extractedFields,
+            field_values: { ...(filledFields || {}), ...extractedFields },
             status: 'draft',
             updated_at: new Date().toISOString()
           }, { onConflict: 'deal_id,document_type' })
@@ -116,14 +165,19 @@ Behavior:
       }
     }
 
-    return NextResponse.json({ reply, extractedFields, formSuggestion })
-
+    return NextResponse.json({
+      reply,
+      extractedFields,
+      formSuggestion,
+      quickActions
+    })
   } catch (err) {
     console.error('AI chat error:', err)
     return NextResponse.json({
-      reply: 'Sorry, I encountered an error. Please try again.',
+      reply: 'Sorry, I hit a snag. Give me another shot.',
       extractedFields: null,
-      formSuggestion: null
+      formSuggestion: null,
+      quickActions: ['Try again', 'Start over']
     })
   }
 }
@@ -131,6 +185,15 @@ Behavior:
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    forms: FORM_LIST.map(f => ({ id: f.id, name: f.name }))
+    assistant: 'DealPilot AI - Tennessee Transaction Coordinator',
+    forms: FORM_LIST.map(f => ({ id: f.id, name: f.name })),
+    capabilities: [
+      'TN REALTORS form filling (RF401-RF625)',
+      'Transaction timeline & deadline tracking',
+      'TC checklist management',
+      'TN compliance guidance',
+      'Voice input support',
+      'PDF form generation & download'
+    ]
   })
 }
