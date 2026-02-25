@@ -21,3 +21,4 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   const [filter, setFilter] = useState('All')
   const [expanded, setExpanded] = useState<number|null>(null)
   const list = transactions.filter(m=> filter==='All' || m.status===filter)
+
