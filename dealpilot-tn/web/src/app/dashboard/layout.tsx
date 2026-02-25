@@ -11,6 +11,7 @@ const navItems = [
   { href: '/dashboard/checklists', label: 'Checklists', icon: 'L' },
   { href: '/dashboard/offers', label: 'Offer Scores', icon: 'O' },
   { href: '/dashboard/contracts', label: 'RF401 Guide', icon: 'R' },
+    { href: '/dashboard/chat', label: 'AI Chat', icon: 'A' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }){
