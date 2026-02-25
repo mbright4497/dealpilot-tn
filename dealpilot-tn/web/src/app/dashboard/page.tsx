@@ -1,44 +1,64 @@
 'use client'
-import { useDeals, useContacts } from '../../lib/hooks';
+import React, { useEffect, useState } from 'react';
+import { createBrowserSupabaseClient } from '../../lib/supabase';
 
 export default function DashboardPage(){
-  const { data:deals } = useDeals();
-  const { data:contacts } = useContacts();
-  const dealCount = deals?.length || 0;
-  const contactCount = contacts?.length || 0;
-  const activeDeals = deals?.filter((d:any) => d.status === 'active')?.length || 0;
+  const [stats, setStats] = useState({ contacts: 0, deals: 0, active: 0 });
+  const [loading, setLoading] = useState(true);
 
-  return (<div>
-    <div className="dp-page-header">
-      <h1 className="dp-page-title">Dashboard</h1>
-    </div>
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const [c, d] = await Promise.all([
+          supabase.from('contacts').select('id', { count: 'exact', head: true }),
+          supabase.from('deals').select('id, status'),
+        ]);
+        const deals = d.data || [];
+        setStats({
+          contacts: c.count || 0,
+          deals: deals.length,
+          active: deals.filter((x: any) => x.status === 'active').length,
+        });
+      } catch (e) {
+        console.error('Dashboard load error:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1rem',marginBottom:'2rem'}}>
-      <div className="dp-stat">
-        <div style={{fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--muted)',marginBottom:'0.5rem'}}>Total Contacts</div>
-        <div className="dp-stat-value">{contactCount}</div>
+  return (
+    <div>
+      <div className="dp-page-header">
+        <h1 className="dp-page-title">Dashboard</h1>
       </div>
-      <div className="dp-stat">
-        <div style={{fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--muted)',marginBottom:'0.5rem'}}>Active Deals</div>
-        <div className="dp-stat-value">{activeDeals}</div>
-      </div>
-      <div className="dp-stat">
-        <div style={{fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--muted)',marginBottom:'0.5rem'}}>Total Deals</div>
-        <div className="dp-stat-value">{dealCount}</div>
-      </div>
-    </div>
 
-    <div className="dp-card" style={{display:'flex',alignItems:'center',gap:'1.5rem',padding:'2rem'}}>
-      <div className="dp-robot" style={{width:64,height:64,fontSize:'2rem',flexShrink:0}}>
-        <span role="img" aria-label="robot">{String.fromCodePoint(0x1F916)}</span>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1rem',marginBottom:'2rem'}}>
+        <div className="dp-stat">
+          <div style={{fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--muted)',marginBottom:'0.5rem'}}>Total Contacts</div>
+          <div className="dp-stat-value">{loading ? '...' : stats.contacts}</div>
+        </div>
+        <div className="dp-stat">
+          <div style={{fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--muted)',marginBottom:'0.5rem'}}>Active Deals</div>
+          <div className="dp-stat-value">{loading ? '...' : stats.active}</div>
+        </div>
+        <div className="dp-stat">
+          <div style={{fontSize:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em',color:'var(--muted)',marginBottom:'0.5rem'}}>Total Deals</div>
+          <div className="dp-stat-value">{loading ? '...' : stats.deals}</div>
+        </div>
       </div>
-      <div>
-        <div style={{fontSize:'1.1rem',fontWeight:600,marginBottom:'0.25rem'}}>Welcome to DealPilot</div>
-        <div style={{color:'var(--muted)',fontSize:'0.875rem',lineHeight:1.6}}>
-          Your AI-powered deal management platform for Tennessee real estate agents.
-          Track contacts, manage deals, score offers, and reference the RF401 Purchase and Sale Agreement - all in one place.
+
+      <div className="dp-card" style={{display:'flex',alignItems:'center',gap:'1.5rem',padding:'2rem'}}>
+        <div className="dp-robot" style={{width:64,height:64,fontSize:'2rem',flexShrink:0}}>
+          <span role="img" aria-label="robot">{String.fromCodePoint(0x1F916)}</span>
+        </div>
+        <div>
+          <div style={{fontSize:'1.1rem',fontWeight:600,color:'var(--foreground)',marginBottom:'0.25rem'}}>Welcome to DealPilot TN</div>
+          <div style={{color:'var(--muted)',fontSize:'0.9rem'}}>Your AI-powered real estate agent platform. Manage contacts, deals, documents, and more from one dashboard.</div>
         </div>
       </div>
     </div>
-  </div>);
+  );
 }
