@@ -81,6 +81,13 @@ export const TRANSACTIONS: Transaction[] = [
   },
 ]
 
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: '\u{1F3E0}' },
+  { id: 'transactions', label: 'Transactions', icon: '\u{1F4CB}' },
+  { id: 'forms', label: 'Forms Library', icon: '\u{1F4C4}' },
+  { id: 'deadlines', label: 'Deadlines', icon: '\u{1F4C5}' },
+]
+
 export default function ChatPage() {
   const [view, setView] = useState('dashboard')
   const [chatOpen, setChatOpen] = useState(false)
@@ -116,79 +123,106 @@ export default function ChatPage() {
   const selectedTx = TRANSACTIONS.find(t => t.id === selectedTxId)
 
   return (
-    <div className="min-h-screen flex bg-white">
-      <aside className="w-64 bg-gray-900 text-white p-4 hidden md:block">
-        <h2 className="text-xl font-bold text-orange-500">DealPilot TN</h2>
-        <p className="text-sm text-gray-300">Your Tennessee Transaction Coordinator</p>
-        <nav className="mt-6 space-y-2">
-          <button onClick={() => { setView('dashboard'); setSelectedTxId(null) }}
-            className={`w-full text-left px-3 py-2 rounded transition-colors ${view === 'dashboard' ? 'bg-gray-800 text-orange-400' : 'text-gray-200 hover:text-orange-400'}`}>
-            Dashboard
-          </button>
-          <button onClick={() => { setView('transactions'); setSelectedTxId(null) }}
-            className={`w-full text-left px-3 py-2 rounded transition-colors ${view === 'transactions' ? 'bg-gray-800 text-orange-400' : 'text-gray-200 hover:text-orange-400'}`}>
-            Active Transactions
-          </button>
-          <button onClick={() => setView('forms')}
-            className={`w-full text-left px-3 py-2 rounded transition-colors ${view === 'forms' ? 'bg-gray-800 text-orange-400' : 'text-gray-200 hover:text-orange-400'}`}>
-            Forms Library
-          </button>
-          <button onClick={() => setView('deadlines')}
-            className={`w-full text-left px-3 py-2 rounded transition-colors ${view === 'deadlines' ? 'bg-gray-800 text-orange-400' : 'text-gray-200 hover:text-orange-400'}`}>
-            Deadline Calculator
-          </button>
-          <button onClick={() => setChatOpen(true)}
-            className="w-full text-left px-3 py-2 rounded text-gray-200 hover:text-orange-400 transition-colors">
+    <div className="min-h-screen flex bg-gray-50">
+      {/* Sidebar */}
+      <aside className="w-64 bg-gray-900 text-white hidden md:flex flex-col">
+        <div className="p-5 border-b border-gray-800">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center font-bold text-sm">DP</div>
+            <div>
+              <h2 className="text-base font-bold text-white">DealPilot TN</h2>
+              <p className="text-[11px] text-gray-400">Tri-Cities Transaction Coordinator</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-3 space-y-1">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setView(item.id); setSelectedTxId(null) }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                view === item.id
+                  ? 'bg-gray-800 text-orange-400'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              }`}
+            >
+              <span className="text-base">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setChatOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
+          >
+            <span className="text-base">\u{1F916}</span>
             AI Assistant
           </button>
         </nav>
+
         {selectedTxId && view === 'deal' && (
-          <div className="mt-6 pt-4 border-t border-gray-700">
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Current Deal</p>
-            <p className="text-sm text-orange-400 font-semibold">{selectedTx?.address}</p>
-            <p className="text-xs text-gray-300">{selectedTx?.client}</p>
+          <div className="p-4 border-t border-gray-800">
+            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Active Deal</p>
+            <p className="text-sm text-orange-400 font-semibold leading-tight">{selectedTx?.address}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{selectedTx?.client}</p>
           </div>
         )}
-      </aside>
-      <main className="flex-1 p-6 text-gray-900">
-        <header className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">DealPilot TN</h1>
-            <p className="text-sm text-gray-600">Tennessee Transaction Coordinator - Tri-Cities Region</p>
+
+        {/* User Section */}
+        <div className="p-4 border-t border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-sm font-bold">MB</div>
+            <div>
+              <p className="text-sm font-medium text-white">Matt Bright</p>
+              <p className="text-[11px] text-gray-400">iHome-KW Kingsport</p>
+            </div>
           </div>
-        </header>
-        <section>
-          {view === 'dashboard' && (
-            <TCDashboard
-              transactions={TRANSACTIONS}
-              onOpenDeal={openDeal}
-              onViewChecklist={openChecklist}
-              onNavigate={handleNavigate}
-            />
-          )}
-          {view === 'transactions' && (
-            <TransactionList
-              transactions={TRANSACTIONS}
-              onViewChecklist={openChecklist}
-              onOpenDeal={openDeal}
-            />
-          )}
-          {view === 'deal' && selectedTx && (
-            <TransactionDetail
-              transaction={selectedTx}
-              onBack={() => setView('transactions')}
-            />
-          )}
-          {view === 'forms' && <FormsFillView />}
-          {view === 'deadlines' && <DeadlineCalculator />}
-        </section>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto p-6">
+          <section>
+            {view === 'dashboard' && (
+              <TCDashboard
+                transactions={TRANSACTIONS}
+                onOpenDeal={openDeal}
+                onViewChecklist={openChecklist}
+                onNavigate={handleNavigate}
+              />
+            )}
+            {view === 'transactions' && (
+              <TransactionList
+                transactions={TRANSACTIONS}
+                onViewChecklist={openChecklist}
+                onOpenDeal={openDeal}
+              />
+            )}
+            {view === 'deal' && selectedTx && (
+              <TransactionDetail
+                transaction={selectedTx}
+                onBack={() => setView('transactions')}
+              />
+            )}
+            {view === 'forms' && <FormsFillView />}
+            {view === 'deadlines' && <DeadlineCalculator />}
+          </section>
+        </div>
       </main>
-      <div className="fixed bottom-6 right-6">
-        <button onClick={() => setChatOpen(true)}
-          className="bg-orange-500 text-white px-5 py-3 rounded-full shadow-lg hover:bg-orange-600 font-bold text-sm transition-colors">
-          Chat
+
+      {/* Chat FAB */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setChatOpen(true)}
+          className="bg-orange-500 text-white w-14 h-14 rounded-full shadow-lg hover:bg-orange-600 hover:shadow-xl transition-all flex items-center justify-center"
+        >
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
         </button>
       </div>
+
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} />}
     </div>
   )
