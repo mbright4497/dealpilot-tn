@@ -81,11 +81,21 @@ export const TRANSACTIONS: Transaction[] = [
   },
 ]
 
+function NavIcon({ name }: { name: string }) {
+  const p = { width: 18, height: 18, fill: 'none' as const, viewBox: '0 0 24 24', stroke: 'currentColor', strokeWidth: 2 }
+  if (name === 'dashboard') return <svg {...p}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+  if (name === 'transactions') return <svg {...p}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+  if (name === 'forms') return <svg {...p}><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+  if (name === 'deadlines') return <svg {...p}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+  if (name === 'ai') return <svg {...p}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+  return null
+}
+
 const NAV_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '\u{1F3E0}' },
-  { id: 'transactions', label: 'Transactions', icon: '\u{1F4CB}' },
-  { id: 'forms', label: 'Forms Library', icon: '\u{1F4C4}' },
-  { id: 'deadlines', label: 'Deadlines', icon: '\u{1F4C5}' },
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'transactions', label: 'Transactions' },
+  { id: 'forms', label: 'Forms Library' },
+  { id: 'deadlines', label: 'Deadlines' },
 ]
 
 export default function ChatPage() {
@@ -124,7 +134,6 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Sidebar */}
       <aside className="w-64 bg-gray-900 text-white hidden md:flex flex-col">
         <div className="p-5 border-b border-gray-800">
           <div className="flex items-center gap-2">
@@ -135,19 +144,16 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
-
         <nav className="flex-1 p-3 space-y-1">
           {NAV_ITEMS.map(item => (
             <button
               key={item.id}
               onClick={() => { setView(item.id); setSelectedTxId(null) }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                view === item.id
-                  ? 'bg-gray-800 text-orange-400'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                view === item.id ? 'bg-gray-800 text-orange-400' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
             >
-              <span className="text-base">{item.icon}</span>
+              <NavIcon name={item.id} />
               {item.label}
             </button>
           ))}
@@ -155,11 +161,10 @@ export default function ChatPage() {
             onClick={() => setChatOpen(true)}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all"
           >
-            <span className="text-base">\u{1F916}</span>
+            <NavIcon name="ai" />
             AI Assistant
           </button>
         </nav>
-
         {selectedTxId && view === 'deal' && (
           <div className="p-4 border-t border-gray-800">
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Active Deal</p>
@@ -167,8 +172,6 @@ export default function ChatPage() {
             <p className="text-xs text-gray-400 mt-0.5">{selectedTx?.client}</p>
           </div>
         )}
-
-        {/* User Section */}
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-sm font-bold">MB</div>
@@ -179,50 +182,22 @@ export default function ChatPage() {
           </div>
         </div>
       </aside>
-
-      {/* Main Content */}
       <main className="flex-1 overflow-auto">
         <div className="max-w-6xl mx-auto p-6">
           <section>
-            {view === 'dashboard' && (
-              <TCDashboard
-                transactions={TRANSACTIONS}
-                onOpenDeal={openDeal}
-                onViewChecklist={openChecklist}
-                onNavigate={handleNavigate}
-              />
-            )}
-            {view === 'transactions' && (
-              <TransactionList
-                transactions={TRANSACTIONS}
-                onViewChecklist={openChecklist}
-                onOpenDeal={openDeal}
-              />
-            )}
-            {view === 'deal' && selectedTx && (
-              <TransactionDetail
-                transaction={selectedTx}
-                onBack={() => setView('transactions')}
-              />
-            )}
+            {view === 'dashboard' && <TCDashboard transactions={TRANSACTIONS} onOpenDeal={openDeal} onViewChecklist={openChecklist} onNavigate={handleNavigate} />}
+            {view === 'transactions' && <TransactionList transactions={TRANSACTIONS} onViewChecklist={openChecklist} onOpenDeal={openDeal} />}
+            {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} />}
             {view === 'forms' && <FormsFillView />}
             {view === 'deadlines' && <DeadlineCalculator />}
           </section>
         </div>
       </main>
-
-      {/* Chat FAB */}
       <div className="fixed bottom-6 right-6 z-40">
-        <button
-          onClick={() => setChatOpen(true)}
-          className="bg-orange-500 text-white w-14 h-14 rounded-full shadow-lg hover:bg-orange-600 hover:shadow-xl transition-all flex items-center justify-center"
-        >
-          <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
+        <button onClick={() => setChatOpen(true)} className="bg-orange-500 text-white w-14 h-14 rounded-full shadow-lg hover:bg-orange-600 hover:shadow-xl transition-all flex items-center justify-center">
+          <NavIcon name="ai" />
         </button>
       </div>
-
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} />}
     </div>
   )
