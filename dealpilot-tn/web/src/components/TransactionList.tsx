@@ -14,6 +14,7 @@ interface Transaction {
 interface Props {
   transactions: Transaction[]
   onViewChecklist: (txId: number) => void
+  onOpenDeal?: (txId: number) => void
 }
 
 export default function TransactionList({ transactions, onViewChecklist }: Props){
@@ -21,6 +22,10 @@ export default function TransactionList({ transactions, onViewChecklist }: Props
   const [expanded, setExpanded] = useState<number|null>(null)
   const list = transactions.filter(m=> filter==='All' || m.status===filter)
 
+export default function TransactionList({onOpenDeal}:{onOpenDeal?:(txId:number)=>void}){
+  const [filter,setFilter]=useState('All')
+  const [expanded,setExpanded]=useState<number|null>(null)
+  const list = MOCK.filter(m=> filter==='All' || m.status===filter)
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -65,10 +70,10 @@ export default function TransactionList({ transactions, onViewChecklist }: Props
                 <td className="p-3 text-gray-600">{l.binding}</td>
                 <td className="p-3 text-gray-600">{l.closing}</td>
                 <td className="p-3">
-                  <button
-                    onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                  >Checklist</button>
+                  <div className="flex gap-2">
+                  <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors">Open Deal</button>
+                  <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">Checklist</button>
+                </div>
                 </td>
               </tr>
               {expanded===l.id && (
