@@ -96,6 +96,23 @@ export default function ChatPage() {
     setView('deal')
   }
 
+  function handleNavigate(dest: string) {
+    if (dest === 'transactions') {
+      setSelectedTxId(null)
+      setView('transactions')
+    } else if (dest === 'forms') {
+      setView('forms')
+    } else if (dest === 'deadlines') {
+      setView('deadlines')
+    } else if (dest === 'checklist') {
+      setView('transactions')
+    } else if (dest === 'ai') {
+      setChatOpen(true)
+    } else {
+      setView(dest)
+    }
+  }
+
   const selectedTx = TRANSACTIONS.find(t => t.id === selectedTxId)
 
   return (
@@ -141,9 +158,27 @@ export default function ChatPage() {
           </div>
         </header>
         <section>
-          {view === 'dashboard' && <TCDashboard transactions={TRANSACTIONS} onOpenDeal={openDeal} />}
-          {view === 'transactions' && <TransactionList transactions={TRANSACTIONS} onViewChecklist={openChecklist} onOpenDeal={openDeal} />}
-          {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} />}
+          {view === 'dashboard' && (
+            <TCDashboard
+              transactions={TRANSACTIONS}
+              onOpenDeal={openDeal}
+              onViewChecklist={openChecklist}
+              onNavigate={handleNavigate}
+            />
+          )}
+          {view === 'transactions' && (
+            <TransactionList
+              transactions={TRANSACTIONS}
+              onViewChecklist={openChecklist}
+              onOpenDeal={openDeal}
+            />
+          )}
+          {view === 'deal' && selectedTx && (
+            <TransactionDetail
+              transaction={selectedTx}
+              onBack={() => setView('transactions')}
+            />
+          )}
           {view === 'forms' && <FormsFillView />}
           {view === 'deadlines' && <DeadlineCalculator />}
         </section>
