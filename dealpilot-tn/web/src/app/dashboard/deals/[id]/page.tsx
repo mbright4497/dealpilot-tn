@@ -1,4 +1,5 @@
 "use client"
+// Deal Detail page – triggered Vercel rebuild
 
 import React from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
