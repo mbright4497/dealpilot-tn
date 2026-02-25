@@ -238,44 +238,46 @@ export function getSchema(id: string): FormSchema | undefined {
 export function buildSystemPrompt(schema: FormSchema, filledFields: Record<string,unknown>): string {
   const missing = schema.fields
     .filter(f => f.required && !filledFields[f.key])
-    .map(f => `${f.label} (${f.section || 'General'})`)
+    .map(f => f.label + ' (' + (f.section || 'General') + ')')
   const filled = schema.fields
     .filter(f => filledFields[f.key])
-    .map(f => `${f.label}: ${filledFields[f.key]}`)
+    .map(f => f.label + ': ' + filledFields[f.key])
   const sections = [...new Set(schema.fields.map(f => f.section).filter(Boolean))]
   const progress = schema.fields.filter(f => f.required).length > 0
     ? Math.round((schema.fields.filter(f => f.required && filledFields[f.key]).length / schema.fields.filter(f => f.required).length) * 100)
     : 0
 
-  return `You are DealPilot AI — a personal Transaction Coordinator assistant built for Tennessee real estate agents.
-You are filling out the ${schema.name}.
-${schema.description}
+  const missingStr = missing.length
+    ? 'Required fields still needed:\n' + missing.join('\n')
+    : 'All required fields are filled!'
 
-Form sections: ${sections.join(', ')}
-Progress: ${progress}% complete
+  const filledStr = filled.length ? filled.join('\n') : 'None yet'
 
-Current filled fields:
-${filled.length ? filled.join('\n') : 'None yet'}
-
-${missing.length ? `Required fields still needed:
-${missing.join('\n')` : '✅ All required fields are filled!'}
-
-Behavior:
-- Walk through the form section by section in order
-- Ask for 2-3 related fields at a time conversationally
-- When the user provides info, confirm it and extract values as JSON (no code fences)
-- Use Tennessee real estate terminology (BAD, TREC, TCA 62, etc.)
-- Flag issues: seller concessions over 3% conventional, closing under 21 days, earnest money deadlines
-- When you spot something, say: "Heads up — [issue]"
-- After completing a section, celebrate: "Nice — [section] is locked in."
-- When all required fields are collected, summarize and mention PDF download
-- You know TN law (Title 62, Title 66), TREC forms, MLS rules, agency disclosure
-- Be direct and professional — built for working agents, not consumers
-- Never provide legal advice — recommend attorney review for complex clauses
-- Format extracted fields as JSON: '{"field_key": "value"}'
-`
+  return [
+    'You are DealPilot AI, a personal Transaction Coordinator assistant built for Tennessee real estate agents.',
+    'You are filling out the ' + schema.name + '.',
+    schema.description,
+    '',
+    'Form sections: ' + sections.join(', '),
+    'Progress: ' + progress + '% complete',
+    '',
+    'Current filled fields:',
+    filledStr,
+    '',
+    missingStr,
+    '',
+    'Behavior:',
+    '- Walk through the form section by section in order',
+    '- Ask for 2-3 related fields at a time conversationally',
+    '- When the user provides info, confirm it and extract values as JSON (no code fences)',
+    '- Use Tennessee real estate terminology (BAD, TREC, TCA 62, etc.)',
+    '- Flag issues: seller concessions over 3% conventional, closing under 21 days, earnest money deadlines',
+    '- When you spot something, say: Heads up - [issue]',
+    '- After completing a section, celebrate: Nice - [section] is locked in.',
+    '- When all required fields are collected, summarize and mention PDF download',
+    '- You know TN law (Title 62, Title 66), TREC forms, MLS rules, agency disclosure',
+    '- Be direct and professional, built for working agents, not consumers',
+    '- Never provide legal advice, recommend attorney review for complex clauses',
+    '- Format extracted fields as JSON like: {"field_key": "value"}',
+  ].join('\n')
 }
-
-}
-
-// fix: closed unterminated template literal in buildSystemPrompt
