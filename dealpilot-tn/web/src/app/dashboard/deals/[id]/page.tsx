@@ -39,11 +39,11 @@ export default function DealDetail({ params }: { params: { id: string } }) {
                 <div>
                   <h2 className="text-xl">{deal.title}</h2>
                   <div className="text-sm text-gray-300">Status: <span className="font-semibold">{deal.status}</span></div>
-                  <div className="mt-2">Value: ${deal.sale_price || '—'}</div>
-                  <div>Address: {deal.property?.address || '—'}</div>
-                  <div>Loan: {deal.loan_type || '—'}</div>
-                  <div>Binding: {deal.binding_agreement_date}</div>
-                  <div>Closing: {deal.closing_date}</div>
+                  <div className="mt-2">Value: ${deal.value || deal.sale_price || deal.price || '—'}</div>
+                  <div>Address: {deal.address || deal.property?.address || deal.title || '—'}</div>
+                  <div>Loan: {deal.loan_type || deal.loanType || '—'}</div>
+                  <div>Binding: {deal.binding_date || deal.binding_agreement_date || deal.binding || '—'}</div>
+                  <div>Closing: {deal.closing_date || deal.closing || '—'}</div>
                 </div>
                 <div>
                   <h3 className="font-semibold">Quick actions</h3>
