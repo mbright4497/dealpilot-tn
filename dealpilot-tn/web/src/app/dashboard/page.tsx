@@ -1,3 +1,4 @@
+'use client'
 import React from 'react'
 import DealKanban from '@/components/DealKanban'
 import StatsCards from '@/components/StatsCards'
