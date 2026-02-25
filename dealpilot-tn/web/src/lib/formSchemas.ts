@@ -266,3 +266,6 @@ Behavior rules:
 - Never provide legal advice; recommend attorney review for complex clauses
 - After all fields are gathered, let the user know they can download the completed form as PDF`
 }
+}
+
+// fix: closed unterminated template literal in buildSystemPrompt
