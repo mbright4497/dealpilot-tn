@@ -1,43 +1,35 @@
 'use client'
-import { useDeals } from '../../../lib/hooks';
-import { useState } from 'react';
+import React, {useEffect, useState} from 'react'
+import { useRouter } from 'next/navigation'
+import TransactionList from '@/components/TransactionList'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = typeof window==='undefined' ? null : null
 
 export default function DealsPage(){
-  const { data, addDeal, removeDeal } = useDeals();
-  const rows = data?.data || [];
-  const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState('');
-  const [status, setStatus] = useState('active');
-  const [value, setValue] = useState('');
+  const router = useRouter()
+  const [transactions,setTransactions]=useState([])
+  useEffect(()=>{
+    async function load(){
+      try{
+        // call server API route to fetch deals to avoid exposing keys in client
+        const res = await fetch('/api/deals')
+        if(!res.ok) return
+        const data = await res.json()
+        const mapped = data.map((d:any)=>({ id:d.id, address:d.title||d.address||'', client:d.client_name||'', type:d.type||'', status:d.status||'Draft', binding:d.binding_date||'', closing:d.closing_date||'' }))
+        setTransactions(mapped)
+      }catch(e){console.error(e)}
+    }
+    load()
+  },[])
 
-  const handleAdd = async () => {
-    if (!title) return;
-    await addDeal({ title, status, value: value ? Number(value) : null });
-    setTitle(''); setStatus('active'); setValue(''); setShowForm(false);
-  };
-
-  return (<div>
-    <div className="flex justify-between items-center">
-      <h1 className="text-xl">Deals</h1>
-      <button onClick={()=>setShowForm(!showForm)} className="bg-blue-600 text-white px-4 py-2 rounded">
-        {showForm ? 'Cancel' : '+ Add Deal'}
-      </button>
-    </div>
-    {showForm && (
-      <div className="mt-4 p-4 border rounded space-y-2">
-        <input placeholder="Title" value={title} onChange={e=>setTitle(e.target.value)} className="border p-2 w-full rounded" />
-        <select value={status} onChange={e=>setStatus(e.target.value)} className="border p-2 w-full rounded">
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="closed">Closed</option>
-          <option value="lost">Lost</option>
-        </select>
-        <input placeholder="Value ($)" type="number" value={value} onChange={e=>setValue(e.target.value)} className="border p-2 w-full rounded" />
-        <button onClick={handleAdd} className="bg-green-600 text-white px-4 py-2 rounded">Save</button>
+  return (
+    <div className="p-6 bg-white">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
+        <button onClick={()=>router.push('/dashboard/deals/new')} className="px-3 py-2 bg-orange-500 text-white rounded">+ Add Deal</button>
       </div>
-    )}
-    <table className="w-full mt-4"><thead><tr><th>Title</th><th>Status</th><th>Value</th><th></th></tr></thead>
-      <tbody>{rows.map((r:any)=>(<tr key={r.id}><td>{r.title}</td><td>{r.status}</td><td>{r.value ? `$${r.value}` : '-'}</td>
-        <td><button onClick={()=>removeDeal(r.id)} className="text-red-500 text-sm">Delete</button></td></tr>))}</tbody></table>
-  </div>);
+      <TransactionList transactions={transactions} onOpenDeal={(id:number)=>router.push(`/dashboard/deals/${id}`)} onViewChecklist={(id:number)=>router.push(`/dashboard/checklists?deal=${id}`)} />
+    </div>
+  )
 }
