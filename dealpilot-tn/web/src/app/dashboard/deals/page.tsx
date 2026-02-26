@@ -16,7 +16,7 @@ export default function DealsPage(){
         <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
         <button onClick={()=>router.push('/dashboard/deals/new')} className="px-3 py-2 bg-orange-500 text-white rounded">+ Add Deal</button>
       </div>
-      <TransactionList transactions={mapped} onOpenDeal={(id:number)=>router.push(f`/dashboard/deals/${id}`)} onViewChecklist={(id:number)=>router.push(`/dashboard/checklists?deal=${id}`)} />
+      <TransactionList transactions={mapped} onOpenDeal={(id:number)=>router.push(`/dashboard/deals/${id}`)} onViewChecklist={(id:number)=>router.push(`/dashboard/checklists?deal=${id}`)} />
     </div>
   )
 }
