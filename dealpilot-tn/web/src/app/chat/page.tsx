@@ -200,27 +200,13 @@ export default function ChatPage() {
           </div>
         </div>
       </aside>
-<<<<<<< HEAD
-
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} />}
         {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} />}
-        {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} />}
+        {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} />}
         {view === 'forms' && <FormsFillView />}
         {view === 'deadlines' && <DeadlineCalculator />}
-=======
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto p-6">
-          <section>
-            {view === 'dashboard' && <TCDashboard transactions={TRANSACTIONS} onOpenDeal={openDeal} onViewChecklist={openChecklist} onNavigate={handleNavigate} />}
-            {view === 'transactions' && <TransactionList transactions={TRANSACTIONS} onViewChecklist={openChecklist} onOpenDeal={openDeal} />}
-            {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} />}
-            {view === 'forms' && <FormsFillView />}
-            {view === 'deadlines' && <DeadlineCalculator />}
-          </section>
-        </div>
->>>>>>> 6949713 (tc: pass updateTransactionContacts to TransactionDetail and update transactions state)
       </main>
 
       {/* Floating chat button */}
