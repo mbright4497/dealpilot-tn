@@ -47,16 +47,24 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
       speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
     }
 
-    function send(text?: string){
+    async function send(text?: string){
         const msg = text || input
         if(!msg) return
         setMessages(m=>[...m,{role:'user',content:msg}])
         setInput('')
-        setTimeout(()=>{
-            const raw = `(mock) I can calculate deadlines, fill RF401, or check compliance. What do you need?`
-            const toned = applyTone(style as AssistantStyle, raw)
-            setMessages(m=>[...m,{role:'assistant',content:toned}])
-        },500)
+        try{
+          const payload = { messages: [...messages, { role: 'user', content: msg }], style, transactionId }
+          const res = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(payload) })
+          const j = await res.json()
+          const reply = j.reply || j.message || 'Sorry, no response.'
+          const toned = applyTone(style as AssistantStyle, reply)
+          setMessages(m=>[...m,{role:'assistant',content:toned}])
+          if(voiceEnabled){ speakMessage(reply) }
+        }catch(e:any){
+          const raw = `(mock) I can calculate deadlines, fill RF401, or check compliance. What do you need?`
+          const toned = applyTone(style as AssistantStyle, raw)
+          setMessages(m=>[...m,{role:'assistant',content:toned}])
+        }
     }
 
     function newChat(){
@@ -74,7 +82,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
         <div className="fixed top-0 right-0 h-full bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
-                  <AnimatedAvatar isSpeaking={speaking} size={64} />
+                  {voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={200} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <AnimatedAvatar isSpeaking={speaking} size={64} />}
                   <div className="text-lg font-bold">Your AI Assistant</div>
                 </div>
                 <div className="flex gap-2 items-center">
@@ -100,7 +108,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
                   ))}
                 </div>
 
-                <div className="flex justify-center py-4"><AnimatedAvatar isSpeaking={speaking} size={100} /></div>
+                <div className="flex justify-center py-4">{voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={120} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <AnimatedAvatar isSpeaking={speaking} size={100} />}</div>
 
                 <div className="flex-1 overflow-auto p-2 border rounded bg-gray-50">
                     {messages.map((m,i)=>(
