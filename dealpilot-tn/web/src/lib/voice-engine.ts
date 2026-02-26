@@ -63,7 +63,7 @@ function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void,
   }
   const cfg = (voiceConfig as any)[style] || voiceConfig['friendly-tn']
   utter.rate = cfg.rate
-  // we'll adjust pitch after selecting voice
+  // we'll set pitch to 1.1 for a consistent female sound
 
   utter.onstart = () => { speakingState = true; if (onStart) onStart() }
   utter.onend = () => { speakingState = false; if (onEnd) onEnd() }
@@ -71,7 +71,7 @@ function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void,
   waitForVoices().then(voices => {
     try{
       if (voices.length > 0) {
-        const preferredNames = ['Samantha','Zira','Moira','Tessa','Victoria','Fiona','Google US English Female','Karen']
+        const preferredNames = ['Samantha','Karen','Moira','Tessa','Victoria','Google US English Female']
         let femaleVoice = voices.find(v => {
           const n = (v.name||'').toLowerCase()
           return preferredNames.some(p => n.includes(p.toLowerCase())) || n.includes('female')
@@ -87,20 +87,20 @@ function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void,
         }
         if(femaleVoice) {
           utter.voice = femaleVoice
-          utter.pitch = 1.1
-        } else {
-          utter.pitch = cfg.pitch
         }
+        // enforce higher pitch for feminine sound
+        utter.pitch = 1.1
       } else {
-        utter.pitch = cfg.pitch
+        utter.pitch = 1.1
       }
-    }catch(e){ utter.pitch = cfg.pitch }
+    }catch(e){ utter.pitch = 1.1 }
     window.speechSynthesis.speak(utter)
-  }).catch(()=>{ utter.pitch = cfg.pitch; window.speechSynthesis.speak(utter) })
+  }).catch(()=>{ utter.pitch = 1.1; window.speechSynthesis.speak(utter) })
 }
 
 export function speak(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
-  speakElevenLabs(text, style, onStart, onEnd)
+  // Directly use browser TTS; skip ElevenLabs entirely
+  speakBrowser(text, style, onStart, onEnd)
 }
 
 export function stopSpeaking(): void {
