@@ -1,8 +1,10 @@
 'use client'
-// Stage 4: AssistantPanel with action chips (Issue #10)
-import React, {useState} from 'react'
+// Stage 5: AssistantPanel with voice and avatar (Issue #10)
+import React, {useState, useEffect} from 'react'
 import { applyTone } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
+import AnimatedAvatar from './AnimatedAvatar'
+import { speak, stopSpeaking, isSpeaking as checkSpeaking } from '@/lib/voice-engine'
 
 const QUICK_PROMPTS = [
     'What deadlines are coming up?',
@@ -19,10 +21,22 @@ const ACTION_CHIPS: { id: string; label: string; prompt: string }[] = [
   { id: 'risk', label: 'Risk Check', prompt: "Run a quick risk check across active deals and highlight issues." },
 ]
 
-export default function AIChatbot({onClose, style = 'friendly-tn'}: {onClose: ()=>void, style?: AssistantStyle}){
+export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled = false}:{onClose: ()=>void, style?: AssistantStyle, voiceEnabled?: boolean}){
     const [messages,setMessages]=useState<any[]>([{role:'system',content:"Hi! I'm your DealPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
     const [input,setInput]=useState('')
     const [minimized,setMinimized]=useState(false)
+    const [speaking,setSpeaking]=useState(false)
+
+    useEffect(()=>{
+      // stop speaking if voice disabled
+      if(!voiceEnabled && checkSpeaking()) stopSpeaking()
+    },[voiceEnabled])
+
+    function speakMessage(text:string){
+      if(!voiceEnabled) return
+      if(checkSpeaking()) stopSpeaking()
+      speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
+    }
 
     function send(text?: string){
         const msg = text || input
@@ -51,11 +65,16 @@ export default function AIChatbot({onClose, style = 'friendly-tn'}: {onClose: ()
         <div className="fixed top-0 right-0 h-full bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
+                  <AnimatedAvatar isSpeaking={speaking} size={32} />
                   <div className="text-lg font-bold">Your AI Assistant</div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                     <button onClick={()=>setMinimized(s=>!s)} className="text-sm px-2 py-1 bg-gray-800 text-gray-200 rounded hover:bg-gray-700">{minimized? 'Restore':'Minimize'}</button>
                     <button onClick={()=>onClose()} className="text-sm px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Close</button>
+                    <button onClick={()=>{ if(checkSpeaking()){ stopSpeaking(); setSpeaking(false); } else if(voiceEnabled){ setSpeaking(s=>!s) } }} className={`ml-2 p-1 rounded ${voiceEnabled? 'text-orange-400':'text-gray-400'}`} title="Toggle voice">
+                      {/* speaker icon */}
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg>
+                    </button>
                 </div>
             </div>
             {!minimized && (
@@ -68,7 +87,12 @@ export default function AIChatbot({onClose, style = 'friendly-tn'}: {onClose: ()
 
                 <div className="flex-1 overflow-auto p-2 border rounded bg-gray-50">
                     {messages.map((m,i)=>(
-                      <div key={i} className={m.role==='assistant' || m.role==='system'? 'text-left mb-2':'text-right mb-2'}>
+                      <div key={i} className={m.role==='assistant' || m.role==='system'? 'text-left mb-2 flex items-start gap-2':'text-right mb-2'}>
+                        { (m.role==='assistant' || m.role==='system') && (
+                          <button onClick={()=>{ if(speaking){ stopSpeaking(); setSpeaking(false) } else { speakMessage(m.content) } }} className="text-gray-400 hover:text-orange-400 p-1">
+                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg>
+                          </button>
+                        )}
                         <div className={m.role==='assistant' || m.role==='system'? 'inline-block bg-blue-50 text-gray-800 p-2 rounded-lg max-w-xs':'inline-block bg-orange-50 text-gray-800 p-2 rounded-lg max-w-xs'}>
                           {m.content}
                         </div>

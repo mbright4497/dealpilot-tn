@@ -9,6 +9,8 @@ import TransactionDetail from '@/components/TransactionDetail'
 import PersonalitySelector from '@/components/PersonalitySelector'
 import { getDefaultStyle } from '@/lib/assistant-personality'
 import type { AssistantStyle } from '@/lib/assistant-personality'
+import VoiceSettings from '@/components/VoiceSettings'
+import { previewVoice } from '@/lib/voice-engine'
 
 export type Contact = {
   role: string
@@ -109,6 +111,7 @@ export default function ChatPage() {
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>(TRANSACTIONS)
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
 
   function addTransaction(tx: any) {
     const newTx: Transaction = {
@@ -213,7 +216,10 @@ export default function ChatPage() {
         {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} />}
         {view === 'forms' && <FormsFillView />}
         {view === 'deadlines' && <DeadlineCalculator />}
-        {view === 'personality' && <PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} />}
+        {view === 'personality' && <>
+          <PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} />
+          <div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div>
+        </>}
       </main>
 
       {/* Floating chat button */}
@@ -221,7 +227,7 @@ export default function ChatPage() {
         <svg width={24} height={24} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       </button>
 
-      {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} />}
+      {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>
   )
 }
