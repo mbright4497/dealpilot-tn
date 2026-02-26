@@ -14,7 +14,7 @@ const QUICK_PROMPTS = [
 ]
 
 const ACTION_CHIPS: { id: string; label: string; prompt: string }[] = [
-  { id: 'pull', label: 'Pull File', prompt: "Pull up the file for the active deal and summarize key fields." },
+  { id: 'pull', label: 'Pull File', prompt: "Open a TREC form and pre-fill from the active deal." },
   { id: 'email', label: 'Draft Email', prompt: "Draft a short email to the buyer introducing next steps." },
   { id: 'deadline', label: 'Calculate Deadline', prompt: "Calculate the next important deadline for my active deals" },
   { id: 'contacts', label: 'Show Contacts', prompt: "List contacts for the active deal and their roles." },
