@@ -65,7 +65,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
         <div className="fixed top-0 right-0 h-full bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
-                  <AnimatedAvatar isSpeaking={speaking} size={32} />
+                  <AnimatedAvatar isSpeaking={speaking} size={64} />
                   <div className="text-lg font-bold">Your AI Assistant</div>
                 </div>
                 <div className="flex gap-2 items-center">

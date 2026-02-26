@@ -37,10 +37,23 @@ export async function speakElevenLabs(
 function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
   const utter = new SpeechSynthesisUtterance(text)
-  utter.rate = 1.0
-  utter.pitch = 1.0
+  const voiceConfig: Record<string, {rate:number,pitch:number}> = {
+    'joyful': {rate:1.15, pitch:1.2},
+    'straight': {rate:1.0, pitch:0.9},
+    'calm': {rate:0.85, pitch:0.95},
+    'executive': {rate:0.95, pitch:0.85},
+    'friendly-tn': {rate:1.05, pitch:1.05},
+  }
+  const cfg = (voiceConfig as any)[style] || voiceConfig['friendly-tn']
+  utter.rate = cfg.rate
+  utter.pitch = cfg.pitch
   utter.onstart = () => { speakingState = true; if (onStart) onStart() }
   utter.onend = () => { speakingState = false; if (onEnd) onEnd() }
+  const voices = window.speechSynthesis.getVoices()
+  if (voices.length > 0) {
+    const femaleVoice = voices.find(v => (v.name || '').includes('Samantha') || (v.name || '').includes('Karen') || (v.name || '').toLowerCase().includes('female') || (v.lang || '').toLowerCase().startsWith('en'))
+    if (femaleVoice) utter.voice = femaleVoice
+  }
   window.speechSynthesis.speak(utter)
 }
 
