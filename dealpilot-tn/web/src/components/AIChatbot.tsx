@@ -21,16 +21,21 @@ const ACTION_CHIPS: { id: string; label: string; prompt: string }[] = [
   { id: 'risk', label: 'Risk Check', prompt: "Run a quick risk check across active deals and highlight issues." },
 ]
 
-export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled = false}:{onClose: ()=>void, style?: AssistantStyle, voiceEnabled?: boolean}){
+export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled = false, transactionId }:{onClose: ()=>void, style?: AssistantStyle, voiceEnabled?: boolean, transactionId?: number}){
     const [messages,setMessages]=useState<any[]>([{role:'system',content:"Hi! I'm your DealPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
     const [input,setInput]=useState('')
     const [minimized,setMinimized]=useState(false)
     const [speaking,setSpeaking]=useState(false)
+    const [formsList,setFormsList]=useState<any[]>([])
+    const [showFormModal,setShowFormModal]=useState(false)
+    const [selectedFormId,setSelectedFormId]=useState<string|null>(null)
 
     useEffect(()=>{
       // stop speaking if voice disabled
       if(!voiceEnabled && checkSpeaking()) stopSpeaking()
     },[voiceEnabled])
+
+    useEffect(()=>{ fetch('/api/forms').then(r=>r.json()).then(j=>setFormsList(j.forms||[])) },[])
 
     function speakMessage(text:string){
       if(!voiceEnabled) return
@@ -81,9 +86,17 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
             <div className="p-4 flex flex-col h-full">
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {ACTION_CHIPS.map(c=>(
-                    <button key={c.id} onClick={()=>onChip(c.id)} className="bg-gray-700 text-gray-200 rounded-full px-3 py-1.5 text-xs hover:bg-gray-600">{c.label}</button>
+                    <button key={c.id} onClick={()=>{
+                      if(c.id === 'pull'){
+                        // open mini picker
+                        setSelectedFormId(null)
+                        setShowFormModal(true)
+                      } else onChip(c.id)
+                    }} className="bg-gray-700 text-gray-200 rounded-full px-3 py-1.5 text-xs hover:bg-gray-600">{c.label}</button>
                   ))}
                 </div>
+
+                <div className="flex justify-center py-4"><AnimatedAvatar isSpeaking={speaking} size={100} /></div>
 
                 <div className="flex-1 overflow-auto p-2 border rounded bg-gray-50">
                     {messages.map((m,i)=>(

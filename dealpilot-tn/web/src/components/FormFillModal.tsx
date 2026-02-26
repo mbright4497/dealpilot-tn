@@ -1,13 +1,13 @@
 'use client'
 import React, {useEffect, useState} from 'react'
 
-export default function FormFillModal({ formId, onClose }:{ formId:string, onClose:()=>void }){
+export default function FormFillModal({ formId, onClose, transactionId }:{ formId:string, onClose:()=>void, transactionId?: number }){
   const [form, setForm] = useState<any|null>(null)
   const [data, setData] = useState<Record<string,any>>({})
   const [aiFilled, setAiFilled] = useState<Record<string,boolean>>({})
   useEffect(()=>{ fetch('/api/forms').then(r=>r.json()).then(j=>{ const f = j.forms.find((x:any)=>x.id===formId); setForm(f) }) },[formId])
   async function handleAIFill(){
-    const res = await fetch('/api/forms',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ formId, transactionId: 1 }) })
+    const res = await fetch('/api/forms',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ formId, transactionId: transactionId || 1 }) })
     const j = await res.json()
     setData(j.prefill||{})
     const filled:Record<string,boolean> = {}
