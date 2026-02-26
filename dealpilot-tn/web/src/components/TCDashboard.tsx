@@ -1,18 +1,10 @@
 'use client'
 import React from 'react'
-
-interface Transaction {
-  id: number
-  address: string
-  client: string
-  status: string
-  type?: string
-  binding?: string
-  closing?: string
-}
+import DailyBriefing from './DailyBriefing'
+import type { Transaction as ChatTransaction } from '@/app/chat/page'
 
 interface Props {
-  transactions?: Transaction[]
+  transactions?: ChatTransaction[]
   onOpenDeal?: (txId: number) => void
   onViewChecklist?: (txId: number) => void
   onNavigate?: (view: string) => void
@@ -40,21 +32,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold">Welcome back, Matt</h2>
-            <p className="text-gray-300 mt-1">Here is what is happening with your transactions today.</p>
-          </div>
-          <div className="hidden sm:flex items-center gap-3">
-            <button
-              onClick={() => onNavigate && onNavigate('transactions')}
-              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all font-medium text-sm"
-            >+ New Transaction</button>
-          </div>
-        </div>
-      </div>
+      <DailyBriefing userName="Matt" transactions={transactions as ChatTransaction[]} onNavigate={(dest) => onNavigate && onNavigate(dest)} onOpenDeal={(txId) => onOpenDeal && onOpenDeal(txId)} />
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
