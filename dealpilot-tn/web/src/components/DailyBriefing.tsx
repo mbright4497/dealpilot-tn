@@ -6,6 +6,7 @@ import type { AssistantStyle } from '@/lib/assistant-personality'
 import { speak, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
 import dynamic from 'next/dynamic'
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
+import PilotAvatar from '@/components/PilotAvatar'
 
 type UrgencyLevel = 'green' | 'yellow' | 'red'
 
