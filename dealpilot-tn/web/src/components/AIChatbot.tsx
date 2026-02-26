@@ -24,7 +24,7 @@ const ACTION_CHIPS: { id: string; label: string; prompt: string }[] = [
 ]
 
 export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled = false, transactionId }:{onClose: ()=>void, style?: AssistantStyle, voiceEnabled?: boolean, transactionId?: number}){
-    const [messages,setMessages]=useState<any[]>([{role:'system',content:"Hi! I'm your DealPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
+    const [messages,setMessages]=useState<any[]>([{role:'system',content:"Hi! I'm Eva, your DealPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
     const [input,setInput]=useState('')
     const [minimized,setMinimized]=useState(false)
     const [speaking,setSpeaking]=useState(false)
@@ -83,7 +83,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
                   {voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={200} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <PilotAvatar size={48} />}
-                  <div className="text-lg font-bold">Your AI Assistant</div>
+                  <div className="text-lg font-bold">Eva</div>
                 </div>
                 <div className="flex gap-2 items-center">
                     <button onClick={()=>setMinimized(s=>!s)} className="text-sm px-2 py-1 bg-gray-800 text-gray-200 rounded hover:bg-gray-700">{minimized? 'Restore':'Minimize'}</button>

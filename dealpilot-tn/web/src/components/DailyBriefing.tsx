@@ -186,7 +186,7 @@ export default function DailyBriefing({ userName, transactions, onNavigate, onOp
                 Calculate Deadlines
               </button>
               <button onClick={() => onNavigate('ai')} className="px-3 py-1.5 bg-orange-600/80 text-white text-xs rounded-full hover:bg-orange-600 transition">
-                Talk to Assistant
+                Talk to Eva
               </button>
             </div>
           </div>
