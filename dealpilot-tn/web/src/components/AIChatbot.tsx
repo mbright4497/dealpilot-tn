@@ -79,7 +79,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
     }
 
     return (
-        <div className="fixed top-0 right-0 h-full bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
+        <div className="fixed top-0 right-0 h-screen flex flex-col bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
                   {voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={200} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <AnimatedAvatar isSpeaking={speaking} size={64} />}
@@ -95,7 +95,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
                 </div>
             </div>
             {!minimized && (
-            <div className="p-4 flex flex-col h-full">
+            <div className="p-4 flex flex-col flex-1 min-h-0">
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {ACTION_CHIPS.map(c=>(
                     <button key={c.id} onClick={()=>{
@@ -108,9 +108,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
                   ))}
                 </div>
 
-                <div className="flex justify-center py-4">{voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={120} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <AnimatedAvatar isSpeaking={speaking} size={100} />}</div>
-
-                <div className="flex-1 overflow-auto p-2 border rounded bg-gray-50">
+                <div className="flex-1 overflow-y-auto min-h-0 p-2 border rounded bg-gray-50">
                     {messages.map((m,i)=>(
                       <div key={i} className={m.role==='assistant' || m.role==='system'? 'text-left mb-2 flex items-start gap-2':'text-right mb-2'}>
                         { (m.role==='assistant' || m.role==='system') && (
