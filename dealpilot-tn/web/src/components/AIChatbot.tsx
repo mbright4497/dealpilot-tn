@@ -1,5 +1,5 @@
 'use client'
-// Stage 5: AssistantPanel with voice and avatar (Issue #10)
+// Stage 5: AssistantPanel with voice and avatar (Issue #10) // voice + avatar integrated
 import React, {useState, useEffect} from 'react'
 import { applyTone } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
