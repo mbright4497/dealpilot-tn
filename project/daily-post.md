@@ -1,11 +1,14 @@
-🚨 **New Construction Spotlight in the Tri-Cities** 🚨
+# Daily Social Post — New Construction in Tri-Cities, TN
 
-If you’ve been dreaming of a brand‑new home in Johnson City, Kingsport, or Bristol — now’s the time to look. 🏡✨
+Status: DRAFT (data-driven details to be inserted after market check)
 
-**Why new builds are winning right now:**
-• Modern layouts + energy‑efficient features = lower upkeep
-• Builder warranties = peace of mind from day one
+Hook:
+- "Dreaming of a brand-new home in the Tri-Cities for under $400k? Your new build could be closer than you think."
 
-Want a custom list of **new construction under $400K**? I’ll send it fast.
+Value point:
+- Highlight low maintenance, modern layouts, energy efficiency, and potential incentives from builders. Mention popular neighborhoods in Johnson City, Kingsport, Bristol once verified.
 
-👉 **Message the iHome Team** and we’ll match you with the best new builds today.
+CTA:
+- "Ready to tour new builds or get a free list of current options under $400k? DM iHome Team at Keller Williams Kingsport or call Matt at [PHONE]."
+
+Notes for Workhorse: Insert 2–3 active listings (addresses + price) and one builder contact if available. Include a link to property search and recommended open-house times.

@@ -1,14 +1,12 @@
-# Follow-Ups — Today
+# Follow-Ups — Priority Actions for 2026-02-26
 
-## Leads to call
-- **None pulled today** (Realtor.com/Zillow access blocked in automation). Use manual site check or MLS dashboard to add phone numbers.
+Status: PARTIAL — needs lead/listing data
 
-## Listings to promote
-- **None captured today** (automated scrape blocked). Recommend promoting any newly listed builder inventory under $400K.
+Today's priority actions (placeholders):
+1) Call new construction leads who inquired in past 7 days — prioritize those requesting tours or financing help.
+2) Promote 3 highlighted new-build listings on Facebook + Instagram (create carousel with key features).
+3) Alert buyer clients about any recent price reductions under $400k in Johnson City/Kingsport/Bristol.
+4) Reach out to local builders for inventory updates and broker incentives.
+5) Schedule open-house slots and agent tours for high-conversion properties.
 
-## Price‑change alerts
-- **No automated alerts today** (data access blocked). Suggest running MLS price‑change report for Tri‑Cities new construction.
-
-## Action needed
-- Connect a Chrome tab to OpenClaw Browser Relay or provide a list of target URLs to scrape.
-- Alternatively, paste MLS export and I will format/score leads immediately.
+Notes: After web access, populate with specific leads (name, phone, source), listing IDs, and any price-change alerts.

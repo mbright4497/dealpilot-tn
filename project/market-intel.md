@@ -1,20 +1,16 @@
-# Tri-Cities TN Market Intel (Johnson City • Kingsport • Bristol)
+# Market Intelligence — Tri-Cities, TN
 
-**Status:** Limited data collected today due to source access blocks (Realtor.com/Zillow and several market-report sites returning 403/429 or redirects).
+Status: PLACEHOLDER — web search required
 
-## What was attempted
-- Realtor.com new construction and market pages → **blocked (429)**
-- Zillow market pages → **blocked/unavailable via web tools**
-- Redfin market pages → **redirected to wrong city**
-- Movoto / Rocket Homes market pages → **403/404**
+Key metrics to include (pending data):
+- Median sale price (current)
+- Inventory levels (active listings)
+- Months supply of inventory
+- Median days on market
+- Year-over-year and month-over-month price changes
+- Notable new construction trends (builders, neighborhoods)
 
-## Action needed (to complete stats)
-Please pull latest MLS/association report (median price, inventory, DOM) for:
-- Johnson City, TN
-- Kingsport, TN
-- Bristol, TN
+Source notes: Intended sources: Realtor.com market reports, Zillow Research, local MLS/REALTOR board.
 
-Once the data is available, I can update this file immediately.
-
-## Interim context (non-MLS)
-No reliable public-source market stats were accessible via automated tools this morning. Recommend using internal MLS dashboard or Realtor.com/Zillow market pages manually.
+Next steps:
+- When web access approved, fetch latest metrics and populate this file.
