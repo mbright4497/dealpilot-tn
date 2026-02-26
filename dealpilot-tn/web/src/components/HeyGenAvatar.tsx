@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
-import { StreamingAvatar, AvatarQuality, StreamingEvents, TaskType, TaskMode } from '@heygen/streaming-avatar'
+import StreamingAvatar, { AvatarQuality, StreamingEvents, TaskType, TaskMode } from '@heygen/streaming-avatar'
 
 export default function HeyGenAvatar({ textToSpeak, size = 200, onSpeakStart, onSpeakEnd }:{ textToSpeak?:string, size?:number, onSpeakStart?:()=>void, onSpeakEnd?:()=>void }){
   const videoRef = useRef<HTMLVideoElement|null>(null)
