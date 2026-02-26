@@ -60,29 +60,24 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
       avatar.on(StreamingEvents.AVATAR_STOP_TALKING, ()=>{ setSpeaking(false); if(onSpeakEnd) onSpeakEnd() })
       avatar.on(StreamingEvents.STREAM_DISCONNECTED, ()=>{ setReady(false); setSpeaking(false) })
 
-      // Try preferred public avatar IDs if a simple name fails
+      // Try preferred public avatar IDs (real account IDs)
       const preferredAvatars = [
-        'Monica_public_3_20240108',
-        'Anna_public_3_20240108',
-        'Kayla_public_2_20240108',
-        'Angela_public_3_20240108',
+        'Alessandra_ProfessionalLook_public',
+        'Katya_ProfessionalLook_public',
+        'Marianne_ProfessionalLook_public',
+        'Anastasia_ProfessionalLook_public',
+        'Amina_ProfessionalLook_public',
+        'Rika_ProfessionalLook_public',
       ]
       let started = false
-      try {
-        // First try a short name (legacy) which may fail on some accounts
-        await avatar.createStartAvatar({ quality: AvatarQuality.Medium, avatarName: 'default' })
-        started = true
-      } catch (err) {
-        // Try full avatar IDs from preferred list
-        for (const aid of preferredAvatars) {
-          try {
-            await avatar.createStartAvatar({ quality: AvatarQuality.Medium, avatarName: aid })
-            started = true
-            break
-          } catch (err2) {
-            // continue
-            console.warn('avatar start failed for', aid, err2)
-          }
+      // Try each known-good avatar ID directly
+      for (const aid of preferredAvatars) {
+        try {
+          await avatar.createStartAvatar({ quality: AvatarQuality.Medium, avatarName: aid })
+          started = true
+          break
+        } catch (err2) {
+          console.warn('avatar start failed for', aid, err2)
         }
       }
 
