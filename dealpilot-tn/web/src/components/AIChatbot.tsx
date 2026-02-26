@@ -5,6 +5,8 @@ import { applyTone } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
 import AnimatedAvatar from './AnimatedAvatar'
 import { speak, stopSpeaking, isSpeaking as checkSpeaking } from '@/lib/voice-engine'
+import dynamic from 'next/dynamic'
+const HeyGenAvatar = dynamic(() => import('./HeyGenAvatar'), { ssr: false })
 
 const QUICK_PROMPTS = [
     'What deadlines are coming up?',
@@ -37,7 +39,9 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
 
     useEffect(()=>{ fetch('/api/forms').then(r=>r.json()).then(j=>setFormsList(j.forms||[])) },[])
 
+    const [lastSpokenText, setLastSpokenText] = useState<string>('')
     function speakMessage(text:string){
+      setLastSpokenText(text)
       if(!voiceEnabled) return
       if(checkSpeaking()) stopSpeaking()
       speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
