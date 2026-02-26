@@ -1,4 +1,5 @@
 'use client'
+// Stage 3: Personality selector (Issue #10)
 import React from 'react'
 import { PERSONALITY_OPTIONS, type AssistantStyle } from '@/lib/assistant-personality'
 
