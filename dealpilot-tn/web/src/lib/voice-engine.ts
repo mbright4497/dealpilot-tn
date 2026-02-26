@@ -3,7 +3,7 @@ import type { AssistantStyle } from '@/lib/assistant-personality'
 let currentAudio: HTMLAudioElement | null = null
 let speakingState = false
 
-export async function speakElevenLabs(
+export async function speakAPI(
   text: string,
   style: AssistantStyle,
   onStart?: () => void,
@@ -17,7 +17,7 @@ export async function speakElevenLabs(
     const res = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, style }),
+      body: JSON.stringify({ text }),
     })
     if (!res.ok) throw new Error('TTS request failed')
     const blob = await res.blob()
@@ -29,7 +29,7 @@ export async function speakElevenLabs(
     audio.onerror = () => { speakingState = false; currentAudio = null; if (onEnd) onEnd() }
     await audio.play()
   } catch (e) {
-    console.error('ElevenLabs TTS error, falling back to browser:', e)
+    console.error('TTS API error, falling back to browser:', e)
     speakBrowser(text, style, onStart, onEnd)
   }
 }
@@ -99,8 +99,8 @@ function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void,
 }
 
 export function speak(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
-  // Directly use browser TTS; skip ElevenLabs entirely
-  speakBrowser(text, style, onStart, onEnd)
+  // Try server-side TTS (OpenAI) first, fallback to browser TTS
+  speakAPI(text, style, onStart, onEnd)
 }
 
 export function stopSpeaking(): void {
