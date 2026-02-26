@@ -130,14 +130,14 @@ export default function DailyBriefing({ userName, transactions, onNavigate, onOp
       <div className={`rounded-xl ${urgStyle.bg} border ${urgStyle.border} p-6`}>
         <div className="flex items-start gap-4">
           <div className="relative shrink-0 cursor-pointer" onClick={handleListen} title={speaking ? 'Stop speaking' : 'Click to listen'}>
-            <div style={{width:64,height:64}}>
-              <Lottie animationData={speaking ? SPEAKING_ANIMATION : AVATAR_ANIMATION} loop={true} style={{width:64,height:64}} />
+              <div style={{width:100,height:140,borderRadius:12,overflow:'hidden',border:'2px solid #f97316',boxShadow:'0 8px 24px rgba(249,115,22,0.18)'}}>
+                <img src="/avatar-pilot.png" alt="Eva" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}} />
+              </div>
+              {!speaking && <div className="absolute -bottom-2 -right-2 bg-orange-500 rounded-full p-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg></div>}
+              <div className="text-center mt-1">
+                <div className="text-orange-400 text-xs font-semibold">Eva</div>
+              </div>
             </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <PilotAvatar size={56} />
-            </div>
-            {!speaking && <div className="absolute -bottom-1 -right-1 bg-orange-500 rounded-full p-1"><svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg></div>}
-          </div>
           <div className="flex-1 space-y-3">
             <h1 className="text-2xl font-bold text-white">{greeting}</h1>
             <p className="text-gray-300 text-sm">
