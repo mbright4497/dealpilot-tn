@@ -167,7 +167,7 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
                 <div key={it.key} className="p-3 border rounded flex justify-between items-center">
                   <div>
                     <div className="font-bold text-gray-900">{it.title}</div>
-                    <div className="text-sm text-gray-800">{it.updated_at}</div>
+                    <div className="text-sm text-gray-800">{new Date(it.updated_at).toLocaleDateString()}</div>
                   </div>
                   <div>
                     <input type="checkbox" checked={it.status==='done'} onChange={()=>{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]) }} />
