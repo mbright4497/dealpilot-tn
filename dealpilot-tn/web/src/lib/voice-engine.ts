@@ -34,6 +34,23 @@ export async function speakElevenLabs(
   }
 }
 
+function waitForVoices(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return resolve([])
+    const synth = window.speechSynthesis
+    let voices = synth.getVoices()
+    if (voices.length > 0) return resolve(voices)
+    const handler = () => {
+      voices = synth.getVoices()
+      synth.removeEventListener('voiceschanged', handler)
+      resolve(voices)
+    }
+    synth.addEventListener('voiceschanged', handler)
+    // fallback: resolve after short timeout
+    setTimeout(() => { voices = synth.getVoices(); synth.removeEventListener('voiceschanged', handler); resolve(voices) }, 2000)
+  })
+}
+
 function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
   const utter = new SpeechSynthesisUtterance(text)
@@ -42,19 +59,44 @@ function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void,
     'straight': {rate:1.0, pitch:0.9},
     'calm': {rate:0.85, pitch:0.95},
     'executive': {rate:0.95, pitch:0.85},
-    'friendly-tn': {rate:1.05, pitch:1.05},
+    'friendly-tn': {rate:1.05, pitch:1.1},
   }
   const cfg = (voiceConfig as any)[style] || voiceConfig['friendly-tn']
   utter.rate = cfg.rate
-  utter.pitch = cfg.pitch
+  // we'll adjust pitch after selecting voice
+
   utter.onstart = () => { speakingState = true; if (onStart) onStart() }
   utter.onend = () => { speakingState = false; if (onEnd) onEnd() }
-  const voices = window.speechSynthesis.getVoices()
-  if (voices.length > 0) {
-    const femaleVoice = voices.find(v => (v.name || '').includes('Samantha') || (v.name || '').includes('Zira') || (v.name || '').toLowerCase().includes('female') || (v.lang || '').toLowerCase().startsWith('en'))
-    if (femaleVoice) utter.voice = femaleVoice
-  }
-  window.speechSynthesis.speak(utter)
+
+  waitForVoices().then(voices => {
+    try{
+      if (voices.length > 0) {
+        const preferredNames = ['Samantha','Zira','Moira','Tessa','Victoria','Fiona','Google US English Female','Karen']
+        let femaleVoice = voices.find(v => {
+          const n = (v.name||'').toLowerCase()
+          return preferredNames.some(p => n.includes(p.toLowerCase())) || n.includes('female')
+        })
+        if(!femaleVoice){
+          // fallback: first en voice not in common male names
+          const maleNames = ['alex','daniel','fred','thomas']
+          femaleVoice = voices.find(v => {
+            const n = (v.name||'').toLowerCase()
+            const lang = (v.lang||'').toLowerCase()
+            return lang.includes('en') && !maleNames.some(m=>n.includes(m))
+          })
+        }
+        if(femaleVoice) {
+          utter.voice = femaleVoice
+          utter.pitch = 1.1
+        } else {
+          utter.pitch = cfg.pitch
+        }
+      } else {
+        utter.pitch = cfg.pitch
+      }
+    }catch(e){ utter.pitch = cfg.pitch }
+    window.speechSynthesis.speak(utter)
+  }).catch(()=>{ utter.pitch = cfg.pitch; window.speechSynthesis.speak(utter) })
 }
 
 export function speak(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
