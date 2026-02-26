@@ -1,6 +1,8 @@
 'use client'
 import React, { useMemo } from 'react'
 import type { Transaction } from '@/app/chat/page'
+import { getGreeting } from '@/lib/tone-engine'
+import type { AssistantStyle } from '@/lib/assistant-personality'
 
 type UrgencyLevel = 'green' | 'yellow' | 'red'
 
@@ -100,11 +102,13 @@ interface Props {
   transactions: Transaction[]
   onNavigate: (dest: string) => void
   onOpenDeal?: (txId: number) => void
+  style?: AssistantStyle
 }
 
-export default function DailyBriefing({ userName, transactions, onNavigate, onOpenDeal }: Props) {
+export default function DailyBriefing({ userName, transactions, onNavigate, onOpenDeal, style }: Props) {
   const brief = useMemo(() => generateBrief(userName, transactions), [userName, transactions])
   const urgStyle = URGENCY_STYLES[brief.urgencyLevel]
+  const greeting = style ? getGreeting(style, userName) : brief.greeting
 
   return (
     <div className="mb-6">
