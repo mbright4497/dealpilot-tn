@@ -47,6 +47,12 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
       speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
     }
 
+    function forceSpeak(text:string){
+      setLastSpokenText(text)
+      if(checkSpeaking()) stopSpeaking()
+      speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
+    }
+
     async function send(text?: string){
         const msg = text || input
         if(!msg) return
@@ -112,7 +118,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
                     {messages.map((m,i)=>(
                       <div key={i} className={m.role==='assistant' || m.role==='system'? 'text-left mb-2 flex items-start gap-2':'text-right mb-2'}>
                         { (m.role==='assistant' || m.role==='system') && (
-                          <button onClick={()=>{ if(speaking){ stopSpeaking(); setSpeaking(false) } else { speakMessage(m.content) } }} className="text-gray-400 hover:text-orange-400 p-1">
+                          <button onClick={()=>{ if(speaking){ stopSpeaking(); setSpeaking(false) } else { forceSpeak(m.content) } }} className="text-gray-400 hover:text-orange-400 p-1">
                             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg>
                           </button>
                         )}

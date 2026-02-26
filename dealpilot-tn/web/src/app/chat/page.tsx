@@ -111,7 +111,7 @@ export default function ChatPage() {
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>(TRANSACTIONS)
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
-  const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [voiceEnabled, setVoiceEnabled] = useState(true)
 
   function addTransaction(tx: any) {
     const newTx: Transaction = {
