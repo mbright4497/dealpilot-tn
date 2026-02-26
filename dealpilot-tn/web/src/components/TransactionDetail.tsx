@@ -4,7 +4,7 @@ import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string }
-export default function TransactionDetail({transaction, onBack}:{transaction:Transaction,onBack:()=>void}){
+export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
   const [tab,setTab]=useState('overview')
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
@@ -14,11 +14,13 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
   function addContact(){
     if(!newContact.name||!newContact.role) return
-    setLocalContacts(prev=>[...prev,{...newContact}])
+    const updated = [...localContacts, {...newContact}]
+    setLocalContacts(updated)
+    if(onUpdateContacts) onUpdateContacts(transaction.id, updated)
     setNewContact({role:'',name:'',company:'',phone:'',email:''})
     setShowAddContact(false)
   }
-  function removeContact(idx:number){ setLocalContacts(prev=>prev.filter((_,i)=>i!==idx)) }
+  function removeContact(idx:number){ const updated = localContacts.filter((_,i)=>i!==idx); setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated) }
   function send(){
     if(!input) return
     const user = {from:'user', text: input}
