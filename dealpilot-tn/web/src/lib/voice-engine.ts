@@ -1,82 +1,67 @@
 import type { AssistantStyle } from '@/lib/assistant-personality'
 
-export type VoicePreference = { voiceName?: string; rate: number; pitch: number }
+let currentAudio: HTMLAudioElement | null = null
+let speakingState = false
 
-export const VOICE_MAP: Record<AssistantStyle, VoicePreference> = {
-  'joyful': { rate: 1.1, pitch: 1.15 },
-  'straight': { rate: 1.0, pitch: 1.0 },
-  'calm': { rate: 0.9, pitch: 0.95 },
-  'executive': { rate: 0.95, pitch: 0.9 },
-  'friendly-tn': { rate: 1.0, pitch: 1.05 },
-}
-
-function safeGetVoices(): SpeechSynthesisVoice[] {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return []
-  return window.speechSynthesis.getVoices()
-}
-
-export function getAvailableVoices(): SpeechSynthesisVoice[] {
-  const voices = safeGetVoices()
-  return voices.filter(v => /en(-|_)?us/i.test(v.lang) || /en/i.test(v.lang))
-}
-
-function isFemaleVoice(v: SpeechSynthesisVoice){
-  const name = (v.name || '').toLowerCase()
-  return /(female|zira|susan|kathy|victoria|alloy|samantha|amber|woman|gina|lucy|emma)/i.test(name)
-}
-function isMaleVoice(v: SpeechSynthesisVoice){
-  const name = (v.name || '').toLowerCase()
-  return /(male|david|mark|matthew|john|alex|juan|tom|daniel|mike|michael|paul)/i.test(name)
-}
-
-export function findBestVoice(style: AssistantStyle): SpeechSynthesisVoice | null {
-  const voices = getAvailableVoices()
-  if(voices.length===0) return null
-  // preferences
-  if(style === 'joyful' || style === 'friendly-tn'){
-    const female = voices.find(isFemaleVoice)
-    if(female) return female
+export async function speakElevenLabs(
+  text: string,
+  style: AssistantStyle,
+  onStart?: () => void,
+  onEnd?: () => void
+): Promise<void> {
+  try {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio = null
+    }
+    const res = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, style }),
+    })
+    if (!res.ok) throw new Error('TTS request failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const audio = new Audio(url)
+    currentAudio = audio
+    audio.onplay = () => { speakingState = true; if (onStart) onStart() }
+    audio.onended = () => { speakingState = false; currentAudio = null; URL.revokeObjectURL(url); if (onEnd) onEnd() }
+    audio.onerror = () => { speakingState = false; currentAudio = null; if (onEnd) onEnd() }
+    await audio.play()
+  } catch (e) {
+    console.error('ElevenLabs TTS error, falling back to browser:', e)
+    speakBrowser(text, style, onStart, onEnd)
   }
-  if(style === 'executive' || style === 'straight'){
-    const male = voices.find(isMaleVoice)
-    if(male) return male
-  }
-  // calm or fallback
-  return voices[0] || null
 }
 
-export function speak(text: string, style: AssistantStyle, onStart?: ()=>void, onEnd?: ()=>void): SpeechSynthesisUtterance | null{
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null
-  const pref = VOICE_MAP[style] || { rate: 1.0, pitch: 1.0 }
-  const utter = new SpeechSynthesisUtterance(text)
-  const voice = findBestVoice(style)
-  if(voice) utter.voice = voice
-  utter.rate = pref.rate
-  utter.pitch = pref.pitch
-  utter.onstart = ()=>{ if(onStart) onStart() }
-  utter.onend = ()=>{ if(onEnd) onEnd() }
-  window.speechSynthesis.speak(utter)
-  return utter
-}
-
-export function stopSpeaking(): void{
+function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
-  window.speechSynthesis.cancel()
+  const utter = new SpeechSynthesisUtterance(text)
+  utter.rate = 1.0
+  utter.pitch = 1.0
+  utter.onstart = () => { speakingState = true; if (onStart) onStart() }
+  utter.onend = () => { speakingState = false; if (onEnd) onEnd() }
+  window.speechSynthesis.speak(utter)
 }
 
-export function isSpeaking(): boolean{
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return false
-  return window.speechSynthesis.speaking
+export function speak(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
+  speakElevenLabs(text, style, onStart, onEnd)
 }
 
-export function previewVoice(style: AssistantStyle): void{
-  const samples: Record<AssistantStyle,string> = {
+export function stopSpeaking(): void {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; speakingState = false }
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel()
+}
+
+export function isSpeaking(): boolean { return speakingState }
+
+export function previewVoice(style: AssistantStyle): void {
+  const samples: Record<AssistantStyle, string> = {
     'joyful': "Hey there! Let's get things rolling!",
-    'straight': "Good morning. Here's a quick sample.",
-    'calm': "Good morning. Take a deep breath — we've got this.",
-    'executive': "Morning. Here's a concise briefing sample.",
-    'friendly-tn': "Mornin'! Ready when you are.",
+    'straight': "Good morning. Here is a quick sample.",
+    'calm': "Good morning. Take a deep breath, we have got this.",
+    'executive': "Morning. Here is a concise briefing sample.",
+    'friendly-tn': "Hey Matt! Ready when you are, partner.",
   }
-  const text = samples[style] || samples['friendly-tn']
-  speak(text, style)
+  speak(samples[style] || samples['friendly-tn'], style)
 }

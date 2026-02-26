@@ -1,8 +1,11 @@
 'use client'
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import type { Transaction } from '@/app/chat/page'
 import { getGreeting } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
+import { speak, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
+import dynamic from 'next/dynamic'
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
 type UrgencyLevel = 'green' | 'yellow' | 'red'
 
@@ -27,6 +30,9 @@ function getTimeOfDay(): string {
 function daysBetween(a: Date, b: Date): number {
   return Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
 }
+
+const AVATAR_ANIMATION = {"v":"5.7.1","fr":30,"ip":0,"op":60,"w":120,"h":120,"nm":"avatar","layers":[{"ty":4,"nm":"circle","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[60,60]},"a":{"a":0,"k":[0,0]},"s":{"a":1,"k":[{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":0,"s":[100,100]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":15,"s":[110,110]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":30,"s":[100,100]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":45,"s":[110,110]},{"t":60,"s":[100,100]}]}}],"ip":0,"op":60,"st":0}
+const SPEAKING_ANIMATION = {"v":"5.7.1","fr":30,"ip":0,"op":30,"w":120,"h":120,"nm":"speaking","layers":[{"ty":4,"nm":"circle","sr":1,"ks":{"o":{"a":0,"k":100},"r":{"a":0,"k":0},"p":{"a":0,"k":[60,60]},"a":{"a":0,"k":[0,0]},"s":{"a":1,"k":[{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":0,"s":[100,100]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":5,"s":[115,115]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":10,"s":[95,95]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":15,"s":[112,112]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":20,"s":[98,98]},{"i":{"x":[0.667],"y":[1]},"o":{"x":[0.333],"y":[0]},"t":25,"s":[108,108]},{"t":30,"s":[100,100]}]}}],"ip":0,"op":30,"st":0}
 
 function generateBrief(userName: string, transactions: Transaction[], now = new Date()): DailyBrief {
   const tod = getTimeOfDay()
@@ -110,13 +116,28 @@ export default function DailyBriefing({ userName, transactions, onNavigate, onOp
   const urgStyle = URGENCY_STYLES[brief.urgencyLevel]
   const greeting = style ? getGreeting(style, userName) : brief.greeting
 
+  const [speaking, setSpeaking] = useState(false)
+  function handleListen(){
+    if(speaking){ stopSpeaking(); setSpeaking(false); return }
+    const fullText = `${greeting}. I'm tracking ${brief.activeDeals} active transactions for you today. ${brief.recommendedAction}`
+    speak(fullText, style || 'friendly-tn' as any, ()=>setSpeaking(true), ()=>setSpeaking(false))
+  }
+
   return (
     <div className="mb-6">
       <div className={`rounded-xl ${urgStyle.bg} border ${urgStyle.border} p-6`}>
         <div className="flex items-start gap-4">
-          <div className={`w-3 h-3 rounded-full ${urgStyle.dot} mt-2 shrink-0 animate-pulse`} />
+          <div className="relative shrink-0 cursor-pointer" onClick={handleListen} title={speaking ? 'Stop speaking' : 'Click to listen'}>
+            <div style={{width:64,height:64}}>
+              <Lottie animationData={speaking ? SPEAKING_ANIMATION : AVATAR_ANIMATION} loop={true} style={{width:64,height:64}} />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-white font-bold text-lg">DP</span>
+            </div>
+            {!speaking && <div className="absolute -bottom-1 -right-1 bg-orange-500 rounded-full p-1"><svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg></div>}
+          </div>
           <div className="flex-1 space-y-3">
-            <h1 className="text-2xl font-bold text-white">{brief.greeting}</h1>
+            <h1 className="text-2xl font-bold text-white">{greeting}</h1>
             <p className="text-gray-300 text-sm">
               I&apos;m tracking <span className="text-white font-semibold">{brief.activeDeals} active transaction{brief.activeDeals !== 1 ? 's' : ''}</span> for you today.
             </p>
