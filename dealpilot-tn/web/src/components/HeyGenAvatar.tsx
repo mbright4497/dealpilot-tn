@@ -60,7 +60,34 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
       avatar.on(StreamingEvents.AVATAR_STOP_TALKING, ()=>{ setSpeaking(false); if(onSpeakEnd) onSpeakEnd() })
       avatar.on(StreamingEvents.STREAM_DISCONNECTED, ()=>{ setReady(false); setSpeaking(false) })
 
-      await avatar.createStartAvatar({ quality: AvatarQuality.Medium, avatarName: 'default' })
+      // Try preferred public avatar IDs if a simple name fails
+      const preferredAvatars = [
+        'Monica_public_3_20240108',
+        'Anna_public_3_20240108',
+        'Kayla_public_2_20240108',
+        'Angela_public_3_20240108',
+      ]
+      let started = false
+      try {
+        // First try a short name (legacy) which may fail on some accounts
+        await avatar.createStartAvatar({ quality: AvatarQuality.Medium, avatarName: 'default' })
+        started = true
+      } catch (err) {
+        // Try full avatar IDs from preferred list
+        for (const aid of preferredAvatars) {
+          try {
+            await avatar.createStartAvatar({ quality: AvatarQuality.Medium, avatarName: aid })
+            started = true
+            break
+          } catch (err2) {
+            // continue
+            console.warn('avatar start failed for', aid, err2)
+          }
+        }
+      }
+
+      if (!started) throw new Error('Failed to start any preferred HeyGen avatar')
+
       setConnecting(false)
     }catch(e:any){ const msg = e.message||String(e); setError(msg); setConnecting(false); if(onError) onError(msg) }
   }
