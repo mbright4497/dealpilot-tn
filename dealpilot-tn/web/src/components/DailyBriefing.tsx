@@ -133,7 +133,7 @@ export default function DailyBriefing({ userName, transactions, onNavigate, onOp
               <Lottie animationData={speaking ? SPEAKING_ANIMATION : AVATAR_ANIMATION} loop={true} style={{width:64,height:64}} />
             </div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white font-bold text-lg">DP</span>
+              <PilotAvatar size={56} />
             </div>
             {!speaking && <div className="absolute -bottom-1 -right-1 bg-orange-500 rounded-full p-1"><svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg></div>}
           </div>

@@ -51,7 +51,7 @@ function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void,
   utter.onend = () => { speakingState = false; if (onEnd) onEnd() }
   const voices = window.speechSynthesis.getVoices()
   if (voices.length > 0) {
-    const femaleVoice = voices.find(v => (v.name || '').includes('Samantha') || (v.name || '').includes('Karen') || (v.name || '').toLowerCase().includes('female') || (v.lang || '').toLowerCase().startsWith('en'))
+    const femaleVoice = voices.find(v => (v.name || '').includes('Samantha') || (v.name || '').includes('Zira') || (v.name || '').toLowerCase().includes('female') || (v.lang || '').toLowerCase().startsWith('en'))
     if (femaleVoice) utter.voice = femaleVoice
   }
   window.speechSynthesis.speak(utter)

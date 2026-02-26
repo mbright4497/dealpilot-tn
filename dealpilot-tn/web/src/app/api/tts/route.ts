@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || ''
-const DEFAULT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL' // Sarah - warm female
+const DEFAULT_VOICE_ID = 'cgSgspJ2msm6clMCkdW9' // Jessica - young female
 const VOICE_MAP: Record<string, string> = {
-  'joyful': 'EXAVITQu4vr4xnSDxMaL',
-  'straight': 'pNInz6obpgDQGcFmaJgB',
+  'joyful': 'cgSgspJ2msm6clMCkdW9',
+  'straight': '21m00Tcm4TlvDq8ikWAM',
   'calm': 'EXAVITQu4vr4xnSDxMaL',
-  'executive': 'pNInz6obpgDQGcFmaJgB',
-  'friendly-tn': 'EXAVITQu4vr4xnSDxMaL',
+  'executive': '21m00Tcm4TlvDq8ikWAM',
+  'friendly-tn': 'cgSgspJ2msm6clMCkdW9',
 }
 
 export async function POST(req: NextRequest) {

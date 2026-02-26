@@ -3,7 +3,7 @@
 import React, {useState, useEffect} from 'react'
 import { applyTone } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
-import AnimatedAvatar from './AnimatedAvatar'
+import PilotAvatar from './PilotAvatar'
 import { speak, stopSpeaking, isSpeaking as checkSpeaking } from '@/lib/voice-engine'
 import dynamic from 'next/dynamic'
 const HeyGenAvatar = dynamic(() => import('./HeyGenAvatar'), { ssr: false })
@@ -82,7 +82,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
         <div className="fixed top-0 right-0 h-screen flex flex-col bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
-                  {voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={200} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <AnimatedAvatar isSpeaking={speaking} size={64} />}
+                  {voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={200} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <PilotAvatar size={48} />}
                   <div className="text-lg font-bold">Your AI Assistant</div>
                 </div>
                 <div className="flex gap-2 items-center">
