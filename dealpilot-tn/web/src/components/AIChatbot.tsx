@@ -31,6 +31,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
     const [formsList,setFormsList]=useState<any[]>([])
     const [showFormModal,setShowFormModal]=useState(false)
     const [selectedFormId,setSelectedFormId]=useState<string|null>(null)
+    const [heygenReady, setHeygenReady] = useState(false)
 
     useEffect(()=>{
       // stop speaking if voice disabled
@@ -65,7 +66,13 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
           const reply = j.reply || j.message || 'Sorry, no response.'
           const toned = applyTone(style as AssistantStyle, reply)
           setMessages(m=>[...m,{role:'assistant',content:toned}])
-          if(voiceEnabled){ speakMessage(reply) }
+          if(voiceEnabled && heygenReady){
+            // send text to HeyGen avatar to speak on camera
+            setLastSpokenText(reply)
+          } else if (voiceEnabled) {
+            // HeyGen not available: fallback to audio TTS
+            speakMessage(reply)
+          }
         }catch(e:any){
           const raw = `(mock) I can calculate deadlines, fill RF401, or check compliance. What do you need?`
           const toned = applyTone(style as AssistantStyle, raw)
@@ -88,8 +95,20 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
         <div className="fixed top-0 right-0 h-screen flex flex-col bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
-                  {voiceEnabled ? <HeyGenAvatar textToSpeak={lastSpokenText} size={200} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} /> : <PilotAvatar size={48} />}
-                  <div className="text-lg font-bold">Eva</div>
+                  {voiceEnabled ? (
+                    <div className="flex flex-col items-start">
+                      <HeyGenAvatar textToSpeak={lastSpokenText} size={300} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} onReady={()=>setHeygenReady(true)} onError={()=>{ setHeygenReady(false); /* fallback to audio TTS */ }} />
+                      <div className="mt-2">
+                        <div className="text-lg font-bold">Eva</div>
+                        <div className="text-xs text-gray-300">{speaking? 'Speaking' : heygenReady? 'Live' : 'Offline'}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <PilotAvatar size={48} />
+                      <div className="text-lg font-bold">Eva</div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2 items-center">
                     <button onClick={()=>setMinimized(s=>!s)} className="text-sm px-2 py-1 bg-gray-800 text-gray-200 rounded hover:bg-gray-700">{minimized? 'Restore':'Minimize'}</button>
