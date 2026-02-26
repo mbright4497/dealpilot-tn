@@ -1,4 +1,4 @@
-'use client'
+'use client' // deploy trigger
 // Stage 5: AssistantPanel with voice and avatar (Issue #10) // voice + avatar integrated
 import React, {useState, useEffect} from 'react'
 import { applyTone } from '@/lib/tone-engine'
