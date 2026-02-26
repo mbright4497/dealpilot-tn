@@ -1,4 +1,5 @@
 'use client'
+// Stage 2: DailyBriefing integration (Issue #10)
 import React from 'react'
 import DailyBriefing from './DailyBriefing'
 import type { Transaction as ChatTransaction } from '@/app/chat/page'
