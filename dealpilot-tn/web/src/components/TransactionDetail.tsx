@@ -1,17 +1,15 @@
 'use client'
 import React, {useState} from 'react'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
-
+import ContractUpload from './ContractUpload'
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string }
-
 export default function TransactionDetail({transaction, onBack}:{transaction:Transaction,onBack:()=>void}){
   const [tab,setTab]=useState('overview')
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
   const [input,setInput]=useState('')
   const contacts = transaction.contacts || []
-
   function send(){
     if(!input) return
     const user = {from:'user', text: input}
@@ -22,11 +20,8 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
       setChatMessages(m=>[...m,reply])
     },600)
   }
-
   function quickAction(text:string){ setInput(text) }
-
   function daysRemaining(dateStr?:string){ if(!dateStr) return 'N/A'; const d=new Date(dateStr); const diff=Math.ceil((d.getTime()-Date.now())/(1000*60*60*24)); return diff }
-
   // deadlines
   const binding = transaction.binding ? new Date(transaction.binding) : null
   const closing = transaction.closing ? new Date(transaction.closing) : null
@@ -42,9 +37,8 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
       {key:'closing', title:'Closing Date', date: closing}
     ]
   }
-
   const deadlines = genDeadlines()
-
+  const TABS = ['overview','contract','contacts','checklist','forms','assistant','deadlines']
   return (
     <div className="p-6 bg-white text-gray-800">
       <div className="flex items-center justify-between mb-4">
@@ -58,15 +52,13 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
           <div className="text-sm text-gray-600">Closing: <span className="text-gray-800 font-semibold">{transaction.closing || '—'}</span></div>
         </div>
       </div>
-
       <div className="border-b mb-4">
         <nav className="flex gap-4">
-          {['overview','contacts','checklist','forms','assistant','deadlines'].map(t=>(
+          {TABS.map(t=>(
             <button key={t} onClick={()=>setTab(t)} className={`py-2 ${tab===t?'border-b-2 border-orange-500 text-gray-900 font-semibold':'text-gray-700'}`}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
           ))}
         </nav>
       </div>
-
       <div>
         {tab==='overview' && (
           <div>
@@ -88,14 +80,19 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
                 <div className="mt-2"><button className="px-3 py-1 bg-orange-500 text-white rounded">Open Checklist</button></div>
               </div>
             </div>
-
             <div className="flex gap-2">
               <button className="px-3 py-2 bg-orange-500 text-white rounded">Start Task</button>
               <button className="px-3 py-2 bg-gray-100 text-gray-800 rounded">Email Title</button>
             </div>
           </div>
         )}
-
+        {tab==='contract' && (
+          <div>
+            <h3 className="text-gray-900 font-bold mb-4">Contract Upload & AI Extraction</h3>
+            <p className="text-sm text-gray-600 mb-4">Upload the purchase agreement or any contract document. AI will extract key fields automatically.</p>
+            <ContractUpload dealId={String(transaction.id)} />
+          </div>
+        )}
         {tab==='contacts' && (
           <div className="grid grid-cols-3 gap-4">
             {contacts.map((c,i)=>(
@@ -112,7 +109,6 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
             ))}
           </div>
         )}
-
         {tab==='checklist' && (
           <div>
             <h3 className="text-gray-900 font-bold mb-2">Checklist</h3>
@@ -132,7 +128,6 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
             </div>
           </div>
         )}
-
         {tab==='forms' && (
           <div>
             <h3 className="text-gray-900 font-bold mb-2">Forms</h3>
@@ -150,7 +145,6 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
             </div>
           </div>
         )}
-
         {tab==='assistant' && (
           <div>
             <h3 className="text-gray-900 font-bold mb-2">AI Assistant - {transaction.address}</h3>
@@ -169,7 +163,6 @@ export default function TransactionDetail({transaction, onBack}:{transaction:Tra
             </div>
           </div>
         )}
-
         {tab==='deadlines' && (
           <div className="grid grid-cols-3 gap-4">
             {deadlines.map((d:any,i)=>{
