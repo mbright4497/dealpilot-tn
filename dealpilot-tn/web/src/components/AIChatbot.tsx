@@ -3,8 +3,7 @@
 import React, {useState, useEffect} from 'react'
 import { applyTone } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
-import dynamic from 'next/dynamic'
-const PilotAvatar = dynamic(() => import('./PilotAvatar'), { ssr: false })
+import PilotAvatar from './PilotAvatar'
 import { speak, stopSpeaking, isSpeaking as checkSpeaking } from '@/lib/voice-engine'
 import dynamic from 'next/dynamic'
 const HeyGenAvatar = dynamic(() => import('./HeyGenAvatar'), { ssr: false })
