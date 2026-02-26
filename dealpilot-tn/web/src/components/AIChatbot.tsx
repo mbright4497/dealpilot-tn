@@ -1,4 +1,5 @@
 'use client'
+// Stage 4: AssistantPanel with action chips (Issue #10)
 import React, {useState} from 'react'
 import { applyTone } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
