@@ -5,8 +5,7 @@ import { applyTone } from '@/lib/tone-engine'
 import type { AssistantStyle } from '@/lib/assistant-personality'
 import PilotAvatar from './PilotAvatar'
 import { speak, stopSpeaking, isSpeaking as checkSpeaking } from '@/lib/voice-engine'
-import dynamic from 'next/dynamic'
-const HeyGenAvatar = dynamic(() => import('./HeyGenAvatar'), { ssr: false })
+import EvaVideoBubble from './AnimatedAvatar'
 
 const QUICK_PROMPTS = [
     'What deadlines are coming up?',
@@ -66,11 +65,10 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
           const reply = j.reply || j.message || 'Sorry, no response.'
           const toned = applyTone(style as AssistantStyle, reply)
           setMessages(m=>[...m,{role:'assistant',content:toned}])
-          if(voiceEnabled && heygenReady){
-            // send text to HeyGen avatar to speak on camera
+          if(voiceEnabled){
+            // show thinking -> speaking states via EvaVideoBubble and play audio TTS
+            // set lastSpokenText for compatibility, but use speakMessage to play audio
             setLastSpokenText(reply)
-          } else if (voiceEnabled) {
-            // HeyGen not available: fallback to audio TTS
             speakMessage(reply)
           }
         }catch(e:any){
@@ -96,11 +94,11 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
                   {voiceEnabled ? (
-                    <div className="flex flex-col items-start">
-                      <HeyGenAvatar textToSpeak={lastSpokenText} size={300} onSpeakStart={()=>setSpeaking(true)} onSpeakEnd={()=>setSpeaking(false)} onReady={()=>setHeygenReady(true)} onError={()=>{ setHeygenReady(false); /* fallback to audio TTS */ }} />
+                    <div className="flex flex-col items-start" style={{height:200}}>
+                      <EvaVideoBubble state={speaking? 'speaking' : 'idle'} size={200} />
                       <div className="mt-2">
                         <div className="text-lg font-bold">Eva</div>
-                        <div className="text-xs text-gray-300">{speaking? 'Speaking' : heygenReady? 'Live' : 'Offline'}</div>
+                        <div className="text-xs text-gray-300">{speaking? 'Speaking' : 'Live'}</div>
                       </div>
                     </div>
                   ) : (
