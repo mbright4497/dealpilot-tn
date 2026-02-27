@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import TCDashboard from '@/components/TCDashboard'
 import TransactionList from '@/components/TransactionList'
 import FormsFillView from '@/components/FormsFillView'
@@ -109,9 +109,21 @@ export default function ChatPage() {
   const [view, setView] = useState('dashboard')
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
-  const [transactions, setTransactions] = useState<Transaction[]>(TRANSACTIONS)
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dp-transactions')
+      if (saved) return JSON.parse(saved)
+    }
+    return TRANSACTIONS
+  })
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
   const [voiceEnabled, setVoiceEnabled] = useState(true)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dp-transactions', JSON.stringify(transactions))
+    }
+  }, [transactions])
 
   function addTransaction(tx: any) {
     const newTx: Transaction = {

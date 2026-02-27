@@ -20,15 +20,16 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   const [expanded, setExpanded] = useState<number|null>(null)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
-  const [localTxs, setLocalTxs] = useState<Transaction[]>([])
-  const allTxs = [...transactions, ...localTxs]
-  const list = allTxs.filter(m => filter === 'All' || m.status === filter)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const list = transactions.filter(m => filter === 'All' || m.status === filter)
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const newTx: Transaction = { id: Date.now(), ...form }
-    if (onAddTransaction) { onAddTransaction(newTx) } else { setLocalTxs(prev => [...prev, newTx]) }
+    if (onAddTransaction) { onAddTransaction(newTx) }
     setForm({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
     setShowModal(false)
+    setSuccessMsg('Transaction saved')
+    setTimeout(()=>setSuccessMsg(null),3000)
   }
   return (
     <div>
@@ -38,7 +39,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           <select onChange={e=>setFilter(e.target.value)} className="border border-gray-300 rounded p-2 text-gray-700">
             <option>All</option><option>Active</option><option>Pending</option><option>Closed</option>
           </select>
-          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors font-semibold">Add New Transaction</button>
+          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold">Save Transaction</button>
         </div>
       </div>
       <table className="w-full bg-white shadow rounded-lg overflow-hidden">
@@ -92,6 +93,9 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           ))}
         </tbody>
       </table>
+      {successMsg && (
+        <div className="mb-3 p-3 rounded bg-green-50 border border-green-100 text-green-800 text-sm">{successMsg}</div>
+      )}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
@@ -130,7 +134,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-semibold">Create Transaction</button>
+                <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">Save Transaction</button>
               </div>
             </form>
           </div>
