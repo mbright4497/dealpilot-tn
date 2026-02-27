@@ -49,6 +49,7 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
     try{
       const tRes = await fetch('/api/heygen-token', { method: 'POST' })
       const tj = await tRes.json()
+      console.log('heygen token response:', tj)
       if(!tj.token) throw new Error(tj.error||'no token')
       const avatar = new StreamingAvatar({ token: tj.token })
       avatarRef.current = avatar
@@ -70,6 +71,7 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
         'Rika_ProfessionalLook_public',
       ]
       let started = false
+      let firstErr: any = null
       // Try each known-good avatar ID directly
       for (const aid of preferredAvatars) {
         try {
@@ -77,14 +79,18 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
           started = true
           break
         } catch (err2) {
-          console.warn('avatar start failed for', aid, err2)
+          console.error('avatar start failed for', aid, err2)
+          if (!firstErr) firstErr = err2
         }
       }
 
-      if (!started) throw new Error('Failed to start any preferred HeyGen avatar')
+      if (!started) {
+        const errStr = firstErr ? (typeof firstErr === 'string' ? firstErr : (firstErr?.message || JSON.stringify(firstErr))) : 'Failed to start any preferred HeyGen avatar'
+        throw new Error(errStr)
+      }
 
       setConnecting(false)
-    }catch(e:any){ const msg = e.message||String(e); setError(msg); setConnecting(false); if(onError) onError(msg) }
+    }catch(e:any){ console.error('HeyGen start error full:', e); const msg = e && (e.message || (typeof e === 'string' ? e : JSON.stringify(e))) || String(e); setError(msg); setConnecting(false); if(onError) onError(msg) }
   }
 
   return (
