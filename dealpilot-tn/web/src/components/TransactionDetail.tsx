@@ -212,11 +212,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         )}
 
         {tab==='contract' && (
-          <div>
-            <h3 className="text-gray-900 font-bold mb-4">Contract Upload & AI Extraction</h3>
-            <p className="text-sm text-gray-600 mb-4">Upload the purchase agreement or any contract document. AI will extract key fields automatically.</p>
-            <ContractUpload dealId={String(transaction.id)} />
-          </div>
+          <ContractUpload dealId={String(transaction.id)} />
         )}
 
         {tab==='documents' && (
