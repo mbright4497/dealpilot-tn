@@ -23,9 +23,8 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
 
   useEffect(()=>{
     return ()=>{
-      if(avatarRef.current && avatarRef.current.stopAvatar) {
-        try{ avatarRef.current.stopAvatar() }catch(e){}
-      } else if(avatarRef.current && avatarRef.current.stop){
+      // cleanup: attempt to stop SDK avatar if available
+      if(avatarRef.current && typeof avatarRef.current.stop === 'function'){
         try{ avatarRef.current.stop() }catch(e){}
       }
     }
@@ -83,17 +82,23 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
       // 'Ann_Therapist_public', 'Elenora_IT_Sitting_public', 'Judy_Teacher_Sitting_public', 'Marianne_ProfessionalLook_public'
       const avatarId = 'Ann_Therapist_public'
 
-      try {
-        await avatar.createStartAvatar({ quality: AvatarQuality.Low, avatarName: avatarId, language: 'en' })
-      } catch (firstErr) {
-        // try to extract any response body if present
-        console.error('avatar start failed for', avatarId, firstErr)
-        const errStr = typeof firstErr === 'string' ? firstErr : (firstErr?.message || JSON.stringify(firstErr))
-        throw new Error(errStr || 'Failed to start HeyGen avatar')
+      // Create session server-side to bypass SDK avatar_name bug
+      const sessionRes = await fetch('/api/heygen-session-new', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ avatar_id: avatarId, quality: 'low', language: 'en' }) })
+      const sessionJson = await sessionRes.json().catch(()=>null)
+      console.log('heygen session-new response:', sessionJson)
+      if(!sessionJson || !sessionJson.session_id) {
+        const err = sessionJson?.error || (sessionJson ? JSON.stringify(sessionJson) : 'no session info')
+        throw new Error(err)
       }
 
-      // started if no exception
-      
+      try{
+        await avatar.startAvatar({ quality: AvatarQuality.Low, avatarName: avatarId, language: 'en' }, { session_id: sessionJson.session_id, access_token: sessionJson.access_token, url: sessionJson.url, is_paid: sessionJson.is_paid, session_duration_limit: sessionJson.session_duration_limit })
+      }catch(startErr){
+        console.error('avatar.startAvatar failed', startErr)
+        const errStr = typeof startErr === 'string' ? startErr : (startErr?.message || JSON.stringify(startErr))
+        throw new Error(errStr)
+      }
+
       setConnecting(false)
     }catch(e:any){ console.error('HeyGen start error full:', e); const msg = e && (e.message || (typeof e === 'string' ? e : JSON.stringify(e))) || String(e); setError(msg); setConnecting(false); if(onError) onError(msg) }
   }
