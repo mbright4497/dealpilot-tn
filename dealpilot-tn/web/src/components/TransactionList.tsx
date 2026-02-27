@@ -71,6 +71,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                   <div className="flex gap-2">
                     <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors">Open Deal</button>
                     <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">Checklist</button>
+                    <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs">Delete</button>
                   </div>
                 </td>
               </tr>
