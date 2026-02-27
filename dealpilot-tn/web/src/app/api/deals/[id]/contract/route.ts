@@ -14,17 +14,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
     const { data, error } = await supabase
       .from('deals')
-      .select('contract_data')
+      .select('contract_data, contract_pdf_url')
       .eq('id', dealId)
       .single()
     if (error) {
       console.error('Supabase fetch error:', error)
-      return NextResponse.json({ extracted: null })
+      return NextResponse.json({ extracted: null, pdfUrl: null })
     }
-    return NextResponse.json({ extracted: data?.contract_data || null })
+    return NextResponse.json({ extracted: data?.contract_data || null, pdfUrl: data?.contract_pdf_url || null })
   } catch (e: any) {
     console.error('Fetch contract error:', e)
-    return NextResponse.json({ extracted: null })
+    return NextResponse.json({ extracted: null, pdfUrl: null })
   }
 }
 
