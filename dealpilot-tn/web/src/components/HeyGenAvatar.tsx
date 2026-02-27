@@ -61,24 +61,39 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
       avatar.on(StreamingEvents.AVATAR_STOP_TALKING, ()=>{ setSpeaking(false); if(onSpeakEnd) onSpeakEnd() })
       avatar.on(StreamingEvents.STREAM_DISCONNECTED, ()=>{ setReady(false); setSpeaking(false) })
 
+      // Before starting, list and close any active HeyGen sessions via server API to avoid orphaned sessions
+      try{
+        const sessionsRes = await fetch('/api/heygen-sessions')
+        const sessionsJson = await sessionsRes.json().catch(()=>null)
+        console.log('heygen active sessions:', sessionsJson)
+        if (Array.isArray(sessionsJson?.data?.sessions) && sessionsJson.data.sessions.length>0){
+          for(const s of sessionsJson.data.sessions){
+            try{
+              console.log('closing heygen session', s.session_id)
+              await fetch('/api/heygen-sessions', { method: 'DELETE', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ session_id: s.session_id }) })
+            }catch(e){ console.warn('failed to close session', s.session_id, e) }
+          }
+          // small delay after closing sessions
+          await new Promise(r=>setTimeout(r,1000))
+        }
+      }catch(e){ console.warn('heygen session cleanup failed', e) }
+
       // Use one working avatar from HeyGen demo to avoid orphaned sessions.
       // Official demo avatars (keep as references):
-      // 'Elenora_IT_Sitting_public', 'Judy_Teacher_Sitting_public', 'Marianne_ProfessionalLook_public'
+      // 'Ann_Therapist_public', 'Elenora_IT_Sitting_public', 'Judy_Teacher_Sitting_public', 'Marianne_ProfessionalLook_public'
       const avatarId = 'Ann_Therapist_public'
-
-      // Stop any existing session to avoid orphaned sessions (free plan allows 1)
-      try { if (avatar && typeof (avatar as any).stopAvatar === 'function') await (avatar as any).stopAvatar().catch(()=>{}) } catch(e) {}
 
       try {
         await avatar.createStartAvatar({ quality: AvatarQuality.Low, avatarName: avatarId, language: 'en' })
       } catch (firstErr) {
+        // try to extract any response body if present
         console.error('avatar start failed for', avatarId, firstErr)
         const errStr = typeof firstErr === 'string' ? firstErr : (firstErr?.message || JSON.stringify(firstErr))
         throw new Error(errStr || 'Failed to start HeyGen avatar')
       }
 
       // started if no exception
-
+      
       setConnecting(false)
     }catch(e:any){ console.error('HeyGen start error full:', e); const msg = e && (e.message || (typeof e === 'string' ? e : JSON.stringify(e))) || String(e); setError(msg); setConnecting(false); if(onError) onError(msg) }
   }
