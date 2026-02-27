@@ -7,6 +7,7 @@ import { speak, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
 import dynamic from 'next/dynamic'
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 import PilotAvatar from '@/components/PilotAvatar'
+import EvaVideoBubble from '@/components/AnimatedAvatar'
 
 type UrgencyLevel = 'green' | 'yellow' | 'red'
 
@@ -131,7 +132,9 @@ export default function DailyBriefing({ userName, transactions, onNavigate, onOp
         <div className="flex items-start gap-4">
           <div className="relative shrink-0 cursor-pointer" onClick={handleListen} title={speaking ? 'Stop speaking' : 'Click to listen'}>
               <div style={{width:100,height:140,borderRadius:12,overflow:'hidden',border:'2px solid #f97316',boxShadow:'0 8px 24px rgba(249,115,22,0.18)'}}>
-                <img src="/avatar-pilot.png" alt="Eva" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}} />
+                <div style={{width:100,height:100,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <EvaVideoBubble state={speaking? 'speaking' : 'idle'} size={100} />
+                </div>
               </div>
               {!speaking && <div className="absolute -bottom-2 -right-2 bg-orange-500 rounded-full p-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg></div>}
               <div className="text-center mt-1">

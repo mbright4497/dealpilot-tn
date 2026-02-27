@@ -23,6 +23,7 @@ const ACTION_CHIPS: { id: string; label: string; prompt: string }[] = [
 ]
 
 export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled = false, transactionId }:{onClose: ()=>void, style?: AssistantStyle, voiceEnabled?: boolean, transactionId?: number}){
+    const [voiceOn, setVoiceOn] = useState<boolean>(voiceEnabled)
     const [messages,setMessages]=useState<any[]>([{role:'system',content:"Hi! I'm Eva, your DealPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
     const [input,setInput]=useState('')
     const [minimized,setMinimized]=useState(false)
@@ -34,23 +35,44 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
 
     useEffect(()=>{
       // stop speaking if voice disabled
-      if(!voiceEnabled && checkSpeaking()) stopSpeaking()
-    },[voiceEnabled])
+      if(!voiceOn && checkSpeaking()) stopSpeaking()
+    },[voiceOn])
 
     useEffect(()=>{ fetch('/api/forms').then(r=>r.json()).then(j=>setFormsList(j.forms||[])) },[])
 
     const [lastSpokenText, setLastSpokenText] = useState<string>('')
+
+    // Web Speech API TTS helper
+    function speakWebSpeech(text: string){
+      if(typeof window === 'undefined' || !(window as any).speechSynthesis) return
+      try{
+        const utter = new SpeechSynthesisUtterance(text)
+        // pick a female English voice if available
+        const voices = (window as any).speechSynthesis.getVoices() || []
+        const female = voices.find((v:any)=>/female|woman|girl/i.test(v.name) && /en/i.test(v.lang)) || voices.find((v:any)=>/en/i.test(v.lang))
+        if(female) utter.voice = female
+        utter.onstart = ()=> setSpeaking(true)
+        utter.onend = ()=> setSpeaking(false)
+        utter.onerror = ()=> setSpeaking(false)
+        ;(window as any).speechSynthesis.cancel()
+        ;(window as any).speechSynthesis.speak(utter)
+      }catch(e){
+        // fallback to existing speak
+        speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
+      }
+    }
+
     function speakMessage(text:string){
       setLastSpokenText(text)
-      if(!voiceEnabled) return
+      if(!voiceOn) return
       if(checkSpeaking()) stopSpeaking()
-      speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
+      speakWebSpeech(text)
     }
 
     function forceSpeak(text:string){
       setLastSpokenText(text)
       if(checkSpeaking()) stopSpeaking()
-      speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
+      speakWebSpeech(text)
     }
 
     async function send(text?: string){
@@ -93,7 +115,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
         <div className="fixed top-0 right-0 h-screen flex flex-col bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
             <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
                 <div className="flex items-center gap-3">
-                  {voiceEnabled ? (
+                  {voiceOn ? (
                     <div className="flex flex-col items-start" style={{height:200}}>
                       <EvaVideoBubble state={speaking? 'speaking' : 'idle'} size={200} />
                       <div className="mt-2">
@@ -111,7 +133,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
                 <div className="flex gap-2 items-center">
                     <button onClick={()=>setMinimized(s=>!s)} className="text-sm px-2 py-1 bg-gray-800 text-gray-200 rounded hover:bg-gray-700">{minimized? 'Restore':'Minimize'}</button>
                     <button onClick={()=>onClose()} className="text-sm px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Close</button>
-                    <button onClick={()=>{ if(checkSpeaking()){ stopSpeaking(); setSpeaking(false); } else if(voiceEnabled){ setSpeaking(s=>!s) } }} className={`ml-2 p-1 rounded ${voiceEnabled? 'text-orange-400':'text-gray-400'}`} title="Toggle voice">
+                    <button onClick={()=>{ if(checkSpeaking()){ stopSpeaking(); setSpeaking(false); } else { setVoiceOn(v=>!v) } }} className={`ml-2 p-1 rounded ${voiceOn? 'text-orange-400':'text-gray-400'}`} title="Toggle voice">
                       {/* speaker icon */}
                       <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M19 8a4 4 0 010 8" /></svg>
                     </button>
