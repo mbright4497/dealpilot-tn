@@ -13,6 +13,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [input,setInput]=useState('')
   const [localContacts,setLocalContacts]=useState<Contact[]>(transaction.contacts || [])
   const [showAddContact,setShowAddContact]=useState(false)
+  const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
 
   // documents metadata stored in localStorage per-transaction
