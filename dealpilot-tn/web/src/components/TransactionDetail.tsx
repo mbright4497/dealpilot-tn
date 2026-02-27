@@ -1,10 +1,12 @@
 'use client'
-import React, {useState, useEffect} from 'react'
+import React, {useState, useEffect, useRef} from 'react'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
 import { useRouter } from 'next/navigation'
+
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string }
+
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
   const router = useRouter()
   const [tab,setTab]=useState('overview')
@@ -14,20 +16,22 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [localContacts,setLocalContacts]=useState<Contact[]>(transaction.contacts || [])
   const [showAddContact,setShowAddContact]=useState(false)
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
-  const [docs,setDocs]=useState<Record<string, {name:string,ts:number}[]>>({ Contract: [], Amendments: [], Inspection: [], Appraisal: [], Title: [], Loan: [], Insurance: [], Closing: [] })
-  const [aiFilling, setAiFilling] = useState<Record<string,boolean>>({})
 
-  useEffect(()=>{
-    const key = `dp-docs-${transaction.id}`
-    try{
-      const raw = localStorage.getItem(key)
-      if(raw) setDocs(JSON.parse(raw))
-    }catch(e){}
-  },[transaction.id])
-  useEffect(()=>{
-    const key = `dp-docs-${transaction.id}`
-    try{ localStorage.setItem(key, JSON.stringify(docs)) }catch(e){}
-  },[docs, transaction.id])
+  // documents metadata stored in localStorage per-transaction
+  const defaultDocs = { Contract: [], Amendments: [], Inspection: [], Appraisal: [], Title: [], Loan: [], Insurance: [], Closing: [] }
+  const [docs,setDocs]=useState<Record<string,{name:string,ts:number}[]>>(()=>{
+    try{ const raw = localStorage.getItem(`dp-docs-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){}
+    return defaultDocs
+  })
+  useEffect(()=>{ try{ localStorage.setItem(`dp-docs-${transaction.id}`, JSON.stringify(docs)) }catch(e){} },[docs, transaction.id])
+
+  // next steps persistent checkboxes
+  const [nextSteps,setNextSteps] = useState<{contractReceived:boolean, earnestVerified:boolean, inspectionsScheduled:boolean}>(()=>{
+    try{ const raw = localStorage.getItem(`dp-nextsteps-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){}
+    return { contractReceived:false, earnestVerified:false, inspectionsScheduled:false }
+  })
+  useEffect(()=>{ try{ localStorage.setItem(`dp-nextsteps-${transaction.id}`, JSON.stringify(nextSteps)) }catch(e){} },[nextSteps, transaction.id])
+
   function addContact(){
     if(!newContact.name||!newContact.role) return
     const updated = [...localContacts, {...newContact}]
@@ -37,17 +41,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     setShowAddContact(false)
   }
   function removeContact(idx:number){ const updated = localContacts.filter((_,i)=>i!==idx); setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated) }
-  function send(){
-    if(!input) return
-    const user = {from:'user', text: input}
-    setChatMessages(m=>[...m,user])
-    setInput('')
-    setTimeout(()=>{
-      const reply = {from:'assistant', text: `Mock reply referencing ${transaction.address}. Contact: ${localContacts[0]?.name || 'N/A'}`}
-      setChatMessages(m=>[...m,reply])
-    },600)
-  }
+
   function quickAction(text:string){ setInput(text) }
+
   const binding = transaction.binding ? new Date(transaction.binding) : null
   const closing = transaction.closing ? new Date(transaction.closing) : null
   function genDeadlines(){
@@ -63,7 +59,74 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     ]
   }
   const deadlines = genDeadlines()
+
+  function combinedProgress(){
+    const base = checklistProgress(checklist) || 0
+    const extra = (nextSteps.contractReceived?33:0) + (nextSteps.earnestVerified?33:0) + (nextSteps.inspectionsScheduled?34:0)
+    const total = Math.min(100, Math.round((base*0.7) + (extra*0.3)))
+    return total
+  }
+
+  const stageFromProgress = (p:number)=>{
+    if(p < 5) return 'New'
+    if(p < 30) return 'Under Contract'
+    if(p < 55) return 'Inspection'
+    if(p < 80) return 'Appraisal'
+    if(p < 99) return 'Clear to Close'
+    return 'Closed'
+  }
+
   const TABS = ['overview','contract','documents','contacts','checklist','forms','assistant','deadlines']
+
+  // file input refs for each category
+  const fileInputsRef = useRef<Record<string,HTMLInputElement|null>>({} as any)
+  const ensureInput = (cat:string)=>{
+    if(!fileInputsRef.current[cat]){
+      const el = document.createElement('input')
+      el.type = 'file'
+      el.onchange = (e:any)=>{
+        const f = e.target.files && e.target.files[0]
+        if(!f) return
+        const meta = { name: f.name, ts: Date.now() }
+        setDocs(prev=>({ ...prev, [cat]: [ ...(prev[cat]||[]), meta ] }))
+      }
+      fileInputsRef.current[cat] = el
+    }
+    return fileInputsRef.current[cat]
+  }
+
+  // drag and drop handler
+  useEffect(()=>{
+    const handleDrop = (e:DragEvent)=>{
+      e.preventDefault();
+      const f = e.dataTransfer?.files?.[0]
+      if(!f) return
+      // default category
+      const cat = 'Contract'
+      const meta = { name: f.name, ts: Date.now() }
+      setDocs(prev=>({ ...prev, [cat]: [ ...(prev[cat]||[]), meta ] }))
+    }
+    const handleDrag = (e:DragEvent)=>{ e.preventDefault() }
+    window.addEventListener('drop', handleDrop)
+    window.addEventListener('dragover', handleDrag)
+    return ()=>{ window.removeEventListener('drop', handleDrop); window.removeEventListener('dragover', handleDrag) }
+  },[])
+
+  // Assistant send -> /api/ai/chat with context
+  async function sendAIMessage(text:string){
+    const user = { role:'user', content: text }
+    setChatMessages(m=>[...m, {from:'user', text}])
+    try{
+      const ctx = { id: transaction.id, address: transaction.address, client: transaction.client, type: transaction.type, status: transaction.status, binding: transaction.binding, closing: transaction.closing, contacts: (localContacts||[]).map(c=>({role:c.role,name:c.name})), notes: transaction.notes }
+      const res = await fetch('/api/ai/chat', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages:[user], style:'friendly-tn', transaction: ctx }) })
+      const j = await res.json()
+      const reply = j.reply || j.message || j.choices?.[0]?.message?.content || 'Sorry, no response.'
+      setChatMessages(m=>[...m, {from:'assistant', text: reply}])
+    }catch(e:any){
+      setChatMessages(m=>[...m, {from:'assistant', text: 'Error contacting AI: '+String(e)}])
+    }
+  }
+
   return (
     <div className="p-6 bg-white text-gray-800">
       <div className="flex items-center justify-between mb-4">
@@ -84,15 +147,17 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           ))}
         </nav>
       </div>
+
       <div>
         {tab==='overview' && (
           <div>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="p-4 border rounded">
                 <h3 className="text-gray-900 font-bold">Progress</h3>
-                <div className="text-sm text-gray-600 mb-2">{checklistProgress(checklist)}% complete</div>
-                <div className="w-full bg-gray-200 h-3 rounded mb-2"><div className="h-3 bg-orange-500 rounded" style={{width: checklistProgress(checklist)+'%'}}></div></div>
+                <div className="text-sm text-gray-600 mb-2">{combinedProgress()}% complete</div>
+                <div className="w-full bg-gray-200 h-3 rounded mb-2"><div className="h-3 bg-orange-500 rounded" style={{width: combinedProgress()+"%"}}></div></div>
                 <div className="text-xs text-gray-500 mt-2">Stages: New &gt; Under Contract &gt; Inspection &gt; Appraisal &gt; Clear to Close &gt; Closed</div>
+                <div className="mt-3 text-sm font-medium">Stage: <span className="ml-2 font-semibold">{stageFromProgress(combinedProgress())}</span></div>
               </div>
               <div className="p-4 border rounded">
                 <h3 className="text-gray-900 font-bold">Deal Summary</h3>
@@ -120,12 +185,18 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               <div className="p-4 border rounded">
                 <h4 className="font-semibold">Next Steps</h4>
                 <div>
-                  {checklist.slice(0,3).map((it:any,i:number)=> (
-                    <label key={it.key} className="flex items-center gap-2 py-1">
-                      <input type="checkbox" checked={it.status==='done'} onChange={()=>{ it.status = it.status==='done' ? 'todo' : 'done'; setChecklist([...checklist]) }} />
-                      <span className="text-sm text-gray-800">{it.title}</span>
+                  <label className="flex items-center gap-2 py-1">
+                      <input type="checkbox" checked={nextSteps.contractReceived} onChange={()=>setNextSteps(s=>({...s,contractReceived:!s.contractReceived}))} />
+                      <span className="text-sm text-gray-800">Contract Received</span>
                     </label>
-                  ))}
+                    <label className="flex items-center gap-2 py-1">
+                      <input type="checkbox" checked={nextSteps.earnestVerified} onChange={()=>setNextSteps(s=>({...s,earnestVerified:!s.earnestVerified}))} />
+                      <span className="text-sm text-gray-800">Earnest Money Verified</span>
+                    </label>
+                    <label className="flex items-center gap-2 py-1">
+                      <input type="checkbox" checked={nextSteps.inspectionsScheduled} onChange={()=>setNextSteps(s=>({...s,inspectionsScheduled:!s.inspectionsScheduled}))} />
+                      <span className="text-sm text-gray-800">Inspections Scheduled</span>
+                    </label>
                 </div>
               </div>
               <div className="p-4 border rounded">
@@ -140,6 +211,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             </div>
           </div>
         )}
+
         {tab==='contract' && (
           <div>
             <h3 className="text-gray-900 font-bold mb-4">Contract Upload & AI Extraction</h3>
@@ -147,24 +219,17 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <ContractUpload dealId={String(transaction.id)} />
           </div>
         )}
+
         {tab==='documents' && (
           <div>
             <h3 className="text-gray-900 font-bold mb-4">Documents</h3>
-            <div className="mb-4 p-4 border-2 border-dashed rounded text-center text-gray-600">Drag & drop files here to upload</div>
+            <div className="mb-4 p-4 border-2 border-dashed rounded text-center text-gray-600">Drag & drop files here to upload (drop anywhere)</div>
             <div className="grid grid-cols-3 gap-4">
               {Object.keys(docs).map(cat => (
                 <div key={cat} className="p-3 border rounded">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold">{cat}</div>
-                    <label className="text-sm px-2 py-1 bg-gray-100 rounded cursor-pointer">
-                      Upload
-                      <input type="file" className="hidden" onChange={(e)=>{
-                        const f = e.target.files && e.target.files[0]
-                        if(!f) return
-                        const meta = { name: f.name, ts: Date.now() }
-                        setDocs(prev=>({ ...prev, [cat]: [ ...(prev[cat]||[]), meta ] }))
-                      }} />
-                    </label>
+                    <button onClick={()=>{ const inp = ensureInput(cat); inp && inp.click() }} className="text-sm px-2 py-1 bg-gray-100 rounded cursor-pointer">Upload</button>
                   </div>
                   <div className="text-sm text-gray-700">
                     {(docs[cat]||[]).length===0 ? <div className="text-gray-400">No files</div> : (docs[cat]||[]).map((d:any,i:number)=>(<div key={i} className="py-1">{d.name} <span className="text-xs text-gray-400">{new Date(d.ts).toLocaleString()}</span></div>))}
@@ -174,6 +239,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             </div>
           </div>
         )}
+
         {tab==='contacts' && (
           <div>
             <div className="flex items-center justify-between mb-4">
