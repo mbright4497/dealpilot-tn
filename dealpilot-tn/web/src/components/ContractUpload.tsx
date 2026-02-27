@@ -105,7 +105,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         await fetch(`/api/deals/${dealId}/contract`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ extracted: data.extracted }),
+                  body: JSON.stringify({ extracted: data.extracted, pdfUrl: pdfUrl }),
         });
         setSaved(true);
       } catch (_e) { /* ignore */ }
@@ -129,7 +129,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       const res = await fetch(`/api/deals/${dealId}/contract`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ extracted: extractedData }),
+                body: JSON.stringify({ extracted: extractedData, pdfUrl: pdfUrl }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
