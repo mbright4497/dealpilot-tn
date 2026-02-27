@@ -3,36 +3,56 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const form = await req.formData()
-    const file = form.get('file') as File | null
-    const dealId = params.id
-    if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
-    // read file as arrayBuffer
-    const buf = Buffer.from(await file.arrayBuffer())
-    const path = `deals/${dealId}/contract.pdf`
-    // upload to storage
-    const { error: uploadErr } = await supabase.storage.from('contracts').upload(path, buf, { contentType: 'application/pdf', upsert: true })
-    if (uploadErr) {
-      console.error('Storage upload error:', uploadErr)
-      return NextResponse.json({ error: uploadErr.message }, { status: 500 })
+    const dealId = parseInt(params.id)
+    if (isNaN(dealId)) {
+      return NextResponse.json({ error: 'Invalid deal ID' }, { status: 400 })
     }
-    // get public url
-    const { data: urlData } = supabase.storage.from('contracts').getPublicUrl(path)
+
+    const formData = await req.formData()
+    const file = formData.get('file') as File | null
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const storagePath = `deals/${dealId}/contract.pdf`
+
+    const { error: uploadError } = await supabase.storage
+      .from('contracts')
+      .upload(storagePath, buffer, {
+        contentType: 'application/pdf',
+        upsert: true,
+      })
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError)
+      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('contracts')
+      .getPublicUrl(storagePath)
+
     const publicUrl = urlData.publicUrl
-    // update deals table
-    const { error: dbErr } = await supabase.from('deals').update({ contract_pdf_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', dealId)
-    if (dbErr) {
-      console.error('DB update error:', dbErr)
-      return NextResponse.json({ error: dbErr.message }, { status: 500 })
+
+    const { error: dbError } = await supabase
+      .from('deals')
+      .update({ contract_pdf_url: publicUrl, updated_at: new Date().toISOString() })
+      .eq('id', dealId)
+
+    if (dbError) {
+      console.error('DB update error:', dbError)
+      // continue even if DB update fails
     }
+
     return NextResponse.json({ url: publicUrl })
   } catch (e: any) {
-    console.error('contract-upload error:', e)
-    return NextResponse.json({ error: String(e.message || e) }, { status: 500 })
+    console.error('Contract upload error:', e)
+    return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }

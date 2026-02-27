@@ -21,7 +21,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       console.error('Supabase fetch error:', error)
       return NextResponse.json({ extracted: null, pdfUrl: null })
     }
+<<<<<<< HEAD
     return NextResponse.json({ extracted: data?.contract_data || null, pdfUrl: data?.contract_pdf_url || null })
+=======
+    return NextResponse.json({
+      extracted: data?.contract_data || null,
+      pdfUrl: data?.contract_pdf_url || null
+    })
+>>>>>>> 5f20c4ebab547d6f731246d480ae934441c04f14
   } catch (e: any) {
     console.error('Fetch contract error:', e)
     return NextResponse.json({ extracted: null, pdfUrl: null })
