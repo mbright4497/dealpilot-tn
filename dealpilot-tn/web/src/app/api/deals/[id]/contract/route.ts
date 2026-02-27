@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -12,15 +15,20 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     if (!dealId) {
       return NextResponse.json({ error: 'Invalid deal ID' }, { status: 400 })
     }
+
     const { data, error } = await supabase
       .from('contract_store')
       .select('extracted, pdf_url')
       .eq('deal_id', dealId)
       .single()
+
+    console.log('Contract GET - dealId:', dealId, 'data:', JSON.stringify(data), 'error:', error)
+
     if (error) {
       console.error('Supabase fetch error:', error)
       return NextResponse.json({ extracted: null, pdfUrl: null })
     }
+
     return NextResponse.json({
       extracted: data?.extracted || null,
       pdfUrl: data?.pdf_url || null
@@ -36,9 +44,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const body = await req.json()
     const { extracted, pdfUrl } = body
     const dealId = params.id
+
+    console.log('Contract PUT - dealId:', dealId, 'pdfUrl:', pdfUrl)
+
     if (!extracted || !dealId) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
+
     const { error } = await supabase
       .from('contract_store')
       .upsert({
@@ -47,10 +59,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         pdf_url: pdfUrl || null,
         updated_at: new Date().toISOString()
       }, { onConflict: 'deal_id' })
+
     if (error) {
       console.error('Supabase update error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
+
     return NextResponse.json({ success: true })
   } catch (e: any) {
     console.error('Save contract error:', e)
