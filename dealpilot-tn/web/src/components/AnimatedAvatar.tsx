@@ -109,7 +109,7 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
     <div style={{display:'flex',alignItems:'center',gap:12}}>
       <div style={{...containerStyle, ...glow}}>
         <video ref={idleRef} src="/eva-clips/eva-idle.mp4" loop playsInline muted style={{...videoStyle, opacity: active==='idle' || active==='speaking' ? 1 : 0}} />
-        <video ref={greetRef} src="/eva-clips/eva-greeting.mp4" playsInline style={{...videoStyle, opacity: active==='greeting' ? 1 : 0}} onEnded={()=>setActive('idle')} autoPlay />
+        <video ref={greetRef} src="/eva-clips/eva-welcome.mp4" playsInline style={{...videoStyle, opacity: active==='greeting' ? 1 : 0}} onEnded={()=>setActive('idle')} autoPlay />
         <video ref={thinkingRef} src="/eva-clips/eva-thinking.mp4" loop playsInline muted style={{...videoStyle, opacity: active==='thinking' ? 1 : 0}} />
         <video ref={goodbyeRef} src="/eva-clips/eva-goodbye.mp4" playsInline style={{...videoStyle, opacity: active==='goodbye' ? 1 : 0}} onEnded={()=>setVisible(false)} />
 
