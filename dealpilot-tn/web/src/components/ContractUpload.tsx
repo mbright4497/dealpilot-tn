@@ -52,23 +52,28 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
+
     setUploading(true);
     setError(null);
     setExtractedData(null);
     setSaved(false);
     setPdfUrl(URL.createObjectURL(file));
+
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('dealId', dealId);
+
       const res = await fetch('/api/ai/extract-contract', {
         method: 'POST',
         body: formData,
       });
+
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error || 'Extraction failed');
       }
+
       const data = await res.json();
       setExtractedData(data.extracted);
       if (onExtracted) onExtracted(data.extracted);
@@ -89,13 +94,24 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     disabled: uploading,
   });
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!extractedData) return;
     try {
-      localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData));
-      if (onSave) onSave(extractedData);
-      setSaved(true);
-    } catch { /* ignore */ }
+      const res = await fetch(`/api/deals/${dealId}/contract`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extracted: extractedData }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.warn('API save failed:', err);
+      }
+    } catch (e) {
+      console.warn('Save to Supabase failed, falling back to localStorage', e);
+    }
+    try { localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData)); } catch { /* ignore */ }
+    if (onSave) onSave(extractedData);
+    setSaved(true);
   };
 
   const getSections = (d: ExtractedData): FieldSection[] => [
@@ -116,8 +132,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
           isDragActive
             ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20'
             : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
-        } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
-      >
+        } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
         <input {...getInputProps()} className="hidden" />
         <div className="flex flex-col items-center gap-3">
           <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -132,9 +147,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
             </div>
           ) : (
             <>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}
-              </p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}</p>
               <p className="text-xs text-gray-500">Supports PDF and TXT files</p>
             </>
           )}
@@ -156,9 +169,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Extracted Contract Data</h3>
           <div className="flex gap-2">
-            <button onClick={() => { setPdfUrl(null); setExtractedData(null); setError(null); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
-              Upload New
-            </button>
+            <button onClick={() => { setPdfUrl(null); setExtractedData(null); setError(null); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Upload New</button>
             <button onClick={handleSave} disabled={saved || !extractedData} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${ saved ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-600 text-white hover:bg-orange-700' }`}>{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
           </div>
         </div>
