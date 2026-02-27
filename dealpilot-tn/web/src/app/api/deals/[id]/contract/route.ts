@@ -21,13 +21,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       updated_at: new Date().toISOString()
     }
 
-    // Map extracted fields to deal columns if they exist
-    if (extracted.sale_price) updateData.sale_price = extracted.sale_price
-    if (extracted.earnest_money) updateData.earnest_money = extracted.earnest_money
-    if (extracted.loan_type) updateData.loan_type = extracted.loan_type
-    if (extracted.binding_agreement_date) updateData.binding = extracted.binding_agreement_date
-    if (extracted.closing_date) updateData.closing = extracted.closing_date
-
     const { error } = await supabase
       .from('deals')
       .update(updateData)
