@@ -42,37 +42,18 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
 
     const [lastSpokenText, setLastSpokenText] = useState<string>('')
 
-    // Web Speech API TTS helper
-    function speakWebSpeech(text: string){
-      if(typeof window === 'undefined' || !(window as any).speechSynthesis) return
-      try{
-        const utter = new SpeechSynthesisUtterance(text)
-        // pick a female English voice if available
-        const voices = (window as any).speechSynthesis.getVoices() || []
-        const female = voices.find((v:any)=>/female|woman|girl/i.test(v.name) && /en/i.test(v.lang)) || voices.find((v:any)=>/en/i.test(v.lang))
-        if(female) utter.voice = female
-        utter.onstart = ()=> setSpeaking(true)
-        utter.onend = ()=> setSpeaking(false)
-        utter.onerror = ()=> setSpeaking(false)
-        ;(window as any).speechSynthesis.cancel()
-        ;(window as any).speechSynthesis.speak(utter)
-      }catch(e){
-        // fallback to existing speak
-        speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
-      }
-    }
-
     function speakMessage(text:string){
       setLastSpokenText(text)
       if(!voiceOn) return
       if(checkSpeaking()) stopSpeaking()
-      speakWebSpeech(text)
+      // use voice-engine speak() which calls server-side TTS (OpenAI nova voice)
+      speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
     }
 
     function forceSpeak(text:string){
       setLastSpokenText(text)
       if(checkSpeaking()) stopSpeaking()
-      speakWebSpeech(text)
+      speak(text, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
     }
 
     async function send(text?: string){
@@ -87,11 +68,10 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
           const reply = j.reply || j.message || 'Sorry, no response.'
           const toned = applyTone(style as AssistantStyle, reply)
           setMessages(m=>[...m,{role:'assistant',content:toned}])
-          if(voiceEnabled){
+          if(voiceOn){
             // show thinking -> speaking states via EvaVideoBubble and play audio TTS
-            // set lastSpokenText for compatibility, but use speakMessage to play audio
             setLastSpokenText(reply)
-            speakMessage(reply)
+            speak(reply, style as AssistantStyle, ()=>setSpeaking(true), ()=>setSpeaking(false))
           }
         }catch(e:any){
           const raw = `(mock) I can calculate deadlines, fill RF401, or check compliance. What do you need?`
