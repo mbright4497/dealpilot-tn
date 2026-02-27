@@ -11,10 +11,16 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
   const [active, setActive] = useState<EvaState>(state)
   const [visible, setVisible] = useState(true)
 
-  // preload videos
+  // preload videos and ensure muted/playsInline
   useEffect(()=>{
     const vids = [idleRef.current, greetRef.current, thinkingRef.current, goodbyeRef.current]
-    vids.forEach(v=>{ if(v){ v.preload = 'auto'; v.muted = true; (v as HTMLVideoElement).playsInline = true } })
+    vids.forEach(v=>{
+      if(v){
+        v.preload = 'auto'
+        v.muted = true
+        v.playsInline = true
+      }
+    })
   },[])
 
   // handle state transitions
@@ -31,6 +37,31 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
     }
     return ()=>{ if(t) clearTimeout(t) }
   },[state])
+
+  // when active changes, play the active video and pause others
+  useEffect(()=>{
+    const vids: {key: EvaState, el: HTMLVideoElement|null}[] = [
+      { key: 'idle', el: idleRef.current },
+      { key: 'greeting', el: greetRef.current },
+      { key: 'thinking', el: thinkingRef.current },
+      { key: 'goodbye', el: goodbyeRef.current }
+    ]
+    vids.forEach(v=>{
+      try{
+        if(!v.el) return
+        if(v.key === active){
+          // attempt to play; ignore promise rejection
+          v.el.muted = true
+          v.el.playsInline = true
+          const p = v.el.play()
+          if(p && typeof p.then === 'function') p.catch(()=>{})
+        } else {
+          v.el.pause()
+          v.el.currentTime = 0
+        }
+      }catch(e){/* ignore */}
+    })
+  },[active])
 
   // crossfade styles
   const containerStyle: React.CSSProperties = {
@@ -50,10 +81,10 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
   return (
     <div style={{display:'flex',alignItems:'center',gap:12}}>
       <div style={{...containerStyle, ...glow}}>
-        <video ref={idleRef} src="/eva-clips/eva-idle.mp4" loop muted style={{...videoStyle, opacity: active==='idle' || active==='speaking' ? 1 : 0}} />
-        <video ref={greetRef} src="/eva-clips/eva-greeting.mp4" muted style={{...videoStyle, opacity: active==='greeting' ? 1 : 0}} onEnded={()=>setActive('idle')} />
-        <video ref={thinkingRef} src="/eva-clips/eva-thinking.mp4" loop muted style={{...videoStyle, opacity: active==='thinking' ? 1 : 0}} />
-        <video ref={goodbyeRef} src="/eva-clips/eva-goodbye.mp4" muted style={{...videoStyle, opacity: active==='goodbye' ? 1 : 0}} onEnded={()=>setVisible(false)} />
+        <video ref={idleRef} src="/eva-clips/eva-idle.mp4" loop muted playsInline autoPlay style={{...videoStyle, opacity: active==='idle' || active==='speaking' ? 1 : 0}} />
+        <video ref={greetRef} src="/eva-clips/eva-greeting.mp4" muted playsInline autoPlay style={{...videoStyle, opacity: active==='greeting' ? 1 : 0}} onEnded={()=>setActive('idle')} />
+        <video ref={thinkingRef} src="/eva-clips/eva-thinking.mp4" loop muted playsInline autoPlay style={{...videoStyle, opacity: active==='thinking' ? 1 : 0}} />
+        <video ref={goodbyeRef} src="/eva-clips/eva-goodbye.mp4" muted playsInline autoPlay style={{...videoStyle, opacity: active==='goodbye' ? 1 : 0}} onEnded={()=>setVisible(false)} />
       </div>
     </div>
   )
