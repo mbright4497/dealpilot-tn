@@ -150,6 +150,10 @@ export default function ChatPage() {
     setView('deal')
   }
 
+  function deleteTransaction(txId: number) {
+    setTransactions(prev => prev.filter(t => t.id !== txId))
+  }
+
   function updateTransactionContacts(txId: number, contacts: any[]) { setTransactions(prev => prev.map(t => t.id === txId ? {...t, contacts} : t)) }
 
   function handleNavigate(dest: string) {
@@ -224,7 +228,7 @@ export default function ChatPage() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} />}
-        {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} />}
+        {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onDeleteTransaction={deleteTransaction} />}
         {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} />}
         {view === 'forms' && <FormsFillView />}
         {view === 'deadlines' && <DeadlineCalculator />}
