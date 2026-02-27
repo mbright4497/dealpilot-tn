@@ -53,7 +53,6 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
       : undefined;
 
-<<<<<<< HEAD
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -63,28 +62,8 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         const j = await res.json();
         if (mounted && j?.extracted) {
           setExtractedData(j.extracted);
+          if (j.pdfUrl) setPdfUrl(j.pdfUrl);
           if (onExtractedRef.current) onExtractedRef.current(j.extracted);
-=======
-  // load saved extracted data and pdfUrl from server on mount
-  const onExtractedRef = (typeof window !== 'undefined') ? { current: onExtracted } as any : { current: onExtracted };
-  onExtractedRef.current = onExtracted
-
-  useEffect(()=>{
-    let mounted = true
-    (async ()=>{
-      try{
-        const res = await fetch(`/api/deals/${dealId}/contract`)
-        if(!res.ok) return
-        const j = await res.json()
-        if(mounted){
-          if(j?.extracted){
-            setExtractedData(j.extracted)
-            if(onExtractedRef.current) onExtractedRef.current(j.extracted)
-          }
-          if(j?.pdfUrl){
-            setPdfUrl(j.pdfUrl)
-          }
->>>>>>> 1a00d8a (feat(contract): persist PDF to Supabase Storage, auto-save extracted data, restore on reload)
         }
       } catch (_e) { /* ignore */ }
     })();
@@ -111,37 +90,25 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       const data = await res.json();
       setExtractedData(data.extracted);
       if (onExtractedRef.current) onExtractedRef.current(data.extracted);
-
-      // Upload PDF to Supabase Storage
-      try{
-        const uploadForm = new FormData();
-        uploadForm.append(file, file);
-        const uploadRes = await fetch(, { method: POST, body: uploadForm });
-        if (uploadRes.ok) { const ud = await uploadRes.json(); if(ud?.url) setPdfUrl(ud.url); }
-      }catch(_e){ }
-
-      // Auto-save extracted data to Supabase
-      try{ await fetch(, { method: PUT, headers: { Content-Type: application/json }, body: JSON.stringify({ extracted: data.extracted }) }); setSaved(true); }catch(_e){}
-
       // Upload PDF to Supabase Storage
       try {
         const uploadForm = new FormData();
         uploadForm.append('file', file);
-        const uploadRes = await fetch(, { method: 'POST', body: uploadForm });
+        const uploadRes = await fetch(`/api/deals/${dealId}/contract-upload`, { method: 'POST', body: uploadForm });
         if (uploadRes.ok) {
           const ud = await uploadRes.json();
           if (ud?.url) setPdfUrl(ud.url);
         }
-      } catch (e) {
-        // ignore upload errors
-      }
-
-      // Auto-save extracted data to Supabase
+      } catch (_e) { /* ignore upload errors */ }
+      // Auto-save extracted data
       try {
-        await fetch(, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ extracted: data.extracted }) });
+        await fetch(`/api/deals/${dealId}/contract`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ extracted: data.extracted }),
+        });
         setSaved(true);
-      } catch (e) { /* ignore */ }
-
+      } catch (_e) { /* ignore */ }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to extract contract data');
     } finally {
