@@ -51,6 +51,10 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
   const fmt = (val?: number) => val != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val) : undefined;
 
   // load saved extracted data from server on mount
+  const onExtractedRef = (typeof window !== 'undefined') ? { current: onExtracted } as any : { current: onExtracted };
+  // keep ref in sync
+  onExtractedRef.current = onExtracted
+
   useEffect(()=>{
     let mounted = true
     (async ()=>{
@@ -60,7 +64,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         const j = await res.json()
         if(mounted && j?.extracted){
           setExtractedData(j.extracted)
-          if(onExtracted) onExtracted(j.extracted)
+          if(onExtractedRef.current) onExtractedRef.current(j.extracted)
         }
       }catch(e){/* ignore */}
     })()
