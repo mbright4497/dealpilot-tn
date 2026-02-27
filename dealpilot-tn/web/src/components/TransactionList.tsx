@@ -40,7 +40,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           <select onChange={e=>setFilter(e.target.value)} className="border border-gray-300 rounded p-2 text-gray-700">
             <option>All</option><option>Active</option><option>Pending</option><option>Closed</option>
           </select>
-          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold">Save Transaction</button>
+          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold">Add Transaction</button>
         </div>
       </div>
       <table className="w-full bg-white shadow rounded-lg overflow-hidden">
