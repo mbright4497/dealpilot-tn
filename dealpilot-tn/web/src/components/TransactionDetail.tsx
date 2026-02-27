@@ -213,7 +213,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         )}
 
         {tab==='contract' && (
-          <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} />
+                      <ContractUpload key={String(transaction.id)} dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} />
         )}
 
         {tab==='documents' && (
