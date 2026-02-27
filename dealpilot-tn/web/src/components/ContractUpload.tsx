@@ -55,6 +55,10 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
 
   useEffect(() => {
     let mounted = true;
+    setExtractedData(null);
+    setPdfUrl(null);
+    setSaved(false);
+    setError(null);
     (async () => {
       try {
         const res = await fetch(`/api/deals/${dealId}/contract`);
@@ -78,6 +82,9 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     setExtractedData(null);
     setSaved(false);
     setPdfUrl(URL.createObjectURL(file));
+
+    let uploadedUrl: string | null = null;
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -90,6 +97,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       const data = await res.json();
       setExtractedData(data.extracted);
       if (onExtractedRef.current) onExtractedRef.current(data.extracted);
+
       // Upload PDF to Supabase Storage
       try {
         const uploadForm = new FormData();
@@ -97,15 +105,19 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         const uploadRes = await fetch(`/api/deals/${dealId}/contract-upload`, { method: 'POST', body: uploadForm });
         if (uploadRes.ok) {
           const ud = await uploadRes.json();
-          if (ud?.url) setPdfUrl(ud.url);
+          if (ud?.url) {
+            uploadedUrl = ud.url;
+            setPdfUrl(ud.url);
+          }
         }
       } catch (_e) { /* ignore upload errors */ }
-      // Auto-save extracted data
+
+      // Auto-save extracted data with the actual uploaded URL
       try {
         await fetch(`/api/deals/${dealId}/contract`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ extracted: data.extracted, pdfUrl: pdfUrl }),
+          body: JSON.stringify({ extracted: data.extracted, pdfUrl: uploadedUrl }),
         });
         setSaved(true);
       } catch (_e) { /* ignore */ }
@@ -129,7 +141,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       const res = await fetch(`/api/deals/${dealId}/contract`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ extracted: extractedData, pdfUrl: pdfUrl }),
+        body: JSON.stringify({ extracted: extractedData, pdfUrl: pdfUrl }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -138,7 +150,9 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     } catch (e) {
       console.warn('Save to Supabase failed, falling back to localStorage', e);
     }
-    try { localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData)); } catch (_e) { /* ignore */ }
+    try {
+      localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData));
+    } catch (_e) { /* ignore */ }
     if (onSave) onSave(extractedData);
     setSaved(true);
   };
@@ -154,69 +168,47 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
 
   if (!pdfUrl && !extractedData) {
     return (
-      <div className="space-y-4">
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-            isDragActive ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
-          } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <input {...getInputProps()} className="hidden" />
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-            </div>
-            {uploading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-orange-700 dark:text-orange-400">Extracting contract data with AI...</span>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}</p>
-                <p className="text-xs text-gray-500">Supports PDF and TXT files</p>
-              </>
-            )}
-          </div>
-          {error && (
-            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-400">
-              {error}
-            </div>
-          )}
-        </div>
+      <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl" {...getRootProps()}>
+        <input {...getInputProps()} className="hidden" />
+        {uploading ? (
+          <p className="text-orange-500 animate-pulse">Extracting contract data with AI...</p>
+        ) : (
+          <>
+            <p className="text-gray-500 text-center">{isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}</p>
+            <p className="text-xs text-gray-400 mt-2">Supports PDF and TXT files</p>
+          </>
+        )}
+        {error && (
+          <p className="text-red-500 text-sm mt-4">{error}</p>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-220px)]">
-      <div className="w-1/2 overflow-y-auto pr-2 space-y-3">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Extracted Contract Data</h3>
+    <div className="flex gap-6">
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Extracted Contract Data</h3>
           <div className="flex gap-2">
             <button onClick={() => { setPdfUrl(null); setExtractedData(null); setError(null); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Upload New</button>
-            <button onClick={handleSave} disabled={saved || !extractedData} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${saved ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-600 text-white hover:bg-orange-700'}`}>{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
+            <button onClick={handleSave} className="text-xs px-3 py-1.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600">{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
           </div>
         </div>
         {uploading && (
-          <div className="flex items-center gap-3 p-6 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-            <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-orange-700 dark:text-orange-400">Extracting contract data with AI...</span>
-          </div>
+          <p className="text-orange-500 animate-pulse mb-4">Extracting contract data with AI...</p>
         )}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400">{error}</div>
+          <p className="text-red-500 text-sm mb-4">{error}</p>
         )}
         {extractedData && getSections(extractedData).map((section) => (
-          <div key={section.title} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-            <h4 className="text-sm font-semibold text-orange-600 dark:text-orange-400 mb-2">{section.title}</h4>
+          <div key={section.title} className="mb-4 border rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-orange-500 mb-2">{section.title}</h4>
             <div className="grid grid-cols-2 gap-2">
               {section.fields.map((f) => (
                 <div key={f.label}>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{f.label}</div>
-                  <div className="text-sm text-gray-900 dark:text-white font-medium">{f.value || '\u2014'}</div>
+                  <p className="text-xs text-gray-500">{f.label}</p>
+                  <p className="text-sm">{f.value || '\u2014'}</p>
                 </div>
               ))}
             </div>
@@ -224,8 +216,9 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         ))}
       </div>
       {pdfUrl && (
-        <div className="w-1/2 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
-          <iframe src={pdfUrl} className="w-full h-full" title="Contract PDF" />
+        <div className="flex-1">
+          <p className="text-xs text-gray-500 mb-2">Contract PDF</p>
+          <iframe src={pdfUrl} className="w-full h-[700px] border rounded-lg" title="Contract PDF" />
         </div>
       )}
     </div>
