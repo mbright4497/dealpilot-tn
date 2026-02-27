@@ -61,14 +61,12 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
       avatar.on(StreamingEvents.AVATAR_STOP_TALKING, ()=>{ setSpeaking(false); if(onSpeakEnd) onSpeakEnd() })
       avatar.on(StreamingEvents.STREAM_DISCONNECTED, ()=>{ setReady(false); setSpeaking(false) })
 
-      // Try preferred public avatar IDs (real account IDs)
+      // Use the real avatar IDs from the API, try Marianne first
       const preferredAvatars = [
-        'Alessandra_ProfessionalLook_public',
-        'Katya_ProfessionalLook_public',
         'Marianne_ProfessionalLook_public',
+        'Katya_ProfessionalLook_public',
+        'Alessandra_ProfessionalLook_public',
         'Anastasia_ProfessionalLook_public',
-        'Amina_ProfessionalLook_public',
-        'Rika_ProfessionalLook_public',
       ]
       let started = false
       let firstErr: any = null
