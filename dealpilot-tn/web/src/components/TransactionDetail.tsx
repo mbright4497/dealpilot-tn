@@ -15,6 +15,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [showAddContact,setShowAddContact]=useState(false)
   const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
+  const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
 
   const [contractData, setContractData] = useState<any>(()=>{         try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){}         return null     })     // documents metadata stored in localStorage per-transaction
   const defaultDocs = { Contract: [], Amendments: [], Inspection: [], Appraisal: [], Title: [], Loan: [], Insurance: [], Closing: [] }
