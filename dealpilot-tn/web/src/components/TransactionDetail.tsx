@@ -1,10 +1,12 @@
 'use client'
-import React, {useState} from 'react'
+import React, {useState, useEffect} from 'react'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
+import { useRouter } from 'next/navigation'
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string }
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
+  const router = useRouter()
   const [tab,setTab]=useState('overview')
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
@@ -12,6 +14,20 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [localContacts,setLocalContacts]=useState<Contact[]>(transaction.contacts || [])
   const [showAddContact,setShowAddContact]=useState(false)
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
+  const [docs,setDocs]=useState<Record<string, {name:string,ts:number}[]>>({ Contract: [], Amendments: [], Inspection: [], Appraisal: [], Title: [], Loan: [], Insurance: [], Closing: [] })
+  const [aiFilling, setAiFilling] = useState<Record<string,boolean>>({})
+
+  useEffect(()=>{
+    const key = `dp-docs-${transaction.id}`
+    try{
+      const raw = localStorage.getItem(key)
+      if(raw) setDocs(JSON.parse(raw))
+    }catch(e){}
+  },[transaction.id])
+  useEffect(()=>{
+    const key = `dp-docs-${transaction.id}`
+    try{ localStorage.setItem(key, JSON.stringify(docs)) }catch(e){}
+  },[docs, transaction.id])
   function addContact(){
     if(!newContact.name||!newContact.role) return
     const updated = [...localContacts, {...newContact}]
@@ -47,7 +63,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     ]
   }
   const deadlines = genDeadlines()
-  const TABS = ['overview','contract','contacts','checklist','forms','assistant','deadlines']
+  const TABS = ['overview','contract','documents','contacts','checklist','forms','assistant','deadlines']
   return (
     <div className="p-6 bg-white text-gray-800">
       <div className="flex items-center justify-between mb-4">
@@ -73,25 +89,54 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <div>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="p-4 border rounded">
+                <h3 className="text-gray-900 font-bold">Progress</h3>
+                <div className="text-sm text-gray-600 mb-2">{checklistProgress(checklist)}% complete</div>
+                <div className="w-full bg-gray-200 h-3 rounded mb-2"><div className="h-3 bg-orange-500 rounded" style={{width: checklistProgress(checklist)+'%'}}></div></div>
+                <div className="text-xs text-gray-500 mt-2">Stages: New &gt; Under Contract &gt; Inspection &gt; Appraisal &gt; Clear to Close &gt; Closed</div>
+              </div>
+              <div className="p-4 border rounded">
                 <h3 className="text-gray-900 font-bold">Deal Summary</h3>
-                <p className="text-gray-800">{transaction.notes || 'No notes yet.'}</p>
+                <div className="text-sm text-gray-700">Type: <strong>{transaction.type}</strong></div>
+                <div className="text-sm text-gray-700">Address: <strong>{transaction.address}</strong></div>
+                <div className="text-sm text-gray-700">Client: <strong>{transaction.client}</strong></div>
+                <div className="text-sm text-gray-700 mt-2">Status: <span className={`px-2 py-1 rounded ${transaction.status==='Active'?'bg-green-100 text-green-800':'bg-gray-100 text-gray-800'}`}>{transaction.status}</span></div>
+                <div className="mt-2 text-gray-800">{transaction.notes || 'No notes yet.'}</div>
               </div>
               <div className="p-4 border rounded">
                 <h3 className="text-gray-900 font-bold">Key Dates</h3>
-                <ul className="text-gray-800">
-                  <li>Binding: {transaction.binding || '—'}</li>
-                  <li>Closing: {transaction.closing || '—'}</li>
-                </ul>
-              </div>
-              <div className="p-4 border rounded">
-                <h3 className="text-gray-900 font-bold">Checklist</h3>
-                <div className="text-gray-800">Progress: {checklistProgress(checklist)}%</div>
-                <div className="mt-2"><button className="px-3 py-1 bg-orange-500 text-white rounded">Open Checklist</button></div>
+                <div className="text-sm text-gray-700">Binding: <strong>{transaction.binding || '—'}</strong></div>
+                <div className="text-sm text-gray-700">Closing: <strong>{transaction.closing || '—'}</strong></div>
+                <div className="mt-2 text-sm text-gray-600">Days until closing: {transaction.closing ? Math.max(0, Math.ceil((new Date(transaction.closing).getTime()-Date.now())/(1000*60*60*24))) : '—'}</div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <button className="px-3 py-2 bg-orange-500 text-white rounded">Start Task</button>
-              <button className="px-3 py-2 bg-gray-100 text-gray-800 rounded">Email Title</button>
+
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="p-4 border rounded">
+                <h4 className="font-semibold">Financial Summary</h4>
+                <div className="text-sm text-gray-600">Purchase Price: —</div>
+                <div className="text-sm text-gray-600">Earnest Money: —</div>
+                <div className="text-sm text-gray-600">Loan Type: —</div>
+              </div>
+              <div className="p-4 border rounded">
+                <h4 className="font-semibold">Next Steps</h4>
+                <div>
+                  {checklist.slice(0,3).map((it:any,i:number)=> (
+                    <label key={it.key} className="flex items-center gap-2 py-1">
+                      <input type="checkbox" checked={it.status==='done'} onChange={()=>{ it.status = it.status==='done' ? 'todo' : 'done'; setChecklist([...checklist]) }} />
+                      <span className="text-sm text-gray-800">{it.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="p-4 border rounded">
+                <h4 className="font-semibold">Quick Actions</h4>
+                <div className="flex flex-col gap-2 mt-2">
+                  <button onClick={()=>setTab('checklist')} className="px-3 py-2 bg-gray-100 rounded">Go to Checklist</button>
+                  <button onClick={()=>setTab('contract')} className="px-3 py-2 bg-gray-100 rounded">Upload Contract</button>
+                  <button onClick={()=>setTab('deadlines')} className="px-3 py-2 bg-gray-100 rounded">View Deadlines</button>
+                  <button onClick={()=>setTab('assistant')} className="px-3 py-2 bg-orange-500 text-white rounded">Ask Eva</button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -100,6 +145,33 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <h3 className="text-gray-900 font-bold mb-4">Contract Upload & AI Extraction</h3>
             <p className="text-sm text-gray-600 mb-4">Upload the purchase agreement or any contract document. AI will extract key fields automatically.</p>
             <ContractUpload dealId={String(transaction.id)} />
+          </div>
+        )}
+        {tab==='documents' && (
+          <div>
+            <h3 className="text-gray-900 font-bold mb-4">Documents</h3>
+            <div className="mb-4 p-4 border-2 border-dashed rounded text-center text-gray-600">Drag & drop files here to upload</div>
+            <div className="grid grid-cols-3 gap-4">
+              {Object.keys(docs).map(cat => (
+                <div key={cat} className="p-3 border rounded">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold">{cat}</div>
+                    <label className="text-sm px-2 py-1 bg-gray-100 rounded cursor-pointer">
+                      Upload
+                      <input type="file" className="hidden" onChange={(e)=>{
+                        const f = e.target.files && e.target.files[0]
+                        if(!f) return
+                        const meta = { name: f.name, ts: Date.now() }
+                        setDocs(prev=>({ ...prev, [cat]: [ ...(prev[cat]||[]), meta ] }))
+                      }} />
+                    </label>
+                  </div>
+                  <div className="text-sm text-gray-700">
+                    {(docs[cat]||[]).length===0 ? <div className="text-gray-400">No files</div> : (docs[cat]||[]).map((d:any,i:number)=>(<div key={i} className="py-1">{d.name} <span className="text-xs text-gray-400">{new Date(d.ts).toLocaleString()}</span></div>))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         {tab==='contacts' && (
@@ -188,8 +260,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   <div className="font-bold text-gray-900">{f}</div>
                   <div className="text-sm text-gray-800">Status: blank</div>
                   <div className="mt-2 flex gap-2">
-                    <button className="px-2 py-1 bg-gray-100 text-gray-800 rounded">Open Form</button>
-                    <button className="px-2 py-1 bg-orange-500 text-white rounded" onClick={()=>alert('AI Fill: '+f)}>AI Fill</button>
+                    <button onClick={()=>router.push('/forms')} className="px-2 py-1 bg-gray-100 text-gray-800 rounded">Open Form</button>
+                    <button className="px-2 py-1 bg-orange-500 text-white rounded" onClick={async ()=>{
+                      setAiFilling(prev=>({...prev,[f]:true}));
+                      await new Promise(r=>setTimeout(r,1000));
+                      setAiFilling(prev=>({...prev,[f]:false}));
+                      alert('AI-filled mock data for '+f)
+                    }}>{(aiFilling as any)[f] ? 'Filling...' : 'AI Fill'}</button>
                   </div>
                 </div>
               ))}
@@ -210,7 +287,22 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             </div>
             <div className="mt-2 flex gap-2">
               <input value={input} onChange={e=>setInput(e.target.value)} className="border p-2 flex-1" />
-              <button onClick={send} className="px-3 py-2 bg-orange-500 text-white rounded">Send</button>
+              <button onClick={async ()=>{
+                if(!input) return
+                const user = {from:'user', text: input}
+                setChatMessages(m=>[...m,user])
+                setInput('')
+                // call API
+                try{
+                  const ctx = { id: transaction.id, address: transaction.address, client: transaction.client, type: transaction.type, status: transaction.status, binding: transaction.binding, closing: transaction.closing, contacts: (localContacts||[]).map(c=>({role:c.role,name:c.name})), notes: transaction.notes }
+                  const res = await fetch('/api/ai/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: [{role:'user', content: user.text}], style: 'friendly-tn', transaction: ctx }) })
+                  const j = await res.json()
+                  const reply = j.reply || j.message || j.choices?.[0]?.message?.content || 'Sorry, no response.'
+                  setChatMessages(m=>[...m,{from:'assistant', text: reply}])
+                }catch(e:any){
+                  setChatMessages(m=>[...m,{from:'assistant', text: 'Error contacting AI: '+String(e)}])
+                }
+              }} className="px-3 py-2 bg-orange-500 text-white rounded">Send</button>
             </div>
           </div>
         )}
