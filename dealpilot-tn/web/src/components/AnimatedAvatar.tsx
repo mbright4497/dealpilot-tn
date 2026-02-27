@@ -11,21 +11,19 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
   // start in greeting on mount if provided state is 'idle' by default
   const [active, setActive] = useState<EvaState>(state === 'idle' ? 'greeting' : state)
   const [visible, setVisible] = useState(true)
+  const [audioUnlocked, setAudioUnlocked] = useState(false) // user clicked to allow audio
 
-  // preload videos and ensure playsInline; set mute per spec
+  // preload videos and ensure playsInline; start all muted so autoplay isn't blocked
   useEffect(()=>{
     const vids = [idleRef.current, greetRef.current, thinkingRef.current, goodbyeRef.current]
     vids.forEach(v=>{
       if(v){
         v.preload = 'auto'
         v.playsInline = true
+        v.muted = true // start muted so autoplay works
       }
     })
-    // ensure idle and thinking are muted; greeting and goodbye have audio
-    if(idleRef.current) idleRef.current.muted = true
-    if(thinkingRef.current) thinkingRef.current.muted = true
-    if(greetRef.current) greetRef.current.muted = false
-    if(goodbyeRef.current) goodbyeRef.current.muted = false
+    // idle and thinking remain muted; greeting/goodbye will be unmuted when user allows audio
   },[])
 
   // handle state transitions from prop
@@ -43,7 +41,7 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
     return ()=>{ if(t) clearTimeout(t) }
   },[state])
 
-  // when active changes, play the active video and pause others; ensure audio plays for greeting/goodbye
+  // when active changes, play the active video and pause others; keep greeting muted until audioUnlocked
   useEffect(()=>{
     const vids: {key: EvaState, el: HTMLVideoElement|null}[] = [
       { key: 'idle', el: idleRef.current },
@@ -57,7 +55,7 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
         if(v.key === active){
           // ensure mute setting per clip
           if(v.key === 'idle' || v.key === 'thinking') v.el.muted = true
-          else v.el.muted = false
+          else v.el.muted = !audioUnlocked // greeting/goodbye muted until user unlocks audio
           v.el.playsInline = true
           const p = v.el.play()
           if(p && typeof p.then === 'function') p.catch(()=>{})
@@ -67,7 +65,21 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
         }
       }catch(e){/* ignore */}
     })
-  },[active])
+  },[active, audioUnlocked])
+
+  // click handler to enable audio and play greeting with sound
+  function enableAudioAndPlayGreeting(){
+    setAudioUnlocked(true)
+    const g = greetRef.current
+    if(!g) return
+    try{
+      g.muted = false
+      g.currentTime = 0
+      const p = g.play()
+      if(p && typeof p.then === 'function') p.catch(()=>{})
+      setActive('greeting')
+    }catch(e){}
+  }
 
   // crossfade styles
   const containerStyle: React.CSSProperties = {
@@ -84,6 +96,15 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
   }
   const glow = (active==='speaking' || active==='thinking') ? { boxShadow: '0 0 18px 4px rgba(249,115,22,0.45)', border: '2px solid rgba(249,115,22,0.6)' } : { border: '2px solid rgba(255,255,255,0.03)' }
 
+  // overlay style (premium semi-transparent)
+  const overlayStyle: React.CSSProperties = {
+    position: 'absolute', inset: 0, display: audioUnlocked ? 'none' : (active==='greeting' ? 'flex' : 'none'), alignItems: 'center', justifyContent: 'center',
+    background: 'linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.45))', color: 'white', flexDirection: 'column', gap:8
+  }
+  const playButtonStyle: React.CSSProperties = {
+    width: 56, height:56, borderRadius:28, background: 'rgba(249,115,22,1)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: '0 8px 24px rgba(249,115,22,0.2)', cursor:'pointer', animation: 'pulse 1500ms infinite'
+  }
+
   return (
     <div style={{display:'flex',alignItems:'center',gap:12}}>
       <div style={{...containerStyle, ...glow}}>
@@ -91,6 +112,16 @@ export default function EvaVideoBubble({ state = 'idle', size = 200 }:{ state?: 
         <video ref={greetRef} src="/eva-clips/eva-greeting.mp4" playsInline style={{...videoStyle, opacity: active==='greeting' ? 1 : 0}} onEnded={()=>setActive('idle')} autoPlay />
         <video ref={thinkingRef} src="/eva-clips/eva-thinking.mp4" loop playsInline muted style={{...videoStyle, opacity: active==='thinking' ? 1 : 0}} />
         <video ref={goodbyeRef} src="/eva-clips/eva-goodbye.mp4" playsInline style={{...videoStyle, opacity: active==='goodbye' ? 1 : 0}} onEnded={()=>setVisible(false)} />
+
+        {/* Play overlay shown when greeting is active but audio not unlocked */}
+        <div style={overlayStyle} onClick={enableAudioAndPlayGreeting}>
+          <div style={playButtonStyle} aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M5 3v18l15-9z" /></svg>
+          </div>
+          <div style={{fontSize:12, color:'rgba(255,255,255,0.95)', fontWeight:600}}>Click to hear Eva</div>
+        </div>
+
+        <style>{`@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.06); } 100% { transform: scale(1); } }`}</style>
       </div>
     </div>
   )
