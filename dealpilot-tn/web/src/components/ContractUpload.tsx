@@ -35,11 +35,12 @@ interface ExtractedData {
 interface ContractUploadProps {
   dealId: string;
   onExtracted?: (data: ExtractedData) => void;
+  onSave?: (data: ExtractedData) => void;
 }
 
 type FieldSection = { title: string; fields: { label: string; value: string | undefined }[] };
 
-export default function ContractUpload({ dealId, onExtracted }: ContractUploadProps) {
+export default function ContractUpload({ dealId, onExtracted, onSave }: ContractUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,28 +52,23 @@ export default function ContractUpload({ dealId, onExtracted }: ContractUploadPr
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
-
     setUploading(true);
     setError(null);
     setExtractedData(null);
     setSaved(false);
     setPdfUrl(URL.createObjectURL(file));
-
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('dealId', dealId);
-
       const res = await fetch('/api/ai/extract-contract', {
         method: 'POST',
         body: formData,
       });
-
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error || 'Extraction failed');
       }
-
       const data = await res.json();
       setExtractedData(data.extracted);
       if (onExtracted) onExtracted(data.extracted);
@@ -93,15 +89,12 @@ export default function ContractUpload({ dealId, onExtracted }: ContractUploadPr
     disabled: uploading,
   });
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!extractedData) return;
     try {
-      const res = await fetch(`/api/deals/${dealId}/apply-contract`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(extractedData),
-      });
-      if (res.ok) setSaved(true);
+      localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData));
+      if (onSave) onSave(extractedData);
+      setSaved(true);
     } catch { /* ignore */ }
   };
 
@@ -148,7 +141,6 @@ export default function ContractUpload({ dealId, onExtracted }: ContractUploadPr
             )}
           </div>
         </div>
-
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-400">
             {error}
