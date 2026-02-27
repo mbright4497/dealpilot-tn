@@ -2,7 +2,6 @@
 import React, {useState, useEffect, useRef} from 'react'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
-import { useRouter } from 'next/navigation'
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string }
@@ -325,7 +324,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   <div className="font-bold text-gray-900">{f}</div>
                   <div className="text-sm text-gray-800">Status: blank</div>
                   <div className="mt-2 flex gap-2">
-                    <button onClick={()=>router.push('/forms')} className="px-2 py-1 bg-gray-100 text-gray-800 rounded">Open Form</button>
+                    <button onClick={()=>window.open('/forms','_blank')} className="px-2 py-1 bg-gray-100 text-gray-800 rounded">Open Form</button>
                     <button className="px-2 py-1 bg-orange-500 text-white rounded" onClick={async ()=>{
                       setAiFilling(prev=>({...prev,[f]:true}));
                       await new Promise(r=>setTimeout(r,1000));
