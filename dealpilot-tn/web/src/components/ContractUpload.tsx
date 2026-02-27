@@ -65,7 +65,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       }catch(e){/* ignore */}
     })()
     return ()=>{ mounted = false }
-  },[dealId, onExtracted])
+  },[dealId])
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -196,8 +196,8 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         </div>
 
         {/* Additional docs small dropzone */}
-        <div {...getRootProps()} className="border border-dashed rounded p-4 text-center">
-          <input {...getInputProps()} className="hidden" />
+        <div {...getRootPropsAdd()} className="border border-dashed rounded p-4 text-center">
+          <input {...getInputPropsAdd()} className="hidden" />
           <p className="text-sm text-gray-600">Or upload additional documents (PDF/TXT)</p>
         </div>
 
@@ -229,6 +229,38 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400">{error}</div>
         )}
 
+        {extractedData && getSections(extractedData).map((section) => (
+          <div key={section.title} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{section.title}</h4>
+            </div>
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {section.fields.map((field) => (
+                <div key={field.label} className="px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{field.label}</span>
+                  {field.value ? (
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{field.value}</span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 font-medium">Needs Input</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {extractedData?.special_stipulations && extractedData.special_stipulations.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Special Stipulations</h4>
+            </div>
+            <div className="p-4 space-y-2">
+              {extractedData.special_stipulations.map((s, i) => (
+                <p key={i} className="text-sm text-gray-700 dark:text-gray-300">{s}</p>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right: PDF Viewer */}
