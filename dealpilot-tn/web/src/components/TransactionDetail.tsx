@@ -127,7 +127,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   }
 
   return (
-    <div className="p-6 bg-white text-gray-800">
+    <div className="p-6 text-gray-800">
       <div className="flex items-center justify-between mb-4">
         <div>
           <button onClick={onBack} className="text-sm text-orange-500">← Back</button>
