@@ -16,7 +16,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
 
-  // documents metadata stored in localStorage per-transaction
+  const [contractData, setContractData] = useState<any>(()=>{         try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){}         return null     })     // documents metadata stored in localStorage per-transaction
   const defaultDocs = { Contract: [], Amendments: [], Inspection: [], Appraisal: [], Title: [], Loan: [], Insurance: [], Closing: [] }
   const [docs,setDocs]=useState<Record<string,{name:string,ts:number}[]>>(()=>{
     try{ const raw = localStorage.getItem(`dp-docs-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){}
@@ -177,9 +177,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="p-4 border rounded">
                 <h4 className="font-semibold">Financial Summary</h4>
-                <div className="text-sm text-gray-600">Purchase Price: —</div>
-                <div className="text-sm text-gray-600">Earnest Money: —</div>
-                <div className="text-sm text-gray-600">Loan Type: —</div>
+                <div className="text-sm text-gray-600">Purchase Price: <strong>{contractData?.sale_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(contractData.sale_price) : '—'}</strong></div>
+                <div className="text-sm text-gray-600">Earnest Money: <strong>{contractData?.earnest_money ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(contractData.earnest_money) : '—'}</strong></div>
+                <div className="text-sm text-gray-600">Loan Type: <strong>{contractData?.loan_type || '—'}</strong></div>
               </div>
               <div className="p-4 border rounded">
                 <h4 className="font-semibold">Next Steps</h4>
@@ -212,7 +212,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         )}
 
         {tab==='contract' && (
-          <ContractUpload dealId={String(transaction.id)} />
+          <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} />
         )}
 
         {tab==='documents' && (
