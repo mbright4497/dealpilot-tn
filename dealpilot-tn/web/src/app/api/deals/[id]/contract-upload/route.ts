@@ -8,8 +8,8 @@ const supabase = createClient(
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const dealId = parseInt(params.id)
-    if (isNaN(dealId)) {
+    const dealId = params.id
+    if (!dealId) {
       return NextResponse.json({ error: 'Invalid deal ID' }, { status: 400 })
     }
 
@@ -40,14 +40,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const publicUrl = urlData.publicUrl
 
+    // Save PDF URL to contract_store table
     const { error: dbError } = await supabase
-      .from('deals')
-      .update({ contract_pdf_url: publicUrl, updated_at: new Date().toISOString() })
-      .eq('id', dealId)
+      .from('contract_store')
+      .upsert({
+        deal_id: dealId,
+        pdf_url: publicUrl,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'deal_id' })
 
     if (dbError) {
       console.error('DB update error:', dbError)
-      // continue even if DB update fails
     }
 
     return NextResponse.json({ url: publicUrl })
