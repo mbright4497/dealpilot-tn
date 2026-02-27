@@ -99,50 +99,48 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
   };
 
   const getSections = (d: ExtractedData): FieldSection[] => [
-    { title: 'Parties', fields: [ { label: 'Buyer(s)', value: d.buyer_names?.join(', ') }, { label: 'Seller(s)', value: d.seller_names?.join(', ') }, ]},
-    { title: 'Property', fields: [ { label: 'Address', value: d.property_address }, { label: 'County', value: d.county }, { label: 'Type', value: d.property_type }, ]},
-    { title: 'Financial', fields: [ { label: 'Purchase Price', value: fmt(d.sale_price) }, { label: 'Earnest Money', value: fmt(d.earnest_money) }, { label: 'Loan Type', value: d.loan_type }, { label: 'Loan Amount', value: fmt(d.loan_amount) }, ]},
-    { title: 'Key Dates', fields: [ { label: 'Binding Agreement', value: d.binding_agreement_date }, { label: 'Closing Date', value: d.closing_date }, { label: 'Possession', value: d.possession_date }, { label: 'Inspection Period', value: d.inspection_period_days != null ? `${d.inspection_period_days} days` : undefined }, { label: 'Resolution Period', value: d.resolution_period_days != null ? `${d.resolution_period_days} days` : undefined }, { label: 'Financing Contingency', value: d.financing_contingency_days != null ? `${d.financing_contingency_days} days` : undefined }, ]},
-    { title: 'Contingencies & Disclosures', fields: [ { label: 'Appraisal Contingent', value: d.appraisal_contingent != null ? (d.appraisal_contingent ? 'Yes' : 'No') : undefined }, { label: 'Lead-Based Paint', value: d.lead_based_paint != null ? (d.lead_based_paint ? 'Applies' : 'N/A') : undefined }, { label: 'Home Warranty', value: d.home_warranty != null ? (d.home_warranty ? 'Yes' : 'No') : undefined }, ]},
-    { title: 'Agents & Closing', fields: [ { label: 'Listing Agent', value: d.listing_agent }, { label: 'Listing Brokerage', value: d.listing_brokerage }, { label: 'Buyer Agent', value: d.buyer_agent }, { label: 'Buyer Brokerage', value: d.buyer_brokerage }, { label: 'Title Company', value: d.title_company }, ]},
+    { title: 'Parties', fields: [ { label: 'Buyer(s)', value: d.buyer_names?.join(', ') }, { label: 'Seller(s)', value: d.seller_names?.join(', ') } ]},
+    { title: 'Property', fields: [ { label: 'Address', value: d.property_address }, { label: 'County', value: d.county }, { label: 'Type', value: d.property_type } ]},
+    { title: 'Financial', fields: [ { label: 'Purchase Price', value: fmt(d.sale_price) }, { label: 'Earnest Money', value: fmt(d.earnest_money) }, { label: 'Loan Type', value: d.loan_type }, { label: 'Loan Amount', value: fmt(d.loan_amount) } ]},
+    { title: 'Key Dates', fields: [ { label: 'Binding Agreement', value: d.binding_agreement_date }, { label: 'Closing Date', value: d.closing_date }, { label: 'Possession', value: d.possession_date }, { label: 'Inspection Period', value: d.inspection_period_days != null ? `${d.inspection_period_days} days` : undefined }, { label: 'Resolution Period', value: d.resolution_period_days != null ? `${d.resolution_period_days} days` : undefined }, { label: 'Financing Contingency', value: d.financing_contingency_days != null ? `${d.financing_contingency_days} days` : undefined } ]},
+    { title: 'Contingencies & Disclosures', fields: [ { label: 'Appraisal Contingent', value: d.appraisal_contingent != null ? (d.appraisal_contingent ? 'Yes' : 'No') : undefined }, { label: 'Lead-Based Paint', value: d.lead_based_paint != null ? (d.lead_based_paint ? 'Applies' : 'N/A') : undefined }, { label: 'Home Warranty', value: d.home_warranty != null ? (d.home_warranty ? 'Yes' : 'No') : undefined } ]},
+    { title: 'Agents & Closing', fields: [ { label: 'Listing Agent', value: d.listing_agent }, { label: 'Listing Brokerage', value: d.listing_brokerage }, { label: 'Buyer Agent', value: d.buyer_agent }, { label: 'Buyer Brokerage', value: d.buyer_brokerage }, { label: 'Title Company', value: d.title_company } ]},
   ];
 
+  /* ── Upload state (no PDF yet) ── */
   if (!pdfUrl) {
     return (
-      <div className="space-y-4">
-        {/* Drop Zone */}
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-            isDragActive
-              ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20'
-              : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
-          } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <input {...getInputProps()} />
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-            </div>
-            {uploading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-orange-700 dark:text-orange-400">Extracting contract data with AI...</span>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  {isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}
-                </p>
-                <p className="text-xs text-gray-500">Supports PDF and TXT files</p>
-              </>
-            )}
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
+          isDragActive
+            ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20'
+            : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
+        } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
+      >
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+            <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
           </div>
+          {uploading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-orange-700 dark:text-orange-400">Extracting contract data with AI...</span>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}
+              </p>
+              <p className="text-xs text-gray-500">Supports PDF and TXT files</p>
+            </>
+          )}
         </div>
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-400">
+          <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-400">
             {error}
           </div>
         )}
@@ -150,6 +148,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     );
   }
 
+  /* ── Split view: extracted data + PDF viewer ── */
   return (
     <div className="flex gap-4 h-[calc(100vh-220px)]">
       {/* Left: Extracted Fields */}
@@ -157,10 +156,10 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Extracted Contract Data</h3>
           <div className="flex gap-2">
-            <button onClick={() => { setPdfUrl(null); setExtractedData(null); setError(null); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" >
+            <button onClick={() => { setPdfUrl(null); setExtractedData(null); setError(null); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
               Upload New
             </button>
-            <button onClick={handleSave} disabled={saved || !extractedData} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${ saved ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-600 text-white hover:bg-orange-700' }`} >{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
+            <button onClick={handleSave} disabled={saved || !extractedData} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${ saved ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-600 text-white hover:bg-orange-700' }`}>{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
           </div>
         </div>
 
