@@ -61,31 +61,23 @@ export default function HeyGenAvatar({ textToSpeak, size = 300, onSpeakStart, on
       avatar.on(StreamingEvents.AVATAR_STOP_TALKING, ()=>{ setSpeaking(false); if(onSpeakEnd) onSpeakEnd() })
       avatar.on(StreamingEvents.STREAM_DISCONNECTED, ()=>{ setReady(false); setSpeaking(false) })
 
-      // Use the real avatar IDs from the API, try Marianne first
-      const preferredAvatars = [
-        'Marianne_ProfessionalLook_public',
-        'Katya_ProfessionalLook_public',
-        'Alessandra_ProfessionalLook_public',
-        'Anastasia_ProfessionalLook_public',
-      ]
-      let started = false
-      let firstErr: any = null
-      // Try each known-good avatar ID directly
-      for (const aid of preferredAvatars) {
-        try {
-          await avatar.createStartAvatar({ quality: AvatarQuality.Medium, avatarName: aid })
-          started = true
-          break
-        } catch (err2) {
-          console.error('avatar start failed for', aid, err2)
-          if (!firstErr) firstErr = err2
-        }
+      // Use one working avatar from HeyGen demo to avoid orphaned sessions.
+      // Official demo avatars (keep as references):
+      // 'Elenora_IT_Sitting_public', 'Judy_Teacher_Sitting_public', 'Marianne_ProfessionalLook_public'
+      const avatarId = 'Ann_Therapist_public'
+
+      // Stop any existing session to avoid orphaned sessions (free plan allows 1)
+      try { if (avatar && typeof (avatar as any).stopAvatar === 'function') await (avatar as any).stopAvatar().catch(()=>{}) } catch(e) {}
+
+      try {
+        await avatar.createStartAvatar({ quality: AvatarQuality.Low, avatarName: avatarId, language: 'en' })
+      } catch (firstErr) {
+        console.error('avatar start failed for', avatarId, firstErr)
+        const errStr = typeof firstErr === 'string' ? firstErr : (firstErr?.message || JSON.stringify(firstErr))
+        throw new Error(errStr || 'Failed to start HeyGen avatar')
       }
 
-      if (!started) {
-        const errStr = firstErr ? (typeof firstErr === 'string' ? firstErr : (firstErr?.message || JSON.stringify(firstErr))) : 'Failed to start any preferred HeyGen avatar'
-        throw new Error(errStr)
-      }
+      // started if no exception
 
       setConnecting(false)
     }catch(e:any){ console.error('HeyGen start error full:', e); const msg = e && (e.message || (typeof e === 'string' ? e : JSON.stringify(e))) || String(e); setError(msg); setConnecting(false); if(onError) onError(msg) }
