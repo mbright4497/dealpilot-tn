@@ -1,6 +1,5 @@
 'use client';
-
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 interface ExtractedData {
@@ -46,89 +45,61 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [additionalDocs, setAdditionalDocs] = useState<{name:string,ts:number}[]>([]);
+  const onExtractedRef = useRef(onExtracted);
+  onExtractedRef.current = onExtracted;
 
-  const fmt = (val?: number) => val != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val) : undefined;
+  const fmt = (val?: number) =>
+    val != null
+      ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
+      : undefined;
 
-  // load saved extracted data from server on mount
-  const onExtractedRef = (typeof window !== 'undefined') ? { current: onExtracted } as any : { current: onExtracted };
-  // keep ref in sync
-  onExtractedRef.current = onExtracted
-
-  useEffect(()=>{
-    let mounted = true
-    (async ()=>{
-      try{
-        const res = await fetch(`/api/deals/${dealId}/contract`)
-        if(!res.ok) return
-        const j = await res.json()
-        if(mounted && j?.extracted){
-          setExtractedData(j.extracted)
-          if(onExtractedRef.current) onExtractedRef.current(j.extracted)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/deals/${dealId}/contract`);
+        if (!res.ok) return;
+        const j = await res.json();
+        if (mounted && j?.extracted) {
+          setExtractedData(j.extracted);
+          if (onExtractedRef.current) onExtractedRef.current(j.extracted);
         }
-      }catch(e){/* ignore */}
-    })()
-    return ()=>{ mounted = false }
-  },[dealId])
+      } catch (_e) { /* ignore */ }
+    })();
+    return () => { mounted = false; };
+  }, [dealId]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
-
     setUploading(true);
     setError(null);
     setExtractedData(null);
     setSaved(false);
     setPdfUrl(URL.createObjectURL(file));
-
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('dealId', dealId);
-
-      const res = await fetch('/api/ai/extract-contract', {
-        method: 'POST',
-        body: formData,
-      });
-
+      const res = await fetch('/api/ai/extract-contract', { method: 'POST', body: formData });
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error || 'Extraction failed');
       }
-
       const data = await res.json();
       setExtractedData(data.extracted);
-      if (onExtracted) onExtracted(data.extracted);
+      if (onExtractedRef.current) onExtractedRef.current(data.extracted);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to extract contract data');
     } finally {
       setUploading(false);
     }
-  }, [dealId, onExtracted]);
-
-  const onDropAdditional = useCallback((acceptedFiles: File[])=>{
-    const file = acceptedFiles[0]
-    if(!file) return
-    setAdditionalDocs(prev => [...prev, {name: file.name, ts: Date.now()}])
-  },[])
+  }, [dealId]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'text/plain': ['.txt']
-    },
+    accept: { 'application/pdf': ['.pdf'], 'text/plain': ['.txt'] },
     maxFiles: 1,
-    disabled: uploading,
-  });
-
-  const { getRootProps: getRootPropsAdd, getInputProps: getInputPropsAdd, isDragActive: isDragActiveAdd } = useDropzone({
-    onDrop: onDropAdditional,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'text/plain': ['.txt']
-    },
-    maxFiles: 5,
     disabled: uploading,
   });
 
@@ -147,32 +118,29 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     } catch (e) {
       console.warn('Save to Supabase failed, falling back to localStorage', e);
     }
-    try { localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData)); } catch { /* ignore */ }
+    try { localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData)); } catch (_e) { /* ignore */ }
     if (onSave) onSave(extractedData);
     setSaved(true);
   };
 
   const getSections = (d: ExtractedData): FieldSection[] => [
-    { title: 'Parties', fields: [ { label: 'Buyer(s)', value: d.buyer_names?.join(', ') }, { label: 'Seller(s)', value: d.seller_names?.join(', ') } ]},
-    { title: 'Property', fields: [ { label: 'Address', value: d.property_address }, { label: 'County', value: d.county }, { label: 'Type', value: d.property_type } ]},
-    { title: 'Financial', fields: [ { label: 'Purchase Price', value: fmt(d.sale_price) }, { label: 'Earnest Money', value: fmt(d.earnest_money) }, { label: 'Loan Type', value: d.loan_type }, { label: 'Loan Amount', value: fmt(d.loan_amount) } ]},
-    { title: 'Key Dates', fields: [ { label: 'Binding Agreement', value: d.binding_agreement_date }, { label: 'Closing Date', value: d.closing_date }, { label: 'Possession', value: d.possession_date }, { label: 'Inspection Period', value: d.inspection_period_days != null ? `${d.inspection_period_days} days` : undefined }, { label: 'Resolution Period', value: d.resolution_period_days != null ? `${d.resolution_period_days} days` : undefined }, { label: 'Financing Contingency', value: d.financing_contingency_days != null ? `${d.financing_contingency_days} days` : undefined } ]},
-    { title: 'Contingencies & Disclosures', fields: [ { label: 'Appraisal Contingent', value: d.appraisal_contingent != null ? (d.appraisal_contingent ? 'Yes' : 'No') : undefined }, { label: 'Lead-Based Paint', value: d.lead_based_paint != null ? (d.lead_based_paint ? 'Applies' : 'N/A') : undefined }, { label: 'Home Warranty', value: d.home_warranty != null ? (d.home_warranty ? 'Yes' : 'No') : undefined } ]},
-    { title: 'Agents & Closing', fields: [ { label: 'Listing Agent', value: d.listing_agent }, { label: 'Listing Brokerage', value: d.listing_brokerage }, { label: 'Buyer Agent', value: d.buyer_agent }, { label: 'Buyer Brokerage', value: d.buyer_brokerage }, { label: 'Title Company', value: d.title_company } ]},
+    { title: 'Parties', fields: [{ label: 'Buyer(s)', value: d.buyer_names?.join(', ') }, { label: 'Seller(s)', value: d.seller_names?.join(', ') }] },
+    { title: 'Property', fields: [{ label: 'Address', value: d.property_address }, { label: 'County', value: d.county }, { label: 'Type', value: d.property_type }] },
+    { title: 'Financial', fields: [{ label: 'Purchase Price', value: fmt(d.sale_price) }, { label: 'Earnest Money', value: fmt(d.earnest_money) }, { label: 'Loan Type', value: d.loan_type }, { label: 'Loan Amount', value: fmt(d.loan_amount) }] },
+    { title: 'Key Dates', fields: [{ label: 'Binding Agreement', value: d.binding_agreement_date }, { label: 'Closing Date', value: d.closing_date }, { label: 'Possession', value: d.possession_date }, { label: 'Inspection Period', value: d.inspection_period_days != null ? `${d.inspection_period_days} days` : undefined }, { label: 'Resolution Period', value: d.resolution_period_days != null ? `${d.resolution_period_days} days` : undefined }, { label: 'Financing Contingency', value: d.financing_contingency_days != null ? `${d.financing_contingency_days} days` : undefined }] },
+    { title: 'Contingencies', fields: [{ label: 'Appraisal Contingent', value: d.appraisal_contingent != null ? (d.appraisal_contingent ? 'Yes' : 'No') : undefined }, { label: 'Lead-Based Paint', value: d.lead_based_paint != null ? (d.lead_based_paint ? 'Applies' : 'N/A') : undefined }, { label: 'Home Warranty', value: d.home_warranty != null ? (d.home_warranty ? 'Yes' : 'No') : undefined }] },
+    { title: 'Agents & Closing', fields: [{ label: 'Listing Agent', value: d.listing_agent }, { label: 'Listing Brokerage', value: d.listing_brokerage }, { label: 'Buyer Agent', value: d.buyer_agent }, { label: 'Buyer Brokerage', value: d.buyer_brokerage }, { label: 'Title Company', value: d.title_company }] },
   ];
 
-  /* ── Upload state (no PDF yet) ── */
-  if (!pdfUrl) {
+  if (!pdfUrl && !extractedData) {
     return (
       <div className="space-y-4">
-        {/* Drop Zone */}
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-            isDragActive
-              ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20'
-              : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
-          } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+            isDragActive ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
+          } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
           <input {...getInputProps()} className="hidden" />
           <div className="flex flex-col items-center gap-3">
             <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -198,79 +166,48 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
             </div>
           )}
         </div>
-
-        {/* Additional docs small dropzone */}
-        <div {...getRootPropsAdd()} className="border border-dashed rounded p-4 text-center">
-          <input {...getInputPropsAdd()} className="hidden" />
-          <p className="text-sm text-gray-600">Or upload additional documents (PDF/TXT)</p>
-        </div>
-
       </div>
     );
   }
 
-  /* ── Split view: extracted data + PDF viewer ── */
   return (
     <div className="flex gap-4 h-[calc(100vh-220px)]">
-      {/* Left: Extracted Fields */}
       <div className="w-1/2 overflow-y-auto pr-2 space-y-3">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Extracted Contract Data</h3>
           <div className="flex gap-2">
             <button onClick={() => { setPdfUrl(null); setExtractedData(null); setError(null); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Upload New</button>
-            <button onClick={handleSave} disabled={saved || !extractedData} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${ saved ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-600 text-white hover:bg-orange-700' }`}>{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
+            <button onClick={handleSave} disabled={saved || !extractedData} className={`text-xs px-3 py-1.5 rounded-lg font-medium ${saved ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-600 text-white hover:bg-orange-700'}`}>{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
           </div>
         </div>
-
         {uploading && (
           <div className="flex items-center gap-3 p-6 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
             <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-orange-700 dark:text-orange-400">Extracting contract data with AI...</span>
           </div>
         )}
-
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400">{error}</div>
         )}
-
         {extractedData && getSections(extractedData).map((section) => (
-          <div key={section.title} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{section.title}</h4>
-            </div>
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {section.fields.map((field) => (
-                <div key={field.label} className="px-4 py-2.5 flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{field.label}</span>
-                  {field.value ? (
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{field.value}</span>
-                  ) : (
-                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 font-medium">Needs Input</span>
-                  )}
+          <div key={section.title} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+            <h4 className="text-sm font-semibold text-orange-600 dark:text-orange-400 mb-2">{section.title}</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {section.fields.map((f) => (
+                <div key={f.label}>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{f.label}</div>
+                  <div className="text-sm text-gray-900 dark:text-white font-medium">{f.value || '\u2014'}</div>
                 </div>
               ))}
             </div>
           </div>
         ))}
-
-        {extractedData?.special_stipulations && extractedData.special_stipulations.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Special Stipulations</h4>
-            </div>
-            <div className="p-4 space-y-2">
-              {extractedData.special_stipulations.map((s, i) => (
-                <p key={i} className="text-sm text-gray-700 dark:text-gray-300">{s}</p>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Right: PDF Viewer */}
-      <div className="w-1/2 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
-        <iframe src={pdfUrl || ''} className="w-full h-full" title="Contract PDF" />
-      </div>
+      {pdfUrl && (
+        <div className="w-1/2 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+          <iframe src={pdfUrl} className="w-full h-full" title="Contract PDF" />
+        </div>
+      )}
     </div>
   );
 }
