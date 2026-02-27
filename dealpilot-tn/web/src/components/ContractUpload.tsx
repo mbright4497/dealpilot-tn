@@ -118,7 +118,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
             : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
         } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} className="hidden" />
         <div className="flex flex-col items-center gap-3">
           <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
             <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
