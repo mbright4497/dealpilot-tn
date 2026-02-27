@@ -8,8 +8,7 @@ type Contact = { role:string, name:string, company?:string, phone?:string, email
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string }
 
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
-  const router = useRouter()
-  const [tab,setTab]=useState('overview')
+    const [tab,setTab]=useState('overview')
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
   const [input,setInput]=useState('')
