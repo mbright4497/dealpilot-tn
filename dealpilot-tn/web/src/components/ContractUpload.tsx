@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 interface ExtractedData {
@@ -46,8 +46,26 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [additionalDocs, setAdditionalDocs] = useState<{name:string,ts:number}[]>([]);
 
   const fmt = (val?: number) => val != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val) : undefined;
+
+  // load saved extracted data from server on mount
+  useEffect(()=>{
+    let mounted = true
+    (async ()=>{
+      try{
+        const res = await fetch(`/api/deals/${dealId}/contract`)
+        if(!res.ok) return
+        const j = await res.json()
+        if(mounted && j?.extracted){
+          setExtractedData(j.extracted)
+          if(onExtracted) onExtracted(j.extracted)
+        }
+      }catch(e){/* ignore */}
+    })()
+    return ()=>{ mounted = false }
+  },[dealId, onExtracted])
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -84,6 +102,12 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     }
   }, [dealId, onExtracted]);
 
+  const onDropAdditional = useCallback((acceptedFiles: File[])=>{
+    const file = acceptedFiles[0]
+    if(!file) return
+    setAdditionalDocs(prev => [...prev, {name: file.name, ts: Date.now()}])
+  },[])
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
@@ -91,6 +115,16 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       'text/plain': ['.txt']
     },
     maxFiles: 1,
+    disabled: uploading,
+  });
+
+  const { getRootProps: getRootPropsAdd, getInputProps: getInputPropsAdd, isDragActive: isDragActiveAdd } = useDropzone({
+    onDrop: onDropAdditional,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'text/plain': ['.txt']
+    },
+    maxFiles: 5,
     disabled: uploading,
   });
 
@@ -126,37 +160,47 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
   /* ── Upload state (no PDF yet) ── */
   if (!pdfUrl) {
     return (
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-          isDragActive
-            ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20'
-            : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
-        } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
-        <input {...getInputProps()} className="hidden" />
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-            <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-          </div>
-          {uploading ? (
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-orange-700 dark:text-orange-400">Extracting contract data with AI...</span>
+      <div className="space-y-4">
+        {/* Drop Zone */}
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
+            isDragActive
+              ? 'border-orange-400 bg-orange-50 dark:bg-orange-900/20'
+              : 'border-gray-300 dark:border-gray-600 hover:border-orange-400'
+          } ${uploading ? 'opacity-60 cursor-not-allowed' : ''}`}>
+          <input {...getInputProps()} className="hidden" />
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+              <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
             </div>
-          ) : (
-            <>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}</p>
-              <p className="text-xs text-gray-500">Supports PDF and TXT files</p>
-            </>
+            {uploading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-orange-700 dark:text-orange-400">Extracting contract data with AI...</span>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{isDragActive ? 'Drop the contract here...' : 'Drag & drop your contract, or click to browse'}</p>
+                <p className="text-xs text-gray-500">Supports PDF and TXT files</p>
+              </>
+            )}
+          </div>
+          {error && (
+            <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-400">
+              {error}
+            </div>
           )}
         </div>
-        {error && (
-          <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-sm text-red-700 dark:text-red-400">
-            {error}
-          </div>
-        )}
+
+        {/* Additional docs small dropzone */}
+        <div {...getRootProps()} className="border border-dashed rounded p-4 text-center">
+          <input {...getInputProps()} className="hidden" />
+          <p className="text-sm text-gray-600">Or upload additional documents (PDF/TXT)</p>
+        </div>
+
       </div>
     );
   }
@@ -185,38 +229,6 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-400">{error}</div>
         )}
 
-        {extractedData && getSections(extractedData).map((section) => (
-          <div key={section.title} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{section.title}</h4>
-            </div>
-            <div className="divide-y divide-gray-100 dark:divide-gray-800">
-              {section.fields.map((field) => (
-                <div key={field.label} className="px-4 py-2.5 flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{field.label}</span>
-                  {field.value ? (
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{field.value}</span>
-                  ) : (
-                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 font-medium">Needs Input</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {extractedData?.special_stipulations && extractedData.special_stipulations.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Special Stipulations</h4>
-            </div>
-            <div className="p-4 space-y-2">
-              {extractedData.special_stipulations.map((s, i) => (
-                <p key={i} className="text-sm text-gray-700 dark:text-gray-300">{s}</p>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Right: PDF Viewer */}

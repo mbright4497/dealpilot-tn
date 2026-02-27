@@ -54,3 +54,26 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
 }
+
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const dealId = parseInt(params.id)
+    if (isNaN(dealId)) return NextResponse.json({ extracted: null })
+
+    const { data, error } = await supabase
+      .from('deals')
+      .select('contract_data')
+      .eq('id', dealId)
+      .single()
+
+    if (error) {
+      console.error('Supabase fetch error:', error)
+      return NextResponse.json({ extracted: null })
+    }
+
+    return NextResponse.json({ extracted: data?.contract_data || null })
+  } catch (e: any) {
+    console.error('Fetch contract error:', e)
+    return NextResponse.json({ extracted: null })
+  }
+}
