@@ -32,60 +32,6 @@ export type Transaction = {
   notes: string
 }
 
-export const TRANSACTIONS: Transaction[] = [
-  {
-    id: 1,
-    address: '123 Maple St, Johnson City, TN',
-    client: 'Alice Johnson',
-    type: 'Buyer',
-    status: 'Active',
-    binding: '2026-02-01',
-    closing: '2026-03-15',
-    notes: 'First-time buyer, VA loan. Needs extra guidance on inspection timeline.',
-    contacts: [
-      { role: 'Title Company', name: 'Sarah Mitchell', company: 'Tri-Cities Title & Escrow', phone: '423-555-0101', email: 'sarah@tricitiestitle.com' },
-      { role: 'Lender', name: 'James Park', company: 'HomeTrust Mortgage', phone: '423-555-0102', email: 'jpark@hometrust.com' },
-      { role: 'Inspector', name: 'Mike Davis', company: 'Davis Home Inspections', phone: '423-555-0103', email: 'mike@davishomeinspect.com' },
-      { role: 'Appraiser', name: 'Linda Chen', company: 'Appalachian Appraisals', phone: '423-555-0104', email: 'lchen@appalachianapp.com' },
-      { role: 'Buyer Agent', name: 'Matt Bright', company: 'iHome-KW Kingsport', phone: '423-555-0100', email: 'matt@dealpilottn.com' },
-      { role: 'Listing Agent', name: 'Tom Wilson', company: 'RE/MAX Bristol', phone: '423-555-0105', email: 'tom@remax-bristol.com' },
-    ]
-  },
-  {
-    id: 2,
-    address: '45 Oak Ln, Kingsport, TN',
-    client: 'Bob Martinez',
-    type: 'Seller',
-    status: 'Pending',
-    binding: '2026-02-10',
-    closing: '2026-04-01',
-    notes: 'Seller relocation. Needs quick close. Conventional financing.',
-    contacts: [
-      { role: 'Title Company', name: 'Karen White', company: 'Mountain Title Group', phone: '423-555-0201', email: 'karen@mountaintitle.com' },
-      { role: 'Lender', name: 'David Kim', company: 'First Horizon Bank', phone: '423-555-0202', email: 'dkim@firsthorizon.com' },
-      { role: 'Inspector', name: 'Steve Brown', company: 'ProCheck Inspections', phone: '423-555-0203', email: 'steve@procheck.com' },
-      { role: 'Listing Agent', name: 'Matt Bright', company: 'iHome-KW Kingsport', phone: '423-555-0100', email: 'matt@dealpilottn.com' },
-      { role: 'Buyer Agent', name: 'Lisa Green', company: 'Keller Williams Kingsport', phone: '423-555-0205', email: 'lisa@kw-kingsport.com' },
-    ]
-  },
-  {
-    id: 3,
-    address: '78 Pine Rd, Bristol, TN',
-    client: 'Carol Stevens',
-    type: 'Buyer',
-    status: 'Active',
-    binding: '2026-02-15',
-    closing: '2026-04-20',
-    notes: 'Investment property. Cash buyer, no lender needed. Thorough inspection required.',
-    contacts: [
-      { role: 'Title Company', name: 'Sarah Mitchell', company: 'Tri-Cities Title & Escrow', phone: '423-555-0101', email: 'sarah@tricitiestitle.com' },
-      { role: 'Inspector', name: 'Mike Davis', company: 'Davis Home Inspections', phone: '423-555-0103', email: 'mike@davishomeinspect.com' },
-      { role: 'Buyer Agent', name: 'Matt Bright', company: 'iHome-KW Kingsport', phone: '423-555-0100', email: 'matt@dealpilottn.com' },
-      { role: 'Listing Agent', name: 'Jennifer Adams', company: 'Century 21 Bristol', phone: '423-555-0305', email: 'jadams@c21bristol.com' },
-    ]
-  },
-]
-
 function NavIcon({ name }: { name: string }) {
   const p = { width: 18, height: 18, fill: 'none' as const, viewBox: '0 0 24 24', stroke: 'currentColor', strokeWidth: 2 }
   if (name === 'dashboard') return <svg {...p}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -109,35 +55,50 @@ export default function ChatPage() {
   const [view, setView] = useState('dashboard')
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dp-transactions')
-      if (saved) return JSON.parse(saved)
-    }
-    return TRANSACTIONS
-  })
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
   const [voiceEnabled, setVoiceEnabled] = useState(true)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('dp-transactions', JSON.stringify(transactions))
-    }
-  }, [transactions])
+    fetch('/api/transactions')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTransactions(data.map((d: any) => ({
+            ...d,
+            contacts: typeof d.contacts === 'string' ? JSON.parse(d.contacts) : (d.contacts || []),
+          })))
+        }
+      })
+      .catch(err => console.error('Failed to load transactions:', err))
+  }, [])
 
-  function addTransaction(tx: any) {
-    const newTx: Transaction = {
-      id: tx.id || Date.now(),
-      address: tx.address || '',
-      client: tx.client || '',
-      type: tx.type || 'Buyer',
-      status: tx.status || 'Active',
-      binding: tx.binding || '',
-      closing: tx.closing || '',
-      contacts: tx.contacts || [],
-      notes: tx.notes || '',
+  async function addTransaction(tx: any) {
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: tx.address || '',
+          client: tx.client || '',
+          type: tx.type || 'Buyer',
+          status: tx.status || 'Active',
+          binding: tx.binding || '',
+          closing: tx.closing || '',
+          notes: tx.notes || '',
+          contacts: JSON.stringify(tx.contacts || []),
+        }),
+      })
+      const newTx = await res.json()
+      if (newTx && newTx.id) {
+        setTransactions(prev => [...prev, {
+          ...newTx,
+          contacts: typeof newTx.contacts === 'string' ? JSON.parse(newTx.contacts) : (newTx.contacts || []),
+        }])
+      }
+    } catch (err) {
+      console.error('Failed to add transaction:', err)
     }
-    setTransactions(prev => [...prev, newTx])
   }
 
   function openDeal(txId: number) {
@@ -150,11 +111,22 @@ export default function ChatPage() {
     setView('deal')
   }
 
-  function deleteTransaction(txId: number) {
-    setTransactions(prev => prev.filter(t => t.id !== txId))
+  async function deleteTransaction(txId: number) {
+    try {
+      await fetch('/api/transactions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: txId }),
+      })
+      setTransactions(prev => prev.filter(t => t.id !== txId))
+    } catch (err) {
+      console.error('Failed to delete transaction:', err)
+    }
   }
 
-  function updateTransactionContacts(txId: number, contacts: any[]) { setTransactions(prev => prev.map(t => t.id === txId ? {...t, contacts} : t)) }
+  function updateTransactionContacts(txId: number, contacts: any[]) {
+    setTransactions(prev => prev.map(t => t.id === txId ? {...t, contacts} : t))
+  }
 
   function handleNavigate(dest: string) {
     if (dest === 'transactions') {
@@ -186,7 +158,6 @@ export default function ChatPage() {
             <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
           </div>
         </div>
-
         <nav className="flex-1 px-3 py-2 space-y-1">
           {NAV_ITEMS.map(item => (
             <button
@@ -208,7 +179,6 @@ export default function ChatPage() {
             AI Assistant
           </button>
         </nav>
-
         {selectedTxId && view === 'deal' && (
           <div className="px-4 py-3 border-t border-gray-800">
             <p className="text-xs text-gray-500 uppercase tracking-wider">Active Deal</p>
@@ -216,7 +186,6 @@ export default function ChatPage() {
             <p className="text-gray-400 text-xs">{selectedTx?.client}</p>
           </div>
         )}
-
         <div className="p-4 border-t border-gray-800 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold">MB</div>
           <div>
@@ -225,6 +194,7 @@ export default function ChatPage() {
           </div>
         </div>
       </aside>
+
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} />}
@@ -242,7 +212,6 @@ export default function ChatPage() {
       <button onClick={() => setChatOpen(true)} className="bg-orange-500 text-white w-14 h-14 rounded-full shadow-lg hover:bg-orange-600 hover:shadow-xl transition-all flex items-center justify-center" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
         <svg width={24} height={24} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       </button>
-
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>
   )
