@@ -104,6 +104,28 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     return combined.filter(e=>e.date).sort((a,b)=> new Date(a.date!).getTime() - new Date(b.date!).getTime())
   },[remote, mergedTx, docs])
 
+  // priorities state
+  const [priorities, setPriorities] = React.useState<any[]>([])
+  React.useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch(`/api/deal-priorities/${transaction.id}`)
+        if(!mounted) return
+        if(res.ok){
+          const j = await res.json()
+          // sort by urgency: high -> medium -> low
+          const order = { high: 0, medium: 1, low: 2 }
+          if(Array.isArray(j)){
+            j.sort((a:any,b:any)=> (order[a.urgency]||3) - (order[b.urgency]||3))
+            setPriorities(j)
+          }
+        }
+      }catch(e){ /* ignore */ }
+    })();
+    return ()=>{ mounted=false }
+  },[transaction.id])
+
   // file inputs helper (kept from previous implementation)
   const fileInputsRef = useRef<Record<string,HTMLInputElement|null>>({} as any)
   const ensureInput = (cat:string)=>{
@@ -234,20 +256,22 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="md:col-span-3 bg-gray-800 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Today's Priorities</h3>
               <div className="space-y-3">
-                {/* simple priorities from upcoming timeline and nextSteps */}
-                {upcoming.slice(0,5).map((ev,i)=> (
-                  <div key={i} className="p-3 bg-gray-700 rounded flex justify-between items-center">
-                    <div>
-                      <div className="font-semibold">{ev.title}</div>
-                      <div className="text-sm text-gray-300">{fmtDate(ev.date)}</div>
+                {/* priorities fetched from server */}
+                {priorities && priorities.length>0 ? priorities.slice(0,5).map((p:any,i:number)=> (
+                  <div key={i} className="p-3 bg-gray-700 rounded">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold">{p.title}</div>
+                        <div className="text-sm text-gray-300">{p.reason}</div>
+                        <div className="mt-1 text-xs italic text-gray-400">{p.consequence}</div>
+                      </div>
+                      <div>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${p.urgency==='high'? 'bg-red-600 text-white': p.urgency==='medium'? 'bg-yellow-500 text-black':'bg-green-600 text-white'}`}>{p.urgency.toUpperCase()}</span>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-300">{daysUntil(ev.date)}d</div>
                   </div>
-                ))}
-
-                {/* fallback quick actions */}
-                {upcoming.length===0 && (
-                  <div className="p-3 bg-gray-700 rounded">No upcoming events. Try scheduling an inspection or uploading contract.</div>
+                )) : (
+                  <div className="p-3 bg-gray-700 rounded">No active priorities.</div>
                 )}
 
                 <div className="flex gap-2 mt-2">
