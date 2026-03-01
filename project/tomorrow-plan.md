@@ -1,23 +1,33 @@
-Date: 2026-02-27
+Tri-Cities New Construction — Tomorrow Plan (2026-03-02)
 
-Top 3 Priority Actions
-1) Restore data flow: Connect a Chrome tab to the OpenClaw Browser Relay or supply an MLS export for Johnson City, Kingsport, and Bristol so we can capture real-time leads, price reductions, and inventory metrics.
-2) Activate outreach: With access restored, immediately call/SMS the 7-day new construction inquiries (especially any who requested tours or financing help) and log responses in GHL for sequencing (owner: Matt).
-3) Publish & amplify: Post the "New Construction Spotlight" social post, boost it through the ad plan in project/ad-campaign.md, and queue a follow-up afternoon post (placeholder tonight) to highlight the trio of neighborhoods buyers asked about.
+Top 3 priority actions:
+1) Live data pull for market metrics — populate project/market-intel.md with current median sale price, active inventory, median DOM, new construction supply and average build price. (Needed for pricing and urgency messaging.)
+2) Call and qualify priority leads — replace placeholders in project/follow-ups.md with contact details and call the top 10 recent inquiries; offer tours for new builds under $400k.
+3) Builder outreach and scheduling — contact local builders in Johnson City, Kingsport, and Bristol to confirm lot availability, incentives, and any upcoming releases. Schedule 1–2 broker tours/open houses this week.
 
-Key Follow-ups
-- Request the MLS/association report (median price, inventory, DOM) from the broker/board contact today.
-- Confirm builder incentives/pricing with two high-volume partners in Johnson City and Kingsport.
-- Once GHL-actions data arrives, map follow-ups to owners and automation statuses (Maia).
+Key follow-ups (from project/follow-ups.md placeholders):
+- [Lead Name] — call + text; confirm budget and timeline; offer tour availability.
+- [Listing/Community] — confirm price and incentives; schedule video/photography.
+- Builder contacts — request inventory under $400k and any limited-time incentives.
 
-Content Topics to Publish Tomorrow
-- Sub-$400K new construction inventory snapshot with builder contact details.
-- Builder incentives + warranty benefits explainer (Video or carousel).
-- Neighborhood comparison: Johnson City vs Kingsport vs Bristol (story-style post).
+Content topics to cover (use social post drafts):
+- Post A (from project/daily-post.md): "Dreaming of BRAND-NEW in the Tri-Cities — and yes, it can be under $400k!" — add community examples and 1 testimonial.
+- Post B (suggested): Quick builder spotlight — 30s reel showing model home highlights and incentives (placeholder: community name).
+- Email blast: Featured new constructions under $400k — include 3–4 listings and CTA to schedule tours.
 
-Time-Sensitive Opportunities
-- Any newly listed builder inventory under $400K — promote within 24 hours of release.
-- Price reductions reported in MLS (especially multi-unit or quick-move-in homes) — alert buyers and schedule tours.
+Time-sensitive opportunities / alerts:
+- Any listings with recent price reductions or builder incentives (PLACEHOLDER — requires live feed from MLS).
+- Limited build slots or lot releases from local builders — prioritize outreach today if available.
 
-Notes
-Hot-zone dynamics and afternoon-post notes remain unrecorded because the source files are missing. Treat the above as priority playbook once those inputs arrive.
+Data needed (exact points):
+- Median sale price (current month)
+- Active inventory count and weeks of inventory
+- Median days on market
+- List of active new construction communities and prices (esp. under $400k)
+- Lead contact details: name, phone, email, source, inquiry date
+
+Notes: Web search unavailable in this session — entries marked PLACEHOLDER or NEEDS LIVE DATA must be populated after a live MLS/web pull. Keep each content piece short and include 1 local example once live data is available.
+
+Prepared by: Workhorse (subagent)
+
+(End of plan)

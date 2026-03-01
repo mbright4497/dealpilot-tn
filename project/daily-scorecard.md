@@ -1,35 +1,30 @@
-Date: 2026-02-26
+Tri-Cities New Construction — Daily Scorecard (2026-03-01)
 
-Summary - Today's Results
-- Lead capture was limited by the same data-access issues we noted yesterday: Realtor.com/Zillow scrapers returned 403/429 and the requested hot-zone/afternoon-post/GHL-action files are still unavailable in the workspace. I flagged that and proceeded with placeholder intelligence to keep momentum.
-- Content ready for distribution: "Daily Social Post — New Construction in Tri-Cities, TN" (project/daily-post.md) is prepped with hook, value point, and CTA. Creative details (specific property + builder contact) remain placeholders until market/listing data is unlocked.
+Leads identified:
+- [PLACEHOLDER] Leads list not yet populated — see project/follow-ups.md (Status: NEEDS LIVE DATA).
 
-Leads Identified (placeholders)
-1) New construction inquiry: "Ridgeview Homes" family interested in sub-$400K models — no contact data yet because MLS listings are gated.
-2) Builder relationship: outreach to Kingsport-area builder for tour dates and incentives (owner: Matt, action: confirm availability by 5 PM tomorrow).
-3) Buyer alert: placeholder notification for price reductions in Bristol/Kingsport/Johnson City (awaiting MLS feed) — follow-up owner: Maia (GHL nurture editor).
+Content created today:
+- Social post draft: "Dreaming of BRAND-NEW in the Tri-Cities — and yes, it can be under $400k!" (from project/daily-post.md). CTA and hashtags included. Replace placeholders with community names and live pricing.
 
-Content Created
-- "Daily Social Post" (new-build spotlight) — ready for Facebook + Instagram with evergreen messaging about energy efficiency and warranties. Need final listing/price details once MLS or builder sheet is shared.
-- Planning notes captured in project/ad-campaign.md for next paid media burst.
+Market insights gathered:
+- Source file project/market-intel.md exists but is marked NEEDS LIVE DATA. Key metrics missing: median sale price, active inventory, median DOM, new construction supply and average build price. Until populated, treat market context as placeholder.
 
-Market Insights
-- Source file (project/market-intel.md) is still a placeholder, so the intelligence below is inferred:
-  - Inventory remains constrained below 3 months supply in Tri-Cities (regional trend).
-  - Buyers are prioritizing sub-$400K new construction for turnkey finishes + builder incentives.
-  - Local brokers are keeping an eye on any inventory shifts along I-26 (Johnson City to Kingsport).
+Actions taken:
+- Prepared social post draft for new construction under $400k.
+- Compiled follow-ups template for leads, listings, price-change alerts, builder outreach, and open house scheduling (see project/follow-ups.md).
 
-Follow-ups (actions + owners)
-- Call all new construction leads from the past 7 days (Matt).
-- Promote three featured sub-$400K listings and monitor engagement (Marketing Ops).
-- Confirm builder inventory updates and broker incentives (Maia).
+Estimated revenue impact (conservative estimates — placeholders):
+- Lead conversions expected (conservative): 1–2 contracts/month if 10 qualified leads contacted and 10% convert. Estimated gross commission range: $6k–$18k (depends on sale price; use actual sale prices when available). These are rough estimates and should be updated with live lead/listing data.
 
-Deals Progressing
-- No concrete transactions recorded today; everything is in placeholder status pending MLS/listing access. Revenue impact remains pending.
+Notes / Data required (live):
+- Populate project/market-intel.md with: median sale price, active inventory, DOM, new construction listings and average build price, notable neighborhoods.
+- Replace follow-ups placeholders with actual lead names, contact info, listing addresses, and builder contacts.
 
-Next Steps
-- Reconnect the data feed (Chrome relay or MLS export) so we can convert the placeholder leads into real contact records, listings, and price alerts.
-- Pair the ready social copy with the paid ad doc (project/ad-campaign.md) for the afternoon push.
-- Once GHL actions are available (missing file), sync follow-ups & automation flows.
+Files referenced:
+- project/market-intel.md (NEEDS LIVE DATA)
+- project/follow-ups.md (NEEDS LIVE DATA placeholders)
+- project/daily-post.md (draft content)
 
-Missing workspace inputs: project/hot-zones.md, project/afternoon-post.md, project/ghl-actions.md (not found).
+Prepared by: Workhorse (subagent)
+
+(End of scorecard)
