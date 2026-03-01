@@ -20,6 +20,12 @@ export type Contact = {
   email: string
 }
 
+export type TimelineEvent = {
+  label: string
+  date: string | null
+  status: 'completed' | 'active' | 'upcoming'
+}
+
 export type Transaction = {
   id: number
   address: string
@@ -30,6 +36,13 @@ export type Transaction = {
   closing: string
   contacts: Contact[]
   notes: string
+  current_state?: string
+  state_label?: string
+  binding_date?: string | null
+  closing_date?: string | null
+  inspection_end_date?: string | null
+  purchase_price?: number | null
+  timeline?: TimelineEvent[]
 }
 
 function NavIcon({ name }: { name: string }) {
@@ -60,17 +73,31 @@ export default function ChatPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true)
 
   useEffect(() => {
-    fetch('/api/transactions')
+    fetch('/api/deal-state/all')
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setTransactions(data.map((d: any) => ({
-            ...d,
-            contacts: typeof d.contacts === 'string' ? JSON.parse(d.contacts) : (d.contacts || []),
+            id: d.id,
+            address: d.address || '',
+            client: d.client || '',
+            type: d.type || 'Buyer',
+            status: d.current_state === 'closed' ? 'Closed' : d.current_state === 'draft' ? 'Active' : 'Pending',
+            binding: d.binding_date || '',
+            closing: d.closing_date || '',
+            contacts: [],
+            notes: '',
+            current_state: d.current_state || 'draft',
+            state_label: d.state_label || 'Draft',
+            binding_date: d.binding_date,
+            closing_date: d.closing_date,
+            inspection_end_date: d.inspection_end_date,
+            purchase_price: d.purchase_price,
+            timeline: d.timeline || [],
           })))
         }
       })
-      .catch(err => console.error('Failed to load transactions:', err))
+      .catch(err => console.error('Failed to load deal states:', err))
   }, [])
 
   async function addTransaction(tx: any) {
