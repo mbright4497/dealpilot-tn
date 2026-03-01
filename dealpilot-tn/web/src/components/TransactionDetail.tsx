@@ -97,7 +97,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   // timeline events: prefer remote.timeline else build from docs/deadlines
   const timelineEvents:TimelineEvent[] = React.useMemo(()=>{
-    const remoteEvents:TimelineEvent[] = (remote && remote.timeline) ? remote.timeline.map((e:any)=>({ id: e.id||String(e.ts||Math.random()), title: e.title||e.name, date: e.date, ts: e.ts, type: e.type, note: e.note })) : []
+    const remoteEvents:TimelineEvent[] = (remote && remote.timeline) ? remote.timeline.map((e:any)=>({ id: e.id||String(e.ts||Math.random()), title: e.title||e.name||e.event, date: e.date, ts: e.ts, type: e.type, note: e.note })) : []
     const auto = (deadlines||[]).map(d=>({ id:d.key, title:d.title, date: d.date ? d.date.toISOString() : undefined, type:'deadline' }))
     const combined = [...(remoteEvents||[]), ...auto]
     // sort by date ascending
@@ -152,7 +152,16 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const upcoming = timelineEvents.filter(e=> new Date(e.date!).getTime() > now)
 
   // basic color / integrity alert
-  const integrity = (remote && remote.lifecycle_integrity) || (mergedTx as any).lifecycle_integrity || 100
+  // lifecycle_integrity may be a number or an object { valid: boolean, errors: string[] }
+  const rawIntegrity = (remote && remote.lifecycle_integrity) || (mergedTx as any).lifecycle_integrity || null
+  let integrity = 100
+  if (typeof rawIntegrity === 'number') {
+    integrity = rawIntegrity
+  } else if (rawIntegrity && typeof rawIntegrity === 'object') {
+    if (rawIntegrity.valid === true) integrity = 100
+    else if (Array.isArray(rawIntegrity.errors) && rawIntegrity.errors.length > 0) integrity = 40
+    else integrity = 75
+  }
   const integrityColor = integrity < 60 ? 'bg-red-600' : integrity < 85 ? 'bg-yellow-500' : 'bg-green-500'
 
   return (
