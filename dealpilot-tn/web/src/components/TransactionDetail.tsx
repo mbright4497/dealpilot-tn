@@ -260,8 +260,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="md:col-span-2 bg-gray-800 p-4 rounded">
               <h3 className="text-lg font-semibold mb-2">Deal Vitals</h3>
               <div className="space-y-2 text-sm text-gray-300">
-                <div>Earnest: <strong className="text-white">{ (remote && remote.earnest_money) ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(remote.earnest_money) : (contractData?.earnest_money? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(contractData.earnest_money) : '—') }</strong></div>
-                <div>Financing: <strong className="text-white">{(remote && remote.financing) || contractData?.loan_type || '—'}</strong></div>
+                <div>Earnest: <strong className="text-white">{ (remote && remote.earnest_money) ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(typeof remote.earnest_money === 'object' ? remote.earnest_money.amount : remote.earnest_money) : (contractData?.earnest_money? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(contractData.earnest_money) : '—') }</strong></div>
+                <div>Financing: <strong className="text-white">{(remote && remote.financing && (typeof remote.financing === 'string' ? remote.financing : remote.financing.type)) || contractData?.loan_type || '—'}</strong></div>
                 <div>Inspection Ends: <strong className="text-white">{fmtDate((remote && remote.inspection_end_date) || undefined)}</strong></div>
                 <div>Appraisal: <strong className="text-white">{(remote && remote.appraisal_contingency) ? 'Yes' : '—'}</strong></div>
                 <div>Closing: <strong className="text-white">{fmtDate((remote && remote.closing_date) || mergedTx.closing)}</strong></div>
