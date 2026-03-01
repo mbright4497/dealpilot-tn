@@ -12,6 +12,22 @@ import type { AssistantStyle } from '@/lib/assistant-personality'
 import VoiceSettings from '@/components/VoiceSettings'
 import { previewVoice } from '@/lib/voice-engine'
 
+class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
+  constructor(p:any){super(p);this.state={error:null}}
+  static getDerivedStateFromError(e:Error){return{error:e}}
+  render(){
+    if(this.state.error) return (
+      <div className="p-6 bg-red-900 border border-red-500 rounded-lg text-white">
+        <h3 className="text-lg font-bold text-red-400">Deal View Error</h3>
+        <p className="mt-2 text-sm">{this.state.error.message}</p>
+        <pre className="mt-2 text-xs overflow-auto max-h-40 bg-black p-2 rounded">{this.state.error.stack}</pre>
+        <button onClick={()=>this.setState({error:null})} className="mt-3 px-4 py-2 bg-red-600 rounded text-sm">Retry</button>
+      </div>
+    )
+    return this.props.children
+  }
+}
+
 export type Contact = {
   role: string
   name: string
@@ -226,7 +242,7 @@ export default function ChatPage() {
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} />}
         {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onDeleteTransaction={deleteTransaction} />}
-        {view === 'deal' && selectedTx && <TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} />}
+        {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && <FormsFillView />}
         {view === 'deadlines' && <DeadlineCalculator />}
         {view === 'personality' && <>
