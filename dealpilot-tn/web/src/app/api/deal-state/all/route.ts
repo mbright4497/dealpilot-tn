@@ -13,10 +13,7 @@ type LifecycleState =
   | 'binding'
   | 'inspection_period'
   | 'post_inspection'
-  | 'appraisal_pending'
-  | 'clear_to_close'
   | 'closed'
-  | 'terminated'
 
 function computeLifecycleState(row: {
   binding_date: string | null
@@ -39,19 +36,49 @@ function computeLifecycleState(row: {
   return 'binding'
 }
 
+function validateLifecycleIntegrity(row: {
+  binding_date: string | null
+  inspection_end_date: string | null
+  closing_date: string | null
+}): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+
+  if (row.binding_date && !row.inspection_end_date) {
+    errors.push('Missing inspection_end_date')
+  }
+  if (row.inspection_end_date && !row.binding_date) {
+    errors.push('Inspection date without binding')
+  }
+  if (row.closing_date && !row.binding_date) {
+    errors.push('Closing date without binding')
+  }
+  if (
+    row.inspection_end_date &&
+    row.closing_date &&
+    row.inspection_end_date > row.closing_date
+  ) {
+    errors.push('Inspection ends after closing')
+  }
+  if (
+    row.closing_date &&
+    row.binding_date &&
+    row.closing_date < row.binding_date
+  ) {
+    errors.push('Closing before binding')
+  }
+
+  return { valid: errors.length === 0, errors }
+}
+
 const STATE_LABELS: Record<LifecycleState, string> = {
   draft: 'Draft',
   binding: 'Binding',
   inspection_period: 'Inspection Period Active',
   post_inspection: 'Post-Inspection Phase',
-  appraisal_pending: 'Appraisal Pending',
-  clear_to_close: 'Clear to Close',
   closed: 'Closed',
-  terminated: 'Terminated',
 }
 
 export async function GET() {
-  // 1. Fetch all transactions
   const { data: txns, error: txErr } = await supabase
     .from('transactions')
     .select('*')
@@ -63,12 +90,10 @@ export async function GET() {
       { status: 500 }
     )
   }
-
   if (!txns || txns.length === 0) {
     return NextResponse.json([])
   }
 
-  // 2. Fetch all deal_state rows in one query
   const dealIds = txns.map((t) => t.id)
   const { data: states } = await supabase
     .from('deal_state')
@@ -79,7 +104,6 @@ export async function GET() {
     (states || []).map((s) => [s.deal_id, s])
   )
 
-  // 3. Build enriched response
   const results = txns.map((tx) => {
     const ds = stateMap.get(tx.id)
     let lifecycle: LifecycleState = 'draft'
@@ -88,6 +112,7 @@ export async function GET() {
     let closingDate: string | null = null
     let inspectionEndDate: string | null = null
     let purchasePrice = 0
+    let integrity = { valid: true, errors: [] as string[] }
 
     if (ds) {
       lifecycle = computeLifecycleState(ds)
@@ -95,6 +120,9 @@ export async function GET() {
       closingDate = ds.closing_date
       inspectionEndDate = ds.inspection_end_date
       purchasePrice = ds.purchase_price || 0
+
+      // Run lifecycle integrity validation
+      integrity = validateLifecycleIntegrity(ds)
 
       if (ds.inspection_end_date) {
         timeline.push({
@@ -114,7 +142,6 @@ export async function GET() {
           new Date(b.date).getTime()
       )
 
-      // Update DB if state changed
       if (lifecycle !== ds.current_state) {
         supabase
           .from('deal_state')
@@ -139,6 +166,7 @@ export async function GET() {
       inspection_end_date: inspectionEndDate,
       purchase_price: purchasePrice,
       timeline,
+      lifecycle_integrity: integrity,
     }
   })
 
