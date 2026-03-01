@@ -8,70 +8,76 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// Phase 2: Allowed lifecycle states
-const ALLOWED_STATES = [
-  'draft',
-  'binding',
-  'inspection_period',
-  'post_inspection',
-  'appraisal_pending',
-  'clear_to_close',
-  'closed',
-  'terminated',
-] as const
+type LifecycleState =
+  | 'draft'
+  | 'binding'
+  | 'inspection_period'
+  | 'post_inspection'
+  | 'closed'
 
-type LifecycleState = typeof ALLOWED_STATES[number]
-
-// Phase 2: Deterministic state computation
 function computeLifecycleState(row: {
   binding_date: string | null
   inspection_end_date: string | null
   closing_date: string | null
 }): LifecycleState {
   if (!row.binding_date) return 'draft'
-
   const today = new Date().toISOString().split('T')[0]
-
-  if (
-    row.inspection_end_date &&
-    today <= row.inspection_end_date
-  ) {
+  if (row.inspection_end_date && today <= row.inspection_end_date)
     return 'inspection_period'
-  }
-
   if (
     row.inspection_end_date &&
     row.closing_date &&
     today > row.inspection_end_date &&
     today < row.closing_date
-  ) {
+  )
     return 'post_inspection'
-  }
-
-  if (row.closing_date && today >= row.closing_date) {
+  if (row.closing_date && today >= row.closing_date)
     return 'closed'
-  }
-
   return 'binding'
 }
 
-// Phase 2: Build derived timeline
+function validateLifecycleIntegrity(row: {
+  binding_date: string | null
+  inspection_end_date: string | null
+  closing_date: string | null
+}): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+  if (row.binding_date && !row.inspection_end_date) {
+    errors.push('Missing inspection_end_date')
+  }
+  if (row.inspection_end_date && !row.binding_date) {
+    errors.push('Inspection date without binding')
+  }
+  if (row.closing_date && !row.binding_date) {
+    errors.push('Closing date without binding')
+  }
+  if (
+    row.inspection_end_date &&
+    row.closing_date &&
+    row.inspection_end_date > row.closing_date
+  ) {
+    errors.push('Inspection ends after closing')
+  }
+  if (
+    row.closing_date &&
+    row.binding_date &&
+    row.closing_date < row.binding_date
+  ) {
+    errors.push('Closing before binding')
+  }
+  return { valid: errors.length === 0, errors }
+}
+
 function buildTimeline(row: {
   inspection_end_date: string | null
   closing_date: string | null
 }) {
   const timeline: { event: string; date: string }[] = []
   if (row.inspection_end_date) {
-    timeline.push({
-      event: 'Inspection Ends',
-      date: row.inspection_end_date,
-    })
+    timeline.push({ event: 'Inspection Ends', date: row.inspection_end_date })
   }
   if (row.closing_date) {
-    timeline.push({
-      event: 'Closing Date',
-      date: row.closing_date,
-    })
+    timeline.push({ event: 'Closing Date', date: row.closing_date })
   }
   return timeline
 }
@@ -101,10 +107,9 @@ export async function GET(
     )
   }
 
-  // Phase 2: Compute lifecycle state
   const computed = computeLifecycleState(data)
+  const integrity = validateLifecycleIntegrity(data)
 
-  // Update DB if state changed
   if (computed !== data.current_state) {
     await supabase
       .from('deal_state')
@@ -115,7 +120,6 @@ export async function GET(
       .eq('deal_id', dealId)
   }
 
-  // Phase 2: Build timeline
   const timeline = buildTimeline(data)
 
   return NextResponse.json({
@@ -136,5 +140,6 @@ export async function GET(
     possession_date: data.possession_date,
     current_state: computed,
     timeline,
+    lifecycle_integrity: integrity,
   })
 }
