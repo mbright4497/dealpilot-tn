@@ -53,7 +53,10 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
       ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
       : undefined;
 
-<<<<<<< HEAD
+  // load saved extracted data and pdfUrl from server on mount
+  const onExtractedRef = useRef(onExtracted);
+  onExtractedRef.current = onExtracted;
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -61,34 +64,22 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         const res = await fetch(`/api/deals/${dealId}/contract`);
         if (!res.ok) return;
         const j = await res.json();
-        if (mounted && j?.extracted) {
-          setExtractedData(j.extracted);
-          if (onExtractedRef.current) onExtractedRef.current(j.extracted);
-=======
-  // load saved extracted data and pdfUrl from server on mount
-  const onExtractedRef = (typeof window !== 'undefined') ? { current: onExtracted } as any : { current: onExtracted };
-  onExtractedRef.current = onExtracted
-
-  useEffect(()=>{
-    let mounted = true
-    (async ()=>{
-      try{
-        const res = await fetch(`/api/deals/${dealId}/contract`)
-        if(!res.ok) return
-        const j = await res.json()
-        if(mounted){
-          if(j?.extracted){
-            setExtractedData(j.extracted)
-            if(onExtractedRef.current) onExtractedRef.current(j.extracted)
+        if (mounted) {
+          if (j?.extracted) {
+            setExtractedData(j.extracted);
+            if (onExtractedRef.current) onExtractedRef.current(j.extracted);
           }
-          if(j?.pdfUrl){
-            setPdfUrl(j.pdfUrl)
+          if (j?.pdfUrl) {
+            setPdfUrl(j.pdfUrl);
           }
->>>>>>> 1a00d8a (feat(contract): persist PDF to Supabase Storage, auto-save extracted data, restore on reload)
         }
-      } catch (_e) { /* ignore */ }
+      } catch (_e) {
+        /* ignore */
+      }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [dealId]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {

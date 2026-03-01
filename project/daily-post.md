@@ -1,14 +1,11 @@
-# Daily Social Post — New Construction in Tri-Cities, TN
+SOCIAL POST — New Construction in Tri-Cities TN (DRAFT)
 
-Status: DRAFT (data-driven details to be inserted after market check)
+Hook: "Dreaming of BRAND-NEW in the Tri-Cities — and yes, it can be under $400k!"
 
-Hook:
-- "Dreaming of a brand-new home in the Tri-Cities for under $400k? Your new build could be closer than you think."
+Body/Value: "New construction communities are popping up in Johnson City, Kingsport, and Bristol — modern finishes, energy-efficient builds, and flexible floorplans ideal for growing families and first-time buyers. Inventory moves fast — we can help you lock a lot or an early build slot and negotiate builder incentives."
 
-Value point:
-- Highlight low maintenance, modern layouts, energy efficiency, and potential incentives from builders. Mention popular neighborhoods in Johnson City, Kingsport, Bristol once verified.
+CTA: "Want to tour available new builds under $400k this week? DM us or call the iHome Team at Keller Williams Kingsport and we’ll set it up."
 
-CTA:
-- "Ready to tour new builds or get a free list of current options under $400k? DM iHome Team at Keller Williams Kingsport or call Matt at [PHONE]."
+Hashtags: #TriCitiesTN #NewConstruction #JohnsonCity #Kingsport #Bristol #iHomeTeam #KellerWilliams
 
-Notes for Workhorse: Insert 2–3 active listings (addresses + price) and one builder contact if available. Include a link to property search and recommended open-house times.
+Notes for Workhorse: Replace claims with live examples (community names, prices, link to listings). Add 1 short testimonial if available.
