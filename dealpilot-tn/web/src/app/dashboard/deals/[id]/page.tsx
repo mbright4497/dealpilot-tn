@@ -4,6 +4,9 @@
 import React from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import DeadlineTimeline from '../../../../components/DeadlineTimeline'
+import dynamic from 'next/dynamic'
+const TransactionDetail = dynamic(() => import('../../../../components/TransactionDetail'), { ssr: false })
+import ErrorBoundary from '../../../../components/ErrorBoundary'
 
 export default function DealDetail({ params }: { params: { id: string } }) {
   const supabase = createClientComponentClient()
@@ -80,10 +83,18 @@ export default function DealDetail({ params }: { params: { id: string } }) {
         {tab==='compliance' && (
           <CompliancePanel dealId={params.id} />
         )}
+
+        {/* New: TransactionDetail wrapped in ErrorBoundary for safety */}
+        <div className="mt-6">
+          <ErrorBoundary>
+            <TransactionDetail transaction={{ id: Number(params.id), address: deal.address || deal.title || 'Deal', client: deal.client || deal.agent || 'Unknown', type: deal.type || 'Unknown', status: deal.status || 'Unknown', contacts: deal.contacts || [] }} onBack={()=>{}} />
+          </ErrorBoundary>
+        </div>
       </div>
     </div>
   )
 }
+
 
 function DocumentsList({dealId}:{dealId:string}){
   const supabase = createClientComponentClient()
