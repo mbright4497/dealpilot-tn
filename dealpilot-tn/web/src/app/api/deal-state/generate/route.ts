@@ -18,28 +18,32 @@ export async function POST(req: Request) {
   try {
     const { deal_id } = await req.json()
     if (!deal_id) {
-      return NextResponse.json({ error: 'deal_id required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'deal_id required' },
+        { status: 400 }
+      )
     }
 
-    // Pull extracted contract data from contract_store
+    // Pull extracted contract data
     const { data: contract, error: cErr } = await supabase
       .from('contract_store')
       .select('extracted')
-      .eq('deal_id', deal_id)
+      .eq('deal_id', String(deal_id))
       .single()
 
     if (cErr || !contract?.extracted) {
-      return NextResponse.json({ error: 'No extracted contract data found', details: cErr?.message }, { status: 404 })
+      return NextResponse.json(
+        { error: 'No extracted contract data found', details: cErr?.message },
+        { status: 404 }
+      )
     }
 
     const ex = contract.extracted
 
-    // Normalize dates
     const bindingDate = ex.binding_agreement_date || null
     const closingDate = ex.closing_date || null
     const possessionDate = ex.possession_date || null
     const inspectionDays = ex.inspection_period_days || null
-    const financingDays = ex.financing_contingency_days || null
 
     let inspectionEndDate: string | null = null
     if (bindingDate && inspectionDays) {
@@ -51,7 +55,6 @@ export async function POST(req: Request) {
       earnestMoneyDueDate = addDays(bindingDate, 3)
     }
 
-    // Build Deal State Object
     const dealState = {
       deal_id: deal_id,
       binding_date: bindingDate,
@@ -67,7 +70,7 @@ export async function POST(req: Request) {
       current_state: 'binding',
     }
 
-    // Upsert into Supabase (replace if exists for same deal)
+    // Upsert
     const { data: existing } = await supabase
       .from('deal_state')
       .select('id')
@@ -94,7 +97,6 @@ export async function POST(req: Request) {
       result = data
     }
 
-    // Return spec-compliant Deal State Object
     return NextResponse.json({
       deal_id: result.deal_id,
       binding_date: result.binding_date,
@@ -105,9 +107,9 @@ export async function POST(req: Request) {
       },
       financing: {
         type: result.financing_type,
-        inspection_period_days: result.inspection_period_days,
-        inspection_end_date: result.inspection_end_date,
       },
+      inspection_period_days: result.inspection_period_days,
+      inspection_end_date: result.inspection_end_date,
       appraisal_contingency: result.appraisal_contingency,
       closing_date: result.closing_date,
       possession_date: result.possession_date,
