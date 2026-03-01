@@ -173,8 +173,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const past = timelineEvents.filter(e=> new Date(e.date!).getTime() <= now)
   const upcoming = timelineEvents.filter(e=> new Date(e.date!).getTime() > now)
 
-  // basic color / integrity alert
-  // lifecycle_integrity may be a number or an object { valid: boolean, errors: string[] }
+  // basic color / integrity alert (legacy kept for fallbacks)
   const rawIntegrity = (remote && remote.lifecycle_integrity) || (mergedTx as any).lifecycle_integrity || null
   let integrity = 100
   if (typeof rawIntegrity === 'number') {
@@ -185,6 +184,20 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     else integrity = 75
   }
   const integrityColor = integrity < 60 ? 'bg-red-600' : integrity < 85 ? 'bg-yellow-500' : 'bg-green-500'
+
+  // deal health state
+  const [health, setHealth] = React.useState<{ status: string, score: number, signals: any[] } | null>(null)
+  React.useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch(`/api/deal-health/${transaction.id}`)
+        if(!mounted) return
+        if(res.ok){ const j = await res.json(); setHealth(j) }
+      }catch(e){ }
+    })()
+    return ()=>{ mounted=false }
+  },[transaction.id])
 
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
@@ -221,9 +234,15 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             </div>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-end">
-                <div className="text-xs text-gray-300">Lifecycle Integrity</div>
-                <div className={`w-40 h-3 rounded ${integrityColor}`}></div>
-                <div className="text-xs text-gray-300">{integrity}%</div>
+                <div className="text-xs text-gray-300">Deal Health</div>
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${health?.status==='healthy' ? 'bg-green-500' : health?.status==='attention' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
+                  <div className="font-semibold">{health ? (health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</div>
+                  <div className="text-xs text-gray-300 ml-2">{health ? health.score + '%' : ''}</div>
+                </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {health && health.signals && health.signals.length>0 ? health.signals.map((s:any,i:number)=>(<div key={i} className="text-xs">• {s.label} <span className="text-gray-500">({s.impact})</span></div>)) : <div className="text-xs text-gray-500">No signals</div>}
+                </div>
               </div>
               <div className="flex gap-2">
                 <button className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
