@@ -1,5 +1,5 @@
 'use client'
-// Stage 2: DailyBriefing integration (Issue #10)
+// Phase 3: Live deal-state integration
 import React from 'react'
 import DailyBriefing from './DailyBriefing'
 import type { Transaction as ChatTransaction } from '@/app/chat/page'
@@ -11,25 +11,48 @@ interface Props {
   onNavigate?: (view: string) => void
 }
 
+const PROGRESS_MAP: Record<string, number> = {
+  draft: 10,
+  binding: 25,
+  inspection_period: 45,
+  post_inspection: 70,
+  closed: 100,
+}
+
+const STATE_COLORS: Record<string, string> = {
+  draft: 'bg-gray-400',
+  binding: 'bg-blue-500',
+  inspection_period: 'bg-green-500',
+  post_inspection: 'bg-yellow-500',
+  closed: 'bg-gray-400',
+}
+
+const BADGE_COLORS: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  binding: 'bg-blue-50 text-blue-700',
+  inspection_period: 'bg-green-50 text-green-700',
+  post_inspection: 'bg-yellow-50 text-yellow-700',
+  closed: 'bg-gray-100 text-gray-600',
+}
+
 export default function TCDashboard({ transactions = [], onOpenDeal, onViewChecklist, onNavigate }: Props) {
-  const active = transactions.filter(t => t.status === 'Active').length
-  const pending = transactions.filter(t => t.status === 'Pending').length
   const total = transactions.length
+  const activeCt = transactions.filter(t => t.current_state && t.current_state !== 'closed' && t.current_state !== 'draft').length
+  const closedCt = transactions.filter(t => t.current_state === 'closed').length
 
-  const activities = [
-    { text: 'Earnest money received for 123 Maple St', time: '2 hours ago', icon: '💰' },
-    { text: 'Inspection completed for 45 Oak Ln', time: '4 hours ago', icon: '🔍' },
-    { text: 'Appraisal ordered for 78 Pine Rd', time: '6 hours ago', icon: '📋' },
-    { text: 'Title commitment received for 123 Maple St', time: '1 day ago', icon: '📄' },
-    { text: 'Final walkthrough scheduled for 45 Oak Ln', time: '1 day ago', icon: '🏠' },
-  ]
-
-  const upcomingDeadlines = [
-    { task: 'Inspection Period Ends', deal: '123 Maple St', date: 'Feb 28', urgent: true },
-    { task: 'Financing Contingency', deal: '45 Oak Ln', date: 'Mar 3', urgent: true },
-    { task: 'Appraisal Due', deal: '78 Pine Rd', date: 'Mar 8', urgent: false },
-    { task: 'Title Review', deal: '123 Maple St', date: 'Mar 10', urgent: false },
-  ]
+  // Derive upcoming deadlines from timeline data
+  const upcomingDeadlines = transactions.flatMap(tx => {
+    if (!tx.timeline) return []
+    return tx.timeline
+      .filter(ev => ev.status === 'upcoming' || ev.status === 'active')
+      .filter(ev => ev.date)
+      .map(ev => ({
+        task: ev.label,
+        deal: tx.address,
+        date: ev.date ? new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+        urgent: ev.status === 'active',
+      }))
+  }).slice(0, 6)
 
   return (
     <div className="space-y-6">
@@ -40,7 +63,6 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📊</span>
-            <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-50 text-green-600">+2 this week</span>
           </div>
           <p className="text-3xl font-bold text-gray-900">{total}</p>
           <p className="text-sm text-gray-500 mt-1">Total Transactions</p>
@@ -50,21 +72,22 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
             <span className="text-2xl">🟢</span>
             <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-600">On Track</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{active}</p>
+          <p className="text-3xl font-bold text-gray-900">{activeCt}</p>
           <p className="text-sm text-gray-500 mt-1">Active Deals</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-2xl">⏳</span>
-            <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-50 text-yellow-600">Needs Attention</span>
+            <span className="text-2xl">✅</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{pending}</p>
-          <p className="text-sm text-gray-500 mt-1">Pending Deals</p>
+          <p className="text-3xl font-bold text-gray-900">{closedCt}</p>
+          <p className="text-sm text-gray-500 mt-1">Closed Deals</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">⚡</span>
-            <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-50 text-red-600">2 urgent</span>
+            {upcomingDeadlines.filter(d => d.urgent).length > 0 && (
+              <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-50 text-red-600">{upcomingDeadlines.filter(d => d.urgent).length} urgent</span>
+            )}
           </div>
           <p className="text-3xl font-bold text-gray-900">{upcomingDeadlines.length}</p>
           <p className="text-sm text-gray-500 mt-1">Upcoming Deadlines</p>
@@ -82,11 +105,14 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
             <button
               onClick={() => onNavigate && onNavigate('transactions')}
               className="text-sm text-orange-500 hover:text-orange-600 font-medium"
-            >View All &rarr;</button>
+            >View All →</button>
           </div>
           <div className="divide-y divide-gray-50">
             {transactions.map(tx => {
-              const progress = tx.status === 'Active' ? 45 : tx.status === 'Pending' ? 70 : 100
+              const state = tx.current_state || 'draft'
+              const progress = PROGRESS_MAP[state] || 10
+              const colorClass = STATE_COLORS[state] || 'bg-gray-400'
+              const badgeClass = BADGE_COLORS[state] || 'bg-gray-100 text-gray-600'
               return (
                 <div
                   key={tx.id}
@@ -95,37 +121,27 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
-                        tx.status === 'Active' ? 'bg-green-500' :
-                        tx.status === 'Pending' ? 'bg-yellow-500' : 'bg-gray-400'
-                      }`}>
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${colorClass}`}>
                         {tx.type === 'Buyer' ? 'B' : tx.type === 'Seller' ? 'S' : '?'}
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{tx.address}</p>
-                        <p className="text-sm text-gray-500">{tx.client} &middot; {tx.type || 'Transaction'}</p>
+                        <p className="text-sm text-gray-500">{tx.client} · {tx.type || 'Transaction'}</p>
                       </div>
                     </div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      tx.status === 'Active' ? 'bg-green-50 text-green-700' :
-                      tx.status === 'Pending' ? 'bg-yellow-50 text-yellow-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>{tx.status}</span>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${badgeClass}`}>{tx.state_label || 'Draft'}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-gray-100 rounded-full h-1.5">
                       <div
-                        className={`h-1.5 rounded-full transition-all ${
-                          tx.status === 'Active' ? 'bg-green-500' :
-                          tx.status === 'Pending' ? 'bg-yellow-500' : 'bg-gray-400'
-                        }`}
+                        className={`h-1.5 rounded-full transition-all ${colorClass}`}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
                     <span className="text-xs text-gray-400 whitespace-nowrap">{progress}% complete</span>
                   </div>
-                  {tx.closing && (
-                    <p className="text-xs text-gray-400 mt-1.5">Closing: {tx.closing}</p>
+                  {tx.closing_date && (
+                    <p className="text-xs text-gray-400 mt-1.5">Closing: {tx.closing_date}</p>
                   )}
                 </div>
               )
@@ -142,9 +158,12 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
               <button
                 onClick={() => onNavigate && onNavigate('deadlines')}
                 className="text-sm text-orange-500 hover:text-orange-600 font-medium"
-              >View All &rarr;</button>
+              >View All →</button>
             </div>
             <div className="divide-y divide-gray-50">
+              {upcomingDeadlines.length === 0 && (
+                <div className="p-4 text-sm text-gray-400 text-center">No upcoming deadlines</div>
+              )}
               {upcomingDeadlines.map((d, i) => (
                 <div key={i} className="p-4 flex items-start gap-3">
                   <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${d.urgent ? 'bg-red-500' : 'bg-gray-300'}`} />
@@ -188,25 +207,6 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl border border-gray-200">
-        <div className="p-5 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">Recent Activity</h3>
-          <p className="text-sm text-gray-500">Latest updates across all your transactions</p>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {activities.map((a, i) => (
-            <div key={i} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 transition-colors">
-              <span className="text-lg">{a.icon}</span>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">{a.text}</p>
-              </div>
-              <span className="text-xs text-gray-400 whitespace-nowrap">{a.time}</span>
-            </div>
-          ))}
         </div>
       </div>
     </div>
