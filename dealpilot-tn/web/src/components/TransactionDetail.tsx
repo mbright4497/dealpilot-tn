@@ -133,6 +133,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   }
 
   const stageFromProgress = (p:number)=>{
+        if(transaction?.status === 'Closed') return 'Closed'
     if(p < 5) return 'New'
     if(p < 30) return 'Under Contract'
     if(p < 55) return 'Inspection'
@@ -283,7 +284,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
-            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</span>
+            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</span>
           </div>
           <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
@@ -310,14 +311,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div>
               <div className="text-sm text-gray-300">Mission Cockpit</div>
               <div className="text-xl font-bold">{mergedTx.address} — {mergedTx.client}</div>
-              <div className="text-sm text-gray-400">Stage: <span className="font-semibold">{stageFromProgress(combinedProgress())}</span> • {combinedProgress()}% complete</div>
+              <div className="text-sm text-gray-400">Stage: <span className="font-semibold">{transaction?.status === 'Closed' ? 'Closed' : stageFromProgress(combinedProgress())}</span> • {transaction?.status === 'Closed' ? 100 : combinedProgress()}% complete</div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-end">
                 <div className="text-xs text-gray-300">Deal Health</div>
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${health?.status==='healthy' ? 'bg-green-500' : health?.status==='attention' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
-                  <div className="font-semibold">{health ? (health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</div>
+                  <div className="font-semibold">{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</div>
                   <div className="text-xs text-gray-300 ml-2">{health ? health.score + '%' : ''}</div>
                 </div>
                 {/* existing signals (structured) */}
@@ -411,7 +412,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 <div className="text-xs text-gray-400">Lifecycle</div>
                 <div className="flex gap-2 mt-2">
                   {['New','Under Contract','Inspection','Appraisal','Clear to Close','Closed'].map((s,i)=> (
-                    <div key={s} className={`flex-1 text-center py-1 rounded text-xs ${i <= Math.floor(combinedProgress()/20) ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'}`}>{s}</div>
+                    <div key={s} className={`flex-1 text-center py-1 rounded text-xs ${i <= (transaction?.status==='Closed' ? 5 : Math.floor(combinedProgress()/20)) ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'}`}>{s}</div>
                   ))}
                 </div>
               </div>
