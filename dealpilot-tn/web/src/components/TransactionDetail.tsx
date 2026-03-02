@@ -213,6 +213,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     return ()=>{ mounted=false }
   },[transaction.id])
 
+  // deal deadlines state (Phase 11)
+  const [dealDeadlines, setDealDeadlines] = React.useState<any[]>([])
+  React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch(`/api/deal-deadlines/${transaction.id}`); if(!mounted) return; if(res.ok){ const j = await res.json(); setDealDeadlines(j.deadlines || j.all_deadlines || []) } }catch(e){} })(); return ()=>{ mounted=false } },[transaction.id])
+
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
       <div className="flex items-center justify-between mb-4">
@@ -350,6 +354,30 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               )}
             </div>
           </div>
+
+          {/* Key Deadlines - Phase 11 */}
+          {dealDeadlines.length > 0 && (
+            <div className="bg-gray-800 p-4 rounded mb-4">
+              <h3 className="text-lg font-semibold mb-2">Key Deadlines</h3>
+              <div className="space-y-2">
+                {dealDeadlines.slice(0,6).map((d: any, i: number) => {
+                  const isOverdue = d.status === 'overdue'
+                  const isToday = d.status === 'today'
+                  const isWarn = !isOverdue && !isToday && (d.days_remaining != null && d.days_remaining <= 3)
+                  const dotColor = isOverdue || isToday ? 'bg-red-500' : isWarn ? 'bg-amber-500' : 'bg-green-500'
+                  return (
+                    <div key={i} className="flex items-center gap-3 p-2 bg-gray-700 rounded">
+                      <div className={`w-2 h-2 rounded-full ${dotColor}`} />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">{d.label}</div>
+                      </div>
+                      <div className="text-xs text-gray-400">{isOverdue ? `${Math.abs(d.days_remaining)}d overdue` : isToday ? 'Today' : d.days_remaining != null ? `${d.days_remaining}d` : d.date}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
       )}
