@@ -1,16 +1,14 @@
 'use client'
-// Phase 3: Live deal-state integration
+// Phase 11: Deterministic Deadline Layer
 import React from 'react'
 import DailyBriefing from './DailyBriefing'
 import type { Transaction as ChatTransaction } from '@/app/chat/page'
-
 interface Props {
   transactions?: ChatTransaction[]
   onOpenDeal?: (txId: number) => void
   onViewChecklist?: (txId: number) => void
   onNavigate?: (view: string) => void
 }
-
 const PROGRESS_MAP: Record<string, number> = {
   draft: 10,
   binding: 25,
@@ -18,7 +16,6 @@ const PROGRESS_MAP: Record<string, number> = {
   post_inspection: 70,
   closed: 100,
 }
-
 const STATE_COLORS: Record<string, string> = {
   draft: 'bg-gray-400',
   binding: 'bg-blue-500',
@@ -26,7 +23,6 @@ const STATE_COLORS: Record<string, string> = {
   post_inspection: 'bg-yellow-500',
   closed: 'bg-gray-400',
 }
-
 const BADGE_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
   binding: 'bg-blue-50 text-blue-700',
@@ -34,34 +30,21 @@ const BADGE_COLORS: Record<string, string> = {
   post_inspection: 'bg-yellow-50 text-yellow-700',
   closed: 'bg-gray-100 text-gray-600',
 }
-
 export default function TCDashboard({ transactions = [], onOpenDeal, onViewChecklist, onNavigate }: Props) {
   const total = transactions.length
   const [portfolio, setPortfolio] = React.useState<any|null>(null)
-  const activeCt = transactions.filter(t => t.current_state && t.current_state !== 'closed' && t.current_state !== 'draft').length
-  const closedCt = transactions.filter(t => t.current_state === 'closed').length
-
+  const [portfolioDeadlines, setPortfolioDeadlines] = React.useState<any|null>(null)
   // fetch portfolio health
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-health'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolio(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
-
-  // Derive upcoming deadlines from timeline data
-  const upcomingDeadlines = transactions.flatMap(tx => {
-    if (!tx.timeline) return []
-    return tx.timeline
-      .filter(ev => ev.status === 'upcoming' || ev.status === 'active')
-      .filter(ev => ev.date)
-      .map(ev => ({
-        task: ev.label,
-        deal: tx.address,
-        date: ev.date ? new Date(ev.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-        urgent: ev.status === 'active',
-      }))
-  }).slice(0, 6)
-
+  // fetch portfolio deadlines
+  React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-deadlines'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolioDeadlines(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
+  const upcomingDeadlines: any[] = portfolioDeadlines ? [
+    ...( portfolioDeadlines.next_7_days || [] ).slice(0, 6)
+  ] : []
+  const overdueCount = portfolioDeadlines?.overdue_count || 0
   return (
     <div className="space-y-6">
       <DailyBriefing userName="Matt" transactions={transactions as ChatTransaction[]} onNavigate={(dest) => onNavigate && onNavigate(dest)} onOpenDeal={(txId) => onOpenDeal && onOpenDeal(txId)} />
-
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
@@ -71,43 +54,34 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           <p className="text-3xl font-bold text-gray-900">{total}</p>
           <p className="text-sm text-gray-500 mt-1">Total Transactions</p>
         </div>
-
         {/* Portfolio Health */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${portfolio ? ( (portfolio.overall_status==='healthy') ? 'bg-green-500' : (portfolio.overall_status==='attention') ? 'bg-amber-500' : 'bg-red-500' ) : 'bg-gray-300'}`} />
+              <div className={`w-3 h-3 rounded-full ${portfolio ? (portfolio.overall_status==='healthy' ? 'bg-green-500' : portfolio.overall_status==='attention' ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300'}`} />
               <span className="text-sm font-medium">Portfolio Health</span>
             </div>
           </div>
-          {/* STATUS label map */}
-          {(() => {
-            const STATUS_LABELS: Record<string,string> = { healthy: 'Healthy', attention: 'Needs Attention', at_risk: 'At Risk' }
-            const label = portfolio ? (STATUS_LABELS[portfolio.overall_status] || portfolio.overall_status) : '—'
-            return <p className="text-3xl font-bold text-gray-900">{label}</p>
-          })()}
+          <p className="text-3xl font-bold text-gray-900 capitalize">{portfolio ? portfolio.overall_status : '—'}</p>
           <p className="text-sm text-gray-500 mt-1">Overall Status</p>
         </div>
-
         {/* Deal Breakdown */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">🧾</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{portfolio ? `${portfolio?.summary?.healthy ?? 0}/${portfolio?.summary?.attention ?? 0}/${portfolio?.summary?.at_risk ?? 0}` : '—'}</p>
+          <p className="text-3xl font-bold text-gray-900">{portfolio ? `${portfolio.healthy}/${portfolio.attention}/${portfolio.at_risk}` : '—'}</p>
           <p className="text-sm text-gray-500 mt-1">Healthy / Attention / At Risk</p>
         </div>
-
-        {/* Closing Soon */}
+        {/* Overdue Deadlines */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📅</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{portfolio ? portfolio.closing_soon : '—'}</p>
-          <p className="text-sm text-gray-500 mt-1">Closing Soon</p>
+          <p className={`text-3xl font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{portfolioDeadlines ? overdueCount : '—'}</p>
+          <p className="text-sm text-gray-500 mt-1">Overdue Deadlines</p>
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Active Transactions */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200">
@@ -162,13 +136,17 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
             })}
           </div>
         </div>
-
         {/* Right Column */}
         <div className="space-y-6">
-          {/* Upcoming Deadlines */}
+          {/* Upcoming Deadlines - Live from portfolio-deadlines API */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h3 className="font-semibold text-gray-900">Upcoming Deadlines</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900">Upcoming Deadlines</h3>
+                {overdueCount > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">{overdueCount} overdue</span>
+                )}
+              </div>
               <button
                 onClick={() => onNavigate && onNavigate('deadlines')}
                 className="text-sm text-orange-500 hover:text-orange-600 font-medium"
@@ -176,21 +154,33 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
             </div>
             <div className="divide-y divide-gray-50">
               {upcomingDeadlines.length === 0 && (
-                <div className="p-4 text-sm text-gray-400 text-center">No upcoming deadlines</div>
-              )}
-              {upcomingDeadlines.map((d, i) => (
-                <div key={i} className="p-4 flex items-start gap-3">
-                  <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${d.urgent ? 'bg-red-500' : 'bg-gray-300'}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{d.task}</p>
-                    <p className="text-xs text-gray-500">{d.deal}</p>
-                  </div>
-                  <span className={`text-xs font-medium whitespace-nowrap ${d.urgent ? 'text-red-600' : 'text-gray-500'}`}>{d.date}</span>
+                <div className="p-4 text-sm text-gray-400 text-center">
+                  {portfolioDeadlines ? 'No deadlines in next 7 days' : 'Loading...'}
                 </div>
-              ))}
+              )}
+              {upcomingDeadlines.map((d: any, i: number) => {
+                const isOverdue = d.status === 'overdue'
+                const isToday = d.status === 'today'
+                const isWarning = !isOverdue && !isToday && d.days_remaining <= 3
+                const dotColor = isOverdue || isToday ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-green-500'
+                const dateColor = isOverdue || isToday ? 'text-red-600' : isWarning ? 'text-amber-600' : 'text-gray-500'
+                return (
+                  <div key={i} className="p-4 flex items-start gap-3">
+                    <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{d.label}</p>
+                      <p className="text-xs text-gray-500">{d.address}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs font-medium whitespace-nowrap ${dateColor}`}>
+                        {isOverdue ? `${Math.abs(d.days_remaining)}d overdue` : isToday ? 'Today' : `${d.days_remaining}d`}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
-
           {/* Quick Actions */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
