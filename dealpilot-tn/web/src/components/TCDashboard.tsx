@@ -36,12 +36,15 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const [portfolioDeadlines, setPortfolioDeadlines] = React.useState<any|null>(null)
   const [portfolioBrief, setPortfolioBrief] = React.useState<string | null>(null);
   const [alerts, setAlerts] = React.useState<any[]>([]);
+  const [notifPrefs, setNotifPrefs] = React.useState<any>(null);
   // fetch portfolio health
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-health'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolio(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
   // fetch portfolio deadlines
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-deadlines'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolioDeadlines(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
   // fetch portfolio brief and proactive alerts
-  React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ fetch("/api/portfolio-brief").then(res=>res.json()).then(data=>{ if(!mounted) return; setPortfolioBrief(data.summary) }).catch(()=>{}); fetch("/api/portfolio-alerts").then(res=>res.json()).then(data=>{ if(!mounted) return; setAlerts(data.alerts ?? []) }).catch(()=>{}); }catch(e){} })(); return ()=>{ mounted=false } },[])
+  React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ fetch("/api/portfolio-brief").then(res=>res.json()).then(data=>{ if(!mounted) return; setPortfolioBrief(data.summary) }).catch(()=>{}); fetch("/api/portfolio-alerts").then(res=>res.json()).then(data=>{ if(!mounted) return; setAlerts(data.alerts ?? []) }).catch(()=>{}); // fetch notification preferences
+    fetch('/api/notification-preferences').then(r=>r.json()).then(d=>{ if(!mounted) return; setNotifPrefs(d.prefs) }).catch(()=>{});
+  }catch(e){} })(); return ()=>{ mounted=false } },[])
   const upcomingDeadlines: any[] = portfolioDeadlines ? [
     ...( (portfolioDeadlines.next_7_days && portfolioDeadlines.next_7_days.length > 0) ? portfolioDeadlines.next_7_days : (portfolioDeadlines.all_deadlines || []).filter((d: any) => d.status === 'upcoming' || d.status === 'overdue' || d.status === 'today') ).slice(0, 6)
   ] : []
@@ -231,6 +234,29 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
               >
                 <span>✅</span> View Checklists
               </button>
+            </div>
+          </div>
+
+          {/* Notification Settings */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="font-semibold text-gray-900 mb-3">Notification Settings</h3>
+            <div className="space-y-3 text-sm text-gray-700">
+              <label className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                <div>
+                  <div className="font-medium">Email Alerts</div>
+                  <div className="text-xs text-gray-500">Receive alert emails</div>
+                </div>
+                <input type="checkbox" checked={!!notifPrefs?.email_enabled} onChange={async (e)=>{ const next = !!e.target.checked; setNotifPrefs((p:any)=>({...p, email_enabled: next})); try{ await fetch('/api/notification-preferences',{ method:'PUT', body: JSON.stringify({...notifPrefs, email_enabled: next}), headers: {'Content-Type':'application/json'} }) }catch(e){} }} className="h-5 w-5" />
+              </label>
+
+              <label className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                <div>
+                  <div className="font-medium">SMS Alerts</div>
+                  <div className="text-xs text-gray-500">Receive SMS for high severity</div>
+                </div>
+                <input type="checkbox" checked={!!notifPrefs?.sms_enabled} onChange={async (e)=>{ const next = !!e.target.checked; setNotifPrefs((p:any)=>({...p, sms_enabled: next})); try{ await fetch('/api/notification-preferences',{ method:'PUT', body: JSON.stringify({...notifPrefs, sms_enabled: next}), headers: {'Content-Type':'application/json'} }) }catch(e){} }} className="h-5 w-5" />
+              </label>
+
             </div>
           </div>
         </div>
