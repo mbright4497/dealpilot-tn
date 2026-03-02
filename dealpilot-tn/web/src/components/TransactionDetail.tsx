@@ -218,7 +218,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       <div className="flex items-center justify-between mb-4">
         <div>
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
-          <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
+            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</span>
+          </div>
           <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
         <div className="text-right text-sm text-gray-300">
