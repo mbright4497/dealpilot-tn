@@ -273,6 +273,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           {/* middle section: Today's Priorities (60%) and Deal Vitals (40%) */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div className="md:col-span-3 bg-gray-800 p-4 rounded">
+              {/* Deal Brief Card (top) */}
+              <div className="mb-3 p-3 bg-gray-900 rounded">
+                <div className="text-xs text-gray-400">Good morning.</div>
+                <div className="mt-1 text-sm">Loading brief...</div>
+              </div>
               <h3 className="text-lg font-semibold mb-2">Today's Priorities</h3>
               <div className="space-y-3">
                 {/* priorities fetched from server */}
