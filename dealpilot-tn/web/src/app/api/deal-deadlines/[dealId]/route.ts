@@ -55,14 +55,7 @@ export async function GET(req: Request, { params }: { params: { dealId: string }
   deadlines.push({ key: 'title_search', label: 'Title Search Deadline', date: titleDate, status: deadlineStatus(titleDate, state), days_remaining: daysRemaining(titleDate) })
 
   if (row.closing_date) {
-<<<<<<< HEAD
-    const closingD = new Date(row.closing_date)
-    const fwD = new Date(closingD)
-    fwD.setDate(fwD.getDate() - 1)
-    const fwDate = fwD.toISOString().split('T')[0]
-=======
     const fwDate = addDays(new Date(row.closing_date), -1).toISOString().split('T')[0]
->>>>>>> c41904e (wip: ensure working tree clean before rebase)
     deadlines.push({ key: 'final_walkthrough', label: 'Final Walkthrough', date: fwDate, status: deadlineStatus(fwDate, state), days_remaining: daysRemaining(fwDate) })
 
     const clDate = row.closing_date
