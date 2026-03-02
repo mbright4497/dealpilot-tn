@@ -9,6 +9,7 @@ interface Props {
   onOpenDeal?: (txId: number) => void
   onViewChecklist?: (txId: number) => void
   onNavigate?: (view: string) => void
+    style?: any
 }
 
 interface PortfolioHealth {
