@@ -44,7 +44,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const body = await req.json()
     const { extracted, pdfUrl } = body
     const dealId = params.id
-
     console.log('Contract PUT - dealId:', dealId, 'pdfUrl:', pdfUrl)
 
     if (!extracted || !dealId) {
@@ -69,8 +68,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   } catch (e: any) {
     console.error('Save contract error:', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
 
-    export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
     const dealId = params.id
     if (!dealId) {
@@ -94,6 +95,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         .storage
         .from('contracts')
         .list(`deal-${dealId}`)
+
       if (files && files.length > 0) {
         const filePaths = files.map(f => `deal-${dealId}/${f.name}`)
         await supabase.storage.from('contracts').remove(filePaths)
@@ -107,7 +109,5 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   } catch (e: any) {
     console.error('Delete contract error:', e)
     return NextResponse.json({ error: e.message }, { status: 500 })
-  }
-}
   }
 }
