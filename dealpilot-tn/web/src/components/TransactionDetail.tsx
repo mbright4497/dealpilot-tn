@@ -462,8 +462,31 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   {docs.length===0 && <div className="text-gray-500">No files</div>}
                   {docs.map((d:any,i:number)=>{
                     const filePath = `deal-${transaction.id}/${d.name}`
-                    const handleDownload = async()=>{ const { data } = await supabase .storage .from(storageBucket) .createSignedUrl(filePath, 60) if (data?.signedUrl){ window.open(data.signedUrl, '_blank') } }
-                    const handleDelete = async()=>{ if (!confirm('Delete this file?')) return await supabase .storage .from(storageBucket) .remove([filePath]) const { data } = await supabase .storage .from(storageBucket) .list(`deal-${transaction.id}`) setDocs(data || []) }
+                    const handleDownload = async () => {
+                      try{
+                        const { data } = await supabase
+                          .storage
+                          .from(storageBucket)
+                          .createSignedUrl(filePath, 60)
+                        if (data?.signedUrl){
+                          window.open(data.signedUrl, '_blank')
+                        }
+                      }catch(e){ console.error(e) }
+                    }
+                    const handleDelete = async () => {
+                      try{
+                        if (!confirm('Delete this file?')) return
+                        await supabase
+                          .storage
+                          .from(storageBucket)
+                          .remove([filePath])
+                        const { data } = await supabase
+                          .storage
+                          .from(storageBucket)
+                          .list(`deal-${transaction.id}`)
+                        setDocs(data || [])
+                      }catch(e){ console.error(e) }
+                    }
                     return (
                       <div key={i} className="flex items-center justify-between bg-gray-800 px-3 py-2 rounded mt-2">
                         <button onClick={handleDownload} className="text-blue-400 hover:underline text-sm">{d.name}</button>
