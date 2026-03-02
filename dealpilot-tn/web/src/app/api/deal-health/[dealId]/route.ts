@@ -38,12 +38,28 @@ export async function GET(req: Request, { params }: { params: { dealId: string }
 
   const signals: { label: string, impact: 'low'|'medium'|'high' }[] = []
 
+  // helper: days past (positive if past due)
+  const daysPast = (d?: string|null) => { if(!d) return 0; const t = new Date(d).getTime(); if(isNaN(t)) return 0; return Math.ceil((Date.now() - t)/(1000*60*60*24)) }
+
+  // base score
+  let score = 90
+
   // Rule 4: inspection_end_date within 2 days (FUTURE ONLY)
   if (row.inspection_end_date){
-    const days = Math.ceil((new Date(row.inspection_end_date).getTime() - Date.now())/(1000*60*60*24))
-    if (days >= 0 && days <= 2) {
+    const daysUntil = Math.ceil((new Date(row.inspection_end_date).getTime() - Date.now())/(1000*60*60*24))
+    if (daysUntil >= 0 && daysUntil <= 2) {
       signals.push({ label: 'Inspection period ending soon', impact: 'medium' })
+      score = Math.min(80, score)
       return NextResponse.json({ status: 'attention', score: 65, signals })
+    }
+  }
+
+  // Rule: past-due inspection should penalize
+  if (row.inspection_end_date){
+    const past = daysPast(row.inspection_end_date)
+    if (past > 0) {
+      signals.push({ label: 'Inspection period overdue', impact: 'high' })
+      score = Math.max(0, score - 25)
     }
   }
 
@@ -52,10 +68,25 @@ export async function GET(req: Request, { params }: { params: { dealId: string }
     const days = Math.ceil((new Date(row.closing_date).getTime() - Date.now())/(1000*60*60*24))
     if (days >= 0 && days <= 7) {
       signals.push({ label: 'Closing approaching', impact: 'medium' })
+      score = Math.min(85, score)
       return NextResponse.json({ status: 'attention', score: 70, signals })
     }
   }
 
-  // Rule 6: healthy default
-  return NextResponse.json({ status: 'healthy', score: 90, signals })
+  // earnest money due past-due check (if earnest_money_due field exists)
+  if (row.earnest_money_due){
+    const past = daysPast(row.earnest_money_due)
+    if (past > 0) {
+      signals.push({ label: 'Earnest money overdue', impact: 'high' })
+      score = Math.max(0, score - 20)
+    }
+  }
+
+  // clamp score and determine status
+  if (score < 0) score = 0
+  let status = 'healthy'
+  if (score < 60) status = 'at_risk'
+  else if (score < 80) status = 'attention'
+
+  return NextResponse.json({ status, score, signals })
 }

@@ -76,11 +76,16 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
         <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${portfolio ? (portfolio.overall_status==='healthy' ? 'bg-green-500' : portfolio.overall_status==='attention' ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300'}`} />
+              <div className={`w-3 h-3 rounded-full ${portfolio ? ( (portfolio.overall_status==='healthy') ? 'bg-green-500' : (portfolio.overall_status==='attention') ? 'bg-amber-500' : 'bg-red-500' ) : 'bg-gray-300'}`} />
               <span className="text-sm font-medium">Portfolio Health</span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{portfolio ? portfolio.overall_status : '—'}</p>
+          {/* STATUS label map */}
+          {(() => {
+            const STATUS_LABELS: Record<string,string> = { healthy: 'Healthy', attention: 'Needs Attention', at_risk: 'At Risk' }
+            const label = portfolio ? (STATUS_LABELS[portfolio.overall_status] || portfolio.overall_status) : '—'
+            return <p className="text-3xl font-bold text-gray-900">{label}</p>
+          })()}
           <p className="text-sm text-gray-500 mt-1">Overall Status</p>
         </div>
 
@@ -89,7 +94,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">🧾</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{portfolio ? `${portfolio.healthy}/${portfolio.attention}/${portfolio.at_risk}` : '—'}</p>
+          <p className="text-3xl font-bold text-gray-900">{portfolio ? `${portfolio?.summary?.healthy ?? 0}/${portfolio?.summary?.attention ?? 0}/${portfolio?.summary?.at_risk ?? 0}` : '—'}</p>
           <p className="text-sm text-gray-500 mt-1">Healthy / Attention / At Risk</p>
         </div>
 
