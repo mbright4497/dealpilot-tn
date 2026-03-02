@@ -38,19 +38,19 @@ export async function GET(req: Request, { params }: { params: { dealId: string }
 
   const signals: { label: string, impact: 'low'|'medium'|'high' }[] = []
 
-  // Rule 4: inspection_end_date within 2 days
+  // Rule 4: inspection_end_date within 2 days (FUTURE ONLY)
   if (row.inspection_end_date){
     const days = Math.ceil((new Date(row.inspection_end_date).getTime() - Date.now())/(1000*60*60*24))
-    if (days <= 2) {
+    if (days >= 0 && days <= 2) {
       signals.push({ label: 'Inspection period ending soon', impact: 'medium' })
       return NextResponse.json({ status: 'attention', score: 65, signals })
     }
   }
 
-  // Rule 5: closing_date within 7 days
+  // Rule 5: closing_date within 7 days (FUTURE ONLY)
   if (row.closing_date){
     const days = Math.ceil((new Date(row.closing_date).getTime() - Date.now())/(1000*60*60*24))
-    if (days <= 7) {
+    if (days >= 0 && days <= 7) {
       signals.push({ label: 'Closing approaching', impact: 'medium' })
       return NextResponse.json({ status: 'attention', score: 70, signals })
     }
