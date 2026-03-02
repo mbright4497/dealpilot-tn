@@ -34,10 +34,14 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const total = transactions.length
   const [portfolio, setPortfolio] = React.useState<any|null>(null)
   const [portfolioDeadlines, setPortfolioDeadlines] = React.useState<any|null>(null)
+  const [portfolioBrief, setPortfolioBrief] = React.useState<string | null>(null);
+  const [alerts, setAlerts] = React.useState<any[]>([]);
   // fetch portfolio health
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-health'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolio(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
   // fetch portfolio deadlines
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-deadlines'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolioDeadlines(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
+  // fetch portfolio brief and proactive alerts
+  React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ fetch("/api/portfolio-brief").then(res=>res.json()).then(data=>{ if(!mounted) return; setPortfolioBrief(data.summary) }).catch(()=>{}); fetch("/api/portfolio-alerts").then(res=>res.json()).then(data=>{ if(!mounted) return; setAlerts(data.alerts ?? []) }).catch(()=>{}); }catch(e){} })(); return ()=>{ mounted=false } },[])
   const upcomingDeadlines: any[] = portfolioDeadlines ? [
     ...( (portfolioDeadlines.next_7_days && portfolioDeadlines.next_7_days.length > 0) ? portfolioDeadlines.next_7_days : (portfolioDeadlines.all_deadlines || []).filter((d: any) => d.status === 'upcoming' || d.status === 'overdue' || d.status === 'today') ).slice(0, 6)
   ] : []
@@ -83,6 +87,24 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* EVA Daily Briefing */}
+        {portfolioBrief && (
+          <div className="mb-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+            <p className="text-sm font-semibold text-blue-200">EVA Daily Briefing</p>
+            <p className="mt-1 text-sm text-white">{portfolioBrief}</p>
+          </div>
+        )}
+        {/* Proactive Alerts */}
+        {alerts.length > 0 && (
+          <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
+            <p className="text-sm font-semibold text-red-200">⚠️ Action Required</p>
+            <ul className="mt-2 space-y-1 text-sm">
+              {alerts.map((a: any, i: number) => (
+                <li key={i}>{a.message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         {/* Active Transactions */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between p-5 border-b border-gray-100">
