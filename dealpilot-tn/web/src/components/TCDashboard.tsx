@@ -39,7 +39,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   // fetch portfolio deadlines
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-deadlines'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolioDeadlines(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
   const upcomingDeadlines: any[] = portfolioDeadlines ? [
-    ...( portfolioDeadlines.next_7_days || [] ).slice(0, 6)
+    ...( (portfolioDeadlines.next_7_days && portfolioDeadlines.next_7_days.length > 0) ? portfolioDeadlines.next_7_days : (portfolioDeadlines.all_deadlines || []).filter((d: any) => d.status === 'upcoming' || d.status === 'overdue' || d.status === 'today') ).slice(0, 6)
   ] : []
   const overdueCount = portfolioDeadlines?.overdue_count || 0
   return (
@@ -62,7 +62,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
               <span className="text-sm font-medium">Portfolio Health</span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900 capitalize">{portfolio ? portfolio.overall_status : '—'}</p>
+          <p className="text-3xl font-bold text-gray-900 capitalize">{portfolio ? (portfolio.overall_status === 'at_risk' ? 'At Risk' : portfolio.overall_status === 'healthy' ? 'Healthy' : portfolio.overall_status === 'attention' ? 'Needs Attention' : portfolio.overall_status) : '—'}</p>
           <p className="text-sm text-gray-500 mt-1">Overall Status</p>
         </div>
         {/* Deal Breakdown */}
@@ -70,7 +70,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">🧾</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{portfolio ? `${portfolio.healthy}/${portfolio.attention}/${portfolio.at_risk}` : '—'}</p>
+          <p className="text-3xl font-bold text-gray-900">{portfolio ? `${portfolio.summary?.healthy ?? 0}/${portfolio.summary?.attention ?? 0}/${portfolio.summary?.at_risk ?? 0}` : '—'}</p>
           <p className="text-sm text-gray-500 mt-1">Healthy / Attention / At Risk</p>
         </div>
         {/* Overdue Deadlines */}
