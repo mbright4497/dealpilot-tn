@@ -28,9 +28,52 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [uploading, setUploading] = useState(false)
   const storageBucket = 'contracts'
 
-  useEffect(()=>{ async function loadDocs(){ const { data, error } = await supabase .storage .from(storageBucket) .list(`deal-${transaction.id}`, { limit: 100 }) if (!error && data){ setDocs(data) } } loadDocs() },[transaction.id])
+  useEffect(() => {
+    async function loadDocs() {
+      try {
+        const { data, error } = await supabase
+          .storage
+          .from(storageBucket)
+          .list(`deal-${transaction.id}`, { limit: 100 })
+        if (!error && data) {
+          setDocs(data)
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    loadDocs()
+  }, [transaction.id])
 
-  const handleUpload = async (file: File)=>{ if (!file) return const duplicate = docs.find(d => d.name === file.name) if (duplicate){ alert('A file with this name already exists.') return } setUploading(true) const filePath = `deal-${transaction.id}/${file.name}` const { error } = await supabase .storage .from(storageBucket) .upload(filePath, file, { upsert: false }) if (error){ alert('Upload failed.') setUploading(false) return } const { data } = await supabase .storage .from(storageBucket) .list(`deal-${transaction.id}`) setDocs(data || []) setUploading(false) }
+  const handleUpload = async (file: File) => {
+    if (!file) return
+    const duplicate = docs.find(d => d.name === file.name)
+    if (duplicate) {
+      alert('A file with this name already exists.')
+      return
+    }
+    try {
+      setUploading(true)
+      const filePath = `deal-${transaction.id}/${file.name}`
+      const { error } = await supabase
+        .storage
+        .from(storageBucket)
+        .upload(filePath, file, { upsert: false })
+      if (error) {
+        alert('Upload failed.')
+        setUploading(false)
+        return
+      }
+      const { data } = await supabase
+        .storage
+        .from(storageBucket)
+        .list(`deal-${transaction.id}`)
+      setDocs(data || [])
+    } finally {
+      setUploading(false)
+    }
+  }
+
 
   // next steps persistent checkboxes
   const [nextSteps,setNextSteps] = useState<{contractReceived:boolean, earnestVerified:boolean, inspectionsScheduled:boolean}>(()=>{
