@@ -234,6 +234,8 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
               >
                 <span>✅</span> View Checklists
               </button>
+              <button onClick={async () => { const mlsNumber = prompt('Enter MLS Number'); if (!mlsNumber) return; try { await fetch('/api/import/mls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mlsNumber }) }); window.location.reload(); } catch (e) { console.error(e); } }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50 hover:bg-emerald-50 hover:text-emerald-600 transition-colors text-sm font-medium text-gray-700" >
+                <span>🏠</span> Import from MLS </button>
             </div>
           </div>
 
