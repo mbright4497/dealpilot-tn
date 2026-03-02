@@ -335,8 +335,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 )}
               </div>
               <div className="flex gap-2">
-                <button className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
-                <button className="px-3 py-2 bg-orange-500 rounded">Primary CTA</button>
+                <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${transaction.id}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
+                <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
               </div>
             </div>
           </div>
@@ -458,7 +458,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <div className="mb-4">
-                <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} />
+                <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} onDelete={()=>setContractData(null)} />
               </div>
 
               <div className="p-4 bg-gray-800 rounded mb-4">
@@ -555,7 +555,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                       </div>
                       <div className="flex flex-col gap-1">
                         <a href={`tel:${c.phone}`} className="text-xs text-gray-300">Call</a>
-                        <a href={`mailto:${c.email}`} className="text-xs text-gray-300">Email</a>
+                        <a href={`mailto:${c.email}`} className="text-xs text-gray-300">Email</a>                 <button onClick={()=>removeContact(i)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
                       </div>
                     </div>
                   ))}
