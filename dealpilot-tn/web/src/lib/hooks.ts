@@ -62,7 +62,7 @@ export const useOffers = () => {
 export const useTimeline = (dealId?: string) => {
   const key = dealId ? `activity_log_${dealId}` : null;
   const { data, error, mutate } = useSWR(key, async () => {
-    const { createBrowserSupabaseClient } = await import('./supabase');
+    const { createBrowserClient: createBrowserSupabaseClient } = await import('./supabase-browser');
     const supabase = createBrowserSupabaseClient();
     const { data, error } = await supabase.from('activity_log').select('*').eq('deal_id', dealId!).order('created_at', { ascending: false });
     if (error) throw error;
