@@ -50,6 +50,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Client</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Type</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Status</th>
+            <th className="p-3 text-left text-sm font-semibold text-gray-600">Health</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Binding Date</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Closing Date</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Actions</th>
@@ -62,6 +63,9 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 <td className="p-3 font-medium text-gray-900">{l.address}</td>
                 <td className="p-3 text-gray-900">{l.client}</td>
                 <td className="p-3 text-gray-800">{l.type}</td>
+                <td className="px-3 py-2">
+                  <span className={`px-2 py-1 rounded text-xs ${ (l as any).health_status === 'healthy' ? 'bg-green-600' : (l as any).health_status === 'attention' ? 'bg-yellow-600' : 'bg-red-600' }`}>{(l as any).health_status || '—'}</span>
+                </td>
                 <td className="p-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.status==='Active' ? 'bg-green-100 text-green-700' : l.status==='Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{l.status}</span>
                 </td>

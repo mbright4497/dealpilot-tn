@@ -88,6 +88,11 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           <p className={`text-3xl font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{portfolioDeadlines ? overdueCount : '—'}</p>
           <p className="text-sm text-gray-500 mt-1">Overdue Deadlines</p>
         </div>
+        {/* Portfolio Risk Score */}
+        <div className="bg-gray-900 rounded-xl p-4">
+          <div className="text-sm text-gray-400">Portfolio Risk Score</div>
+          <div className="text-2xl font-semibold">{portfolio?.portfolio_risk_score ?? '—'}%</div>
+        </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* EVA Daily Briefing */}

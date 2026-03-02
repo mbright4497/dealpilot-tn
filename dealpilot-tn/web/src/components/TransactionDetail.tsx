@@ -320,9 +320,18 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   <div className="font-semibold">{health ? (health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</div>
                   <div className="text-xs text-gray-300 ml-2">{health ? health.score + '%' : ''}</div>
                 </div>
+                {/* existing signals (structured) */}
                 <div className="text-xs text-gray-400 mt-1">
                   {health && health.signals && health.signals.length>0 ? health.signals.map((s:any,i:number)=>(<div key={i} className="text-xs">• {s.label} <span className="text-gray-500">({s.impact})</span></div>)) : <div className="text-xs text-gray-500">No signals</div>}
                 </div>
+                {/* Phase 16: risk signals (string list) */}
+                {health?.signals && Array.isArray(health.signals) && health.signals.length > 0 && transaction?.status !== 'Closed' && (
+                  <div className="mt-2 space-y-1">
+                    {health.signals.map((s: any, i: number) => (
+                      <div key={i} className="text-xs text-red-400">• {typeof s === 'string' ? s : (s.label || JSON.stringify(s))}</div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <button className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>

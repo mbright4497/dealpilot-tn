@@ -36,57 +36,74 @@ export async function GET(req: Request, { params }: { params: { dealId: string }
     return NextResponse.json({ status: 'attention', score: 60, signals: [{ label: 'Contract not yet bound', impact: 'medium' }] })
   }
 
-  const signals: { label: string, impact: 'low'|'medium'|'high' }[] = []
+  // Phase 16 Risk Intelligence Engine
+  let score = 100
+  let signals: string[] = []
+  const today = new Date()
+  const deal: any = row
 
-  // helper: days past (positive if past due)
-  const daysPast = (d?: string|null) => { if(!d) return 0; const t = new Date(d).getTime(); if(isNaN(t)) return 0; return Math.ceil((Date.now() - t)/(1000*60*60*24)) }
-
-  // base score
-  let score = 90
-
-  // Rule 4: inspection_end_date within 2 days (FUTURE ONLY)
-  if (row.inspection_end_date){
-    const daysUntil = Math.ceil((new Date(row.inspection_end_date).getTime() - Date.now())/(1000*60*60*24))
-    if (daysUntil >= 0 && daysUntil <= 2) {
-      signals.push({ label: 'Inspection period ending soon', impact: 'medium' })
-      score = Math.min(80, score)
-      return NextResponse.json({ status: 'attention', score: 65, signals })
-    }
+  // 1 Deadline Risk - if deadlines available
+  const deadlines: any[] | undefined = (row.deadlines || undefined)
+  if (deadlines && Array.isArray(deadlines) && deadlines.length > 0) {
+    deadlines.forEach(d => {
+      if (!d || !d.date) return
+      const diffDays = Math.ceil((new Date(d.date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays < 0) {
+        score -= 25
+        signals.push(`Missed deadline: ${d.title}`)
+      } else if (diffDays <= 2) {
+        score -= 10
+        signals.push(`Urgent deadline approaching: ${d.title}`)
+      }
+    })
   }
 
-  // Rule: past-due inspection should penalize
-  if (row.inspection_end_date){
-    const past = daysPast(row.inspection_end_date)
-    if (past > 0) {
-      signals.push({ label: 'Inspection period overdue', impact: 'high' })
-      score = Math.max(0, score - 25)
-    }
+  // 2 Missing Critical Dates
+  if (!deal.binding && !deal.binding_date) {
+    score -= 15
+    signals.push('Missing binding date')
+  }
+  if (!deal.closing && !deal.closing_date) {
+    score -= 10
+    signals.push('Missing closing date')
   }
 
-  // Rule 5: closing_date within 7 days (FUTURE ONLY)
-  if (row.closing_date){
-    const days = Math.ceil((new Date(row.closing_date).getTime() - Date.now())/(1000*60*60*24))
-    if (days >= 0 && days <= 7) {
-      signals.push({ label: 'Closing approaching', impact: 'medium' })
-      score = Math.min(85, score)
-      return NextResponse.json({ status: 'attention', score: 70, signals })
+  // 3 Lifecycle Integrity - skip if integrity object not numeric
+  if (typeof integrity === 'number') {
+    if (integrity < 70) {
+      score -= 15
+      signals.push('Lifecycle integrity below threshold')
     }
+  } else if (integrity && integrity.valid === false) {
+    // previously handled above, but in case
+    score -= 15
+    signals.push('Lifecycle integrity issues')
   }
 
-  // earnest money due past-due check (if earnest_money_due field exists)
-  if (row.earnest_money_due){
-    const past = daysPast(row.earnest_money_due)
-    if (past > 0) {
-      signals.push({ label: 'Earnest money overdue', impact: 'high' })
-      score = Math.max(0, score - 20)
-    }
+  // 4 Checklist Completion
+  const checklistProgress = (row.checklist_progress != null) ? Number(row.checklist_progress) : undefined
+  if (typeof checklistProgress === 'number' && checklistProgress < 60) {
+    score -= 10
+    signals.push('Checklist under 60% complete')
   }
 
-  // clamp score and determine status
+  if (deal.status === 'Closed' || current_state === 'closed') {
+    score = 100
+    signals = ['Deal closed successfully']
+  }
+
   if (score < 0) score = 0
-  let status = 'healthy'
-  if (score < 60) status = 'at_risk'
-  else if (score < 80) status = 'attention'
 
-  return NextResponse.json({ status, score, signals })
+  let status: 'healthy' | 'attention' | 'at_risk'
+  if (deal.status === 'Closed' || current_state === 'closed') {
+    status = 'healthy'
+  } else if (score >= 80) {
+    status = 'healthy'
+  } else if (score >= 55) {
+    status = 'attention'
+  } else {
+    status = 'at_risk'
+  }
+
+  return NextResponse.json({ score, status, signals })
 }

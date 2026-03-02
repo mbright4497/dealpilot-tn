@@ -73,8 +73,12 @@ export async function GET() {
 
   const overall_status = at_risk > 0 ? 'at_risk' : attention > 0 ? 'attention' : 'healthy'
 
+  const riskScores = deals.map(d => (d.score != null ? d.score : 100))
+  const averageRisk = riskScores.length > 0 ? Math.round(riskScores.reduce((a:number,b:number)=>a+b,0)/riskScores.length) : 100
+
   return NextResponse.json({
     portfolio_score: totalScore,
+    portfolio_risk_score: averageRisk,
     total_deals: deals.length,
     summary: { healthy, attention, at_risk },
     closing_soon,
