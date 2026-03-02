@@ -1,5 +1,6 @@
 'use client'
 import React, {useState, useEffect, useRef} from 'react'
+import { createBrowserClient } from '@/lib/supabase-browser'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
 
@@ -21,13 +22,15 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
   const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
 
-  // documents metadata stored in localStorage per-transaction
-  const defaultDocs = { Contract: [], Amendments: [], Inspection: [], Appraisal: [], Title: [], Loan: [], Insurance: [], Closing: [] }
-  const [docs,setDocs]=useState<Record<string,{name:string,ts:number}[]>>(()=>{
-    try{ const raw = localStorage.getItem(`dp-docs-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){}
-    return defaultDocs
-  })
-  useEffect(()=>{ try{ localStorage.setItem(`dp-docs-${transaction.id}`, JSON.stringify(docs)) }catch(e){} },[docs, transaction.id])
+  // documents stored in Supabase storage
+  const supabase = createBrowserClient()
+  const [docs,setDocs]=useState<any[]>([])
+  const [uploading, setUploading] = useState(false)
+  const storageBucket = 'contracts'
+
+  useEffect(()=>{ async function loadDocs(){ const { data, error } = await supabase .storage .from(storageBucket) .list(`deal-${transaction.id}`, { limit: 100 }) if (!error && data){ setDocs(data) } } loadDocs() },[transaction.id])
+
+  const handleUpload = async (file: File)=>{ if (!file) return const duplicate = docs.find(d => d.name === file.name) if (duplicate){ alert('A file with this name already exists.') return } setUploading(true) const filePath = `deal-${transaction.id}/${file.name}` const { error } = await supabase .storage .from(storageBucket) .upload(filePath, file, { upsert: false }) if (error){ alert('Upload failed.') setUploading(false) return } const { data } = await supabase .storage .from(storageBucket) .list(`deal-${transaction.id}`) setDocs(data || []) setUploading(false) }
 
   // next steps persistent checkboxes
   const [nextSteps,setNextSteps] = useState<{contractReceived:boolean, earnestVerified:boolean, inspectionsScheduled:boolean}>(()=>{
@@ -395,18 +398,23 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               <div className="p-4 bg-gray-800 rounded mb-4">
                 <h4 className="font-semibold mb-2">Documents</h4>
                 <div className="mb-2 text-sm text-gray-400">Drag & drop files anywhere to upload</div>
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.keys(docs).map(cat => (
-                    <div key={cat} className="p-3 bg-gray-700 rounded">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-semibold">{cat}</div>
-                        <button onClick={()=>{ const inp = ensureInput(cat); inp && inp.click() }} className="text-xs px-2 py-1 bg-gray-800 rounded">Upload</button>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <input type="file" onChange={(e)=>{ const file = e.target.files?.[0]; if (file) handleUpload(file) }} className="text-sm text-gray-300" />
+                    {uploading && <div className="text-xs text-gray-400 mt-2">Uploading...</div>}
+                  </div>
+                  {docs.length===0 && <div className="text-gray-500">No files</div>}
+                  {docs.map((d:any,i:number)=>{
+                    const filePath = `deal-${transaction.id}/${d.name}`
+                    const handleDownload = async()=>{ const { data } = await supabase .storage .from(storageBucket) .createSignedUrl(filePath, 60) if (data?.signedUrl){ window.open(data.signedUrl, '_blank') } }
+                    const handleDelete = async()=>{ if (!confirm('Delete this file?')) return await supabase .storage .from(storageBucket) .remove([filePath]) const { data } = await supabase .storage .from(storageBucket) .list(`deal-${transaction.id}`) setDocs(data || []) }
+                    return (
+                      <div key={i} className="flex items-center justify-between bg-gray-800 px-3 py-2 rounded mt-2">
+                        <button onClick={handleDownload} className="text-blue-400 hover:underline text-sm">{d.name}</button>
+                        <button onClick={handleDelete} className="text-red-400 text-xs">Delete</button>
                       </div>
-                      <div className="text-sm text-gray-300">
-                        {(docs[cat]||[]).length===0 ? <div className="text-gray-500">No files</div> : (docs[cat]||[]).map((d:any,i:number)=>(<div key={i} className="py-1">{d.name} <span className="text-xs text-gray-500">{new Date(d.ts).toLocaleString()}</span></div>))}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
