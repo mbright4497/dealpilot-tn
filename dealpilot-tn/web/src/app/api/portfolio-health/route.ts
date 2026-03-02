@@ -51,7 +51,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch deals', details: error?.message }, { status: 500 })
   }
 
-  const deals = data.map((row: any) => {
+  const activeRows = (data || []).filter((r:any) => r.closing_date !== 'Closed' && r.status !== 'Closed' && (r.status || '').toLowerCase() !== 'closed')
+
+  const deals = activeRows.map((row: any) => {
     const health = computeDealHealth(row)
     return {
       deal_id: row.deal_id,

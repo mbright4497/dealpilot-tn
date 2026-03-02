@@ -65,8 +65,8 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 <td className="p-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.status==='Active' ? 'bg-green-100 text-green-700' : l.status==='Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{l.status}</span>
                 </td>
-                <td className="p-3 text-gray-700">{l.binding}</td>
-                <td className="p-3 text-gray-700">{l.closing}</td>
+                <td className="p-3 text-gray-700">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</td>
+                <td className="p-3 text-gray-700">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</td>
                 <td className="p-3">
                   <div className="flex gap-2">
                     <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors">Open Deal</button>
@@ -83,8 +83,8 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                       <div className="grid grid-cols-2 gap-2">
                         <p>Client: <span className="font-medium text-gray-900">{l.client}</span></p>
                         <p>Type: <span className="font-medium text-gray-900">{l.type}</span></p>
-                        <p>Binding: <span className="font-medium text-gray-900">{l.binding}</span></p>
-                        <p>Closing: <span className="font-medium text-gray-900">{l.closing}</span></p>
+                        <p>Binding: <span className="font-medium text-gray-900">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</span></p>
+                        <p>Closing: <span className="font-medium text-gray-900">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</span></p>
                       </div>
                       <button onClick={()=>onViewChecklist(l.id)} className="mt-3 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">Open Transaction Checklist</button>
                     </div>
