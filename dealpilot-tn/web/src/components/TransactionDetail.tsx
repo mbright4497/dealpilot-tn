@@ -261,7 +261,20 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   // deal deadlines state (Phase 11)
   const [dealDeadlines, setDealDeadlines] = React.useState<any[]>([])
-  React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch(`/api/deal-deadlines/${transaction.id}`); if(!mounted) return; if(res.ok){ const j = await res.json(); setDealDeadlines(j.deadlines || j.all_deadlines || []) } }catch(e){} })(); return ()=>{ mounted=false } },[transaction.id])
+  React.useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try{
+        const res = await fetch(`/api/deal-deadlines/${transaction.id}`)
+        if(!mounted) return
+        if(res.ok){
+          const j = await res.json()
+          setDealDeadlines(j.deadlines || j.all_deadlines || [])
+        }
+      }catch(e){ }
+    })()
+    return () => { mounted = false }
+  }, [transaction.id])
 
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
