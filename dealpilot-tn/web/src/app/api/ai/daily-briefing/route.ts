@@ -11,8 +11,8 @@ type Deal = {
   address: string;
   client: string | null;
   status: string | null;
-  binding_date: string | null;
-  closing_date: string | null;
+  binding: string | null;
+  closing: string | null;
   inspection_end_date: string | null;
 };
 
@@ -31,7 +31,7 @@ export async function GET() {
     const { data: deals, error } = await supabase
       .from("transactions")
       .select(
-        "id, address, client, status, binding_date, closing_date, inspection_end_date"
+        "id, address, client, status, binding, closing, inspection_end_date"
       )
       .eq("user_id", user.id)
       .neq("status", "archived")
@@ -46,11 +46,10 @@ export async function GET() {
     }
 
     const safeDeals: Deal[] = deals || [];
-
     const prompt = buildDailyBriefingPrompt(safeDeals);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // FIXED MODEL NAME
+      model: "gpt-4o-mini",
       temperature: 0.4,
       response_format: {
         type: "json_schema",
@@ -96,7 +95,6 @@ export async function GET() {
     }
 
     const parsed = JSON.parse(content);
-
     return NextResponse.json(parsed);
   } catch (err) {
     console.error("Daily briefing route error:", err);
