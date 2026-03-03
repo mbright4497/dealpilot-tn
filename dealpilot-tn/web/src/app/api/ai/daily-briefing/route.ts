@@ -13,7 +13,6 @@ type Deal = {
   status: string | null;
   binding: string | null;
   closing: string | null;
-  inspection_end_date: string | null;
 };
 
 export async function GET() {
@@ -31,7 +30,7 @@ export async function GET() {
     const { data: deals, error } = await supabase
       .from("transactions")
       .select(
-        "id, address, client, status, binding, closing, inspection_end_date"
+        "id, address, client, status, binding, closing"
       )
       .eq("user_id", user.id)
       .neq("status", "archived")
@@ -65,7 +64,7 @@ export async function GET() {
               },
               riskLevel: {
                 type: "string",
-                enum: ["healthy", "attention", "at_risk"],
+                enum: ["green", "yellow", "red"],
               },
             },
             required: ["summary", "priorities", "riskLevel"],
