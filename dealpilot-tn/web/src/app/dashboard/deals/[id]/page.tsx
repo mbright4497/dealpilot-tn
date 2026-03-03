@@ -16,10 +16,27 @@ const TABS: { key: TabKey; label: string }[] = [
 export default function DealDetailPage({ params, }: { params: { id: string } }) {
   const router = useRouter()
   const supabase = createClientComponentClient()
-  // set EVA page context when on a deal page
-  try{
-    // dynamic import to avoid SSR issues
-  }catch(e){}
+
+  // set EVA page context when on a deal page (client-only)
+  React.useEffect(()=>{
+    try{
+      const { useEva } = require('@/components/eva/EvaProvider')
+    }catch(e){}
+  },[])
+
+  // notify EVA provider of page context (client side)
+  React.useEffect(()=>{
+    try{
+      // dynamic require to avoid SSR
+      const Eva = require('@/components/eva/EvaProvider')
+      const { useEva } = Eva
+      // useEva is a hook; instead access via window if provider exposes setter
+      // fallback: postMessage to window for provider to pick up (simple approach)
+      window.dispatchEvent(new CustomEvent('eva:setContext', { detail: { route: '/dashboard/deals', dealId: params.id } }))
+    }catch(e){
+      // ignore
+    }
+  },[params.id])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [transaction, setTransaction] = useState<any | null>(null)
