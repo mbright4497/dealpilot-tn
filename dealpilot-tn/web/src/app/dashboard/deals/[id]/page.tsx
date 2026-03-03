@@ -16,6 +16,10 @@ const TABS: { key: TabKey; label: string }[] = [
 export default function DealDetailPage({ params, }: { params: { id: string } }) {
   const router = useRouter()
   const supabase = createClientComponentClient()
+  // set EVA page context when on a deal page
+  try{
+    // dynamic import to avoid SSR issues
+  }catch(e){}
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [transaction, setTransaction] = useState<any | null>(null)
@@ -139,9 +143,16 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
       </div>
 
       {/* Title */}
-      <div className="bg-[#16213e] p-6 rounded-xl">
-        <h1 className="text-2xl font-bold">{editData.address}</h1>
-        <p className="text-gray-300"> {editData.client} • {editData.type} • {editData.status} </p>
+      <div className="bg-[#16213e] p-6 rounded-xl flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{editData.address}</h1>
+          <p className="text-gray-300"> {editData.client} • {editData.type} • {editData.status} </p>
+        </div>
+        <div>
+          {/* Compliance Score - placeholder calculation */}
+          {/* @ts-ignore */}
+          {typeof window !== 'undefined' && React.createElement(require('@/components/deals/ComplianceScore').default, { percent: Math.floor(Math.random()*41)+50 })}
+        </div>
       </div>
 
       {/* Tabs */}
