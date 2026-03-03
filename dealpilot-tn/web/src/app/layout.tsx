@@ -1,5 +1,8 @@
 import React from 'react';
 import './globals.css';
+import { EvaProvider } from '@/components/eva/EvaProvider'
+import EvaFab from '@/components/eva/EvaFab'
+import EvaDrawer from '@/components/eva/EvaDrawer'
 
 export const metadata = { title: 'DealPilot TN' };
 
@@ -8,7 +11,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }){
     <html lang="en">
       <head />
       <body>
-        {children}
+        <EvaProvider>
+          {children}
+          <EvaFab />
+          <EvaDrawer />
+        </EvaProvider>
         <script dangerouslySetInnerHTML={{ __html: `
           window.addEventListener('error', function(e){
             try{ fetch('/api/client-error', {method:'POST',headers:{'Content-Type':'application/json'}, body: JSON.stringify({message: String(e.message), filename: e.filename, lineno: e.lineno, colno: e.colno, stack: e.error && e.error.stack})}) }catch(_){ }
