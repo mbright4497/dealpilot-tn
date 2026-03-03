@@ -181,48 +181,14 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-[#16213e] rounded-2xl p-6">
           <h2 className="text-lg font-semibold">EVA Daily Briefing</h2>
 
-          {briefingLoading ? (
-            <div className="mt-4 bg-[#0f2744] p-4 rounded animate-pulse">
-              Updating...
+          <div className="mt-4">
+            {/* replace with EvaBriefingCard */}
+            <div>
+              {/* lazy load component to avoid SSR issues */}
+              {/* @ts-ignore */}
+              {typeof window !== 'undefined' && React.createElement(require('@/components/eva/EvaBriefingCard').default)}
             </div>
-          ) : briefingError ? (
-            <div className="mt-4 text-red-400">{briefingError}</div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              <div className="bg-[#0f2744] p-4 rounded">
-                Active Deals: {briefing.activeCount}
-              </div>
-
-              <div className="bg-[#0f2744] p-4 rounded">
-                <div>Healthy: {briefing.health.healthy}</div>
-                <div>Attention: {briefing.health.attention}</div>
-                <div>At Risk: {briefing.health.atRisk}</div>
-              </div>
-
-              <div className="bg-[#0f2744] p-4 rounded">
-                <h3 className="font-semibold mb-2">Upcoming Deadlines</h3>
-                {briefing.deadlines.length === 0 && <div>No urgent deadlines.</div>}
-                {briefing.deadlines.map((d: any) => (
-                  <div key={d.id + d.kind} className="flex justify-between text-sm">
-                    <span>{d.kind} - {d.address}</span>
-                    <span>{d.days < 0 ? `${Math.abs(d.days)}d overdue` : `${d.days}d`}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-[#0f2744] p-4 rounded">
-                <h3 className="font-semibold mb-2">Focus Deals</h3>
-                {briefing.focusDeals.map((t: any) => (
-                  <div key={t.id} className="flex justify-between text-sm">
-                    <span>{t.address}</span>
-                    <span className={`px-2 py-1 rounded text-xs ${badgeClass(t.health.tone)}`}>
-                      {t.health.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         <div className="bg-[#16213e] rounded-2xl p-6">
