@@ -287,10 +287,137 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
       )}
 
       {activeTab === "contract" && (
-        <div className="bg-[#16213e] p-6 rounded-xl">
-          <h2 className="text-lg font-semibold mb-4">Contract Upload</h2>
-          <input type="file" className="mb-4" />
-          <div className="bg-[#0f3460] p-4 rounded text-gray-400"> AI Extraction Placeholder </div>
+        <div className="bg-[#16213e] p-6 rounded-xl space-y-4">
+          <h2 className="text-lg font-semibold mb-2">Contract</h2>
+
+          {/* File upload */}
+          <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded">
+            <label className="block mb-2">Upload Contract</label>
+            <input type="file" onChange={(e)=>{
+              const f = e.target.files?.[0]
+              if(!f) return
+              // simple client-side preview upload placeholder
+              const key = `contract_file_${transaction.id}`
+              localStorage.setItem(key, f.name)
+              setEditData({...editData, contract_file_name: f.name})
+            }} className="mb-3" />
+            <div className="text-sm text-gray-300">{editData.contract_file_name ? `Uploaded: ${editData.contract_file_name}` : 'No file uploaded'}</div>
+            <div className="mt-3">
+              <button className="bg-orange-500 text-black px-3 py-1 rounded" onClick={()=>alert('Contract AI extraction coming soon')}>AI Extraction Placeholder</button>
+            </div>
+          </div>
+
+          {/* Contract Details */}
+          <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded space-y-3">
+            <h3 className="font-semibold">Contract Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm">Purchase Price</label>
+                <input type="number" value={editData.contract_details?.purchase_price || ''} onChange={(e)=>{
+                  const v = e.target.value
+                  const cd = {...(editData.contract_details||{}) , purchase_price: v}
+                  setEditData({...editData, contract_details: cd})
+                }} className="w-full bg-[#0f3460] p-2 rounded" placeholder="$" />
+              </div>
+
+              <div>
+                <label className="text-sm">Earnest Money</label>
+                <input type="number" value={editData.contract_details?.earnest_money || ''} onChange={(e)=>{
+                  const v = e.target.value
+                  const cd = {...(editData.contract_details||{}) , earnest_money: v}
+                  setEditData({...editData, contract_details: cd})
+                }} className="w-full bg-[#0f3460] p-2 rounded" placeholder="$" />
+              </div>
+
+              <div>
+                <label className="text-sm">Financing Type</label>
+                <select value={editData.contract_details?.financing || ''} onChange={(e)=>{
+                  const v = e.target.value
+                  const cd = {...(editData.contract_details||{}) , financing: v}
+                  setEditData({...editData, contract_details: cd})
+                }} className="w-full bg-[#0f3460] p-2 rounded">
+                  <option value="">Select</option>
+                  <option>Conventional</option>
+                  <option>VA</option>
+                  <option>FHA</option>
+                  <option>USDA</option>
+                  <option>Cash</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm">Inspection Period Days</label>
+                <input type="number" value={editData.contract_details?.inspection_days ?? 10} onChange={(e)=>{
+                  const v = Number(e.target.value)
+                  const cd = {...(editData.contract_details||{}) , inspection_days: v}
+                  setEditData({...editData, contract_details: cd})
+                }} className="w-full bg-[#0f3460] p-2 rounded" />
+              </div>
+
+              <div>
+                <label className="text-sm">Appraisal Contingency</label>
+                <div className="mt-1">
+                  <label className="inline-flex items-center">
+                    <input type="checkbox" checked={!!editData.contract_details?.appraisal_contingency} onChange={(e)=>{
+                      const cd = {...(editData.contract_details||{}) , appraisal_contingency: e.target.checked}
+                      setEditData({...editData, contract_details: cd})
+                    }} className="mr-2" /> Yes
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm">Home Warranty</label>
+                <div className="mt-1">
+                  <label className="inline-flex items-center">
+                    <input type="checkbox" checked={!!editData.contract_details?.home_warranty} onChange={(e)=>{
+                      const cd = {...(editData.contract_details||{}) , home_warranty: e.target.checked}
+                      setEditData({...editData, contract_details: cd})
+                    }} className="mr-2" /> Yes
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm">Closing Cost Credits</label>
+                <input type="number" value={editData.contract_details?.closing_credits || ''} onChange={(e)=>{
+                  const v = e.target.value
+                  const cd = {...(editData.contract_details||{}) , closing_credits: v}
+                  setEditData({...editData, contract_details: cd})
+                }} className="w-full bg-[#0f3460] p-2 rounded" placeholder="$" />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-sm">Special Stipulations</label>
+                <textarea value={editData.contract_details?.stipulations || ''} onChange={(e)=>{
+                  const v = e.target.value
+                  const cd = {...(editData.contract_details||{}) , stipulations: v}
+                  setEditData({...editData, contract_details: cd})
+                }} className="w-full bg-[#0f3460] p-2 rounded" rows={4} />
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button onClick={async ()=>{
+                // attempt to save contract_details JSON to transactions table
+                try{
+                  const payload = { contract_details: editData.contract_details }
+                  const { error } = await supabase.from('transactions').update(payload).eq('id', transaction.id)
+                  if(error){
+                    // fallback - store locally
+                    localStorage.setItem(`contract_details_${transaction.id}`, JSON.stringify(editData.contract_details))
+                    alert('Saved locally (server write unavailable).')
+                  } else {
+                    alert('Contract details saved.')
+                  }
+                }catch(err){
+                  localStorage.setItem(`contract_details_${transaction.id}`, JSON.stringify(editData.contract_details))
+                  alert('Saved locally (exception).')
+                }
+              }} className="bg-orange-500 text-black px-4 py-2 rounded">Save Contract Details</button>
+            </div>
+          </div>
+
         </div>
       )}
 
