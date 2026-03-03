@@ -1,106 +1,216 @@
 "use client";
 
 import * as React from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter } from "next/navigation";
+import { useTransactions } from "@/lib/hooks/useTransactions";
+import {
+  BADGE_CLASSES,
+  DEAL_STATUSES,
+  HEALTH_LABELS,
+  STATUS_LABELS,
+  TYPE_LABELS,
+  getHealthFromClosing,
+  parseDealStatus,
+  parseDealType,
+  type DealStatus,
+} from "@/lib/constants/enums";
+import type { Transaction } from "@/lib/types/transaction";
 
-type Transaction = {
-  id: string;
-  address: string;
-  client: string | null;
-  type: string | null;
-  status: string | null;
-  binding: string | null;
-  closing: string | null;
-};
+type FilterValue = "all" | DealStatus;
 
-function daysUntil(date: string | null) {
-  if (!date) return null;
-  const now = new Date();
-  const target = new Date(date);
-  return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+function Badge({
+  className,
+  children,
+  title,
+}: {
+  className: string;
+  children: React.ReactNode;
+  title?: string;
+}) {
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium",
+        className,
+      ].join(" ")}
+      title={title}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+      {children}
+    </span>
+  );
 }
 
-function healthFromClosing(closing: string | null) {
-  const days = daysUntil(closing);
-  if (days === null) return { label: "Unknown", className: "bg-gray-500/15 text-gray-300" };
-  if (days < 0) return { label: "Overdue", className: "bg-rose-500/15 text-rose-300" };
-  if (days <= 7) return { label: "At Risk", className: "bg-amber-500/15 text-amber-300" };
-  return { label: "Healthy", className: "bg-emerald-500/15 text-emerald-300" };
+function formatDate(value: string | null) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString();
 }
 
 export default function DealsPage() {
-  const supabase = createClientComponentClient();
-  const [deals, setDeals] = React.useState<Transaction[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const router = useRouter();
+  const [statusFilter, setStatusFilter] = React.useState<FilterValue>("all");
+  const { transactions, loading, error, refresh } = useTransactions({
+    status: statusFilter,
+  });
 
-  React.useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("id, address, client, type, status, binding, closing")
-        .order("created_at", { ascending: false });
-      if (!error && data) setDeals(data as Transaction[]);
-      setLoading(false);
-    };
-    void load();
-  }, [supabase]);
+  const onRowClick = (id: string) => {
+    router.push(`/dashboard/deals/${id}`);
+  };
+
+  const rows: Transaction[] = transactions;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Transactions</h1>
-          <p className="text-sm text-gray-400">All active and historical deals in your pipeline</p>
+    <div className="min-h-screen bg-[#1a1a2e] text-white px-6 py-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-300">DealPilot TN</p>
+            <h1 className="text-2xl font-semibold">Transactions</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-300">
+              Status
+              <select
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as FilterValue)
+                }
+                className="ml-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-100 outline-none hover:bg-white/10"
+              >
+                <option value="all">All</option>
+                {DEAL_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-100 hover:bg-white/10"
+              disabled={loading}
+            >
+              {loading ? "Refreshing…" : "Refresh"}
+            </button>
+          </div>
         </div>
 
-        {/* Empty State */}
-        {!loading && deals.length === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-gray-900 p-8 text-center">
-            <p className="text-lg font-medium">No transactions yet</p>
-            <p className="mt-2 text-sm text-gray-400">Once you start a deal, it will appear here.</p>
-          </div>
-        )}
-
-        {/* Table */}
-        {!loading && deals.length > 0 && (
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-gray-900">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-gray-900/80 text-left text-gray-300">
-                  <th className="px-4 py-3">Address</th>
-                  <th className="px-4 py-3">Client</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Binding</th>
-                  <th className="px-4 py-3">Closing</th>
-                  <th className="px-4 py-3">Health</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deals.map((deal) => {
-                  const health = healthFromClosing(deal.closing);
-                  return (
-                    <tr key={deal.id} className="border-t border-white/5 hover:bg-white/5">
-                      <td className="px-4 py-3 font-medium">{deal.address || "\u2014"}</td>
-                      <td className="px-4 py-3 text-gray-300">{deal.client || "\u2014"}</td>
-                      <td className="px-4 py-3 text-gray-300">{deal.type || "\u2014"}</td>
-                      <td className="px-4 py-3 text-gray-300">{deal.status || "\u2014"}</td>
-                      <td className="px-4 py-3 text-gray-300">{deal.binding ? new Date(deal.binding).toLocaleDateString() : "\u2014"}</td>
-                      <td className="px-4 py-3 text-gray-300">{deal.closing ? new Date(deal.closing).toLocaleDateString() : "\u2014"}</td>
-                      <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-medium ${health.className}`}>{health.label}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {loading && (
-          <p className="text-sm text-gray-400">Loading transactions\u2026</p>
-        )}
+        <div className="mt-6">
+          {loading && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-gray-300">
+              Loading transactions…
+            </div>
+          )}
+          {!loading && error && (
+            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-8 text-rose-100">
+              <p className="font-medium">Couldn't load transactions</p>
+              <p className="mt-1 text-sm text-rose-100/80">{error}</p>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                className="mt-4 rounded-xl border border-rose-200/20 bg-rose-200/10 px-3 py-2 text-sm hover:bg-rose-200/15"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {!loading && !error && rows.length === 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
+              <h2 className="text-lg font-medium">No transactions found</h2>
+              <p className="mt-2 text-sm text-gray-300">
+                Try switching the status filter or create your first deal.
+              </p>
+            </div>
+          )}
+          {!loading && !error && rows.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#16213e]">
+              <table className="w-full border-collapse">
+                <thead className="bg-white/5 text-sm text-gray-300">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Address</th>
+                    <th className="px-4 py-3 text-left">Client</th>
+                    <th className="px-4 py-3 text-left">Type</th>
+                    <th className="px-4 py-3 text-left">Status</th>
+                    <th className="px-4 py-3 text-left">Binding</th>
+                    <th className="px-4 py-3 text-left">Closing</th>
+                    <th className="px-4 py-3 text-left">Health</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((deal) => {
+                    const status = parseDealStatus(deal.status) ?? null;
+                    const type = parseDealType(deal.type) ?? null;
+                    const { level, days } = getHealthFromClosing(deal.closing);
+                    return (
+                      <tr
+                        key={deal.id}
+                        onClick={() => onRowClick(deal.id)}
+                        className="border-t border-white/5 hover:bg-white/5 cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ")
+                            onRowClick(deal.id);
+                        }}
+                      >
+                        <td className="px-4 py-3 font-medium">
+                          {deal.address}
+                        </td>
+                        <td className="px-4 py-3 text-gray-200">
+                          {deal.client || "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          {type ? (
+                            <Badge className={BADGE_CLASSES.type[type]}>
+                              {TYPE_LABELS[type]}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-300">
+                              {deal.type || "—"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {status ? (
+                            <Badge className={BADGE_CLASSES.status[status]}>
+                              {STATUS_LABELS[status]}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-300">
+                              {deal.status || "—"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-200">
+                          {formatDate(deal.binding)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-200">
+                          {formatDate(deal.closing)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            className={BADGE_CLASSES.health[level]}
+                            title={
+                              days === null
+                                ? undefined
+                                : `${days} day(s) until closing`
+                            }
+                          >
+                            {HEALTH_LABELS[level]}
+                            {days === null ? "" : ` · ${days}d`}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
