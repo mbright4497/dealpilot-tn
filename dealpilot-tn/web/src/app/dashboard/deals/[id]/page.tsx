@@ -516,4 +516,3 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
     </div>
   )
 }
-```
