@@ -213,10 +213,76 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
       {activeTab === "timeline" && (
         <div className="bg-[#16213e] p-6 rounded-xl">
           <h2 className="text-lg font-semibold mb-4">Timeline</h2>
-          <ul className="space-y-2 text-gray-300">
-            <li>Binding Date: {editData.binding}</li>
-            <li>Closing Date: {editData.closing}</li>
-          </ul>
+
+          {/* Timeline component */}
+          <div className="flex">
+            <div className="w-full">
+              {(() => {
+                // build milestones
+                const milestones: { key: string; label: string; date: string | null; status?: string }[] = []
+                const parseDate = (d: any) => (d ? new Date(d) : null)
+                const fmt = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "—")
+                const bindingDate = parseDate(editData.binding)
+                const closingDate = parseDate(editData.closing)
+
+                if (bindingDate) {
+                  milestones.push({ key: 'binding', label: 'Binding Date', date: fmt(bindingDate) })
+                  // standard TN deadlines from binding
+                  const inspection = new Date(bindingDate)
+                  inspection.setDate(inspection.getDate() + 10)
+                  milestones.push({ key: 'inspection', label: 'Inspection Period End', date: fmt(inspection) })
+
+                  const titleSearch = new Date(bindingDate)
+                  titleSearch.setDate(titleSearch.getDate() + 14)
+                  milestones.push({ key: 'title', label: 'Title Search Due', date: fmt(titleSearch) })
+
+                  const appraisal = new Date(bindingDate)
+                  appraisal.setDate(appraisal.getDate() + 21)
+                  milestones.push({ key: 'appraisal', label: 'Appraisal Due', date: fmt(appraisal) })
+                }
+
+                if (closingDate) {
+                  milestones.push({ key: 'closing', label: 'Closing Date', date: fmt(closingDate) })
+                  const finalWalk = new Date(closingDate)
+                  finalWalk.setDate(finalWalk.getDate() - 1)
+                  milestones.push({ key: 'final_walk', label: 'Final Walkthrough', date: fmt(finalWalk) })
+                }
+
+                // calculate status for each milestone
+                const todayDate = new Date()
+                const withStatus = milestones.map((m) => {
+                  if (!m.date || m.date === '—') return { ...m, status: 'future' }
+                  const d = new Date(m.date + 'T00:00:00')
+                  const diff = Math.floor((d.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24))
+                  if (diff < 0) return { ...m, status: 'overdue' }
+                  if (diff <= 7) return { ...m, status: 'upcoming' }
+                  return { ...m, status: 'future' }
+                })
+
+                return (
+                  <ol className="relative border-l border-gray-700 ml-4">
+                    {withStatus.map((m) => {
+                      const colorClass = m.status === 'overdue' ? 'bg-red-500' : m.status === 'upcoming' ? 'bg-orange-500' : m.status === 'future' ? 'bg-gray-500' : 'bg-gray-500'
+                      const textColor = m.status === 'overdue' ? 'text-red-400' : m.status === 'upcoming' ? 'text-orange-300' : 'text-gray-300'
+                      return (
+                        <li key={m.key} className="mb-6 ml-6">
+                          <span className={`absolute -left-3.5 flex h-6 w-6 items-center justify-center rounded-full ${colorClass} ring-4 ring-[#0f1c2e]`} />
+                          <div className="pl-2">
+                            <div className={`flex items-center justify-between ${textColor}`}>
+                              <div className="font-semibold">{m.label}</div>
+                              <div className="text-sm">{m.date}</div>
+                            </div>
+                            <div className="text-xs text-gray-400">{m.status === 'overdue' ? 'Overdue' : m.status === 'upcoming' ? 'Upcoming' : 'Scheduled'}</div>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ol>
+                )
+              })()}
+            </div>
+          </div>
+
         </div>
       )}
 
