@@ -36,6 +36,20 @@ export const EvaProvider = ({children}:{children:React.ReactNode})=>{
   const setPageContext = useCallback((ctx:PageContext)=>setPageContextState(ctx),[])
   const addMessage = useCallback((m:Message)=> setMessages(prev=>[...prev,m]),[])
 
+  // listen for window events to set context (deal page mounts dispatch)
+  React.useEffect(()=>{
+    const handler = (e: any) => {
+      try{
+        const detail = e.detail
+        if(detail && detail.route){
+          setPageContextState(detail)
+        }
+      }catch(_){ }
+    }
+    if(typeof window !== 'undefined') window.addEventListener('eva:setContext', handler as EventListener)
+    return ()=>{ if(typeof window !== 'undefined') window.removeEventListener('eva:setContext', handler as EventListener) }
+  },[])
+
   return (
     <EvaCtx.Provider value={{isOpen,conversationId,pageContext,messages,openEva,closeEva,toggleEva,setPageContext,addMessage}}>
       {children}
