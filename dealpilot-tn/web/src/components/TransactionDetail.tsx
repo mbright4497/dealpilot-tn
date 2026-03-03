@@ -133,7 +133,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   }
 
   const stageFromProgress = (p:number)=>{
-    if(transaction?.status === 'Closed') return 'Closed'
+        if(transaction?.status === 'Closed') return 'Closed'
     if(p < 5) return 'New'
     if(p < 30) return 'Under Contract'
     if(p < 55) return 'Inspection'
@@ -284,7 +284,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
-            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{transaction?.status === 'Closed' ? 'Closed – Complete' : health ? (health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</span>
+            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</span>
           </div>
           <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
@@ -318,8 +318,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 <div className="text-xs text-gray-300">Deal Health</div>
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${health?.status==='healthy' ? 'bg-green-500' : health?.status==='attention' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
-                  <div className="font-semibold">{health ? (health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</div>
-                  <div className="text-xs text-gray-300 ml-2">{transaction?.status === 'Closed' ? '100%' : health ? health.score + '%' : ''}</div>
+                  <div className="font-semibold">{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</div>
+                  <div className="text-xs text-gray-300 ml-2">{health ? health.score + '%' : ''}</div>
                 </div>
                 {/* existing signals (structured) */}
                 <div className="text-xs text-gray-400 mt-1">
@@ -335,8 +335,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 )}
               </div>
               <div className="flex gap-2">
-                <button className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
-                <button className="px-3 py-2 bg-orange-500 rounded">Primary CTA</button>
+                <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${transaction.id}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
+                <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
               </div>
             </div>
           </div>
@@ -412,13 +412,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 <div className="text-xs text-gray-400">Lifecycle</div>
                 <div className="flex gap-2 mt-2">
                   {['New','Under Contract','Inspection','Appraisal','Clear to Close','Closed'].map((s,i)=> (
-                    <div key={s} className={`flex-1 text-center py-1 rounded text-xs ${i <= (transaction?.status === 'Closed' ? 5 : Math.floor(combinedProgress()/20)) ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'}`}>{s}</div>
+                    <div key={s} className={`flex-1 text-center py-1 rounded text-xs ${i <= (transaction?.status==='Closed' ? 5 : Math.floor(combinedProgress()/20)) ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'}`}>{s}</div>
                   ))}
                 </div>
               </div>
 
               {/* integrity alert */}
-              {transaction?.status !== 'Closed' && integrity < 70 && (
+              {integrity < 70 && (
                 <div className="mt-3 p-2 rounded bg-red-700 text-sm">Integrity alert: lifecycle integrity at {integrity}%. Review milestones.</div>
               )}
             </div>
@@ -458,7 +458,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <div className="mb-4">
-                <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} />
+                <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} onDelete={()=>setContractData(null)} />
               </div>
 
               <div className="p-4 bg-gray-800 rounded mb-4">
@@ -555,7 +555,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                       </div>
                       <div className="flex flex-col gap-1">
                         <a href={`tel:${c.phone}`} className="text-xs text-gray-300">Call</a>
-                        <a href={`mailto:${c.email}`} className="text-xs text-gray-300">Email</a>
+                        <a href={`mailto:${c.email}`} className="text-xs text-gray-300">Email</a>                 <button onClick={()=>removeContact(i)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
                       </div>
                     </div>
                   ))}

@@ -35,24 +35,35 @@ interface ContractUploadProps {
   dealId: string;
   onExtracted?: (data: ExtractedData) => void;
   onSave?: (data: ExtractedData) => void;
+  onDelete?: () => void;
 }
 
 type FieldSection = { title: string; fields: { label: string; value: string | undefined }[] };
 
-export default function ContractUpload({ dealId, onExtracted, onSave }: ContractUploadProps) {
+export default function ContractUpload({ dealId, onExtracted, onSave, onDelete }: ContractUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const onExtractedRef = useRef(onExtracted);
   onExtractedRef.current = onExtracted;
+  const blobUrlRef = useRef<string | null>(null);
 
   const fmt = (val?: number) =>
     val != null
       ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val)
       : undefined;
 
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    };
+  }, []);
+
+  // Load existing contract on mount
   useEffect(() => {
     let mounted = true;
     setExtractedData(null);
@@ -87,10 +98,16 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     setError(null);
     setExtractedData(null);
     setSaved(false);
-    setPdfUrl(URL.createObjectURL(file));
+    // Revoke old blob URL if any
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    const newBlobUrl = URL.createObjectURL(file);
+    blobUrlRef.current = newBlobUrl;
+    setPdfUrl(newBlobUrl);
 
     let uploadedUrl: string | null = null;
-
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -114,6 +131,11 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
           if (ud?.url) {
             uploadedUrl = ud.url;
             setPdfUrl(ud.url);
+            // Revoke blob since we have the real URL now
+            if (blobUrlRef.current) {
+              URL.revokeObjectURL(blobUrlRef.current);
+              blobUrlRef.current = null;
+            }
           }
         }
       } catch (_e) { /* ignore upload errors */ }
@@ -163,6 +185,31 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     setSaved(true);
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this contract? This cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/deals/${dealId}/contract`, { method: 'DELETE' });
+      // Clear localStorage
+      try { localStorage.removeItem(`dp-contract-${dealId}`); } catch (_e) {}
+      // Revoke blob URL
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      setExtractedData(null);
+      setPdfUrl(null);
+      setSaved(false);
+      setError(null);
+      if (onDelete) onDelete();
+    } catch (e) {
+      console.error('Delete failed:', e);
+      setError('Failed to delete contract');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getSections = (d: ExtractedData): FieldSection[] => [
     { title: 'Parties', fields: [{ label: 'Buyer(s)', value: d.buyer_names?.join(', ') }, { label: 'Seller(s)', value: d.seller_names?.join(', ') }] },
     { title: 'Property', fields: [{ label: 'Address', value: d.property_address }, { label: 'County', value: d.county }, { label: 'Type', value: d.property_type }] },
@@ -172,6 +219,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
     { title: 'Agents & Closing', fields: [{ label: 'Listing Agent', value: d.listing_agent }, { label: 'Listing Brokerage', value: d.listing_brokerage }, { label: 'Buyer Agent', value: d.buyer_agent }, { label: 'Buyer Brokerage', value: d.buyer_brokerage }, { label: 'Title Company', value: d.title_company }] },
   ];
 
+  // Empty state: show dropzone
   if (!pdfUrl && !extractedData) {
     return (
       <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl" {...getRootProps()}>
@@ -197,7 +245,8 @@ export default function ContractUpload({ dealId, onExtracted, onSave }: Contract
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Extracted Contract Data</h3>
           <div className="flex gap-2">
-            <button onClick={() => { setPdfUrl(null); setExtractedData(null); setError(null); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Upload New</button>
+            <button onClick={() => { if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; } setPdfUrl(null); setExtractedData(null); setError(null); setSaved(false); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Upload New</button>
+            <button onClick={handleDelete} disabled={deleting} className="text-xs px-3 py-1.5 rounded-lg border border-red-400 text-red-400 hover:bg-red-900/20 disabled:opacity-50">{deleting ? 'Deleting...' : 'Delete Contract'}</button>
             <button onClick={handleSave} className="text-xs px-3 py-1.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600">{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
           </div>
         </div>
