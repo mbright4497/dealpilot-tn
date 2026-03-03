@@ -194,19 +194,54 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
       )}
 
       {activeTab === "documents" && (
-        <div className="bg-[#16213e] p-6 rounded-xl">
-          <h2 className="text-lg font-semibold mb-4">Documents</h2>
-          {docLoading ? (
-            <p>Loading documents...</p>
-          ) : (
-            <ul className="space-y-2">
-              {documents.map((doc) => (
-                <li key={doc.name} className="flex justify-between bg-[#0f3460] p-2 rounded"> 
-                  {doc.name}
-                </li>
-              ))}
-            </ul>
-          )}
+        <div className="bg-[#16213e] p-6 rounded-xl space-y-4">
+          <h2 className="text-lg font-semibold mb-2">Documents</h2>
+
+          <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded">
+            <div className="mb-3">
+              <label className="block mb-1">Upload Documents</label>
+              <div className="border-dashed border-2 border-gray-700 p-6 rounded text-center">
+                <p className="text-gray-400">Drag & drop files here or click to browse</p>
+                <input type="file" multiple onChange={async (e)=>{
+                  const files = Array.from(e.target.files || [])
+                  if(!transaction) return
+                  setDocLoading(true)
+                  // naive client-side add - show names
+                  const newDocs = files.map(f=>({ name: f.name, size: f.size, uploadedAt: new Date().toISOString(), type: 'other' }))
+                  setDocuments(prev=>[...newDocs, ...prev])
+                  setDocLoading(false)
+                }} className="mt-2" />
+              </div>
+            </div>
+
+            <div>
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-sm text-gray-400">
+                    <th className="p-2">Name</th>
+                    <th className="p-2">Type</th>
+                    <th className="p-2">Uploaded</th>
+                    <th className="p-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documents.length === 0 ? (
+                    <tr><td colSpan={4} className="p-4 text-gray-400">No documents for this transaction. Upload files above.</td></tr>
+                  ) : (
+                    documents.map((doc:any)=> (
+                      <tr key={doc.name} className="bg-[#0f3460] mb-2">
+                        <td className="p-2">{doc.name}</td>
+                        <td className="p-2"><span className="text-xs bg-[#16213e] px-2 py-1 rounded">{doc.type || 'other'}</span></td>
+                        <td className="p-2">{doc.uploadedAt ? doc.uploadedAt.slice(0,10) : '-'}</td>
+                        <td className="p-2"><button className="text-orange-400">Download</button></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
         </div>
       )}
 
@@ -422,9 +457,39 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
       )}
 
       {activeTab === "assistant" && (
-        <div className="bg-[#16213e] p-6 rounded-xl">
-          <h2 className="text-lg font-semibold mb-4">EVA Assistant</h2>
-          <div className="bg-[#0f3460] p-4 rounded"> Transaction-scoped AI chat coming here. </div>
+        <div className="bg-[#16213e] p-6 rounded-xl space-y-4">
+          <h2 className="text-lg font-semibold mb-2">EVA Assistant</h2>
+
+          <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded">
+            <div className="mb-3 text-gray-300">Eva is scoped to: <span className="font-semibold">{editData.address || 'Unknown'} - {editData.client || 'Unknown'}</span></div>
+
+            <div className="flex gap-2 mb-4">
+              <button className="bg-[#0f3460] text-white px-3 py-1 rounded">Check Deadlines</button>
+              <button className="bg-[#0f3460] text-white px-3 py-1 rounded">Draft Amendment</button>
+              <button className="bg-[#0f3460] text-white px-3 py-1 rounded">Review Checklist</button>
+              <button className="bg-[#0f3460] text-white px-3 py-1 rounded">Calculate Net Sheet</button>
+            </div>
+
+            <div className="bg-[#0f3460] p-3 rounded h-56 overflow-auto text-gray-200"> 
+              {/* Placeholder chat area - preloaded context */}
+              <div className="text-sm mb-2 text-gray-400">System Context:</div>
+              <pre className="text-xs text-gray-300">{JSON.stringify({
+                address: editData.address,
+                client: editData.client,
+                type: editData.type,
+                binding: editData.binding,
+                closing: editData.closing,
+                status: editData.status,
+                notes: editData.notes,
+              }, null, 2)}</pre>
+            </div>
+
+            <div className="mt-3">
+              <input placeholder="Ask Eva about this deal..." className="w-full bg-[#0f3460] p-2 rounded" />
+            </div>
+
+          </div>
+
         </div>
       )}
 
