@@ -288,8 +288,21 @@ export default function DealDetailPage({
             <li>🏁 Closing: {editData.closing}</li>
           </ul>
         </div>
+
+            {activeTab === "contract" && (
+        <div className="bg-[#16213e] p-6 rounded-xl">
+          <h2 className="text-lg font-semibold mb-4">Contract Upload</h2>
+          <input type="file" className="mb-4" />
+          <div className="bg-[#0f3460] p-4 rounded text-gray-400">AI Extraction Placeholder</div>
+        </div>
+      )}
+
+      {activeTab === "assistant" && (
+        <div className="bg-[#16213e] p-6 rounded-xl">
+          <h2 className="text-lg font-semibold mb-4">EVA Assistant</h2>
+          <div className="bg-[#0f3460] p-4 rounded">Transaction-scoped AI chat coming here.</div>
+        </div>
       )}
     </div>
   )
 }
-```
