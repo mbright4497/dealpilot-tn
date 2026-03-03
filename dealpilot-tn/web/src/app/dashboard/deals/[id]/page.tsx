@@ -166,9 +166,9 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
           <p className="text-gray-300"> {editData.client} • {editData.type} • {editData.status} </p>
         </div>
         <div>
-          {/* Compliance Score - placeholder calculation */}
+          {/* Compliance Score - real calculation */}
           {/* @ts-ignore */}
-          {typeof window !== 'undefined' && React.createElement(require('@/components/deals/ComplianceScore').default, { percent: Math.floor(Math.random()*41)+50 })}
+          {typeof window !== 'undefined' && React.createElement(require('@/components/deals/ComplianceScore').default, { dealId: params.id })}
         </div>
       </div>
 
