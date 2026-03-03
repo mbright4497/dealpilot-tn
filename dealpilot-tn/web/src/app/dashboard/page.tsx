@@ -188,6 +188,12 @@ export default function DashboardPage() {
               {/* @ts-ignore */}
               {typeof window !== 'undefined' && React.createElement(require('@/components/eva/EvaBriefingCard').default)}
             </div>
+
+            {/* Deadline tracker widget */}
+            <div className="mt-4">
+              {/* @ts-ignore */}
+              {typeof window !== 'undefined' && React.createElement(require('@/components/dashboard/DeadlineTracker').default)}
+            </div>
           </div>
         </div>
 
