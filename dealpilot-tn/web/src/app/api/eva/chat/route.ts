@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
+import { getDealContext } from '@/lib/eva/deal-context'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
@@ -14,18 +15,16 @@ export async function POST(req: Request) {
 
     let systemPrompt = SYSTEM_PROMPT
 
-    // if deal context provided, fetch deal and inject summary
+    // if deal context provided, fetch deal context and inject summary
     if(context.dealId){
-      const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
-      if(SUPABASE_URL && SUPABASE_KEY){
-        const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
-        const { data } = await sb.from('transactions').select('id,address,client,binding,closing,status,notes').eq('id', context.dealId).single()
-        if(data){
-          systemPrompt += ` Deal context: ${data.address} for ${data.client}. Binding: ${data.binding || 'N/A'}. Closing: ${data.closing || 'N/A'}. Status: ${data.status || 'N/A'}.` 
+      try{
+        const ctx = await getDealContext(context.dealId)
+        if(ctx && ctx.transaction){
+          const t = ctx.transaction
+          systemPrompt += ` Deal context: ${t.address} for ${t.client}. Binding: ${t.binding || 'N/A'}. Closing: ${t.closing || 'N/A'}. Status: ${t.status || 'N/A'}. Missing docs: ${ctx.missingDocs.join(', ') || 'none'}. Overdue tasks: ${ctx.overdueTasks.length}.` 
         }
-      } else if(context.dealAddress){
-        systemPrompt += ` Deal context: ${context.dealAddress}.` 
+      }catch(e){
+        // ignore
       }
     }
 
@@ -37,12 +36,14 @@ export async function POST(req: Request) {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
         ],
-        max_tokens: 600,
+        max_tokens: 800,
       })
 
       const reply = resp.choices?.[0]?.message?.content || 'EVA could not generate a response.'
-      // simple suggestion extraction - naive
-      const suggestions = []
+      // suggestions - naive: if message contains keywords
+      const suggestions:string[] = []
+      if(message.toLowerCase().includes('summarize')) suggestions.push('Send summary to email')
+      if(message.toLowerCase().includes('missing')) suggestions.push('List missing documents')
 
       return NextResponse.json({ reply, suggestions })
     }catch(aiErr:any){
