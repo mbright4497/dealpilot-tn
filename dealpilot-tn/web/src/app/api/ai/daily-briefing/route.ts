@@ -32,7 +32,6 @@ export async function GET() {
       .select(
         "id, address, client, status, binding, closing"
       )
-      .eq("user_id", user.id)
       .neq("status", "archived")
       .order("created_at", { ascending: false });
 
