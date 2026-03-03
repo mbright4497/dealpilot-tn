@@ -3,30 +3,42 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request){
   try{
-    // For now use simple supabase client if env available; otherwise mock
     const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
-    let count = 0
-    let urgentDeal = null
-    let riskDeal = null
+    let transactions: any[] = []
 
     if(SUPABASE_URL && SUPABASE_KEY){
       const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
-      const { data } = await sb.from('transactions').select('id,address,closing,binding,status').eq('status','active').limit(100)
-      count = data?.length || 0
-      if(count>0){
-        urgentDeal = data[0]
-        if(data[0].binding) riskDeal = data[0]
-      }
+      const { data, error } = await sb.from('transactions').select('id,address,client,binding,closing,status,notes')
+      if(data && Array.isArray(data)) transactions = data
     } else {
-      // mock data
-      count = 3
-      urgentDeal = { id:'1', address:'123 Elm St', binding: new Date(Date.now()+5*24*3600*1000).toISOString() }
-      riskDeal = { id:'2', address:'45 Oak Ave', binding: new Date(Date.now()-2*24*3600*1000).toISOString() }
+      transactions = [
+        { id:'1', address:'123 Elm St', client:'Alice', binding: new Date(Date.now()+5*24*3600*1000).toISOString(), closing: null, status:'active' },
+        { id:'2', address:'45 Oak Ave', client:'Bob', binding: new Date(Date.now()-2*24*3600*1000).toISOString(), closing: null, status:'active' }
+      ]
     }
 
-    const inDays = urgentDeal && urgentDeal.binding ? Math.ceil((new Date(urgentDeal.binding).getTime()-Date.now())/(1000*60*60*24)) : null
-    const message = `Good afternoon! You have ${count} active deals. ${urgentDeal ? `${urgentDeal.address} has a binding date in ${inDays} days.` : ''} ${riskDeal ? `${riskDeal.address} needs attention (binding missed).` : ''} Want me to prioritize your day?`
+    const counts: Record<string,number> = {}
+    for(const t of transactions){ counts[t.status] = (counts[t.status]||0)+1 }
+
+    const today = Date.now()
+    const upcoming: any[] = []
+    const needsAttention: any[] = []
+
+    for(const t of transactions){
+      if(t.binding){
+        const diff = Math.ceil((new Date(t.binding).getTime()-today)/(1000*60*60*24))
+        if(diff <=7 && diff >=0) upcoming.push({id:t.id,address:t.address,days:diff,kind:'binding'})
+        if(diff < 0) needsAttention.push({id:t.id,address:t.address,reason:'binding missed'})
+      }
+      // naive missing docs check
+      if(!t.notes || t.notes.length<10) needsAttention.push({id:t.id,address:t.address,reason:'missing notes/docs'})
+    }
+
+    const urgent = upcoming[0]
+    const risk = needsAttention[0]
+
+    const message = `Good afternoon! You have ${transactions.length} total deals. ${urgent? `${urgent.address} has a binding deadline in ${urgent.days} days.`: ''} ${risk? `${risk.address} needs attention (${risk.reason}).`: ''} Want me to prioritize your day?`
     const chips = ['Prioritize deals','Generate brief','Export CSV']
     return NextResponse.json({ message, chips })
   }catch(err:any){
