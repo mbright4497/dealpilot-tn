@@ -5,7 +5,6 @@ type Deal = {
   status: string | null;
   binding: string | null;
   closing: string | null;
-  inspection_end_date: string | null;
 };
 
 function daysUntil(dateString: string | null): number | null {
@@ -33,14 +32,12 @@ Return:
 
   const dealSummaries = deals.map((deal) => {
     const closingDays = daysUntil(deal.closing);
-    const inspectionDays = daysUntil(deal.inspection_end_date);
 
     return {
       address: deal.address,
       client: deal.client,
       status: deal.status,
       closing_in_days: closingDays,
-      inspection_ends_in_days: inspectionDays,
     };
   });
 
