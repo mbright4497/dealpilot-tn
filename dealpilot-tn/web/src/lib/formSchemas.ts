@@ -18,6 +18,8 @@ export interface FormSchema {
   name: string
   description: string
   fields: FormField[]
+    category?: string
+  pages?: number
 }
 
 export const FORM_SCHEMAS: Record<string, FormSchema> = {
@@ -234,6 +236,9 @@ export const FORM_LIST = Object.values(FORM_SCHEMAS)
 export function getSchema(id: string): FormSchema | undefined {
     return FORM_SCHEMAS[id.toLowerCase()]
 }
+export const FORM_FIELDS: Record<string, any[]> = Object.fromEntries(
+  FORM_LIST.map(f => [f.id, f.fields || []])
+)
 
 export function buildSystemPrompt(schema: FormSchema, filledFields: Record<string,unknown>): string {
   const missing = schema.fields
