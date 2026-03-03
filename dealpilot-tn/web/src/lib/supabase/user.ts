@@ -1,24 +1,15 @@
-// lib/supabase/user.ts
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-export function supabaseUser() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const cookieStore = cookies();
+export async function getCurrentUser(supabase: SupabaseClient) {
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-  return createServerClient(url, anon, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-    },
-  });
-}
+  if (error) {
+    console.error("Supabase auth error:", error);
+    return null;
+  }
 
-export async function requireUserId() {
-  const supabase = supabaseUser();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user?.id) throw new Error("UNAUTHENTICATED");
-  return data.user.id;
+  return user ?? null;
 }
