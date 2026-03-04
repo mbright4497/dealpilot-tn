@@ -149,16 +149,16 @@ export default function DealsPage() {
                         key={deal.id}
                         onClick={() => onRowClick(deal.id)}
                         className="border-t border-white/5 hover:bg-white/5 cursor-pointer"
-                        role="button"
+                        role="link"
                         tabIndex={0}
+                        aria-label={\`Open deal ${deal.address}\`}
+                        data-deal-id={deal.id}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ")
                             onRowClick(deal.id);
                         }}
                       >
-                        <td className="px-4 py-3 font-medium">
-                          {deal.address}
-                        </td>
+                        <td className="px-4 py-3 font-medium max-w-[300px] truncate" title={deal.address}>{deal.address}</td>
                         <td className="px-4 py-3 text-gray-200">
                           {deal.client || "—"}
                         </td>
