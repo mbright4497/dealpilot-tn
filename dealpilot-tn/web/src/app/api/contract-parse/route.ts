@@ -38,61 +38,48 @@ function cleanJsonFromText(raw: string) {
   return raw
 }
 
-function base64ToBuffer(base64: string) {
-  const b64 = base64.includes(',') ? base64.split(',').pop() || '' : base64
-  return Buffer.from(b64, 'base64')
-}
-
 export async function POST(req: Request) {
 
   try {
 
     const apiKey = process.env.OPENAI_API_KEY
+
     if (!apiKey) {
-      return NextResponse.json({ error: 'Missing OPENAI_API_KEY' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Missing OPENAI_API_KEY' },
+        { status: 500 }
+      )
     }
 
     const body = await req.json()
-    const fileBase64 = body?.file
+    const base64 = body?.file
 
-    if (!fileBase64) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-    }
-
-    const pdfBuffer = base64ToBuffer(fileBase64)
-
-    /* ---------- PDF PARSE FIX FOR NEXTJS ---------- */
-    const pdfParseModule = await import('pdf-parse/lib/pdf-parse.js')
-    const pdfParse = pdfParseModule.default
-
-    const pdfData = await pdfParse(pdfBuffer)
-    const extractedText = pdfData.text || ''
-
-    if (!extractedText) {
+    if (!base64) {
       return NextResponse.json(
-        { error: 'No text could be extracted from the PDF.' },
+        { error: 'No PDF provided in body.file' },
         { status: 400 }
       )
     }
 
-    /* ---------- SYSTEM PROMPT ---------- */
+    /* ---------------- SYSTEM PROMPT ---------------- */
 
     const system = [
       "You are EVA, a Tennessee real estate transaction coordinator assistant.",
-      "You extract structured data from Tennessee REALTORS® RF401 (Purchase & Sale Agreement) contract text.",
-      "CRITICAL for buyer/seller identification: In RF401 Section 1, the BUYER name appears FIRST, written as [Name](\"Buyer\") agrees to buy from [Name](\"Seller\"). Do NOT confuse real estate agent names, broker names, or listing agent names with the actual buyer/seller parties.",
-      "Return ONLY valid JSON that matches the requested schema. Do not include markdown, explanations, or extra keys.",
-      "If a field is missing or uncertain, set it to null (or [] for arrays) and create an issue in the issues array.",
-      "Dates: return YYYY-MM-DD when possible. Currency/amounts: numbers (no $ or commas).",
+      "You extract structured data from Tennessee REALTORS® RF401 (Purchase & Sale Agreement) contract documents.",
+      "CRITICAL for buyer/seller identification: In RF401 Section 1, the BUYER name appears FIRST, written as [Name](\"Buyer\") agrees to buy from [Name](\"Seller\"). Do NOT confuse real estate agent names, broker names, listing agent names, or brokerage information with the actual buyer/seller parties.",
+      "Return ONLY valid JSON matching the requested schema. Do not include explanations or markdown.",
+      "If a field is missing or uncertain, set it to null (or [] for arrays) and create an issue entry.",
+      "Dates must be formatted YYYY-MM-DD when possible.",
+      "Currency values must be numbers without $ or commas."
     ].join("\n")
 
-    /* ---------- USER PROMPT ---------- */
+    /* ---------------- USER PROMPT ---------------- */
 
-    const user = [
-      "Extract the following RF401 fields from the contract text:",
-      "- propertyAddress (string)",
-      "- buyerNames (array of strings)",
-      "- sellerNames (array of strings)",
+    const userPrompt = [
+      "Extract the following RF401 fields from this Tennessee real estate contract:",
+      "- propertyAddress",
+      "- buyerNames (array)",
+      "- sellerNames (array)",
       "- purchasePrice (number)",
       "- earnestMoney (number)",
       "- bindingDate (YYYY-MM-DD)",
@@ -100,62 +87,81 @@ export async function POST(req: Request) {
       "- inspectionEndDate (YYYY-MM-DD)",
       "- financingContingencyDate (YYYY-MM-DD)",
       "- specialStipulations (string)",
-      "- contractType (buyer or seller or unknown)",
+      "- contractType (buyer | seller | unknown)",
       "",
       "CRITICAL buyer/seller instruction:",
-      "In RF401 Section 1 the format is:",
+      "RF401 Section 1 format:",
       "\"[Buyer Name(s)] (\"Buyer\") agrees to buy from [Seller Name(s)] (\"Seller\").\"",
-      "The BUYER appears first and the SELLER appears second.",
-      "Do NOT extract real estate agent names, listing agent names, brokerage names, or broker information as buyers or sellers.",
-      "Only extract the legal buyer and seller parties shown in Section 1.",
+      "The BUYER appears first. The SELLER appears second.",
+      "Do NOT extract listing agents, brokers, or brokerage names as buyers or sellers.",
       "",
-      "ALSO return an issues array with objects:",
+      "ALSO return an issues array:",
       "{ field, severity:'error'|'warning'|'info', message, section }",
-      "Use issues to flag:",
-      "- missing required or common fields",
-      "- inconsistencies (e.g., inspection end after closing, earnest money missing/0, dates not parseable)",
-      "- potential compliance or risk concerns based on the text.",
       "",
-      "ALSO return a timeline array with objects:",
+      "Flag issues such as:",
+      "- missing required fields",
+      "- inconsistent dates",
+      "- inspection ending after closing",
+      "- missing earnest money",
+      "- compliance risks",
+      "",
+      "ALSO return a timeline array:",
       "{ label, date, status:'pending'|'complete' }",
-      "Include at minimum:",
+      "",
+      "Include timeline events if found:",
       "- Contract Executed (Binding Date)",
       "- Earnest Money Due",
       "- Inspection Period Ends",
       "- Financing Contingency Deadline",
       "- Closing Date",
       "",
-      "Return JSON in this exact shape:",
-      "{ fields:{...}, issues:[...], timeline:[...] }",
-      "",
-      "CONTRACT TEXT START:\n" + extractedText + "\nCONTRACT TEXT END"
+      "Return JSON exactly in this format:",
+      "{ fields:{...}, issues:[...], timeline:[...] }"
     ].join("\n")
 
-    /* ---------- OPENAI CALL ---------- */
+    /* ---------------- OPENAI CALL ---------------- */
 
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-
-      method: 'POST',
-
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user }
-        ]
-      })
-    })
+    const openaiRes = await fetch(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          temperature: 0,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: 'system',
+              content: system
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: userPrompt
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:application/pdf;base64,${base64}`
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      }
+    )
 
     if (!openaiRes.ok) {
 
       const err = await openaiRes.text()
+
       return NextResponse.json(
         { error: 'OpenAI request failed', details: err },
         { status: 500 }
@@ -178,6 +184,7 @@ export async function POST(req: Request) {
     try {
       parsed = JSON.parse(cleanJsonFromText(raw))
     } catch {
+
       return NextResponse.json(
         { error: 'Failed to parse AI JSON', raw },
         { status: 500 }
