@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import pdf from 'pdf-parse'
 
 // Server runtime (uses fs via pdf-parse); do not run on edge
 export const runtime = 'nodejs'
@@ -12,7 +11,10 @@ export async function POST(req: Request) {
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-    const data = await pdf(buffer)
+
+    // Dynamically import pdf-parse at runtime to avoid build-time bundling issues
+    const pdf = await import('pdf-parse')
+    const data = await (pdf.default || pdf)(buffer as any)
     const text = data.text || ''
 
     // Call OpenAI to extract fields
