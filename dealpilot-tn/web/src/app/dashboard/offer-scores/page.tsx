@@ -1,3 +1,5 @@
+"use client"
+"use client"
 import React, { useState } from 'react'
 import { useDeals, useOffers } from '@/lib/hooks'
 
