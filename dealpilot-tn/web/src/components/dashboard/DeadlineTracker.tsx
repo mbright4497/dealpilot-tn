@@ -78,7 +78,7 @@ export default function DeadlineTracker(){
           <tbody>
             {rows.map(r=> (
               <tr key={r.id + r.milestone} className="border-t border-[#11314f]">
-                <td className="p-2">{r.address}</td>
+                <td className="p-2 max-w-[220px] truncate" style={{maxWidth:220}} title={r.address}>{r.address}</td>
                 <td className="p-2">{r.milestone}</td>
                 <td className="p-2 text-gray-300">{r.date? new Date(r.date).toLocaleDateString(): '—'}</td>
                 <td className="p-2">{r.days===null? '—' : r.days}</td>
