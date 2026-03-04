@@ -192,7 +192,7 @@ export default function DealsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <Badge
-                            className={BADGE_CLASSES.health[level]}
+                            className={BADGE_CLASSES.health[level] || BADGE_CLASSES.health.unknown}
                             title={
                               days === null
                                 ? undefined
