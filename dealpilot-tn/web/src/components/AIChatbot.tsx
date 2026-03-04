@@ -105,7 +105,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
                     </div>
                   ) : (
                     <div className="flex items-center gap-3">
-                      <PilotAvatar size={48} />
+                      <img src="/eva-avatar.png" alt="Eva" className="w-12 h-12 rounded-full object-cover border-2 border-orange-500" />
                       <div className="text-lg font-bold">Eva</div>
                     </div>
                   )}
