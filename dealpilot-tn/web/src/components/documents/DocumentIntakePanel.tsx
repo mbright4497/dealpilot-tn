@@ -22,6 +22,8 @@ export default function DocumentIntakePanel({ transactionId }:{ transactionId?:s
     if(!ext.ok){ alert(ej.error||'extract failed'); setStage('idle'); return }
     setExtraction(ej.extraction)
     setStage('review')
+    // notify listeners
+    try{ window.dispatchEvent(new CustomEvent('extraction:ready',{ detail: { extraction: ej.extraction } })) }catch(_){ }
   }
 
   return (

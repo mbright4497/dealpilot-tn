@@ -2,7 +2,19 @@
 import { useDocuments } from '../../../lib/hooks';
 import { useState } from 'react';
 
+import DocumentIntakePanel from '@/components/documents/DocumentIntakePanel'
+import ExtractedDataReviewDrawer from '@/components/documents/ExtractedDataReviewDrawer'
+import MissingItemsChecklist from '@/components/documents/MissingItemsChecklist'
+import React, { useEffect, useState } from 'react'
+
 export default function DocumentsPage(){
+  const [extraction, setExtraction] = useState<any|null>(null)
+
+  useEffect(()=>{
+    const handler = (e:any)=> setExtraction(e.detail.extraction)
+    window.addEventListener('extraction:ready', handler as EventListener)
+    return ()=> window.removeEventListener('extraction:ready', handler as EventListener)
+  },[])
   const { data, addDocument, removeDocument } = useDocuments();
   const rows = data?.data || [];
   const [showForm, setShowForm] = useState(false);
