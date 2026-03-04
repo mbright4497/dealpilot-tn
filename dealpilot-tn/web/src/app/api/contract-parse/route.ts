@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server"
+import { pdf } from "pdf-to-img"
 
-export const runtime = 'nodejs'
+export const runtime = "nodejs"
 
-type Severity = 'error' | 'warning' | 'info'
+type Severity = "error" | "warning" | "info"
 
 type ParsedPayload = {
   fields: {
@@ -16,7 +17,7 @@ type ParsedPayload = {
     inspectionEndDate: string | null
     financingContingencyDate: string | null
     specialStipulations: string | null
-    contractType: 'buyer' | 'seller' | 'unknown'
+    contractType: "buyer" | "seller" | "unknown"
   }
   issues: {
     field: string
@@ -27,15 +28,20 @@ type ParsedPayload = {
   timeline: {
     label: string
     date: string | null
-    status: 'pending' | 'complete'
+    status: "pending" | "complete"
   }[]
 }
 
 function cleanJsonFromText(raw: string) {
-  const first = raw.indexOf('{')
-  const last = raw.lastIndexOf('}')
+  const first = raw.indexOf("{")
+  const last = raw.lastIndexOf("}")
   if (first >= 0 && last > first) return raw.slice(first, last + 1)
   return raw
+}
+
+function base64ToBuffer(base64: string) {
+  const b64 = base64.includes(",") ? base64.split(",").pop() || "" : base64
+  return Buffer.from(b64, "base64")
 }
 
 export async function POST(req: Request) {
@@ -46,124 +52,144 @@ export async function POST(req: Request) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Missing OPENAI_API_KEY' },
+        { error: "Missing OPENAI_API_KEY" },
         { status: 500 }
       )
     }
 
     const body = await req.json()
-    const base64 = body?.file
+    const fileBase64 = body?.file
 
-    if (!base64) {
+    if (!fileBase64) {
       return NextResponse.json(
-        { error: 'No PDF provided in body.file' },
+        { error: "No PDF provided in body.file" },
         { status: 400 }
+      )
+    }
+
+    const pdfBuffer = base64ToBuffer(fileBase64)
+
+    /* ---------------- PDF → IMAGE CONVERSION ---------------- */
+
+    const images: string[] = []
+
+    const document = await pdf(pdfBuffer, { scale: 2 })
+
+    for await (const image of document) {
+      const base64Image = image.toString("base64")
+      images.push(`data:image/png;base64,${base64Image}`)
+    }
+
+    if (images.length === 0) {
+      return NextResponse.json(
+        { error: "Failed to convert PDF pages to images." },
+        { status: 500 }
       )
     }
 
     /* ---------------- SYSTEM PROMPT ---------------- */
 
-    const system = [
+    const systemPrompt = [
       "You are EVA, a Tennessee real estate transaction coordinator assistant.",
-      "You extract structured data from Tennessee REALTORS® RF401 (Purchase & Sale Agreement) contract documents.",
-      "CRITICAL for buyer/seller identification: In RF401 Section 1, the BUYER name appears FIRST, written as [Name](\"Buyer\") agrees to buy from [Name](\"Seller\"). Do NOT confuse real estate agent names, broker names, listing agent names, or brokerage information with the actual buyer/seller parties.",
-      "Return ONLY valid JSON matching the requested schema. Do not include explanations or markdown.",
-      "If a field is missing or uncertain, set it to null (or [] for arrays) and create an issue entry.",
+      "You extract structured data from Tennessee REALTORS RF401 Purchase & Sale Agreement contracts.",
+      "",
+      "CRITICAL BUYER/SELLER RULE:",
+      "In RF401 Section 1 the format is:",
+      "[Buyer Name] (\"Buyer\") agrees to buy from [Seller Name] (\"Seller\").",
+      "",
+      "The BUYER name appears FIRST.",
+      "The SELLER name appears SECOND.",
+      "",
+      "DO NOT extract listing agents, brokers, or brokerage names as buyers or sellers.",
+      "ONLY extract the legal contract parties shown in Section 1.",
+      "",
+      "Return ONLY valid JSON matching the requested schema.",
+      "If a field is missing or uncertain set it to null or [].",
+      "",
       "Dates must be formatted YYYY-MM-DD when possible.",
-      "Currency values must be numbers without $ or commas."
+      "Currency must be numbers without dollar signs."
     ].join("\n")
 
     /* ---------------- USER PROMPT ---------------- */
 
     const userPrompt = [
-      "Extract the following RF401 fields from this Tennessee real estate contract:",
+      "Analyze this Tennessee RF401 Purchase and Sale Agreement.",
+      "",
+      "Extract the following fields:",
       "- propertyAddress",
       "- buyerNames (array)",
       "- sellerNames (array)",
-      "- purchasePrice (number)",
-      "- earnestMoney (number)",
-      "- bindingDate (YYYY-MM-DD)",
-      "- closingDate (YYYY-MM-DD)",
-      "- inspectionEndDate (YYYY-MM-DD)",
-      "- financingContingencyDate (YYYY-MM-DD)",
-      "- specialStipulations (string)",
-      "- contractType (buyer | seller | unknown)",
+      "- purchasePrice",
+      "- earnestMoney",
+      "- bindingDate",
+      "- closingDate",
+      "- inspectionEndDate",
+      "- financingContingencyDate",
+      "- specialStipulations",
+      "- contractType",
       "",
-      "CRITICAL buyer/seller instruction:",
-      "RF401 Section 1 format:",
-      "\"[Buyer Name(s)] (\"Buyer\") agrees to buy from [Seller Name(s)] (\"Seller\").\"",
-      "The BUYER appears first. The SELLER appears second.",
-      "Do NOT extract listing agents, brokers, or brokerage names as buyers or sellers.",
-      "",
-      "ALSO return an issues array:",
+      "ALSO RETURN:",
+      "issues array with objects:",
       "{ field, severity:'error'|'warning'|'info', message, section }",
       "",
-      "Flag issues such as:",
-      "- missing required fields",
-      "- inconsistent dates",
-      "- inspection ending after closing",
-      "- missing earnest money",
-      "- compliance risks",
-      "",
-      "ALSO return a timeline array:",
+      "timeline array:",
       "{ label, date, status:'pending'|'complete' }",
       "",
-      "Include timeline events if found:",
+      "Timeline events include:",
       "- Contract Executed (Binding Date)",
       "- Earnest Money Due",
       "- Inspection Period Ends",
       "- Financing Contingency Deadline",
       "- Closing Date",
       "",
-      "Return JSON exactly in this format:",
+      "Return JSON exactly like:",
       "{ fields:{...}, issues:[...], timeline:[...] }"
     ].join("\n")
 
+    /* ---------------- BUILD IMAGE MESSAGE CONTENT ---------------- */
+
+    const content: any[] = [
+      { type: "text", text: userPrompt }
+    ]
+
+    for (const image of images) {
+      content.push({
+        type: "image_url",
+        image_url: { url: image }
+      })
+    }
+
     /* ---------------- OPENAI CALL ---------------- */
 
-    const openaiRes = await fetch(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          temperature: 0,
-          response_format: { type: "json_object" },
-          messages: [
-            {
-              role: 'system',
-              content: system
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: userPrompt
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:application/pdf;base64,${base64}`
-                  }
-                }
-              ]
-            }
-          ]
-        })
-      }
-    )
+    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt
+          },
+          {
+            role: "user",
+            content
+          }
+        ]
+      })
+    })
 
     if (!openaiRes.ok) {
 
       const err = await openaiRes.text()
 
       return NextResponse.json(
-        { error: 'OpenAI request failed', details: err },
+        { error: "OpenAI request failed", details: err },
         { status: 500 }
       )
     }
@@ -174,7 +200,7 @@ export async function POST(req: Request) {
 
     if (!raw) {
       return NextResponse.json(
-        { error: 'OpenAI returned empty response' },
+        { error: "OpenAI returned empty response" },
         { status: 500 }
       )
     }
@@ -184,9 +210,8 @@ export async function POST(req: Request) {
     try {
       parsed = JSON.parse(cleanJsonFromText(raw))
     } catch {
-
       return NextResponse.json(
-        { error: 'Failed to parse AI JSON', raw },
+        { error: "Failed to parse AI JSON", raw },
         { status: 500 }
       )
     }
@@ -198,7 +223,7 @@ export async function POST(req: Request) {
     console.error(error)
 
     return NextResponse.json(
-      { error: 'Contract parsing failed' },
+      { error: "Contract parsing failed" },
       { status: 500 }
     )
   }
