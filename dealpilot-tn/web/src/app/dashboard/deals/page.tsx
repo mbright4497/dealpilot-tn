@@ -151,7 +151,7 @@ export default function DealsPage() {
                         className="border-t border-white/5 hover:bg-white/5 cursor-pointer"
                         role="link"
                         tabIndex={0}
-                        aria-label={\`Open deal ${deal.address}\`}
+                        aria-label={`Open deal ${deal.address}`}
                         data-deal-id={deal.id}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ")
