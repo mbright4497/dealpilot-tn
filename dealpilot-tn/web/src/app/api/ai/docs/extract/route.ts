@@ -20,7 +20,7 @@ export async function POST(req: Request){
     const buffer = Buffer.from(arrayBuffer)
 
     // dynamic import pdf-parse
-    const pdf = await import('pdf-parse')
+    const pdf = await import('pdf-parse/lib/pdf-parse.js')
     const textRes = await (pdf.default || pdf)(buffer as any)
     const text = textRes.text || ''
 

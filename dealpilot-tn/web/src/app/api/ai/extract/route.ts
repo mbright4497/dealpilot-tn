@@ -38,7 +38,7 @@ const ExtractionSchema = z.object({
 
 async function pdfToText(buf: Buffer): Promise<{ text: string; pageCount?: number }> {
   // pdf-parse is common and works in Node runtime
-  const pdfParse = (await import("pdf-parse")).default as any;
+  const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default as any;
   const out = await pdfParse(buf);
   const text = String(out.text ?? "").trim();
   const pages = typeof out.numpages === "number" ? out.numpages : undefined;

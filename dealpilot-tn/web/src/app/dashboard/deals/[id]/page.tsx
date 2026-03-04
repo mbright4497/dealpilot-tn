@@ -169,6 +169,16 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
           {/* Compliance Score - real calculation */}
           {/* @ts-ignore */}
           {typeof window !== 'undefined' && React.createElement(require('@/components/deals/ComplianceScore').default, { dealId: params.id })}
+
+          <div className="mt-4">
+            {/* @ts-ignore */}
+            {typeof window !== 'undefined' && React.createElement(require('@/components/timeline/EVATimelineBuilder').default, { transactionId: params.id })}
+          </div>
+          <div className="mt-4">
+            {/* @ts-ignore */}
+            {typeof window !== 'undefined' && React.createElement(require('@/components/timeline/DeadlinePlaybookView').default, { transactionId: params.id })}
+          </div>
+
         </div>
       </div>
 

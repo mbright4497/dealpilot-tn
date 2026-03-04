@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer)
 
     // Dynamically import pdf-parse at runtime to avoid build-time bundling issues
-    const pdf = await import('pdf-parse')
+    const pdf = await import('pdf-parse/lib/pdf-parse.js')
     const data = await (pdf.default || pdf)(buffer as any)
     const text = data.text || ''
 

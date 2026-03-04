@@ -2,6 +2,7 @@
 "use client"
 
 import React from "react"
+import EVAActionPlanCard from '@/components/timeline/EVAActionPlanCard'
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
@@ -196,8 +197,7 @@ export default function DashboardPage() {
 
           {/* EVA Action Plan */}
           <div className="mt-4">
-            {/* @ts-ignore */}
-            {typeof window !== 'undefined' && React.createElement(require('@/components/timeline/EVAActionPlanCard').default, { transactionId: transactions?.[0]?.id })}
+            <EVAActionPlanCard transactionId={transactions?.[0]?.id} />
           </div>
 
         <div className="bg-[#16213e] rounded-2xl p-6">
