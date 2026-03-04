@@ -23,7 +23,7 @@ export default function EvaDrawer(){
         <div className="p-4 flex items-center justify-between border-b border-[#11314f]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center">
-              <img src="/eva-avatar.png" alt="EVA" className="w-10 h-10 rounded-full" />
+              <img src="/avatar-pilot.png" alt="EVA" className="w-10 h-10 rounded-full" />
             </div>
             <div>
               <div className="text-white font-semibold">EVA</div>
