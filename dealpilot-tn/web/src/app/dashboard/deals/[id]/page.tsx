@@ -356,18 +356,8 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
           {/* File upload */}
           <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded">
             <label className="block mb-2">Upload Contract</label>
-            <input type="file" onChange={(e)=>{
-              const f = e.target.files?.[0]
-              if(!f) return
-              // simple client-side preview upload placeholder
-              const key = `contract_file_${transaction.id}`
-              localStorage.setItem(key, f.name)
-              setEditData({...editData, contract_file_name: f.name})
-            }} className="mb-3" />
-            <div className="text-sm text-gray-300">{editData.contract_file_name ? `Uploaded: ${editData.contract_file_name}` : 'No file uploaded'}</div>
-            <div className="mt-3">
-              <button className="bg-orange-500 text-black px-3 py-1 rounded" onClick={()=>alert('Contract AI extraction coming soon')}>AI Extraction Placeholder</button>
-            </div>
+            {/* @ts-ignore */}
+            {typeof window !== 'undefined' && React.createElement(require('@/components/deals/ContractUpload').default, { dealId: transaction.id })}
           </div>
 
           {/* Contract Details */}
