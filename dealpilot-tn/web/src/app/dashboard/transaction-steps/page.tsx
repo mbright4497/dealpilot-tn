@@ -1,8 +1,9 @@
 'use client'
 
-import React from 'react'
-import TransactionStepper from '@/components/TransactionStepper'
-import ContractViewer from '@/components/ContractViewer'
+import dynamic from 'next/dynamic'
+
+const TransactionStepper = dynamic(() => import('@/components/TransactionStepper'), { ssr: false })
+const ContractViewer = dynamic(() => import('@/components/ContractViewer'), { ssr: false })
 
 export default function TransactionStepsPage() {
 
@@ -19,81 +20,17 @@ export default function TransactionStepsPage() {
     specialStipulations: "Seller to repair roof prior to closing."
   }
 
-  const steps = [
-    {
-      id: 1,
-      title: 'Contract Upload',
-      status: 'complete',
-      dueDate: '2026-03-01',
-      notes: 'RF401 uploaded and executed'
-    },
-    {
-      id: 2,
-      title: 'Earnest Money',
-      status: 'active',
-      dueDate: '2026-03-03',
-      notes: 'Awaiting confirmation from title company'
-    },
-    {
-      id: 3,
-      title: 'Inspection Period',
-      status: 'pending',
-      dueDate: '2026-03-10'
-    },
-    {
-      id: 4,
-      title: 'Title Search',
-      status: 'pending'
-    },
-    {
-      id: 5,
-      title: 'Financing Contingency',
-      status: 'pending',
-      dueDate: '2026-04-15'
-    },
-    {
-      id: 6,
-      title: 'Appraisal',
-      status: 'pending'
-    },
-    {
-      id: 7,
-      title: 'Final Walkthrough',
-      status: 'pending'
-    },
-    {
-      id: 8,
-      title: 'Closing',
-      status: 'pending',
-      dueDate: '2026-05-30'
-    }
-  ]
-
   return (
     <div className="min-h-screen bg-[#0a1929] text-white p-6">
 
-      {/* Page Header */}
-
       <div className="mb-8">
-
-        <h1 className="text-2xl font-semibold">
-          Transaction Steps
-        </h1>
-
-        <p className="text-gray-400 text-sm mt-1">
-          Guided RF401 transaction workflow
-        </p>
-
+        <h1 className="text-2xl font-semibold">Transaction Steps</h1>
+        <p className="text-gray-400 text-sm mt-1">Guided RF401 transaction workflow</p>
       </div>
 
-      {/* Layout */}
-
       <div className="grid lg:grid-cols-2 gap-6">
-
-        <TransactionStepper steps={steps} />
-
+        <TransactionStepper />
         <ContractViewer contract={contractData} />
-
       </div>
 
     </div>
