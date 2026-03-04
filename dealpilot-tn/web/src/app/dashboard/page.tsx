@@ -194,6 +194,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
+          {/* EVA Action Plan */}
+          <div className="mt-4">
+            {/* @ts-ignore */}
+            {typeof window !== 'undefined' && React.createElement(require('@/components/timeline/EVAActionPlanCard').default, { transactionId: transactions?.[0]?.id })}
+          </div>
+
         <div className="bg-[#16213e] rounded-2xl p-6">
           <h2 className="text-lg font-semibold">Deals Summary</h2>
           <div className="mt-4 space-y-2">
