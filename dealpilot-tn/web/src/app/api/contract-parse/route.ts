@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { pdf } from "pdf-to-img"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 type Severity = "error" | "warning" | "info"
 
