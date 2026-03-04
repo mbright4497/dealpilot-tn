@@ -7,10 +7,11 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
   { href: '/dashboard/contacts', label: 'Contacts', icon: '👥' },
   { href: '/dashboard/deals', label: 'Deals', icon: '🏠' },
-  { href: '/dashboard/documents', label: 'Documents', icon: '📁' },
+  { href: '/dashboard/documents', label: 'Documents', icon: '📄' },
   { href: '/dashboard/checklists', label: 'Checklists', icon: '✅' },
-  { href: '/dashboard/offers', label: 'Offer Scores', icon: '💯' },
-  { href: '/dashboard/contracts', label: 'RF401 Guide', icon: '📄' },
+  { href: '/dashboard/offers', label: 'Offer Scores', icon: '🏷' },
+  { href: '/dashboard/transaction-steps', label: 'TX Steps', icon: '📋' },
+  { href: '/dashboard/contracts', label: 'RF401 Guide', icon: '📑' },
   { href: '/dashboard/chat', label: 'AI Chat', icon: '🤖' },
 ];
 
@@ -33,18 +34,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               key={item.href}
               href={item.href}
-              className={pathname === item.href ? 'active' : ''}
-              style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.625rem 1rem',borderRadius:8,color: pathname === item.href ? 'var(--accent)' : 'var(--muted)',background: pathname === item.href ? 'var(--sidebar-hover)' : 'transparent',textDecoration:'none',fontSize:'0.875rem',transition:'all 0.15s ease'}}
+              className={`dp-nav-item${pathname === item.href ? ' active' : ''}`}
             >
-              <span style={{width:20,textAlign:'center',fontSize:'0.85rem',opacity:0.8}}>{item.icon}</span>
-              {item.label}
+              <span className="dp-nav-icon">{item.icon}</span>
+              <span className="dp-nav-label">{item.label}</span>
             </Link>
           ))}
         </nav>
       </aside>
-      <main style={{flex:1,padding:'2rem',overflowY:'auto'}}>
+      <main className="dp-main">
         {children}
       </main>
     </div>
-  );
+  )
 }
