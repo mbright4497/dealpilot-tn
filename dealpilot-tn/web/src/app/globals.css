@@ -109,7 +109,7 @@ body {
   gap: 2px;
 }
 .dp-sidebar-nav a {
-  transition: all 0.15s ease;
+  transition: background-color 150ms ease, transform 150ms ease, color 150ms ease;
   font-weight: 500;
 }
 .dp-sidebar-nav a:hover {
