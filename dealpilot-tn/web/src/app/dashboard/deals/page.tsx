@@ -191,17 +191,15 @@ export default function DealsPage() {
                           {formatDate(deal.closing)}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge
-                            className={BADGE_CLASSES.health[level] || BADGE_CLASSES.health.unknown}
-                            title={
-                              days === null
-                                ? undefined
-                                : `${days} day(s) until closing`
-                            }
-                          >
-                            {HEALTH_LABELS[level]}
-                            {days === null ? "" : ` · ${days}d`}
-                          </Badge>
+                          {(() => {
+                            const healthClass = level === 'unknown' ? BADGE_CLASSES.health.unknown : (BADGE_CLASSES.health[level] || BADGE_CLASSES.health.unknown)
+                            return (
+                              <Badge className={healthClass} title={days === null ? undefined : `${days} day(s) until closing`}>
+                                {HEALTH_LABELS[level]}
+                                {days === null ? "" : ` · ${days}d`}
+                              </Badge>
+                            )
+                          })()}
                         </td>
                       </tr>
                     );
