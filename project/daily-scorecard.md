@@ -1,30 +1,33 @@
-Tri-Cities New Construction — Daily Scorecard (2026-03-01)
+PROJECT/DAILY SCORECARD — 2026-03-03
 
-Leads identified:
-- [PLACEHOLDER] Leads list not yet populated — see project/follow-ups.md (Status: NEEDS LIVE DATA).
+NOTE: Source project files requested (market-intel.md, follow-ups.md, hot-zones.md, daily-post.md, afternoon-post.md, ghl-actions.md) were not found in workspace; missing files: market-intel.md, follow-ups.md, hot-zones.md, daily-post.md, afternoon-post.md, ghl-actions.md.
 
-Content created today:
-- Social post draft: "Dreaming of BRAND-NEW in the Tri-Cities — and yes, it can be under $400k!" (from project/daily-post.md). CTA and hashtags included. Replace placeholders with community names and live pricing.
+Summary of leads identified today
+- No source files available; unable to extract leads. Please provide follow-ups.md or CRM export. (sources: none)
 
-Market insights gathered:
-- Source file project/market-intel.md exists but is marked NEEDS LIVE DATA. Key metrics missing: median sale price, active inventory, median DOM, new construction supply and average build price. Until populated, treat market context as placeholder.
+Content created
+- No content files found. (sources: none)
 
-Actions taken:
-- Prepared social post draft for new construction under $400k.
-- Compiled follow-ups template for leads, listings, price-change alerts, builder outreach, and open house scheduling (see project/follow-ups.md).
+Market insights
+- Web search API unavailable from this environment. Please run the queries listed below to fetch end-of-day Tri-Cities TN market news and interest-rate updates; include results here once available.
 
-Estimated revenue impact (conservative estimates — placeholders):
-- Lead conversions expected (conservative): 1–2 contracts/month if 10 qualified leads contacted and 10% convert. Estimated gross commission range: $6k–$18k (depends on sale price; use actual sale prices when available). These are rough estimates and should be updated with live lead/listing data.
+Deals progressing
+- No deal data available from missing source files.
 
-Notes / Data required (live):
-- Populate project/market-intel.md with: median sale price, active inventory, DOM, new construction listings and average build price, notable neighborhoods.
-- Replace follow-ups placeholders with actual lead names, contact info, listing addresses, and builder contacts.
+Estimated revenue impact
+- Insufficient data to estimate. Provide leads/pipeline to produce dollar estimates.
 
-Files referenced:
-- project/market-intel.md (NEEDS LIVE DATA)
-- project/follow-ups.md (NEEDS LIVE DATA placeholders)
-- project/daily-post.md (draft content)
+Sources checked
+- workspace files: market-intel.md (missing), follow-ups.md (missing), hot-zones.md (missing), daily-post.md (missing), afternoon-post.md (missing), ghl-actions.md (missing)
+- web_search: unavailable (missing API key)
 
-Prepared by: Workhorse (subagent)
+Action items for updating scorecard
+- Provide the missing files or paste today's lead list and content drafts.
+- Or allow access to CRM export (CSV) and I'll re-run.
 
-(End of scorecard)
+Search instructions (run manually or grant web_search API key)
+- Query 1: "Tri-Cities TN real estate news March 3 2026"
+- Query 2: "Tri-Cities TN builder announcement 2026"
+- Query 3: "Tennessee Tri-Cities housing market March 2026 median home price"
+- Query 4: "US interest rate update March 3 2026 Fed rate decision mortgage rates Mar 2026"
+- Use local news sites: Johnson City Press, Tri-Cities.com, Kingsport Times-News, Bristol Herald Courier; and national sources for rates (Bloomberg, CNBC, Freddie Mac)

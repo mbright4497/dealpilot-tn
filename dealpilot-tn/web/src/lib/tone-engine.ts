@@ -18,7 +18,8 @@ export function applyTone(style: AssistantStyle, message: string): string {
 
 export function getGreeting(style: AssistantStyle, userName: string): string {
   const hour = new Date().getHours()
-  const tod = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening'
+  // Define time ranges: before 12pm = morning, 12-5pm = afternoon, after 5pm = evening
+  const tod = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   switch(style){
     case 'joyful': return `${tod}, ${userName}! Let's make today great!` 
     case 'straight': return `${tod}, ${userName}. Here are your items.`

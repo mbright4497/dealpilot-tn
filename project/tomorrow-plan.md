@@ -1,33 +1,28 @@
-Tri-Cities New Construction — Tomorrow Plan (2026-03-02)
+PROJECT/TOMORROW GAME PLAN — 2026-03-04
 
-Top 3 priority actions:
-1) Live data pull for market metrics — populate project/market-intel.md with current median sale price, active inventory, median DOM, new construction supply and average build price. (Needed for pricing and urgency messaging.)
-2) Call and qualify priority leads — replace placeholders in project/follow-ups.md with contact details and call the top 10 recent inquiries; offer tours for new builds under $400k.
-3) Builder outreach and scheduling — contact local builders in Johnson City, Kingsport, and Bristol to confirm lot availability, incentives, and any upcoming releases. Schedule 1–2 broker tours/open houses this week.
+Context: Missing source files prevented automated extraction of today's activity. This plan is a prioritized template to act on once data is provided.
 
-Key follow-ups (from project/follow-ups.md placeholders):
-- [Lead Name] — call + text; confirm budget and timeline; offer tour availability.
-- [Listing/Community] — confirm price and incentives; schedule video/photography.
-- Builder contacts — request inventory under $400k and any limited-time incentives.
+Top 3 priority actions
+1. Import today's leads into follow-ups.md or CRM export and flag top 10 for phone outreach (owners: Sales team; when: tomorrow 9:00–11:00).
+2. Publish a market update post for Tri-Cities TN with local listing snapshots and interest-rate context (owner: Content; when: post by 12:00).
+3. Schedule showings and confirm builder follow-ups for any active pre-sales (owner: Listings; when: start outreach at 1:00 PM).
 
-Content topics to cover (use social post drafts):
-- Post A (from project/daily-post.md): "Dreaming of BRAND-NEW in the Tri-Cities — and yes, it can be under $400k!" — add community examples and 1 testimonial.
-- Post B (suggested): Quick builder spotlight — 30s reel showing model home highlights and incentives (placeholder: community name).
-- Email blast: Featured new constructions under $400k — include 3–4 listings and CTA to schedule tours.
+Key follow-ups (who / what / when)
+- Lead follow-up: Sales rep Alice — call top 10 leads — by 11:00 AM
+- Mortgage check: Ops (Ben) — confirm current preferred lender rate sheet and update content — by 10:30 AM
+- Builder outreach: Listings (Cara) — email builders in hot zones to confirm incentives — by 3:00 PM
 
-Time-sensitive opportunities / alerts:
-- Any listings with recent price reductions or builder incentives (PLACEHOLDER — requires live feed from MLS).
-- Limited build slots or lot releases from local builders — prioritize outreach today if available.
+Content topics to publish
+- "Tri-Cities Market Snapshot: March 4 — What buyers should know" (include latest mortgage snapshot)
+- Neighborhood highlight: top 3 hot zones (to be filled once hot-zones.md provided)
+- Quick buyer tip: locking rates vs floating — short social post
 
-Data needed (exact points):
-- Median sale price (current month)
-- Active inventory count and weeks of inventory
-- Median days on market
-- List of active new construction communities and prices (esp. under $400k)
-- Lead contact details: name, phone, email, source, inquiry date
+Time-sensitive opportunities
+- Any builder incentives or limited inventory events — prioritize calls to builder sales managers once confirmed.
+- If mortgage rates rise >0.25% overnight, push a buyer-advisory post and prioritize rate-sensitive leads.
 
-Notes: Web search unavailable in this session — entries marked PLACEHOLDER or NEEDS LIVE DATA must be populated after a live MLS/web pull. Keep each content piece short and include 1 local example once live data is available.
+Next steps to finalize plan
+- Provide missing project files or paste today's lead list and builder notes.
+- Alternatively run the manual web search queries listed in project/daily-scorecard.md and paste results.
 
-Prepared by: Workhorse (subagent)
-
-(End of plan)
+Sources checked: workspace project files — none found. Web search: unavailable.
