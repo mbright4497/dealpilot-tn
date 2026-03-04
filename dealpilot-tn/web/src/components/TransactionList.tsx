@@ -14,7 +14,8 @@ interface Props {
   onViewChecklist: (txId: number) => void
   onOpenDeal?: (txId: number) => void
   onAddTransaction?: (tx: Transaction) => void
-  onDeleteTransaction?: (txId: number) => void   onStartAdd?: () => void
+  onDeleteTransaction?: (txId: number) => void
+    onStartAdd?: () => void
 }
 export default function TransactionList({ transactions, onViewChecklist, onOpenDeal, onAddTransaction, onDeleteTransaction, onStartAdd }: Props){
   const [filter, setFilter] = useState('All')
