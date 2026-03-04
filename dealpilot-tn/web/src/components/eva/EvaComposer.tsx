@@ -30,6 +30,11 @@ export default function EvaComposer(){
 
   const chipSend = async (label:string)=>{
     const ctx = pageContext?.dealId ? { dealId: pageContext.dealId } : {}
+    if(label === 'Draft email'){
+      // open email draft modal via window event
+      window.dispatchEvent(new CustomEvent('eva:openEmailDraft', { detail: { dealId: ctx.dealId, recipientRole: 'buyer', emailType: 'status_update' } }))
+      return
+    }
     await sendMessage(label, ctx)
   }
 
