@@ -1,5 +1,4 @@
 "use client"
-"use client"
 import React, { useState } from 'react'
 import { useDeals, useOffers } from '@/lib/hooks'
 
@@ -53,7 +52,6 @@ export default function OfferScoresPage() {
             <div className="mt-2 flex justify-end gap-2"><button onClick={()=>setOpen(false)} className="px-3 py-1">Cancel</button><button onClick={handleAdd} className="bg-green-600 px-3 py-1 rounded">Add</button></div>
           </div>
         )}
-
       </div>
     </div>
   )
