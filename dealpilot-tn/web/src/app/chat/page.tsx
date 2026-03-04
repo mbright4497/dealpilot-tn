@@ -13,6 +13,7 @@ import VoiceSettings from '@/components/VoiceSettings'
 import { previewVoice } from '@/lib/voice-engine'
 import TransactionStepper from '@/components/TransactionStepper'
 import ContractViewer from '@/components/ContractViewer'
+import ContractIntake from '@/components/ContractIntake'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -245,7 +246,7 @@ export default function ChatPage() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} />}
-        {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onDeleteTransaction={deleteTransaction} />}
+        {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} />}
         {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && <FormsFillView />}
         {view === 'deadlines' && <DeadlineCalculator />}         {view === 'tx-steps' && <div className="grid lg:grid-cols-2 gap-6"><TransactionStepper /><ContractViewer contract={{propertyAddress:'123 Maple St, Johnson City TN',buyers:'John Smith, Jane Smith',sellers:'Bob Johnson',purchasePrice:425000,earnestMoney:5000,closingDate:'2026-05-30',inspectionStart:'2026-03-01',inspectionEnd:'2026-03-10',financingDate:'2026-04-15',specialStipulations:'Seller to repair roof prior to closing.'}} /></div>}
@@ -253,6 +254,7 @@ export default function ChatPage() {
           <PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} />
           <div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div>
         </>}
+              {view === 'add-transaction' && <ContractIntake onConfirm={(data: any) => { addTransaction(data); setView('transactions'); }} onCancel={() => setView('transactions')} />}
       </main>
 
       {/* Floating chat button */}
