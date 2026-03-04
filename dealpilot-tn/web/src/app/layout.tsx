@@ -3,6 +3,9 @@ import './globals.css';
 import { EvaProvider } from '@/components/eva/EvaProvider'
 import EvaFab from '@/components/eva/EvaFab'
 import EvaDrawer from '@/components/eva/EvaDrawer'
+import dynamic from 'next/dynamic'
+
+const EmailDraftModal = dynamic(() => import('@/components/eva/EmailDraftModal'), { ssr: false })
 
 export const metadata = { title: 'DealPilot TN' };
 
@@ -15,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }){
           {children}
           <EvaFab />
           <EvaDrawer />
+          <EmailDraftModal />
         </EvaProvider>
         <script dangerouslySetInnerHTML={{ __html: `
           window.addEventListener('error', function(e){
