@@ -205,13 +205,13 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </div>      </div>
+      </div>
 
-+      {/* Full width Deadline Tracker */}
-+      <div className="mt-4">
-+        {/* @ts-ignore */}
-+        {typeof window !== 'undefined' && React.createElement(require('@/components/dashboard/DeadlineTracker').default)}
-+      </div>
+      {/* Full width Deadline Tracker */}
+      <div className="mt-4">
+        {/* @ts-ignore */}
+        {typeof window !== 'undefined' && React.createElement(require('@/components/dashboard/DeadlineTracker').default)}
+      </div>
 
     </div>
   )
