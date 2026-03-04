@@ -186,17 +186,10 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold">EVA Daily Briefing</h2>
 
           <div className="mt-4">
-            {/* replace with EvaBriefingCard */}
+            {/* lazy load briefing card */}
             <div>
-              {/* lazy load component to avoid SSR issues */}
               {/* @ts-ignore */}
               {typeof window !== 'undefined' && React.createElement(require('@/components/eva/EvaBriefingCard').default)}
-            </div>
-
-            {/* Deadline tracker widget */}
-            <div className="mt-4">
-              {/* @ts-ignore */}
-              {typeof window !== 'undefined' && React.createElement(require('@/components/dashboard/DeadlineTracker').default)}
             </div>
           </div>
         </div>
@@ -212,7 +205,14 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </div>
+      </div>      </div>
+
++      {/* Full width Deadline Tracker */}
++      <div className="mt-4">
++        {/* @ts-ignore */}
++        {typeof window !== 'undefined' && React.createElement(require('@/components/dashboard/DeadlineTracker').default)}
++      </div>
+
     </div>
   )
 }
