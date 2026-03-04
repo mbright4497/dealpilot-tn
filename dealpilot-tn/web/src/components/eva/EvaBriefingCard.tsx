@@ -61,14 +61,7 @@ export default function EvaBriefingCard(){
           <img src="/eva-avatar.png" alt="EVA" className="w-10 h-10 rounded-full" />
         </div>
         <div className="flex-1">
-          <div className="flex justify-between items-start">
-            <div className="text-gray-200 leading-relaxed">{msg}</div>
-            <div className="flex gap-2">
-              <button onClick={()=>handleSendPreset('Prioritize my deals for today')} className="px-3 py-1 bg-[#1e3a5f] text-sm rounded">Prioritize deals</button>
-              <button onClick={()=>handleSendPreset('Generate a detailed daily brief for all my deals')} className="px-3 py-1 bg-[#1e3a5f] text-sm rounded">Generate brief</button>
-              <button onClick={exportCsv} className="px-3 py-1 bg-[#1e3a5f] text-sm rounded">Export CSV</button>
-            </div>
-          </div>
+          <div className="text-gray-200 leading-relaxed">{msg}</div>
 
           <div className="mt-3 flex gap-2 flex-wrap">
             {chips.map(c=> (

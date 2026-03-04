@@ -57,7 +57,7 @@ export default function DeadlineTracker(){
   }
 
   return (
-    <div className="bg-[#0f1c2e] border border-[#1e3a5f] rounded-xl p-4 mt-4">
+    <div className="bg-[#0f1c2e] border border-[#1e3a5f] rounded-xl p-4 mt-4 overflow-x-auto">
       <h3 className="text-lg font-semibold mb-3">Deadline Tracker</h3>
       {loading ? (
         <div className="animate-pulse text-gray-400">Loading deadlines...</div>
