@@ -63,7 +63,8 @@ export default function DeadlineTracker(){
       ) : rows.length===0 ? (
         <div className="text-gray-400">No deadlines found.</div>
       ) : (
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-left text-sm">
           <thead>
             <tr className="text-gray-300">
               <th className="p-2">Deal</th>
