@@ -1,7 +1,6 @@
 // /api/contract-parse/route.ts
 import { NextResponse } from "next/server";
-import pdfParse from "pdf-parse";
-
+// pdf-parse loaded dynamically to avoid Vercel build error
 export const runtime = "nodejs";
 
 type Severity = "error" | "warning" | "info";
@@ -74,7 +73,7 @@ export async function POST(req: Request) {
     // 1) Extract text from PDF
     let extractedText = "";
     try {
-      const parsed = await pdfParse(pdfBuffer);
+      const parsed = await (await import("pdf-parse")).default(pdfBuffer);
       extractedText = (parsed?.text || "").trim();
     } catch (e) {
       return NextResponse.json(
