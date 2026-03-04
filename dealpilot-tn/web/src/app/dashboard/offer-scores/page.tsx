@@ -34,7 +34,7 @@ export default function OfferScoresPage() {
           <table className="w-full mt-6 bg-[#0b1220] rounded overflow-hidden">
             <thead className="text-left text-gray-400"><tr><th className="p-2">Deal</th><th className="p-2">Score</th><th className="p-2">Reason</th><th className="p-2">Date</th></tr></thead>
             <tbody>
-              {offers.map((o:any)=>(<tr key={o.id} className="border-t border-[#0f1c2e]"><td className="p-2">{deals.find((d:any)=>d.id===o.deal_id)?.address || '—'}</td><td className="p-2">{o.score}</td><td className="p-2">{o.reason}</td><td className="p-2">{new Date(o.date).toLocaleDateString()}</td></tr>))}
+              {offers.map((o:any)=>(<tr key={o.id} className="border-t border-[#0f1c2e]"><td className="p-2 max-w-[300px] truncate" title={deals.find((d:any)=>d.id===o.deal_id)?.address || "—"}>{deals.find((d:any)=>d.id===o.deal_id)?.address || "—"}</td><td className="p-2">{o.score}</td><td className="p-2">{o.reason}</td><td className="p-2">{new Date(o.date).toLocaleDateString()}</td></tr>))}
             </tbody>
           </table>
         )}
