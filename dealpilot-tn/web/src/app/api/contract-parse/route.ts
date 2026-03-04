@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     // 1) Extract text from PDF
     let extractedText = "";
     try {
-      const parsed = await (await import("pdf-parse")).default(pdfBuffer);
+      const parsed = await (await import("pdf-parse/lib/pdf-parse.js")).default(pdfBuffer);
       extractedText = (parsed?.text || "").trim();
     } catch (e) {
       return NextResponse.json(
