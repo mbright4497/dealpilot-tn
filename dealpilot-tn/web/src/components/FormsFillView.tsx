@@ -1,7 +1,7 @@
-'use client'
 // FormsFillView.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FORM_LIST, FORM_FIELDS } from "@/lib/formSchemas";
+
 type FormCategory = "All" | "Purchase" | "Lease" | "Addendum";
 
 type Deal = {
