@@ -46,5 +46,19 @@ export default function DocumentsPage(){
       <tbody>{rows.map((r:any)=>(<tr key={r.id}><td>{r.name}</td><td>{r.type}</td>
         <td>{r.url ? <a href={r.url} target="_blank" className="text-blue-500 underline">Open</a> : '-'}</td>
         <td><button onClick={()=>removeDocument(r.id)} className="text-red-500 text-sm">Delete</button></td></tr>))}</tbody></table>
-  </div>);
+
+    {/* Document intake panel */}
+    <div className="mt-6">
+      <DocumentIntakePanel />
+    </div>
+
+    {/* Extraction review drawer */}
+    <ExtractedDataReviewDrawer extraction={extraction} transactionId={null} />
+
+    {/* Missing items checklist */}
+    <div className="mt-4">
+      <MissingItemsChecklist extraction={extraction} />
+    </div>
+
+  </div);
 }
