@@ -168,6 +168,10 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a1929] text-white p-6 space-y-6">
+      {/* Notification banner */}
+      {/* @ts-ignore */}
+      {typeof window !== 'undefined' && React.createElement(require('@/components/dashboard/NotificationBanner').default)}
+
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold">Mission Control</h1>
