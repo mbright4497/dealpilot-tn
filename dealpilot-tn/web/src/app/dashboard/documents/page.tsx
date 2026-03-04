@@ -1,6 +1,5 @@
 'use client'
 import { useDocuments } from '../../../lib/hooks';
-import { useState } from 'react';
 
 import DocumentIntakePanel from '@/components/documents/DocumentIntakePanel'
 import ExtractedDataReviewDrawer from '@/components/documents/ExtractedDataReviewDrawer'
