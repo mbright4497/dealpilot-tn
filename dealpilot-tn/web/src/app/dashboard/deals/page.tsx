@@ -143,7 +143,7 @@ export default function DealsPage() {
                   {rows.map((deal) => {
                     const status = parseDealStatus(deal.status) ?? null;
                     const type = parseDealType(deal.type) ?? null;
-                    const { level, days } = getHealthFromClosing(deal.closing);
+                    const { level = 'unknown', days } = getHealthFromClosing(deal.closing) as any;
                     return (
                       <tr
                         key={deal.id}

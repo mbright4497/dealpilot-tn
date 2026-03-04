@@ -115,6 +115,7 @@ body {
 .dp-sidebar-nav a:hover {
   background: var(--sidebar-hover) !important;
   color: var(--foreground) !important;
+  transform: translateX(4px);
 }
 .dp-sidebar-nav a.active {
   background: var(--accent-glow) !important;

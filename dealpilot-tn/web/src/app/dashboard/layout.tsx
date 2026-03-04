@@ -4,14 +4,14 @@ import { usePathname } from 'next/navigation';
 import React from 'react';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'D' },
-  { href: '/dashboard/contacts', label: 'Contacts', icon: 'C' },
-  { href: '/dashboard/deals', label: 'Deals', icon: '$' },
-  { href: '/dashboard/documents', label: 'Documents', icon: 'F' },
-  { href: '/dashboard/checklists', label: 'Checklists', icon: 'L' },
-  { href: '/dashboard/offers', label: 'Offer Scores', icon: 'O' },
-  { href: '/dashboard/contracts', label: 'RF401 Guide', icon: 'R' },
-    { href: '/dashboard/chat', label: 'AI Chat', icon: 'A' },
+  { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+  { href: '/dashboard/contacts', label: 'Contacts', icon: '👥' },
+  { href: '/dashboard/deals', label: 'Deals', icon: '🏠' },
+  { href: '/dashboard/documents', label: 'Documents', icon: '📁' },
+  { href: '/dashboard/checklists', label: 'Checklists', icon: '✅' },
+  { href: '/dashboard/offers', label: 'Offer Scores', icon: '💯' },
+  { href: '/dashboard/contracts', label: 'RF401 Guide', icon: '📄' },
+  { href: '/dashboard/chat', label: 'AI Chat', icon: '🤖' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }){
