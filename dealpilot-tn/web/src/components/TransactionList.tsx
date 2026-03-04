@@ -14,9 +14,9 @@ interface Props {
   onViewChecklist: (txId: number) => void
   onOpenDeal?: (txId: number) => void
   onAddTransaction?: (tx: Transaction) => void
-  onDeleteTransaction?: (txId: number) => void
+  onDeleteTransaction?: (txId: number) => void   onStartAdd?: () => void
 }
-export default function TransactionList({ transactions, onViewChecklist, onOpenDeal, onAddTransaction, onDeleteTransaction }: Props){
+export default function TransactionList({ transactions, onViewChecklist, onOpenDeal, onAddTransaction, onDeleteTransaction, onStartAdd }: Props){
   const [filter, setFilter] = useState('All')
   const [expanded, setExpanded] = useState<number|null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -40,7 +40,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           <select onChange={e=>setFilter(e.target.value)} className="border border-gray-300 rounded p-2 text-gray-700">
             <option>All</option><option>Active</option><option>Pending</option><option>Closed</option>
           </select>
-          <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold">Add Transaction</button>
+          <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold">Add Transaction</button>
         </div>
       </div>
       <table className="w-full bg-white shadow rounded-lg overflow-hidden">
