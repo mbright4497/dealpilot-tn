@@ -284,27 +284,21 @@ export default function ChatPage() {
           <PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} />
           <div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div>
         </>}
-              {view === 'add-transaction' && <ContractIntake onConfirm={(data: any) => { const f = data.fields || {}; const contractType = f.contractType === 'seller' ? 'Seller' : 'Buyer'; const clientName = contractType === 'Buyer' ? (f.buyerNames || []).join(', ') : (f.sellerNames || []).join(', '); addTransaction({
-                address: f.propertyAddress || '',
-                client: clientName,
-                type: contractType,
-                status: 'Active',
-                binding: f.bindingDate || '',
-                closing: f.closingDate || '',
-                notes: f.specialStipulations || '',
-                contacts: [],
-                purchase_price: f.purchasePrice || null,
-                earnest_money: f.earnestMoney || null,
-                seller_names: (f.sellerNames || []).join(', '),
-                buyer_names: (f.buyerNames || []).join(', '),
-                inspection_end_date: f.inspectionEndDate || null,
-                financing_contingency_date: f.financingContingencyDate || null,
-                special_stipulations: f.specialStipulations || null,
-                contract_type: f.contractType || null,
-                timeline: data.timeline || [],
-                issues: data.issues || [],
-                documents: [],
-              }); setView('transactions'); }} onCancel={() => setView('transactions')} />}
+              {view === 'add-transaction' && <ContractIntake onConfirm={async (data: any) => {
+                try{
+                  const res = await fetch('/api/transactions/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) })
+                  const j = await res.json()
+                  if (!res.ok) { const msg = j?.error || 'Failed to create transaction'; alert(msg); return }
+                  const newId = j.id
+                  if (newId) {
+                    // refresh deal-state or optimistically add
+                    const txRes = await fetch(`/api/deal-state/${newId}`)
+                    if (txRes.ok){ const tx = await txRes.json(); setTransactions(prev=>[...prev, tx]) }
+                    setView('transactions')
+                    alert('Transaction created')
+                  }
+                }catch(e:any){ console.error(e); alert('Error creating transaction: '+String(e)) }
+              }} onCancel={() => setView('transactions')} />}
       </main>
 
       {/* Floating chat button */}
