@@ -514,6 +514,27 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 input.click();
               }
             }}
+            onView={async (path: string) => {
+              try{
+                if(!path) return
+                const { data } = await supabase.storage.from('documents').createSignedUrl(path, 60)
+                if(data?.signedUrl) window.open(data.signedUrl, '_blank')
+              }catch(e){ console.error('view error', e) }
+            }}
+            onDownload={async (path: string) => {
+              try{
+                if(!path) return
+                const { data } = await supabase.storage.from('documents').createSignedUrl(path, 60)
+                if(data?.signedUrl){
+                  const a = document.createElement('a')
+                  a.href = data.signedUrl
+                  a.download = ''
+                  document.body.appendChild(a)
+                  a.click()
+                  a.remove()
+                }
+              }catch(e){ console.error('download error', e) }
+            }}
             onMarkSigned={async (docKey) => {
               try{
                 const found = (docs||[]).find((d:any)=> ((d.classification||d.rf_number||d.key||'').toString() === docKey.toString()));
