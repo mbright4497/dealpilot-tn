@@ -3,6 +3,7 @@ import React, {useState, useEffect, useRef} from 'react'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
+import DocumentChecklist from './DocumentChecklist'
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
