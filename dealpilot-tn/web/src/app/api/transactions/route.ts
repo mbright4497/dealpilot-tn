@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const body = await req.json()
   const { data, error } = await supabase
     .from('transactions')
-    .insert({
+        .insert({
       address: body.address || '',
       client: body.client || '',
       type: body.type || 'Buyer',
@@ -30,6 +30,17 @@ export async function POST(req: Request) {
       closing: body.closing || '',
       notes: body.notes || '',
       contacts: body.contacts || '[]',
+      purchase_price: body.purchase_price ?? null,
+      earnest_money: body.earnest_money ?? null,
+      seller_names: body.seller_names || '',
+      buyer_names: body.buyer_names || '',
+      inspection_end_date: body.inspection_end_date || null,
+      financing_contingency_date: body.financing_contingency_date || null,
+      special_stipulations: body.special_stipulations || '',
+      contract_type: body.contract_type || 'buyer',
+      timeline: body.timeline || [],
+      issues: body.issues || [],
+      documents: body.documents || [],
     })
     .select()
     .single()
