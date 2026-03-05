@@ -175,6 +175,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         status: (d.doc_status || d.status || d.status_label || 'uploaded'),
         fileName: d.file_name || d.name || d.filename || '',
         uploadedAt: d.uploaded_at || d.created_at || null,
+        path: d.path || d.storage_path || null,
       }
     })
     return m
