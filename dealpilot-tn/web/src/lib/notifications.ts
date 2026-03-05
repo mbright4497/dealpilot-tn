@@ -23,6 +23,14 @@ export async function sendEmail(to: string, subject: string, html: string) {
 }
 
 export async function sendSMS(to: string, body: string) {
+  // Try GHL channel first if configured
+  try{
+    const { sendSmsViaGhl } = await import('./ghl-messaging')
+    // findOrCreate contact by phone and send
+    const contact = await sendSmsViaGhl(to, body).catch(()=>null)
+    if(contact) return
+  }catch(e){/* ignore and fallback to Twilio */}
+
   await getTwilio().messages.create({
     from: process.env.TWILIO_PHONE_NUMBER!,
     to,
