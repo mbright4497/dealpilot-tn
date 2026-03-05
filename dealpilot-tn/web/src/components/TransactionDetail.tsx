@@ -22,27 +22,27 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
   const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
 
-  // documents stored in Supabase storage
+  // documents via documents API (db + storage)
   const supabase = createBrowserClient()
   const [docs,setDocs]=useState<any[]>([])
   const [uploading, setUploading] = useState(false)
-  const storageBucket = 'contracts'
 
   useEffect(() => {
+    let mounted = true
     async function loadDocs() {
       try {
-        const { data, error } = await supabase
-          .storage
-          .from(storageBucket)
-          .list(`deal-${transaction.id}`, { limit: 100 })
-        if (!error && data) {
-          setDocs(data)
+        const res = await fetch(`/api/documents/${transaction.id}`)
+        if (!mounted) return
+        if (res.ok) {
+          const j = await res.json()
+          setDocs(j || [])
         }
       } catch (e) {
         // ignore
       }
     }
     loadDocs()
+    return ()=>{ mounted = false }
   }, [transaction.id])
 
   const handleUpload = async (file: File) => {
@@ -54,21 +54,33 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     }
     try {
       setUploading(true)
-      const filePath = `deal-${transaction.id}/${file.name}`
-      const { error } = await supabase
-        .storage
-        .from(storageBucket)
-        .upload(filePath, file, { upsert: false })
-      if (error) {
-        alert('Upload failed.')
-        setUploading(false)
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/documents/${transaction.id}`, { method: 'POST', body: fd })
+      if (!res.ok) {
+        alert('Upload failed')
         return
       }
-      const { data } = await supabase
-        .storage
-        .from(storageBucket)
-        .list(`deal-${transaction.id}`)
-      setDocs(data || [])
+      const uploaded = await res.json()
+      // attempt classification
+      try{
+        const clf = await fetch('/api/documents/classify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ filename: uploaded?.name || file.name, text_preview: '' }) })
+        if (clf.ok){
+          const cj = await clf.json()
+          // update document row with rf_number/category if found
+          if (cj && cj.rf_number){
+            await fetch('/api/documents/update', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id: uploaded.id, rf_number: cj.rf_number, category: cj.category, name: uploaded.name }) })
+            // auto-check checklist item if matches
+            const rfKey = (cj.rf_number||'').toString().toLowerCase()
+            const idx = checklist.findIndex((it:any)=> (it.key||'').toString().toLowerCase() === rfKey)
+            if (idx !== -1){ checklist[idx].status = 'done'; setChecklist([...checklist]) }
+          }
+        }
+      }catch(e){/* ignore */}
+
+      // refresh docs
+      const refresh = await fetch(`/api/documents/${transaction.id}`)
+      if (refresh.ok){ const rj = await refresh.json(); setDocs(rj || []) }
     } finally {
       setUploading(false)
     }
