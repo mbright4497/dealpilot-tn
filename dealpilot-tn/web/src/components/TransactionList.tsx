@@ -24,14 +24,31 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   const [form, setForm] = useState({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const list = transactions.filter(m => filter === 'All' || m.status === filter)
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const newTx: Transaction = { id: Date.now(), ...form }
-    if (onAddTransaction) { onAddTransaction(newTx) }
-    setForm({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
-    setShowModal(false)
-    setSuccessMsg('Transaction saved')
-    setTimeout(()=>setSuccessMsg(null),3000)
+    try{
+      const payload = {
+        fields: {
+          propertyAddress: form.address,
+          contractType: form.type.toLowerCase(),
+          clientName: form.client,
+          bindingDate: form.binding || null,
+          closingDate: form.closing || null,
+          financingType: form.type || null
+        }
+      }
+      const res = await fetch('/api/transactions/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      const j = await res.json()
+      if(!res.ok || j.error){ alert('Failed to create transaction: '+(j.error||res.statusText)); return }
+      const newId = j.id
+      const newTx: Transaction = { id: newId, address: form.address, client: form.client, type: form.type, status: 'Active', binding: form.binding, closing: form.closing }
+      if (onAddTransaction) { onAddTransaction(newTx) }
+      if (onOpenDeal) onOpenDeal(newId)
+      setForm({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
+      setShowModal(false)
+      setSuccessMsg('Transaction created')
+      setTimeout(()=>setSuccessMsg(null),3000)
+    }catch(err){ console.error(err); alert('Error creating transaction') }
   }
   return (
     <div>
