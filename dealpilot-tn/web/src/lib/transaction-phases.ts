@@ -285,14 +285,12 @@ export const STATE_CONFIGS: Record<StateCode, StateTransactionConfig> = {
             title: "Consultation",
             description: "Listing consultation and initial disclosures.",
             documents: [
-              {
-                key: "TN:seller:consultation:placeholder_listing_docs",
-                title: "Seller Consultation Documents (Add later)",
-                description:
-                  "Add Tennessee seller consultation docs here (listing agreement, disclosures, etc.).",
-                requirement: { level: "optional" },
-                order: 10,
-              },
+              { key: "TN:seller:consultation:listing_agreement", title: "Listing Agreement", requirement: { level: "required" }, order: 10 },
+              { key: "TN:seller:consultation:agency_disclosure", title: "Agency Disclosure", requirement: { level: "required" }, order: 20 },
+              { key: "TN:seller:consultation:working_with_a_real_estate_professional", title: "Working with a Real Estate Professional", requirement: { level: "required" }, order: 30 },
+              { key: "TN:seller:consultation:disclaimer_notice", title: "Disclaimer Notice", requirement: { level: "required" }, order: 40 },
+              { key: "TN:seller:consultation:property_disclosure_statement", title: "Property Disclosure Statement", requirement: { level: "required" }, order: 50 },
+              { key: "TN:seller:consultation:lead_based_paint_disclosure", title: "Lead-Based Paint Disclosure", description: "Required for housing built before 1978.", requirement: { level: "conditional", anyOf: ["property_pre_1978"] }, order: 60 },
             ],
           },
           {
@@ -300,14 +298,14 @@ export const STATE_CONFIGS: Record<StateCode, StateTransactionConfig> = {
             title: "Under Contract",
             description: "Contract and negotiated amendments.",
             documents: [
-              {
-                key: "TN:seller:under_contract:placeholder_under_contract_docs",
-                title: "Seller Under Contract Documents (Add later)",
-                description:
-                  "Add Tennessee seller under contract docs here (RF401, repairs, counters, etc.).",
-                requirement: { level: "optional" },
-                order: 10,
-              },
+              { key: "TN:seller:under_contract:rf401_purchase_and_sale_agreement", docTypeId: "RF401", title: "RF401 Purchase & Sale Agreement", requirement: { level: "required" }, order: 10 },
+              { key: "TN:seller:under_contract:counter_offer", title: "Counter Offer", requirement: { level: "conditional", anyOf: ["has_counter_offer"] }, order: 20 },
+              { key: "TN:seller:under_contract:repair_amendment", title: "Repair Amendment", requirement: { level: "conditional", anyOf: ["has_repairs_amendment"] }, order: 30 },
+              { key: "TN:seller:under_contract:home_inspection_report", title: "Home Inspection Report", requirement: { level: "conditional", anyOf: ["has_home_inspection"] }, order: 40 },
+              { key: "TN:seller:under_contract:appraisal", title: "Appraisal", requirement: { level: "conditional", anyOf: ["has_appraisal"] }, order: 50 },
+              { key: "TN:seller:under_contract:survey", title: "Survey", requirement: { level: "conditional", anyOf: ["has_survey"] }, order: 60 },
+              { key: "TN:seller:under_contract:hoa_documents", title: "HOA Documents", requirement: { level: "conditional", anyOf: ["has_hoa"] }, order: 70 },
+              { key: "TN:seller:under_contract:title_commitment", title: "Title Commitment", requirement: { level: "required" }, order: 80 },
             ],
           },
           {
@@ -315,14 +313,10 @@ export const STATE_CONFIGS: Record<StateCode, StateTransactionConfig> = {
             title: "Closed",
             description: "Closing package documents.",
             documents: [
-              {
-                key: "TN:seller:closed:placeholder_closing_docs",
-                title: "Seller Closing Documents (Add later)",
-                description:
-                  "Add Tennessee seller closing docs here (settlement statement, deed copies, etc.).",
-                requirement: { level: "optional" },
-                order: 10,
-              },
+              { key: "TN:seller:closed:closing_disclosure", title: "Closing Disclosure", requirement: { level: "required" }, order: 10 },
+              { key: "TN:seller:closed:settlement_statement", title: "Settlement Statement", requirement: { level: "required" }, order: 20 },
+              { key: "TN:seller:closed:deed", title: "Deed", requirement: { level: "required" }, order: 30 },
+              { key: "TN:seller:closed:final_proceeds_statement", title: "Final Proceeds Statement", requirement: { level: "required" }, order: 40 },
             ],
           },
         ],
