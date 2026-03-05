@@ -68,6 +68,10 @@ function LoginContent() {
           <div><label className="block text-xs text-white/60 mb-1">Password</label><input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" className="w-full rounded-xl bg-[#0F1526] border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/25" placeholder="••••••••" required /></div>
           <button disabled={busy} className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-medium hover:bg-blue-500 disabled:opacity-60" type="submit">Sign in with Email</button>
         </form>
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <a href="/forgot-password" className="text-white/60 hover:text-orange-400">Forgot password?</a>
+          <a href="/signup" className="text-white/60 hover:text-orange-400">Sign up</a>
+        </div>
       </div>
     </div>
   );
