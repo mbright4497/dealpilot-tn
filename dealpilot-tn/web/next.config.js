@@ -7,6 +7,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+    serverExternalPackages: ["unpdf"],
   async headers() {
     return [
       {
