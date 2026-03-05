@@ -1,25 +1,17 @@
 MARKET INTEL — Tri-Cities TN (placeholder)
 
-Status: NEEDS LIVE DATA (web_search unavailable)
+NOTE: Live web search unavailable (web_search tool not configured). Replace placeholders after live data fetch.
 
-What to populate:
-- Median sale price (current month)
-- Inventory (active listings) and % change y/y
-- Median days on market (DOM)
-- New construction supply and average build price
-- Notable price reductions or hot neighborhoods
+Key metrics to update:
+- Median sale price: TBD
+- Inventory levels (active listings): TBD
+- Average days on market: TBD
+- Notable trends: TBD
+- Sources: Realtor.com, Zillow, local MLS reports
 
-Sources to use: Realtor.com, Zillow, local MLS (Tri-Cities MLS), Tennessee Realtors reports
+Action items:
+- Update metrics with latest data by 9:00 AM
+- Flag any rapid price changes or inventory shortages
+- Identify neighborhoods with new construction activity
 
-Summary template (fill with numbers):
-- Median sale price: $____ (change vs prior month: +/-% and vs year-ago: +/-%)
-- Active inventory: ____ homes (weeks of inventory: __)
-- Median DOM: __ days
-- New construction: ____ active listings under $400k; hottest cities: [Johnson City / Kingsport / Bristol]
-
-Actionable insights (populate after data fetch):
-1) If inventory is low and prices rising → prioritize off-market/new construction leads, push urgency messaging.
-2) If days on market increasing → advise sellers on pricing strategy; target buyers with negotiating power.
-3) Highlight any new construction communities with lots priced under $400k; schedule broker opens and video tours.
-
-Created for Workhorse to update with live figures.
+Saved: placeholder created by Mini; requires Workhorse or human to fill with live data.

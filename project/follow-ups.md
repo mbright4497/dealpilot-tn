@@ -1,22 +1,23 @@
-FOLLOW-UPS — Today's Priority Actions (placeholder)
+FOLLOW-UP ACTIONS — Today's Priorities
 
-Status: NEEDS LIVE DATA (populate leads/listings after web search)
+1) Leads to call (high priority):
+- [Lead A] — new construction inquiry (Johnson City) — call to schedule tour
+- [Lead B] — pre-approved buyer (Kingsport) — present relevant new builds
+- [Lead C] — first-time buyer (Bristol) — discuss incentives and financing
 
-Priority actions template:
+2) Listings to promote:
+- New construction listings under $400K in Johnson City — boost on Facebook/Instagram
+- Newly reduced listings in Kingsport — email blast to buyer list
 
-1) Leads to call today
-- [Lead Name] — source: [Realtor/Zillow/Website] — interest: new construction? budget under $400k? — Phone: [xxx] — Action: Call + text, offer immediate tour availability
+3) Price changes / alerts:
+- Monitor any price drops under $380K and alert buyers immediately
+- Notify sellers with upcoming new constructions in same neighborhoods about comp listings
 
-2) Listings to promote
-- [Address / Community] — price: $____ — key points: new construction, incentives, days on market — Action: Post social, schedule video tour, add to featured email blast
+4) Tasks for Workhorse/human:
+- Complete market-intel.md with live metrics from Realtor.com/Zillow/MLS
+- Replace placeholders in daily-post.md with exact listing links and Matt's phone
+- Call or text high-priority leads and log outcomes
 
-3) Price-change alerts
-- [Listing] — previous price: $___ — new price: $___ — Action: Notify buyers-in-search and update marketing creative
-
-4) Builder outreach
-- Contact local builders in Johnson City / Kingsport / Bristol to confirm lot availability and builder incentives this month. Ask for upcoming inventory under $400k.
-
-5) Open house / broker tour scheduling
-- Identify 2–3 new construction communities to host showings this week. Assign agent and photographer.
-
-Notes: Workhorse or team should replace placeholders after live data pull and prioritize any leads who inquired in last 7 days.
+Notes:
+- Mark each lead with contact time and follow-up schedule
+- Update CRM after every touchpoint
