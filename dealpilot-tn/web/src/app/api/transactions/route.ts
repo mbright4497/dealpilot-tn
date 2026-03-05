@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,19 +10,29 @@ const supabase = createClient(
 )
 
 export async function GET() {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .order('id', { ascending: true })
+  // check authenticated user (optional)
+  const authSupabase = createServerSupabaseClient()
+  const { data: userData } = await authSupabase.auth.getUser()
+  const user = userData?.user || null
+
+  let q = supabase.from('transactions').select('*').order('id', { ascending: true })
+  if (user) q = q.eq('user_id', user.id)
+
+  const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
 }
 
 export async function POST(req: Request) {
   const body = await req.json()
+
+  // get auth user
+  const authSupabase = createServerSupabaseClient()
+  const { data: { user } } = await authSupabase.auth.getUser()
+
   const { data, error } = await supabase
     .from('transactions')
-        .insert({
+    .insert({
       address: body.address || '',
       client: body.client || '',
       type: body.type || 'Buyer',
@@ -41,6 +52,7 @@ export async function POST(req: Request) {
       timeline: body.timeline || [],
       issues: body.issues || [],
       documents: body.documents || [],
+      user_id: user?.id || null,
     })
     .select()
     .single()
