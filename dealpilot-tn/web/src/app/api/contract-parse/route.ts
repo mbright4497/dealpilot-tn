@@ -69,7 +69,6 @@ export async function POST(req: Request) {
     /* ---------------- PDF TEXT EXTRACTION ---------------- */
     const pdfData = await pdfParse(pdfBuffer)
     const contractText = pdfData.text
-
     if (!contractText || contractText.trim().length < 50) {
       return NextResponse.json(
         { error: "Could not extract text from PDF. The file may be scanned/image-only." },
@@ -77,20 +76,34 @@ export async function POST(req: Request) {
       )
     }
 
+    // Prepend line numbers so GPT can reference exact lines
+    const lines = contractText.split('\n')
+    const numberedText = lines.map((line: string, i: number) => `L${i + 1}: ${line}`).join('\n')
+
     /* ---------------- SYSTEM PROMPT ---------------- */
     const systemPrompt = [
       "You are EVA, a Tennessee real estate transaction coordinator assistant.",
       "You extract structured data from Tennessee REALTORS RF401 Purchase & Sale Agreement contracts.",
       "",
-      "CRITICAL BUYER/SELLER RULE:",
-      "In RF401 Section 1 the format is:",
-      "[Buyer Name] (\"Buyer\") agrees to buy from [Seller Name] (\"Seller\").",
+      "CRITICAL BUYER/SELLER IDENTIFICATION RULES:",
+      "In the RF401, Section 1 'Purchase and Sale' follows this EXACT pattern:",
+      '  Line 1: "1. Purchase and Sale. For and in consideration..."',
+      '  Line 2: "[BUYER FULL NAME]  (\\"Buyer\\") agrees to buy and the"',
+      '  Line 3: "[SELLER FULL NAME]  (\\"Seller\\")"',
       "",
-      "The BUYER name appears FIRST.",
-      "The SELLER name appears SECOND.",
+      "LOOK FOR THE KEYWORDS:",
+      '  - The name(s) on the SAME LINE as (\\"Buyer\\") = buyerNames',
+      '  - The name(s) on the SAME LINE as (\\"Seller\\") = sellerNames',
+      "",
+      "The BUYER is the person who 'agrees to buy' - their name is BEFORE the word Buyer in quotes.",
+      "The SELLER is the person who sells - their name is BEFORE the word Seller in quotes.",
+      "DO NOT SWAP THEM. If the contract says 'Rebekah Tolley (Buyer)' then Rebekah Tolley is the BUYER.",
       "",
       "DO NOT extract listing agents, brokers, or brokerage names as buyers or sellers.",
       "ONLY extract the legal contract parties shown in Section 1.",
+      "",
+      "Each line in the contract text is prefixed with a line number (L1, L2, etc.).",
+      "Use these to locate the correct fields.",
       "",
       "Return ONLY valid JSON matching the requested schema.",
       "If a field is missing or uncertain set it to null or [].",
@@ -103,15 +116,15 @@ export async function POST(req: Request) {
     const userPrompt = [
       "Analyze this Tennessee RF401 Purchase and Sale Agreement.",
       "",
-      "Here is the full extracted text of the contract:",
+      "Here is the full extracted text of the contract (each line prefixed with line number):",
       "---",
-      contractText,
+      numberedText,
       "---",
       "",
       "Extract the following fields:",
       "- propertyAddress",
-      "- buyerNames (array)",
-      "- sellerNames (array)",
+      "- buyerNames (array of strings - from the line containing 'Buyer')",
+      "- sellerNames (array of strings - from the line containing 'Seller')",
       "- purchasePrice",
       "- earnestMoney",
       "- bindingDate",
@@ -119,7 +132,7 @@ export async function POST(req: Request) {
       "- inspectionEndDate",
       "- financingContingencyDate",
       "- specialStipulations",
-      "- contractType",
+      "- contractType (\"Purchase and Sale Agreement\")",
       "",
       "ALSO RETURN:",
       "issues array with objects:",
