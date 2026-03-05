@@ -284,15 +284,15 @@ export default function ChatPage() {
           <PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} />
           <div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div>
         </>}
-              {view === 'add-transaction' && <ContractIntake onConfirm={(f: any) => { addTransaction({
-                address: f.address || '',
-                client: f.client || '',
-                type: f.type || 'Buyer',
-                status: f.status || 'Active',
-                binding: f.binding || '',
-                closing: f.closing || '',
-                notes: f.notes || '',
-                contacts: JSON.stringify(f.contacts || []),
+              {view === 'add-transaction' && <ContractIntake onConfirm={(data: any) => { const f = data.fields || {}; const contractType = f.contractType === 'seller' ? 'Seller' : 'Buyer'; const clientName = contractType === 'Buyer' ? (f.buyerNames || []).join(', ') : (f.sellerNames || []).join(', '); addTransaction({
+                address: f.propertyAddress || '',
+                client: clientName,
+                type: contractType,
+                status: 'Active',
+                binding: f.bindingDate || '',
+                closing: f.closingDate || '',
+                notes: f.specialStipulations || '',
+                contacts: [],
                 purchase_price: f.purchasePrice || null,
                 earnest_money: f.earnestMoney || null,
                 seller_names: (f.sellerNames || []).join(', '),
@@ -301,8 +301,8 @@ export default function ChatPage() {
                 financing_contingency_date: f.financingContingencyDate || null,
                 special_stipulations: f.specialStipulations || null,
                 contract_type: f.contractType || null,
-                timeline: f.timeline || [],
-                issues: f.issues || [],
+                timeline: data.timeline || [],
+                issues: data.issues || [],
                 documents: [],
               }); setView('transactions'); }} onCancel={() => setView('transactions')} />}
       </main>
