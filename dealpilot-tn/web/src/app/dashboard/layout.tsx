@@ -61,6 +61,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="dp-nav-label">{item.label}</span>
             </Link>
           ))}
+          <Link href="/settings" className={`dp-nav-item${pathname === '/settings' ? ' active' : ''}`}>
+            <span className="dp-nav-icon">⚙️</span>
+            <span className="dp-nav-label">Settings</span>
+          </Link>
         </nav>
 
         <div className="dp-sidebar-footer p-4 mt-auto">
