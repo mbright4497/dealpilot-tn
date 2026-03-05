@@ -4,6 +4,8 @@ import { createBrowserClient } from '@/lib/supabase-browser'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
 import DocumentChecklist from './DocumentChecklist'
+import DocumentComplianceBar from './DocumentComplianceBar'
+import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
@@ -323,6 +325,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <div>Closing: <span className="font-semibold">{fmtDate((mergedTx as any).closing_date || mergedTx.closing)}</span></div>
         </div>
       </div>
+
+      {/* Document compliance bar */}
+
 
       {/* pill toggles */}
       <div className="mb-4">
