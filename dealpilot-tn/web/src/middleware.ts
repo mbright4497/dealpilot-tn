@@ -1,26 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password", "/api/auth", "/embed"]
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers }, });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createServerSupabaseClient()
+  const { data } = await supabase.auth.getUser()
+  const user = data?.user || null
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+  const pathname = request.nextUrl.pathname
 
-  await supabase.auth.getUser();
+  const isPublic = PUBLIC_ROUTES.some(p => pathname.startsWith(p))
+
+  if (!user && !isPublic) {
+    const loginUrl = new URL('/login', request.url)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  if (user && (pathname === '/login' || pathname === '/signup')) {
+    const home = new URL('/', request.url)
+    return NextResponse.redirect(home)
+  }
+
   return response;
 }
 
