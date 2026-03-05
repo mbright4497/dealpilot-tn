@@ -172,7 +172,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       if (!key) return
       m[key] = {
         key,
-        status: (d.doc_status || d.status_label || 'uploaded'),
+        status: (d.doc_status || d.status || d.status_label || 'uploaded'),
         fileName: d.file_name || d.name || d.filename || '',
         uploadedAt: d.uploaded_at || d.created_at || null,
       }
@@ -493,7 +493,22 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 input.onchange = async (e: any) => {
                   const f = e.target.files && e.target.files[0];
                   if(!f) return;
-                  await handleUpload(f);
+                  try{
+                    const fd = new FormData();
+                    fd.append('file', f);
+                    fd.append('transaction_id', String(transaction.id));
+                    fd.append('classification', String(docDef.key));
+                    const res = await fetch('/api/docs/upload', { method: 'POST', body: fd });
+                    if(res.ok){
+                      const j = await res.json();
+                      // refresh docs
+                      const refresh = await fetch('/api/documents/' + transaction.id);
+                      if(refresh.ok){ const rj = await refresh.json(); setDocs(rj || []); }
+                    } else {
+                      console.error('Upload failed', await res.text())
+                      alert('Upload failed')
+                    }
+                  }catch(err){ console.error(err); alert('Upload error') }
                 };
                 input.click();
               }

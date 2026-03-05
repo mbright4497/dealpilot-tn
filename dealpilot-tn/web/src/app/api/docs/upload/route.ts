@@ -20,7 +20,9 @@ export async function POST(req: Request) {
     if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 })
 
     // insert documents row
-    const { data, error } = await supabase.from('documents').insert([{ file_name: filename, path, status: 'uploaded', transaction_id: transaction_id || null }]).select('*').single()
+    const classification = form.get('classification') as string | null
+
+    const { data, error } = await supabase.from('documents').insert([{ file_name: filename, path, status: 'uploaded', transaction_id: transaction_id || null, classification: classification || null }]).select('*').single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({ document: data })
