@@ -62,6 +62,7 @@ export async function POST(req: Request) {
       .from("documents")
       .insert({
         owner_id: ownerId,
+        user_id: ownerId,
         transaction_id: parsed.transactionId ?? null,
         kind: parsed.kind,
         file_name: file.name,

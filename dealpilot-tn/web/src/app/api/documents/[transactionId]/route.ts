@@ -8,11 +8,18 @@ export async function GET(request: Request, { params }: { params: { transactionI
   const supabase = createServerSupabaseClient({ request, response: undefined as any })
   const transactionId = Number(params.transactionId)
   try {
-    const { data, error } = await supabase
+    const { data: userData } = await supabase.auth.getUser()
+    const user = userData?.user || null
+
+    let q = supabase
       .from('documents')
       .select('*')
       .eq('transaction_id', transactionId)
       .order('created_at', { ascending: false })
+
+    if (user) q = q.eq('user_id', user.id)
+
+    const { data, error } = await q
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data || [])
@@ -49,12 +56,16 @@ export async function POST(request: Request, { params }: { params: { transaction
       const { data: publicData } = supabase.storage.from('documents').getPublicUrl(storagePath)
       const publicUrl = publicData.publicUrl
 
+      const { data: userData } = await supabase.auth.getUser()
+      const user = userData?.user || null
+
       const { data: insertData, error: insertError } = await supabase
         .from('documents')
         .insert([{
           id: id,
           deal_id: null,
           transaction_id: transactionId,
+          user_id: user?.id || null,
           name: filename,
           type: file.type,
           url: publicUrl,
@@ -92,12 +103,16 @@ export async function POST(request: Request, { params }: { params: { transaction
       const { data: publicData } = supabase.storage.from('documents').getPublicUrl(storagePath)
       const publicUrl = publicData.publicUrl
 
+      const { data: userData } = await supabase.auth.getUser()
+      const user = userData?.user || null
+
       const { data: insertData, error: insertError } = await supabase
         .from('documents')
         .insert([{
           id: id,
           deal_id: null,
           transaction_id: transactionId,
+          user_id: user?.id || null,
           name: filename,
           type: body.contentType || 'application/pdf',
           url: publicUrl,
