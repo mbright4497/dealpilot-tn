@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { pdf } from "pdf-to-img"
+import pdfParse from "pdf-parse/lib/pdf-parse.js"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -46,11 +46,8 @@ function base64ToBuffer(base64: string) {
 }
 
 export async function POST(req: Request) {
-
   try {
-
     const apiKey = process.env.OPENAI_API_KEY
-
     if (!apiKey) {
       return NextResponse.json(
         { error: "Missing OPENAI_API_KEY" },
@@ -60,7 +57,6 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const fileBase64 = body?.file
-
     if (!fileBase64) {
       return NextResponse.json(
         { error: "No PDF provided in body.file" },
@@ -70,26 +66,18 @@ export async function POST(req: Request) {
 
     const pdfBuffer = base64ToBuffer(fileBase64)
 
-    /* ---------------- PDF → IMAGE CONVERSION ---------------- */
+    /* ---------------- PDF TEXT EXTRACTION ---------------- */
+    const pdfData = await pdfParse(pdfBuffer)
+    const contractText = pdfData.text
 
-    const images: string[] = []
-
-    const document = await pdf(pdfBuffer, { scale: 2 })
-
-    for await (const image of document) {
-      const base64Image = image.toString("base64")
-      images.push(`data:image/png;base64,${base64Image}`)
-    }
-
-    if (images.length === 0) {
+    if (!contractText || contractText.trim().length < 50) {
       return NextResponse.json(
-        { error: "Failed to convert PDF pages to images." },
-        { status: 500 }
+        { error: "Could not extract text from PDF. The file may be scanned/image-only." },
+        { status: 400 }
       )
     }
 
     /* ---------------- SYSTEM PROMPT ---------------- */
-
     const systemPrompt = [
       "You are EVA, a Tennessee real estate transaction coordinator assistant.",
       "You extract structured data from Tennessee REALTORS RF401 Purchase & Sale Agreement contracts.",
@@ -112,9 +100,13 @@ export async function POST(req: Request) {
     ].join("\n")
 
     /* ---------------- USER PROMPT ---------------- */
-
     const userPrompt = [
       "Analyze this Tennessee RF401 Purchase and Sale Agreement.",
+      "",
+      "Here is the full extracted text of the contract:",
+      "---",
+      contractText,
+      "---",
       "",
       "Extract the following fields:",
       "- propertyAddress",
@@ -147,21 +139,7 @@ export async function POST(req: Request) {
       "{ fields:{...}, issues:[...], timeline:[...] }"
     ].join("\n")
 
-    /* ---------------- BUILD IMAGE MESSAGE CONTENT ---------------- */
-
-    const content: any[] = [
-      { type: "text", text: userPrompt }
-    ]
-
-    for (const image of images) {
-      content.push({
-        type: "image_url",
-        image_url: { url: image }
-      })
-    }
-
     /* ---------------- OPENAI CALL ---------------- */
-
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -179,16 +157,14 @@ export async function POST(req: Request) {
           },
           {
             role: "user",
-            content
+            content: userPrompt
           }
         ]
       })
     })
 
     if (!openaiRes.ok) {
-
       const err = await openaiRes.text()
-
       return NextResponse.json(
         { error: "OpenAI request failed", details: err },
         { status: 500 }
@@ -196,9 +172,7 @@ export async function POST(req: Request) {
     }
 
     const completion = await openaiRes.json()
-
     const raw = completion?.choices?.[0]?.message?.content
-
     if (!raw) {
       return NextResponse.json(
         { error: "OpenAI returned empty response" },
@@ -207,7 +181,6 @@ export async function POST(req: Request) {
     }
 
     let parsed: ParsedPayload
-
     try {
       parsed = JSON.parse(cleanJsonFromText(raw))
     } catch {
@@ -218,11 +191,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(parsed)
-
   } catch (error) {
-
     console.error(error)
-
     return NextResponse.json(
       { error: "Contract parsing failed" },
       { status: 500 }
