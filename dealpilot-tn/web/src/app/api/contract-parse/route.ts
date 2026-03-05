@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getResolvedPDFJS } from "unpdf"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -44,15 +45,7 @@ function base64ToBuffer(base64: string) {
   return Buffer.from(b64, "base64")
 }
 
-/* ---- unpdf coordinate-based visual text extraction ---- */
-
-type TextItemLike = {
-  str: string
-  transform: number[] // [a,b,c,d,e,f]
-  width?: number
-  height?: number
-  hasEOL?: boolean
-}
+/* ---- coordinate-based visual text extraction via unpdf ---- */
 
 type PositionedToken = {
   text: string
@@ -65,15 +58,12 @@ type PositionedToken = {
 function tokensToVisualText(tokens: PositionedToken[]): string {
   if (!tokens.length) return ""
 
-  // PDF coordinates: y increases upward in PDF space.
-  // Sort by y DESC (top to bottom), x ASC (left to right).
   const sorted = [...tokens].sort((a, b) => {
     const dy = b.y - a.y
     if (Math.abs(dy) > 1.5) return dy
     return a.x - b.x
   })
 
-  // Cluster into lines
   const lineTolerance = 2.5
   const lines: { y: number; items: PositionedToken[] }[] = []
   for (const t of sorted) {
@@ -86,10 +76,8 @@ function tokensToVisualText(tokens: PositionedToken[]): string {
     line.y = (line.y * (line.items.length - 1) + t.y) / line.items.length
   }
 
-  // Sort lines top->bottom
   lines.sort((a, b) => b.y - a.y)
 
-  // Within each line sort left->right and rebuild string
   const outLines: string[] = []
   for (const line of lines) {
     line.items.sort((a, b) => a.x - b.x)
@@ -121,12 +109,8 @@ function tokensToVisualText(tokens: PositionedToken[]): string {
 }
 
 async function extractVisualTextFromPdf(pdfBuffer: Buffer): Promise<string> {
-  const pdfjs = await import("unpdf/pdfjs")
-  const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(pdfBuffer),
-    // @ts-expect-error pdfjs types vary by build
-    disableWorker: true,
-  })
+  const pdfjs = await getResolvedPDFJS()
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfBuffer) })
   const doc = await loadingTask.promise
   const pageCount = doc.numPages
   const pageTexts: string[] = []
@@ -134,16 +118,21 @@ async function extractVisualTextFromPdf(pdfBuffer: Buffer): Promise<string> {
   for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
     const page = await doc.getPage(pageNum)
     const viewport = page.getViewport({ scale: 1.0 })
-    const textContent = await page.getTextContent({ includeMarkedContent: true })
+    const textContent = await page.getTextContent()
 
     const tokens: PositionedToken[] = []
-    for (const item of textContent.items as unknown as TextItemLike[]) {
+    for (const item of textContent.items as any[]) {
       const str = (item.str ?? "").toString()
       if (!str.trim()) continue
-      const [a, , , d, e, f] = item.transform
-      const [vx, vy] = pdfjs.Util.applyTransform([e, f], viewport.transform)
-      const w = typeof item.width === "number" ? item.width : Math.abs(a)
-      const h = typeof item.height === "number" ? item.height : Math.abs(d)
+      const tx = item.transform
+      if (!tx || tx.length < 6) continue
+      // tx = [a, b, c, d, e, f] where e,f are x,y in PDF space
+      // Apply viewport transform to get visual coordinates
+      const vt = viewport.transform
+      const vx = vt[0] * tx[4] + vt[2] * tx[5] + vt[4]
+      const vy = vt[1] * tx[4] + vt[3] * tx[5] + vt[5]
+      const w = typeof item.width === "number" ? item.width : Math.abs(tx[0])
+      const h = typeof item.height === "number" ? item.height : Math.abs(tx[3])
       tokens.push({ text: str, x: vx, y: vy, w: w || 0, h: h || 0 })
     }
 
@@ -315,10 +304,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json(parsed)
 
-  } catch (error) {
-    console.error(error)
+  } catch (error: any) {
+    console.error("Contract parse error:", error?.message, error?.stack)
     return NextResponse.json(
-      { error: "Contract parsing failed" },
+      { error: "Contract parsing failed", details: error?.message },
       { status: 500 }
     )
   }
