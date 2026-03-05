@@ -15,8 +15,29 @@ const navItems = [
   { href: '/dashboard/chat', label: 'AI Chat', icon: '🤖' },
 ];
 
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@/lib/supabase-browser'
+import { useRouter } from 'next/navigation'
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }){
   const pathname = usePathname();
+  const supabase = createBrowserClient()
+  const router = useRouter()
+  const [userEmail, setUserEmail] = useState<string|null>(null)
+  const [open, setOpen] = useState(false)
+
+  useEffect(()=>{
+    (async ()=>{
+      const { data } = await supabase.auth.getUser()
+      setUserEmail(data?.user?.email || null)
+    })()
+  },[])
+
+  async function signOut(){
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   return (
     <div className="min-h-screen flex" style={{background:'var(--background)'}}>
       <aside className="dp-sidebar">
@@ -41,6 +62,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </Link>
           ))}
         </nav>
+
+        <div className="dp-sidebar-footer p-4 mt-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white">{(userEmail||'U')[0].toUpperCase()}</div>
+            <div className="flex-1 text-sm text-white">
+              <div className="font-semibold truncate">{userEmail || 'User'}</div>
+              <button onClick={()=>setOpen(!open)} className="text-xs text-gray-300 mt-1">Account</button>
+            </div>
+          </div>
+          {open && (
+            <div className="mt-2 bg-gray-800 border border-gray-700 rounded p-2">
+              <div className="text-sm text-gray-300 mb-2">{userEmail}</div>
+              <button onClick={signOut} className="w-full py-2 rounded text-white bg-[#F97316] hover:opacity-90">Sign out</button>
+            </div>
+          )}
+        </div>
+
       </aside>
       <main className="dp-main">
         {children}
