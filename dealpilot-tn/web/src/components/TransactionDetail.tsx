@@ -10,7 +10,7 @@ type Transaction = { id:number, address:string, client:string, type:string, stat
 
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
   // mode: mission (default), dealroom, timeline
-  const [mode,setMode] = useState<'mission'|'dealroom'|'timeline'>('mission')
+  const [mode,setMode] = useState<'mission'|'dealroom'|'timeline'|'documents'>('mission')
   const [remote, setRemote] = useState<any>(null)
   const [mergedTx, setMergedTx] = useState<Transaction>(transaction)
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
@@ -163,6 +163,22 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     return combined.filter(e=>e.date).sort((a,b)=> new Date(a.date!).getTime() - new Date(b.date!).getTime())
   },[remote, mergedTx, docs])
 
+  // documentsByKey memo (Phase 21) - placed BEFORE return
+  const documentsByKey = React.useMemo(() => {
+    const m: Record<string, any> = {}
+    ;(docs || []).forEach((d: any) => {
+      const key = (d.classification || d.rf_number || d.key || '').toString()
+      if (!key) return
+      m[key] = {
+        key,
+        status: (d.doc_status || d.status_label || 'uploaded'),
+        fileName: d.file_name || d.name || d.filename || '',
+        uploadedAt: d.uploaded_at || d.created_at || null,
+      }
+    })
+    return m
+  }, [docs])
+
   // priorities state
   const [priorities, setPriorities] = React.useState<any[]>([])
   React.useEffect(()=>{
@@ -312,6 +328,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <button onClick={()=>setMode('mission')} className={`px-4 py-1 rounded-full ${mode==='mission' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Mission Control</button>
           <button onClick={()=>setMode('dealroom')} className={`px-4 py-1 rounded-full ${mode==='dealroom' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Deal Room</button>
           <button onClick={()=>setMode('timeline')} className={`px-4 py-1 rounded-full ${mode==='timeline' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Timeline</button>
+          <button onClick={()=>setMode('documents')} className={`px-4 py-1 rounded-full ${mode==='documents' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Documents</button>
         </div>
       </div>
 
@@ -460,6 +477,43 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* Documents mode: DocumentChecklist integration */}
+      {mode==='documents' && (
+        <div>
+          <DocumentChecklist
+            context={{ state: 'TN', side: transaction.type === 'seller' ? 'seller' : 'buyer', conditions: {} }}
+            documentsByKey={documentsByKey}
+            onUpload={(docDef) => {
+              const input = ensureInput('doc-upload');
+              if(input){
+                input.onchange = async (e: any) => {
+                  const f = e.target.files && e.target.files[0];
+                  if(!f) return;
+                  await handleUpload(f);
+                };
+                input.click();
+              }
+            }}
+            onMarkSigned={async (docKey) => {
+              try{
+                const found = (docs||[]).find((d:any)=> ((d.classification||d.rf_number||d.key||'').toString() === docKey.toString()));
+                if(!found) return;
+                const res = await fetch('/api/docs/status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ documentId: found.id, status: 'signed' }) });
+                if(res.ok){
+                  const refresh = await fetch('/api/documents/' + transaction.id);
+                  if(refresh.ok){
+                    const rj = await refresh.json();
+                    setDocs(rj || []);
+                  }
+                }
+              } catch(e){
+                console.error(e);
+              }
+            }}
+          />
         </div>
       )}
 
