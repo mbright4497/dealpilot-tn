@@ -5,6 +5,7 @@ import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
 import DocumentChecklist from './DocumentChecklist'
 import DocumentComplianceBar from './DocumentComplianceBar'
+import EditTransactionModal from './EditTransactionModal'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
@@ -185,6 +186,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   // priorities state
   const [priorities, setPriorities] = React.useState<any[]>([])
+  const [editOpen, setEditOpen] = React.useState(false)
   React.useEffect(()=>{
     let mounted = true
     ;(async ()=>{
@@ -327,6 +329,21 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       </div>
 
       {/* Document compliance bar */}
+      {(() => {
+        try{
+          const side = transaction.type === 'seller' ? 'seller' : 'buyer'
+          const cfg = getTransactionConfig({ state: 'TN', side })
+          const requiredDocs: any[] = []
+          for(const ph of cfg.phases){ for(const d of ph.documents){ if(d.requirement && d.requirement.level==='required') requiredDocs.push(d) }}
+          const total = requiredDocs.length
+          let done = 0
+          const missing: any[] = []
+          for(const d of requiredDocs){ const rec = documentsByKey[d.key]; if(rec && (rec.status==='uploaded' || rec.status==='signed')) done++; else missing.push(d) }
+          return (
+            <DocumentComplianceBar requiredTotal={total} doneCount={done} missingDocs={missing} onSelectMissing={(k:string)=>{ setMode('documents'); setTimeout(()=>{},20) }} />
+          )
+        }catch(e){ return null }
+      })()}
 
 
       {/* pill toggles */}
@@ -735,6 +752,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       )}
 
+      <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+transaction.id); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
     </div>
   )
 }
