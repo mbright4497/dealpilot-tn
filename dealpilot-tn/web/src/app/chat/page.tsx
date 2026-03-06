@@ -302,10 +302,13 @@ export default function ChatPage() {
         )}
         <div className="p-4 border-t border-gray-800 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold">MB</div>
-          <div>
+          <div className="flex-1">
             <p className="text-white text-sm font-medium">Matt Bright</p>
             <p className="text-gray-400 text-xs">iHome-KW Kingsport</p>
           </div>
+          <button onClick={async ()=>{ try{ await fetch('/api/auth/signout',{ method: 'POST' }); window.location.href='/login' }catch(e){ console.error(e) } }} className="text-sm text-gray-400 hover:text-white p-1 rounded" title="Logout">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
         </div>
       </aside>
 
