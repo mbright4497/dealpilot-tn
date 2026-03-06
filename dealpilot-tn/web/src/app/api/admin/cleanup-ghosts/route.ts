@@ -12,15 +12,16 @@ export async function POST() {
     const { data, error: selErr } = await supabase.from('deal_state').select('*')
     if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 })
 
-    const ghosts = (data || []).filter((r: any) => !r.binding_date && (!r.address || r.address === '') && (!r.client || r.client === ''))
-    const ids = ghosts.map((r: any) => r.id)
+    // Targeted deletion for confirmed ghost IDs
+    const ids = [6, 8]
 
-    if (ids.length > 0) {
-      const { error: delErr } = await supabase.from('deal_state').delete().in('id', ids)
-      if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
-    }
+    const { data: delData, error: delErr } = await supabase.from('deal_state').delete().in('id', ids)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
 
-    return NextResponse.json({ deleted: ids.length, ids })
+    const deletedCount = Array.isArray(delData) ? delData.length : ids.length
+    const deletedIds = Array.isArray(delData) ? delData.map((r:any) => r.id) : ids
+
+    return NextResponse.json({ deleted: deletedCount, ids: deletedIds })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
