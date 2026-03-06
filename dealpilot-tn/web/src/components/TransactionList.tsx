@@ -57,14 +57,14 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-100">Transactions</h2>
         <div className="flex items-center gap-3">
-          <select onChange={e=>setFilter(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-gray-200">
+          <select onChange={e=>setFilter(e.target.value)} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-2 text-gray-200 hover:border-cyan-500/30 transition-all">
             <option>All</option><option>Active</option><option>Pending</option><option>Closed</option>
           </select>
-          <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold">Add Transaction</button>
+          <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:from-orange-400 hover:to-amber-400 hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 font-semibold">Add Transaction</button>
         </div>
       </div>
-      <table className="w-full bg-gray-900 shadow-xl rounded-xl overflow-hidden border border-gray-700/50">
-        <thead className="bg-gray-800/80">
+      <table className="w-full bg-white/5 backdrop-blur-md shadow-xl rounded-2xl overflow-hidden border border-white/10">
+        <thead className="bg-white/5">
           <tr>
             <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Address</th>
             <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Client</th>
@@ -78,32 +78,32 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
         <tbody>
           {list.map(l => (
             <React.Fragment key={l.id}>
-              <tr className="border-b hover:bg-gray-800/80 cursor-pointer transition-colors" onClick={()=>setExpanded(expanded===l.id?null:l.id)}>
+              <tr className="border-b border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all duration-200" onClick={()=>setExpanded(expanded===l.id?null:l.id)}>
                 <td className="p-3 font-medium text-gray-100">{l.address}</td>
                 <td className="p-3 text-gray-200">{l.client}</td>
                 <td className="p-3 text-gray-300">{l.type}</td>
-                <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-100 text-gray-700' : l.current_state === 'draft' ? 'bg-green-100 text-green-700' : l.current_state === 'inspection_period' ? 'bg-yellow-100 text-yellow-700' : l.current_state === 'post_inspection' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{(l as any).state_label || '—'}</span></td>
+                <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' : l.current_state === 'draft' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : l.current_state === 'inspection_period' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : l.current_state === 'post_inspection' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>{(l as any).state_label || '—'}</span></td>
                 
                 <td className="p-3 text-gray-400">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</td>
                 <td className="p-3 text-gray-400">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</td>
                 <td className="p-3">
                   <div className="flex gap-2">
-                    <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors">Open Deal</button>
-                    <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-gray-600 text-white text-xs rounded-lg hover:bg-gray-500 font-medium transition-colors">Checklist</button>
-                    <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-900/60 text-red-300 rounded-lg hover:bg-red-800 text-xs font-medium">Delete</button>
+                    <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500/20 text-orange-300 text-sm rounded-lg border border-orange-500/30 hover:bg-orange-500/40 hover:shadow-orange-500/10 hover:shadow-lg transition-all duration-200">Open Deal</button>
+                    <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-white/5 text-gray-300 text-xs rounded-lg border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 font-medium transition-all duration-200">Checklist</button>
+                    <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 text-xs font-medium transition-all duration-200">Delete</button>
                   </div>
                 </td>
               </tr>
               {expanded===l.id && (
                 <tr>
-                  <td colSpan={7} className="p-4 bg-gray-800/80 border-b">
-                    <div className="text-sm text-gray-700">
-                      <p className="font-semibold text-gray-900 mb-2">Transaction Details - {l.address}</p>
+                  <td colSpan={7} className="p-4 bg-white/5 backdrop-blur-md border-b border-white/10">
+                    <div className="text-sm text-gray-300">
+                      <p className="font-semibold text-white mb-2">Transaction Details - {l.address}</p>
                       <div className="grid grid-cols-2 gap-2">
-                        <p>Client: <span className="font-medium text-gray-900">{l.client}</span></p>
-                        <p>Type: <span className="font-medium text-gray-900">{l.type}</span></p>
-                        <p>Binding: <span className="font-medium text-gray-900">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</span></p>
-                        <p>Closing: <span className="font-medium text-gray-900">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</span></p>
+                        <p>Client: <span className="font-medium text-white">{l.client}</span></p>
+                        <p>Type: <span className="font-medium text-white">{l.type}</span></p>
+                        <p>Binding: <span className="font-medium text-white">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</span></p>
+                        <p>Closing: <span className="font-medium text-white">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</span></p>
                       </div>
                       <button onClick={()=>onViewChecklist(l.id)} className="mt-3 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">Open Transaction Checklist</button>
                     </div>
@@ -115,47 +115,47 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
         </tbody>
       </table>
       {successMsg && (
-        <div className="mb-3 p-3 rounded bg-green-50 border border-green-100 text-green-800 text-sm">{successMsg}</div>
+        <div className="mb-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">{successMsg}</div>
       )}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-bold text-gray-900">Add New Transaction</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">×</button>
+          <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <h3 className="text-lg font-bold text-white">Add New Transaction</h3>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white text-2xl leading-none transition-colors">×</button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Property Address *</label>
-                <input type="text" required value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="e.g. 100 Main St, Johnson City, TN" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                <label className="block text-sm font-medium text-gray-300 mb-1">Property Address *</label>
+                <input type="text" required value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="e.g. 100 Main St, Johnson City, TN" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
-                <input type="text" required value={form.client} onChange={e => setForm({...form, client: e.target.value})} placeholder="e.g. John Smith" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                <label className="block text-sm font-medium text-gray-300 mb-1">Client Name *</label>
+                <input type="text" required value={form.client} onChange={e => setForm({...form, client: e.target.value})} placeholder="e.g. John Smith" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"><option value="Buyer">Buyer</option><option value="Seller">Seller</option></select>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Type</label>
+                  <select value={form.type} onChange={e => setForm({...form, type: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"><option value="Buyer">Buyer</option><option value="Seller">Seller</option></select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Closed">Closed</option></select>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Status</label>
+                  <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Closed">Closed</option></select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Binding Date *</label>
-                  <input type="date" required value={form.binding} onChange={e => setForm({...form, binding: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900" />
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Binding Date *</label>
+                  <input type="date" required value={form.binding} onChange={e => setForm({...form, binding: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Closing Date *</label>
-                  <input type="date" required value={form.closing} onChange={e => setForm({...form, closing: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900" />
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Closing Date *</label>
+                  <input type="date" required value={form.closing} onChange={e => setForm({...form, closing: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-800/80">Cancel</button>
-                <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">Save Transaction</button>
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-white/10 rounded-lg text-gray-300 hover:bg-white/10 transition-all">Cancel</button>
+                <button type="submit" className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-lg hover:from-emerald-400 hover:to-cyan-400 hover:shadow-lg hover:shadow-emerald-500/20 font-semibold transition-all duration-300">Save Transaction</button>
               </div>
             </form>
           </div>
