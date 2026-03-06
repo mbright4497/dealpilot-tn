@@ -35,22 +35,22 @@ function computeDeadlines(row: any) {
   const deadlines: any[] = []
 
   const ddDate = addDays(binding, 10).toISOString().split('T')[0]
-  deadlines.push({ key: 'due_diligence', label: 'Due Diligence', date: ddDate, status: deadlineStatus(ddDate, state), days_remaining: daysRemaining(ddDate), deal_id: row.deal_id, address: row.address || 'Unknown' })
+  deadlines.push({ key: 'due_diligence', label: 'Due Diligence', date: ddDate, status: deadlineStatus(ddDate, state), days_remaining: daysRemaining(ddDate), deal_id: row.deal_id, address: row.address || 'Unknown', client: row.client || null })
 
   const appraisalDate = addDays(binding, 15).toISOString().split('T')[0]
-  deadlines.push({ key: 'appraisal', label: 'Appraisal', date: appraisalDate, status: deadlineStatus(appraisalDate, state), days_remaining: daysRemaining(appraisalDate), deal_id: row.deal_id, address: row.address || 'Unknown' })
+  deadlines.push({ key: 'appraisal', label: 'Appraisal', date: appraisalDate, status: deadlineStatus(appraisalDate, state), days_remaining: daysRemaining(appraisalDate), deal_id: row.deal_id, address: row.address || 'Unknown', client: row.client || null })
 
   const titleDate = addDays(binding, 20).toISOString().split('T')[0]
-  deadlines.push({ key: 'title_search', label: 'Title Search', date: titleDate, status: deadlineStatus(titleDate, state), days_remaining: daysRemaining(titleDate), deal_id: row.deal_id, address: row.address || 'Unknown' })
+  deadlines.push({ key: 'title_search', label: 'Title Search', date: titleDate, status: deadlineStatus(titleDate, state), days_remaining: daysRemaining(titleDate), deal_id: row.deal_id, address: row.address || 'Unknown', client: row.client || null })
 
   if (row.closing_date) {
     const closingD = new Date(row.closing_date)
     const fwD = new Date(closingD)
     fwD.setDate(fwD.getDate() - 1)
     const fwDate = fwD.toISOString().split('T')[0]
-    deadlines.push({ key: 'final_walkthrough', label: 'Final Walkthrough', date: fwDate, status: deadlineStatus(fwDate, state), days_remaining: daysRemaining(fwDate), deal_id: row.deal_id, address: row.address || 'Unknown' })
+    deadlines.push({ key: 'final_walkthrough', label: 'Final Walkthrough', date: fwDate, status: deadlineStatus(fwDate, state), days_remaining: daysRemaining(fwDate), deal_id: row.deal_id, address: row.address || 'Unknown', client: row.client || null })
 
-    deadlines.push({ key: 'closing', label: 'Closing Day', date: row.closing_date, status: deadlineStatus(row.closing_date, state), days_remaining: daysRemaining(row.closing_date), deal_id: row.deal_id, address: row.address || 'Unknown' })
+    deadlines.push({ key: 'closing', label: 'Closing Day', date: row.closing_date, status: deadlineStatus(row.closing_date, state), days_remaining: daysRemaining(row.closing_date), deal_id: row.deal_id, address: row.address || 'Unknown', client: row.client || null })
   }
   return deadlines
 }
@@ -75,7 +75,16 @@ export async function GET() {
     }
   })
 
-  const allDeadlines = (enriched || []).flatMap((row: any) => computeDeadlines(row))
+  // Exclude closed deals and ghost transactions (no address AND no client)
+  const filteredEnriched = (enriched || []).filter((row: any) => {
+    const state = computeLifecycleState(row)
+    if (state === 'closed') return false
+    const hasAddress = row.address && String(row.address).trim()
+    const hasClient = row.client && String(row.client).trim()
+    return !!(hasAddress || hasClient)
+  })
+
+  const allDeadlines = (filteredEnriched || []).flatMap((row: any) => computeDeadlines(row))
   allDeadlines.sort((a, b) => a.date.localeCompare(b.date))
 
   const today = new Date().toISOString().split('T')[0]
@@ -92,7 +101,7 @@ export async function GET() {
   const items = allDeadlines.map((d: any) => ({
     dealId: String(d.deal_id),
     address: d.address,
-    client: null,
+    client: d.client || null,
     dealStatus: d.status,
     deadlineKey: d.key,
     deadlineName: d.label,
