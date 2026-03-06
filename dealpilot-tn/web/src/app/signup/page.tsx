@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 export default function SignupPage(){
   const supabase = createBrowserClient()
+  const [name,setName]=useState('')
   const [email,setEmail]=useState('')
   const [password,setPassword]=useState('')
   const [confirm,setConfirm]=useState('')
@@ -19,7 +20,7 @@ export default function SignupPage(){
     if(password !== confirm){ setError('Passwords do not match'); return }
     setLoading(true)
     try{
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { error } = await supabase.auth.signUp({ email, password }, { data: { full_name: name } })
       if(error) setError(error.message)
       else setMessage('Check your email to confirm your account')
     }catch(e:any){ setError(String(e)) }
@@ -30,7 +31,12 @@ export default function SignupPage(){
     <div className="min-h-screen flex items-center justify-center bg-[#0B0F1A]">
       <div className="w-full max-w-md p-6 rounded-2xl bg-gray-900 text-white">
         <h2 className="text-2xl font-bold mb-4">Create account</h2>
+        <button onClick={async ()=>{ const redirectTo = `${window.location.origin}/api/auth/callback?next=/`; await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }) }} className="w-full rounded-xl bg-white text-black font-medium py-2.5 hover:bg-white/90 mb-4">Continue with Google</button>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm text-gray-300">Full name</label>
+            <input type="text" value={name} onChange={e=>setName(e.target.value)} required className="w-full mt-1 p-2 rounded bg-gray-800 text-white border border-gray-700" />
+          </div>
           <div>
             <label className="text-sm text-gray-300">Email</label>
             <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required className="w-full mt-1 p-2 rounded bg-gray-800 text-white border border-gray-700" />
