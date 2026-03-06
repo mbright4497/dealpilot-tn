@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).limit(1).single()
+    const { data, error } = await supabase.from('profiles').select('id,email,full_name,brokerage,phone,license_number,notification_prefs,subscription_tier,created_at,updated_at').eq('id', user.id).limit(1).single()
     if (error && error.code === 'PGRST116') {
       // table not found
       return NextResponse.json({ profile: null })
@@ -47,13 +47,13 @@ export async function PATCH(req: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json().catch(() => ({}))
-    const { full_name, phone, brokerage_company, license_number, notification_prefs } = body as any
+    const { full_name, phone, brokerage, license_number, notification_prefs } = body as any
 
     // try update existing
     const updates: any = { updated_at: new Date().toISOString() }
     if (full_name !== undefined) updates.full_name = full_name
     if (phone !== undefined) updates.phone = phone
-    if (brokerage_company !== undefined) updates.brokerage_company = brokerage_company
+    if (brokerage !== undefined) updates.brokerage = brokerage
     if (license_number !== undefined) updates.license_number = license_number
     if (notification_prefs !== undefined) updates.notification_prefs = notification_prefs
 
