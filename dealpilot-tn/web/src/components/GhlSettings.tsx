@@ -1,0 +1,88 @@
+'use client'
+import React, { useEffect, useState } from 'react'
+
+export default function GhlSettings({ tenantId }: { tenantId?: string }){
+  const [settings, setSettings] = useState({ ghl_location_id: '', ghl_api_key: '', messages_limit: 1000, comms_email_used: 0, comms_sms_used: 0 })
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string|null>(null)
+  const [showKey, setShowKey] = useState(false)
+
+  useEffect(()=>{
+    if(!tenantId) return
+    setLoading(true)
+    // placeholder fetch - API may be added later
+    fetch(`/api/tenants?id=${encodeURIComponent(tenantId)}`).then(r=>r.json()).then(j=>{
+      if(j && j.tenant){ setSettings((s:any)=>({...s, ...j.tenant})) }
+    }).catch(()=>{}).finally(()=>setLoading(false))
+  },[tenantId])
+
+  async function handleSave(){
+    setSaving(true); setError(null)
+    try{
+      const res = await fetch('/api/tenants', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(settings) })
+      const j = await res.json()
+      if(!res.ok || j.error){ setError(j.error||'Save failed'); setSaving(false); return }
+      setSaved(true)
+      setTimeout(()=>setSaved(false),3000)
+    }catch(e:any){ setError(String(e)) }
+    setSaving(false)
+  }
+
+  async function testConnection(){
+    try{
+      const res = await fetch('/api/ghl/test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ locationId: settings.ghl_location_id, apiKey: settings.ghl_api_key }) })
+      const j = await res.json()
+      if(!res.ok || j.error){ alert('Connection failed: '+(j.error||res.statusText)); return }
+      alert('Connection OK')
+    }catch(e:any){ alert('Connection error: '+String(e)) }
+  }
+
+  const totalSent = (settings.comms_email_used||0) + (settings.comms_sms_used||0)
+  const pct = Math.min(100, Math.round((totalSent / (settings.messages_limit||1)) * 100))
+
+  return (
+    <div className="p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3"><span className="text-cyan-300">⚙️</span><h3 className="text-lg font-bold text-white">GHL Integration Settings</h3></div>
+        <div className="text-sm text-gray-400">{tenantId ? 'Tenant: '+tenantId : 'No tenant selected'}</div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">GHL Location ID</label>
+          <input value={settings.ghl_location_id} onChange={e=>setSettings({...settings, ghl_location_id: e.target.value})} placeholder="Enter your GHL Location ID" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">GHL API Key</label>
+          <div className="relative">
+            <input type={showKey? 'text':'password'} value={settings.ghl_api_key} onChange={e=>setSettings({...settings, ghl_api_key: e.target.value})} placeholder="Enter your GHL API Key" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" />
+            <button onClick={()=>setShowKey(s=>!s)} className="absolute right-2 top-2 text-sm text-gray-300">{showKey? 'Hide':'Show'}</button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Monthly Message Limit</label>
+          <input type="number" value={settings.messages_limit} onChange={e=>setSettings({...settings, messages_limit: Number(e.target.value)})} className="w-48 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" />
+        </div>
+
+        <div className="pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2"><span className="text-sm text-cyan-300">📈</span><div className="text-sm text-white">Usage this month</div></div>
+            <div className="text-sm text-gray-300">{totalSent}/{settings.messages_limit}</div>
+          </div>
+          <div className="w-full bg-white/10 rounded-full h-2">
+            <div className="h-2 rounded-full bg-cyan-400" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+
+        {error && <div className="text-sm text-red-400">{error}</div>}
+
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+          <button onClick={testConnection} className="px-4 py-2 border border-white/10 rounded-lg text-gray-300 hover:bg-white/10">Test GHL Connection</button>
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-lg hover:from-emerald-400 hover:to-cyan-400 font-semibold">{saving? 'Saving...':'Save Settings'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
