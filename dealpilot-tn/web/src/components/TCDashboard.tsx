@@ -32,19 +32,20 @@ const BADGE_COLORS: Record<string, string> = {
   post_inspection: 'bg-yellow-50 text-yellow-700',
   closed: 'bg-gray-100 text-gray-600',
 }
-export default function TCDashboard({ transactions = [], onOpenDeal, onViewChecklist, onNavigate }: Props) {
+export default function TCDashboard({ transactions = [], onOpenDeal, onViewChecklist, onNavigate, userName: userNameProp }: Props & { userName?: string }) {
   const total = transactions.length
   const [portfolio, setPortfolio] = React.useState<any|null>(null)
   const [portfolioDeadlines, setPortfolioDeadlines] = React.useState<any|null>(null)
   const [portfolioBrief, setPortfolioBrief] = React.useState<string | null>(null);
   const [alerts, setAlerts] = React.useState<any[]>([]);
   const [notifPrefs, setNotifPrefs] = React.useState<any>(null);
-  const [userName, setUserName] = React.useState<string>('')
+  const [userName, setUserName] = React.useState<string>(userNameProp || '')
 
   React.useEffect(()=>{
+    if (userNameProp) return
     const sb = createBrowserClient()
     sb.auth.getUser().then(res=>{ const user = res.data.user; if(user){ const full = (user.user_metadata as any)?.full_name || user.email || ''; setUserName(full.split(' ')[0] || '') } })
-  },[])
+  },[userNameProp])
   // fetch portfolio health
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-health'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolio(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
   // fetch portfolio deadlines

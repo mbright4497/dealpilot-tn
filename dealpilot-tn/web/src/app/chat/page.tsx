@@ -97,6 +97,25 @@ const NAV_ITEMS = [
 
 export default function ChatPage() {
   const [view, setView] = useState('dashboard')
+  const [sessionUserName, setSessionUserName] = useState<string | null>(null)
+
+  useEffect(()=>{
+    const sb = (typeof window !== 'undefined') ? require('@/lib/supabase-browser').createBrowserClient() : null
+    if(sb){
+      sb.auth.getUser().then(res=>{
+        const user = res.data.user
+        if(user){
+          const full = (user.user_metadata as any)?.full_name || user.email || ''
+          setSessionUserName(full)
+        }
+      }).catch(()=>{})
+    }
+  },[])
+  const [displayName, setDisplayName] = useState<string>('')
+
+  useEffect(()=>{
+    const sb = (async()=>{ try{ const mod = await import('@/lib/supabase-browser'); const supabase = mod.createBrowserClient(); const { data } = await supabase.auth.getUser(); const user = data.user; if(user){ const full = (user.user_metadata as any)?.full_name || user.email || ''; setDisplayName(full.split(' ')[0] || '') } }catch(e){}})()
+  },[])
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -287,7 +306,7 @@ export default function ChatPage() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
-        {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} />}
+        {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} userName={sessionUserName || undefined} />}
         {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} />}
         {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && <FormsFillView />}
