@@ -369,6 +369,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       {/* Mission Control */}
       {mode==='mission' && (
         <div>
+          {/* Skeletons when briefing or data missing */}
+          {!brief && (
+            <div className="mb-4 animate-pulse">
+              <div className="h-6 bg-gray-700 rounded w-1/3 mb-2"></div>
+              <div className="h-12 bg-gray-700 rounded w-full mb-2"></div>
+            </div>
+          )}
           {/* cockpit header */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
             <div>

@@ -54,6 +54,17 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   }
   return (
     <div>
+      {/* Skeleton when no transactions loaded */}
+      {transactions.length === 0 && (
+        <div className="space-y-3">
+          {[...Array(6)].map((_,i)=> (
+            <div key={i} className="p-4 bg-gray-800 rounded animate-pulse">
+              <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-700 rounded w-1/2"></div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-100">Transactions</h2>
         <div className="flex items-center gap-3">

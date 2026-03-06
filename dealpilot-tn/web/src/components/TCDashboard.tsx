@@ -67,8 +67,17 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📊</span>
           </div>
-          <p className="text-3xl font-bold text-white">{total}</p>
-          <p className="text-sm text-cyan-300/70 mt-1">Total Transactions</p>
+          {portfolio === null ? (
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-700 rounded w-32 mb-2"></div>
+              <div className="h-4 bg-gray-700 rounded w-48"></div>
+            </div>
+          ) : (
+            <>
+              <p className="text-3xl font-bold text-white">{total}</p>
+              <p className="text-sm text-cyan-300/70 mt-1">Total Transactions</p>
+            </>
+          )}
         </div>
         {/* Portfolio Health */}
         <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
