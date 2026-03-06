@@ -20,6 +20,18 @@ export default function GhlTab({ dealId, userId }: { dealId: string, userId: str
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ channel: 'ghl_sms', contactId: '', to: '', subject: '', message: '' })
 
+  const [tenant, setTenant] = useState<any|null>(null)
+  const [connected, setConnected] = useState(false)
+
+  async function fetchTenant(){
+    try{
+      const res = await fetch(`/api/tenants?user_id=1`)
+      if(!res.ok) return
+      const j = await res.json()
+      if(j && j.tenant){ setTenant(j.tenant); setConnected(!!(j.tenant.ghl_api_key && j.tenant.ghl_location_id)) }
+    }catch(e){ }
+  }
+
   async function fetchMessages(){
     if(!dealId) return
     setLoading(true)
@@ -33,10 +45,11 @@ export default function GhlTab({ dealId, userId }: { dealId: string, userId: str
     setLoading(false)
   }
 
-  useEffect(()=>{ fetchMessages() },[dealId])
+  useEffect(()=>{ fetchMessages() ; fetchTenant() },[dealId])
 
   async function handleSend(){
     setError(null)
+    if(!connected){ setError('GHL not connected. Configure in Settings.'); return }
     setSending(true)
     try{
       const payload:any = {
@@ -61,9 +74,18 @@ export default function GhlTab({ dealId, userId }: { dealId: string, userId: str
 
   return (
     <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg">
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-lg font-semibold text-white">GHL Messaging</h4>
-        <div className="text-sm text-gray-400">{messages.length} messages</div>
+      <div className="mb-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-white">GHL Messaging</h4>
+          <div className="text-sm text-gray-400">{messages.length} messages</div>
+        </div>
+        <div className="mt-2">
+          {connected ? (
+            <div className="text-sm text-emerald-300">Connected — {tenant?.name || 'Tenant'}</div>
+          ) : (
+            <div className="text-sm text-red-400">GHL not connected — <a href="/settings/ghl" className="underline">go to Settings</a></div>
+          )}
+        </div>
       </div>
 
       <div className="h-64 overflow-y-auto space-y-3">
