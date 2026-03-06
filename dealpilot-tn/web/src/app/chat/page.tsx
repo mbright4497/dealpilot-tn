@@ -99,6 +99,7 @@ export default function ChatPage() {
   const [view, setView] = useState('dashboard')
   const [sessionUserName, setSessionUserName] = useState<string | null>(null)
 
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   useEffect(()=>{
     const sb = (typeof window !== 'undefined') ? require('@/lib/supabase-browser').createBrowserClient() : null
     if(sb){
@@ -110,6 +111,21 @@ export default function ChatPage() {
         }
       }).catch(()=>{})
     }
+
+    // fetch unread notifications count
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/notifications')
+        if(!res.ok) return
+        const j = await res.json()
+        if(!mounted) return
+        const list = j.notifications || []
+        const unread = list.filter((n:any)=>!n.read).length
+        setUnreadCount(unread)
+      }catch(e){ }
+    })()
+    return ()=>{ mounted=false }
   },[])
   const [displayName, setDisplayName] = useState<string>('')
 
@@ -282,6 +298,9 @@ export default function ChatPage() {
           <a href="/communications" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             Communications
+            {unreadCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">{unreadCount}</span>
+            )}
           </a>
           <a href="/settings/ghl" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15v2m0-6v2m0-6v2M4 7h16M4 11h16M4 15h10"/></svg>
