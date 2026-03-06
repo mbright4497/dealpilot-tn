@@ -15,12 +15,14 @@ function computeDealHealth(row: any): { status: string; score: number; signals: 
   let closing_soon = false
   let inspection_expiring = false
 
+  // If deal is closed, consider it healthy regardless of integrity issues
+  if (current_state === 'closed') {
+    return { status: 'healthy', score: 100, signals: [], closing_soon, inspection_expiring }
+  }
+
   if (integrity && integrity.valid === false) {
     const first = (integrity.errors && integrity.errors.length > 0) ? integrity.errors[0] : 'Integrity issue'
     return { status: 'at_risk', score: 30, signals: [{ label: first, impact: 'high' }], closing_soon, inspection_expiring }
-  }
-  if (current_state === 'closed') {
-    return { status: 'healthy', score: 100, signals: [], closing_soon, inspection_expiring }
   }
   if (current_state === 'draft') {
     return { status: 'attention', score: 60, signals: [{ label: 'Contract not yet bound', impact: 'medium' }], closing_soon, inspection_expiring }
@@ -51,15 +53,35 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch deals', details: error?.message }, { status: 500 })
   }
 
-  const activeRows = (data || []).filter((r:any) => r.closing_date !== 'Closed' && r.status !== 'Closed' && (r.status || '').toLowerCase() !== 'closed')
+  // Fetch transactions to resolve address and client info
+  const dealIds = (data || []).map((r:any) => r.deal_id || r.id).filter(Boolean)
+  const { data: txns } = await supabase.from('transactions').select('id,address,client,type').in('id', dealIds)
+  const txMap = new Map((txns || []).map((t:any) => [t.id, t]))
+
+  // Filter out closed deals using computed lifecycle state and also remove ghost transactions (no address and no client)
+  const activeRows = (data || []).filter((r:any) => {
+    const state = computeLifecycleState(r)
+    if (state === 'closed') return false
+    const tx = txMap.get(r.deal_id || r.id)
+    const hasAddressOrClient = tx && ((tx.address && String(tx.address).trim()) || (tx.client && String(tx.client).trim()))
+    return !!hasAddressOrClient
+  })
 
   const deals = activeRows.map((row: any) => {
     const health = computeDealHealth(row)
+    const tx = txMap.get(row.deal_id || row.id)
+    const address = (tx && tx.address) ? tx.address : 'Unknown'
+    const client = (tx && tx.client) ? tx.client : ''
+
+    // Decide buyer/seller name based on transaction type if available
+    const buyer_name = row.buyer_name || (tx && tx.type === 'buy' ? client : '')
+    const seller_name = row.seller_name || (tx && tx.type === 'sell' ? client : '')
+
     return {
-      deal_id: row.deal_id,
-      address: row.property_address || 'Unknown',
-      buyer_name: row.buyer_name || '',
-      seller_name: row.seller_name || '',
+      deal_id: row.deal_id || row.id,
+      address,
+      buyer_name,
+      seller_name,
       ...health
     }
   })
