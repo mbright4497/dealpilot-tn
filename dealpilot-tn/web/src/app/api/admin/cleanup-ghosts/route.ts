@@ -11,13 +11,13 @@ export async function POST() {
     // Step 1: select candidate ids using binding_date IS NULL and client NULL/empty
     const { data: candidates, error: selErr } = await supabase
       .from('deal_state')
-      .select('id')
+      .select('id,client,binding_date')
       .is('binding_date', null)
-      .or("(client.is.null,client.eq.'')")
 
     if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 })
 
-    const ids = (candidates || []).map((r: any) => r.id)
+    const ghosts = (candidates || []).filter((r: any) => !r.client || r.client === '')
+    const ids = ghosts.map((r: any) => r.id)
     if (!ids.length) return NextResponse.json({ deleted: 0 })
 
     const { data, error } = await supabase.from('deal_state').delete().in('id', ids)
