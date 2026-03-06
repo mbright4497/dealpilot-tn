@@ -59,7 +59,23 @@ export async function GET() {
   const { data, error } = await supabase.from('deal_state').select('*')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const allDeadlines = (data || []).flatMap(row => computeDeadlines(row))
+  // Normalize and enrich deal_state rows with transaction address/client when missing
+  const dealIds = (data || []).map((r: any) => r.deal_id ?? r.id)
+  const { data: txns } = await supabase.from('transactions').select('id,address,client').in('id', dealIds)
+  const txMap = new Map((txns || []).map((t: any) => [t.id, t]))
+
+  const enriched = (data || []).map((r: any) => {
+    const id = r.deal_id ?? r.id
+    const tx = txMap.get(id)
+    return {
+      ...r,
+      deal_id: id,
+      address: r.address || (tx && tx.address) || null,
+      client: r.client || (tx && tx.client) || null,
+    }
+  })
+
+  const allDeadlines = (enriched || []).flatMap((row: any) => computeDeadlines(row))
   allDeadlines.sort((a, b) => a.date.localeCompare(b.date))
 
   const today = new Date().toISOString().split('T')[0]
