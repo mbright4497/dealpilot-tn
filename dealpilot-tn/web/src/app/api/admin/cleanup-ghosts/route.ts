@@ -8,19 +8,28 @@ const supabase = createClient(
 
 export async function POST() {
   try {
-    const { data, error } = await supabase
+    // Step 1: select candidate ids
+    const { data: candidates, error: selErr } = await supabase
       .from('deal_state')
-      .delete()
-      .match({})
-      .or("(address.is.null,address.eq.'')")
+      .select('id,address,client,binding_date')
+      .is('binding_date', null)
 
-    // The Supabase JS client doesn't return deleted count reliably for all adapters.
-    // Run a raw RPC to get affected rows if available, but fallback to data length.
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 })
 
-    const deletedCount = Array.isArray(data) ? data.length : 0
+    const ghosts = (candidates || []).filter((r: any) => {
+      const addrEmpty = !r.address || r.address === ''
+      const clientEmpty = !r.client || r.client === ''
+      const bindingNull = r.binding_date === null
+      return addrEmpty && clientEmpty && bindingNull
+    })
+
+    if (!ghosts.length) return NextResponse.json({ deleted: 0 })
+
+    const ids = ghosts.map((g: any) => g.id)
+    const { data, error } = await supabase.from('deal_state').delete().in('id', ids)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const deletedCount = Array.isArray(data) ? data.length : ids.length
     return NextResponse.json({ deleted: deletedCount })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
