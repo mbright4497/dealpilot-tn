@@ -15,23 +15,23 @@ export default function SettingsPage(){
     let mounted = true
     ;(async ()=>{
       try{
-        const { data } = await supabase.auth.getUser()
-        const user = data.user
-        if(!user) return
-        const email = user.email || ''
-        // load profile
-        const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).limit(1).single()
-        if(mounted){
-          setProfile({ full_name: (p?.full_name||user.user_metadata?.full_name||''), email, phone: p?.phone||'', company: p?.company||'', license: p?.license||'' })
+        const res = await fetch('/api/profile')
+        if(!res.ok) throw new Error('Failed')
+        const j = await res.json()
+        const p = j.profile
+        if(mounted && p){
+          setProfile({ full_name: (p?.full_name||''), email: p?.email||'', phone: p?.phone||'', company: p?.brokerage_company||'', license: p?.license_number||'' })
+          setPlan(p?.subscription_tier || 'Free')
         }
-        // load tenant / subscription mock
-        const { data: t } = await supabase.from('tenant_users').select('tenant_id').eq('user_id', user.id).limit(1)
-        if(t && t.length){
-          const tid = t[0].tenant_id
-          const { data: tenant } = await supabase.from('tenants').select('*').eq('id', tid).limit(1).single()
-          if(tenant && mounted){ setPlan(tenant.plan || 'Starter') }
-        }
-      }catch(e){ console.error(e) }
+      }catch(e){
+        // fallback: try to get session email
+        try{
+          const { data } = await supabase.auth.getUser()
+          const user = data.user
+          if(user && mounted) setProfile((s:any)=>({...s, email: user.email || ''}))
+        }catch(_){}
+        console.error(e)
+      }
       if(mounted) setLoading(false)
     })()
     return ()=>{ mounted=false }
@@ -40,14 +40,10 @@ export default function SettingsPage(){
   async function saveProfile(){
     setSaving(true)
     try{
-      const { data: userData } = await supabase.auth.getUser()
-      const user = userData.user
-      if(!user) throw new Error('Not authenticated')
-      const updates = { id: user.id, full_name: profile.full_name, phone: profile.phone, company: profile.company, license: profile.license }
-      const { error } = await supabase.from('profiles').upsert(updates).select()
-      if(error) throw error
-      // also update user_metadata
-      await supabase.auth.updateUser({ data: { full_name: profile.full_name } })
+      const payload = { full_name: profile.full_name, phone: profile.phone, brokerage_company: profile.company, license_number: profile.license, notification_prefs: notif }
+      const res = await fetch('/api/profile', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      const j = await res.json()
+      if(!res.ok || j.error){ throw new Error(j.error || 'Save failed') }
       alert('Profile saved')
     }catch(e:any){ alert('Save failed: '+(e.message||e)) }
     setSaving(false)
