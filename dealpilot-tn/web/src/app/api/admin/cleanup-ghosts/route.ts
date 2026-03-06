@@ -20,6 +20,10 @@ export async function POST() {
       // continue; we'll try RPC as fallback for transactions below
     }
 
+    // Check transactions existing rows first
+    const { data: check, error: checkErr } = await supabase.from('transactions').select('id,address,client').in('id', ids)
+    if (checkErr) return NextResponse.json({ error: checkErr.message }, { status: 500 })
+
     // Try RPC raw SQL for transactions delete
     let deletedTxIds: number[] = []
     try {
@@ -33,7 +37,7 @@ export async function POST() {
       deletedTxIds = Array.isArray(delTx) ? delTx.map((r:any) => r.id) : []
     }
 
-    return NextResponse.json({ deleted_deal_state: deletedDealStateIds, deleted_transactions: deletedTxIds })
+    return NextResponse.json({ check, deleted_deal_state: deletedDealStateIds, deleted_transactions: deletedTxIds })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
