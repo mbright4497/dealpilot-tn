@@ -8,6 +8,8 @@ interface Transaction {
   status: string
   binding: string
   closing: string
+  state_label?: string
+  current_state?: string
 }
 interface Props {
   transactions: Transaction[]
@@ -67,8 +69,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Address</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Client</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Type</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Status</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Health</th>
+            <th className="p-3 text-left text-sm font-semibold text-gray-600">Lifecycle</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Binding Date</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Closing Date</th>
             <th className="p-3 text-left text-sm font-semibold text-gray-600">Actions</th>
@@ -81,12 +82,8 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 <td className="p-3 font-medium text-gray-900">{l.address}</td>
                 <td className="p-3 text-gray-900">{l.client}</td>
                 <td className="p-3 text-gray-800">{l.type}</td>
-                <td className="px-3 py-2">
-                  <span className={`px-2 py-1 rounded text-xs ${ (l as any).health_status === 'healthy' ? 'bg-green-600' : (l as any).health_status === 'attention' ? 'bg-yellow-600' : 'bg-red-600' }`}>{(l as any).health_status || '—'}</span>
-                </td>
-                <td className="p-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.status==='Active' ? 'bg-green-100 text-green-700' : l.status==='Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>{l.status}</span>
-                </td>
+                <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-100 text-gray-700' : l.current_state === 'draft' ? 'bg-green-100 text-green-700' : l.current_state === 'inspection_period' ? 'bg-yellow-100 text-yellow-700' : l.current_state === 'post_inspection' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{(l as any).state_label || '—'}</span></td>
+                
                 <td className="p-3 text-gray-700">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</td>
                 <td className="p-3 text-gray-700">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</td>
                 <td className="p-3">
