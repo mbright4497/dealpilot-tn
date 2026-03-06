@@ -2,6 +2,7 @@
 // Phase 11: Deterministic Deadline Layer
 import React from 'react'
 import DailyBriefing from './DailyBriefing'
+import GhlWidget from './GhlWidget'
 import type { Transaction as ChatTransaction } from '@/app/chat/page'
 interface Props {
   transactions?: ChatTransaction[]
