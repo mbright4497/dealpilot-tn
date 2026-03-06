@@ -1,16 +1,20 @@
--- Migration note: create profiles table if not exists
--- SQL schema (run as migration):
--- CREATE TABLE IF NOT EXISTS profiles (
---   id UUID PRIMARY KEY REFERENCES auth.users(id),
---   full_name TEXT,
---   phone TEXT,
---   brokerage_company TEXT,
---   license_number TEXT,
---   notification_prefs JSONB DEFAULT '{}',
---   subscription_tier TEXT DEFAULT 'free',
---   created_at TIMESTAMPTZ DEFAULT now(),
---   updated_at TIMESTAMPTZ DEFAULT now()
--- );
+/*
+Migration note: create profiles table if not exists
+
+SQL schema (run as migration):
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  full_name TEXT,
+  phone TEXT,
+  brokerage_company TEXT,
+  license_number TEXT,
+  notification_prefs JSONB DEFAULT '{}',
+  subscription_tier TEXT DEFAULT 'free',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+*/
 
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
