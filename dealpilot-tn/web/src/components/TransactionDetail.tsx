@@ -163,8 +163,18 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     const remoteEvents:TimelineEvent[] = (remote && remote.timeline) ? remote.timeline.map((e:any)=>({ id: e.id||String(e.ts||Math.random()), title: e.title||e.name||e.event, date: e.date, ts: e.ts, type: e.type, note: e.note })) : []
     const auto = (deadlines||[]).map(d=>({ id:d.key, title:d.title, date: d.date ? d.date.toISOString() : undefined, type:'deadline' }))
     const combined = [...(remoteEvents||[]), ...auto]
+    // deduplicate by title+date
+    const seen = new Set<string>()
+    const deduped = [] as TimelineEvent[]
+    for(const e of combined){
+      if(!e.date) continue
+      const key = `${(e.title||'').toString().trim()}::${new Date(e.date).toISOString()}`
+      if(seen.has(key)) continue
+      seen.add(key)
+      deduped.push(e)
+    }
     // sort by date ascending
-    return combined.filter(e=>e.date).sort((a,b)=> new Date(a.date!).getTime() - new Date(b.date!).getTime())
+    return deduped.sort((a,b)=> new Date(a.date!).getTime() - new Date(b.date!).getTime())
   },[remote, mergedTx, docs])
 
   // documentsByKey memo (Phase 21) - placed BEFORE return
