@@ -20,7 +20,7 @@ export default function SettingsPage(){
         const j = await res.json()
         const p = j.profile
         if(mounted && p){
-          setProfile({ full_name: (p?.full_name||''), email: p?.email||'', phone: p?.phone||'', company: p?.brokerage_company||'', license: p?.license_number||'' })
+          setProfile({ full_name: (p?.full_name||''), email: p?.email||'', phone: p?.phone||'', company: p?.brokerage||'', license: p?.license_number||'' })
           setPlan(p?.subscription_tier || 'Free')
         }
       }catch(e){
@@ -40,7 +40,7 @@ export default function SettingsPage(){
   async function saveProfile(){
     setSaving(true)
     try{
-      const payload = { full_name: profile.full_name, phone: profile.phone, brokerage_company: profile.company, license_number: profile.license, notification_prefs: notif }
+      const payload = { full_name: profile.full_name, phone: profile.phone, brokerage: profile.company, license_number: profile.license, notification_prefs: notif }
       const res = await fetch('/api/profile', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
       const j = await res.json()
       if(!res.ok || j.error){ throw new Error(j.error || 'Save failed') }
