@@ -8,23 +8,19 @@ const supabase = createClient(
 
 export async function POST() {
   try {
-    // Step 1: select candidate ids using binding_date IS NULL and client NULL/empty
-    const { data: candidates, error: selErr } = await supabase
-      .from('deal_state')
-      .select('id,client,binding_date')
-      .is('binding_date', null)
-
+    // Step 1: select all rows and filter in JS per instructed exact approach
+    const { data, error: selErr } = await supabase.from('deal_state').select('*')
     if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 })
 
-    const ghosts = (candidates || []).filter((r: any) => !r.client || r.client === '')
+    const ghosts = (data || []).filter((r: any) => !r.binding_date && (!r.address || r.address === '') && (!r.client || r.client === ''))
     const ids = ghosts.map((r: any) => r.id)
-    if (!ids.length) return NextResponse.json({ deleted: 0 })
 
-    const { data, error } = await supabase.from('deal_state').delete().in('id', ids)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (ids.length > 0) {
+      const { error: delErr } = await supabase.from('deal_state').delete().in('id', ids)
+      if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+    }
 
-    const deletedCount = Array.isArray(data) ? data.length : ids.length
-    return NextResponse.json({ deleted: deletedCount })
+    return NextResponse.json({ deleted: ids.length, ids })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
