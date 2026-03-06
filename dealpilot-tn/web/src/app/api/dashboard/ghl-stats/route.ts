@@ -11,13 +11,19 @@ export async function GET() {
     // hardcoded user_id=1 for dashboard preview
     const userId = '1'
 
-    const { data: tu, error: tuErr } = await supabase.from('tenant_users').select('tenant_id').eq('user_id', userId).limit(1)
-    if (tuErr) throw tuErr
-    if (!tu || tu.length === 0) {
-      return NextResponse.json({ connected: false, messages_sent: 0, messages_limit: 0, recent_count: 0, last_message_at: null })
+    let tenantId: string | null = null
+    try {
+      const { data: tu, error: tuErr } = await supabase.from('tenant_users').select('tenant_id').eq('user_id', userId).limit(1)
+      if (tuErr) throw tuErr
+      if (!tu || tu.length === 0) {
+        return NextResponse.json({ connected: false, messages_sent: 0, messages_limit: 0, recent_count: 0, last_message_at: null, tenant_name: null })
+      }
+      tenantId = tu[0].tenant_id
+    } catch (e: any) {
+      // If tenant_users table missing or query failed, return disconnected default instead of 500
+      console.warn('tenant_users lookup failed, returning disconnected state', e.message || e)
+      return NextResponse.json({ connected: false, messages_sent: 0, messages_limit: 0, recent_count: 0, last_message_at: null, tenant_name: null })
     }
-
-    const tenantId = tu[0].tenant_id
     const { data: tenant, error: tenantErr } = await supabase.from('tenants').select('*').eq('id', tenantId).limit(1).single()
     if (tenantErr) throw tenantErr
     if (!tenant) {
