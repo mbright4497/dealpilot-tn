@@ -74,8 +74,8 @@ export async function GET() {
     const client = (tx && tx.client) ? tx.client : ''
 
     // Decide buyer/seller name based on transaction type if available
-    const buyer_name = row.buyer_name || (tx && tx.type === 'buy' ? client : '')
-    const seller_name = row.seller_name || (tx && tx.type === 'sell' ? client : '')
+    const buyer_name = row.buyer_name || (tx && tx.type?.toLowerCase() === 'buyer' ? client : '')
+    const seller_name = row.seller_name || (tx && tx.type?.toLowerCase() === 'seller' ? client : '')
 
     return {
       deal_id: row.deal_id || row.id,
