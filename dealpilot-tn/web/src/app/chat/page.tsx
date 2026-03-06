@@ -320,6 +320,9 @@ export default function ChatPage() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15v2m0-6v2m0-6v2M4 7h16M4 11h16M4 15h10"/></svg>
           </a>
         </div>
+        <div className="p-4 border-t border-gray-800">
+          <button onClick={async ()=>{ try{ const sb = (typeof window !== 'undefined') ? require('@/lib/supabase-browser').createBrowserClient() : null; if(sb){ await sb.auth.signOut(); window.location.href = '/login' } }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-gray-800 hover:text-white transition-all"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8l4 4-4 4"/><path d="M2 12h16"/></svg> Logout</button>
+        </div>
       </aside>
 
       {/* Main content */}
