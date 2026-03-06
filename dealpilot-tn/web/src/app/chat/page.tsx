@@ -80,7 +80,7 @@ function NavIcon({ name }: { name: string }) {
   if (name === 'deadlines') return <svg {...p}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
   if (name === 'ai') return <svg {...p}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
   if (name === 'tx-steps') return <svg {...p}><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 14l2 2 4-4"/></svg>
-                                                                                                                                                                                                                       if (name === 'personality') return <svg {...p}><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-6 2.69-6 6v1h12v-1c0-3.31-2.69-6-6-6z"/></svg>
+  if (name === 'personality') return <svg {...p}><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-3.31 0-6 2.69-6 6v1h12v-1c0-3.31-2.69-6-6-6z"/></svg>
   return null
 }
 
@@ -90,48 +90,11 @@ const NAV_ITEMS = [
   { id: 'forms', label: 'Forms Library' },
   { id: 'deadlines', label: 'Deadlines' },
   { id: 'tx-steps', label: 'TX Steps'  },
-  { id: 'communications', label: 'Communications' },
-  { id: 'ghl-settings', label: 'GHL Settings' },
-  { id: 'personality', label: 'Style' },
+    { id: 'personality', label: 'Style' },
 ]
 
 export default function ChatPage() {
   const [view, setView] = useState('dashboard')
-  const [sessionUserName, setSessionUserName] = useState<string | null>(null)
-
-  const [unreadCount, setUnreadCount] = useState<number>(0)
-  useEffect(()=>{
-    const sb = (typeof window !== 'undefined') ? require('@/lib/supabase-browser').createBrowserClient() : null
-    if(sb){
-      sb.auth.getUser().then(res=>{
-        const user = res.data.user
-        if(user){
-          const full = (user.user_metadata as any)?.full_name || user.email || ''
-          setSessionUserName(full)
-        }
-      }).catch(()=>{})
-    }
-
-    // fetch unread notifications count
-    let mounted = true
-    ;(async ()=>{
-      try{
-        const res = await fetch('/api/notifications')
-        if(!res.ok) return
-        const j = await res.json()
-        if(!mounted) return
-        const list = j.notifications || []
-        const unread = list.filter((n:any)=>!n.read).length
-        setUnreadCount(unread)
-      }catch(e){ }
-    })()
-    return ()=>{ mounted=false }
-  },[])
-  const [displayName, setDisplayName] = useState<string>('')
-
-  useEffect(()=>{
-    const sb = (async()=>{ try{ const mod = await import('@/lib/supabase-browser'); const supabase = mod.createBrowserClient(); const { data } = await supabase.auth.getUser(); const user = data.user; if(user){ const full = (user.user_metadata as any)?.full_name || user.email || ''; setDisplayName(full.split(' ')[0] || '') } }catch(e){}})()
-  },[])
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -278,8 +241,8 @@ export default function ChatPage() {
             <button
               key={item.id}
               onClick={() => { setView(item.id); setSelectedTxId(null) }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transform transition-all duration-150 ease-out ${
-                view === item.id ? 'bg-gray-800 text-orange-400 scale-100' : 'text-gray-300 hover:bg-gray-800 hover:text-white hover:scale-[1.02]'
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                view === item.id ? 'bg-gray-800 text-orange-400' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
             >
               <NavIcon name={item.id} />
@@ -293,15 +256,6 @@ export default function ChatPage() {
             <NavIcon name="ai" />
             AI Assistant
           </button>
-
-          {/* Communications and GHL Settings quick links */}
-          <a href="/communications" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            Communications
-            {unreadCount > 0 && (
-              <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">{unreadCount}</span>
-            )}
-          </a>
         </nav>
         {selectedTxId && view === 'deal' && (
           <div className="px-4 py-3 border-t border-gray-800">
@@ -312,30 +266,21 @@ export default function ChatPage() {
         )}
         <div className="p-4 border-t border-gray-800 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold">MB</div>
-          <div className="flex-1">
-            <p className="text-white text-sm font-medium">{/** will be replaced with session user name at runtime */}User</p>
+          <div>
+            <p className="text-white text-sm font-medium">Matt Bright</p>
             <p className="text-gray-400 text-xs">iHome-KW Kingsport</p>
           </div>
-          <a href="/settings" className="text-gray-300 hover:text-white p-2 rounded transition-all" title="Settings">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15v2m0-6v2m0-6v2M4 7h16M4 11h16M4 15h10"/></svg>
-          </a>
-        </div>
-        <div className="p-4 border-t border-gray-800">
-          <button onClick={async ()=>{ try{ const sb = (typeof window !== 'undefined') ? require('@/lib/supabase-browser').createBrowserClient() : null; if(sb){ await sb.auth.signOut(); window.location.href = '/login' } }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-gray-800 hover:text-white transition-all"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8l4 4-4 4"/><path d="M2 12h16"/></svg> Logout</button>
         </div>
       </aside>
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
-        {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} userName={sessionUserName || undefined} />}
+        {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} />}
         {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} />}
         {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && <FormsFillView />}
         {view === 'deadlines' && <DeadlineCalculator />}         {view === 'tx-steps' && <div className="grid lg:grid-cols-2 gap-6"><TransactionStepper /><ContractViewer contract={{propertyAddress:'123 Maple St, Johnson City TN',buyers:'John Smith, Jane Smith',sellers:'Bob Johnson',purchasePrice:425000,earnestMoney:5000,closingDate:'2026-05-30',inspectionStart:'2026-03-01',inspectionEnd:'2026-03-10',financingDate:'2026-04-15',specialStipulations:'Seller to repair roof prior to closing.'}} /></div>}
-        {view === 'personality' && <>
-          <PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} />
-          <div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div>
-        </>}
+        {view === 'personality' && <><PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} /><div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div></>}
               {view === 'add-transaction' && <ContractIntake onConfirm={async (data: any) => {
                 try{
                   const res = await fetch('/api/transactions/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) })
