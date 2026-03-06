@@ -23,11 +23,18 @@ export default function GhlWidget(){
     ;(async ()=>{
       try{
         const res = await fetch('/api/dashboard/ghl-stats')
-        if(!res.ok) return
-        const j = await res.json()
-        if(!mounted) return
-        setStats(j)
-      }catch(e){}
+        if(!res.ok){
+          // fallback to disconnected state
+          setStats({ connected: false, messages_sent: 0, messages_limit: 0, recent_count: 0, last_message_at: null, tenant_name: null })
+        } else {
+          const j = await res.json()
+          if(!mounted) return
+          setStats(j)
+        }
+      }catch(e){
+        // network or other error - show disconnected state
+        setStats({ connected: false, messages_sent: 0, messages_limit: 0, recent_count: 0, last_message_at: null, tenant_name: null })
+      }
       setLoading(false)
     })()
     return ()=>{ mounted=false }
