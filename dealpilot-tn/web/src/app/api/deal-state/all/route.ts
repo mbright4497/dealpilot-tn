@@ -94,7 +94,11 @@ export async function GET() {
     return NextResponse.json([])
   }
 
-  const dealIds = txns.map((t) => t.id)
+  // Filter out ghost transactions that have neither address nor client
+  const filtered = txns.filter(t => (t.address && String(t.address).trim()) || (t.client && String(t.client).trim()))
+  if (filtered.length === 0) return NextResponse.json([])
+
+  const dealIds = filtered.map((t) => t.id)
   const { data: states } = await supabase
     .from('deal_state')
     .select('*')
