@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -11,7 +13,7 @@ export async function GET() {
     // try auth session first, fallback to hardcoded user id
     let userId: string | null = null
     try {
-      const auth = (await import('@supabase/auth-helpers-nextjs')).createRouteHandlerClient({ (await import('next/headers')).cookies() })
+      const auth = createRouteHandlerClient({ cookies })
       const { data: { user } } = await auth.auth.getUser()
       userId = user?.id || null
     } catch (e) {
