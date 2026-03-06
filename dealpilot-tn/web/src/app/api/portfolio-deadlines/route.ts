@@ -72,11 +72,24 @@ export async function GET() {
   const upcoming = allDeadlines.filter(d => d.status === 'upcoming')
   const next7Days = allDeadlines.filter(d => d.date >= today && d.date <= next7Str && d.status !== 'completed')
 
+  // Backward-compatible response plus `items` and `generatedAt`
+  const items = allDeadlines.map((d: any) => ({
+    dealId: String(d.deal_id),
+    address: d.address,
+    client: null,
+    dealStatus: d.status,
+    deadlineKey: d.key,
+    deadlineName: d.label,
+    dueDate: d.date
+  }))
+
   return NextResponse.json({
     total_upcoming: upcoming.length,
     overdue_count: overdue.length,
     today_count: todayItems.length,
     next_7_days: next7Days,
-    all_deadlines: allDeadlines
+    all_deadlines: allDeadlines,
+    items,
+    generatedAt: new Date().toISOString()
   })
 }
