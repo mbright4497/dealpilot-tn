@@ -245,6 +245,8 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
             </div>
           </div>
 
+          <GhlWidget />
+
           {/* Notification Settings */}
           <div className=" bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5">
             <h3 className="font-semibold text-white mb-3">Notification Settings</h3>
