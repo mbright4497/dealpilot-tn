@@ -55,48 +55,48 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Transactions</h2>
+        <h2 className="text-2xl font-bold text-gray-100">Transactions</h2>
         <div className="flex items-center gap-3">
-          <select onChange={e=>setFilter(e.target.value)} className="border border-gray-300 rounded p-2 text-gray-700">
+          <select onChange={e=>setFilter(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg p-2 text-gray-200">
             <option>All</option><option>Active</option><option>Pending</option><option>Closed</option>
           </select>
-          <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-semibold">Add Transaction</button>
+          <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-semibold">Add Transaction</button>
         </div>
       </div>
-      <table className="w-full bg-white shadow rounded-lg overflow-hidden">
-        <thead className="bg-gray-50">
+      <table className="w-full bg-gray-900 shadow-xl rounded-xl overflow-hidden border border-gray-700/50">
+        <thead className="bg-gray-800/80">
           <tr>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Address</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Client</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Type</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Lifecycle</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Binding Date</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Closing Date</th>
-            <th className="p-3 text-left text-sm font-semibold text-gray-600">Actions</th>
+            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Address</th>
+            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Client</th>
+            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
+            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Lifecycle</th>
+            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Binding Date</th>
+            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Closing Date</th>
+            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
         <tbody>
           {list.map(l => (
             <React.Fragment key={l.id}>
-              <tr className="border-b hover:bg-gray-50 cursor-pointer transition-colors" onClick={()=>setExpanded(expanded===l.id?null:l.id)}>
-                <td className="p-3 font-medium text-gray-900">{l.address}</td>
-                <td className="p-3 text-gray-900">{l.client}</td>
-                <td className="p-3 text-gray-800">{l.type}</td>
+              <tr className="border-b hover:bg-gray-800/80 cursor-pointer transition-colors" onClick={()=>setExpanded(expanded===l.id?null:l.id)}>
+                <td className="p-3 font-medium text-gray-100">{l.address}</td>
+                <td className="p-3 text-gray-200">{l.client}</td>
+                <td className="p-3 text-gray-300">{l.type}</td>
                 <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-100 text-gray-700' : l.current_state === 'draft' ? 'bg-green-100 text-green-700' : l.current_state === 'inspection_period' ? 'bg-yellow-100 text-yellow-700' : l.current_state === 'post_inspection' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{(l as any).state_label || '—'}</span></td>
                 
-                <td className="p-3 text-gray-700">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</td>
-                <td className="p-3 text-gray-700">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</td>
+                <td className="p-3 text-gray-400">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</td>
+                <td className="p-3 text-gray-400">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</td>
                 <td className="p-3">
                   <div className="flex gap-2">
                     <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500 text-white text-sm rounded hover:bg-orange-600 transition-colors">Open Deal</button>
-                    <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors">Checklist</button>
-                    <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs">Delete</button>
+                    <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-gray-600 text-white text-xs rounded-lg hover:bg-gray-500 font-medium transition-colors">Checklist</button>
+                    <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-900/60 text-red-300 rounded-lg hover:bg-red-800 text-xs font-medium">Delete</button>
                   </div>
                 </td>
               </tr>
               {expanded===l.id && (
                 <tr>
-                  <td colSpan={7} className="p-4 bg-gray-50 border-b">
+                  <td colSpan={7} className="p-4 bg-gray-800/80 border-b">
                     <div className="text-sm text-gray-700">
                       <p className="font-semibold text-gray-900 mb-2">Transaction Details - {l.address}</p>
                       <div className="grid grid-cols-2 gap-2">
@@ -154,7 +154,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-800/80">Cancel</button>
                 <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">Save Transaction</button>
               </div>
             </form>
