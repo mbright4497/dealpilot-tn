@@ -54,43 +54,43 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
       <DailyBriefing userName="Matt" transactions={transactions as ChatTransaction[]} onNavigate={(dest) => onNavigate && onNavigate(dest)} onOpenDeal={(txId) => onOpenDeal && onOpenDeal(txId)} />
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📊</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{total}</p>
-          <p className="text-sm text-gray-500 mt-1">Total Transactions</p>
+          <p className="text-3xl font-bold text-white">{total}</p>
+          <p className="text-sm text-cyan-300/70 mt-1">Total Transactions</p>
         </div>
         {/* Portfolio Health */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className={`w-3 h-3 rounded-full ${portfolio ? (portfolio.overall_status==='healthy' ? 'bg-green-500' : portfolio.overall_status==='attention' ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300'}`} />
               <span className="text-sm font-medium">Portfolio Health</span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900 capitalize">{portfolio ? (portfolio.overall_status === 'at_risk' ? 'At Risk' : portfolio.overall_status === 'healthy' ? 'Healthy' : portfolio.overall_status === 'attention' ? 'Needs Attention' : portfolio.overall_status) : '—'}</p>
-          <p className="text-sm text-gray-500 mt-1">Overall Status</p>
+          <p className="text-3xl font-bold text-white capitalize">{portfolio ? (portfolio.overall_status === 'at_risk' ? 'At Risk' : portfolio.overall_status === 'healthy' ? 'Healthy' : portfolio.overall_status === 'attention' ? 'Needs Attention' : portfolio.overall_status) : '—'}</p>
+          <p className="text-sm text-cyan-300/70 mt-1">Overall Status</p>
         </div>
         {/* Deal Breakdown */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">🧾</span>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{portfolio ? `${portfolio.summary?.healthy ?? 0}/${portfolio.summary?.attention ?? 0}/${portfolio.summary?.at_risk ?? 0}` : '—'}</p>
-          <p className="text-sm text-gray-500 mt-1">Healthy / Attention / At Risk</p>
+          <p className="text-3xl font-bold text-white">{portfolio ? `${portfolio.summary?.healthy ?? 0}/${portfolio.summary?.attention ?? 0}/${portfolio.summary?.at_risk ?? 0}` : '—'}</p>
+          <p className="text-sm text-cyan-300/70 mt-1">Healthy / Attention / At Risk</p>
         </div>
         {/* Overdue Deadlines */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📅</span>
           </div>
           <p className={`text-3xl font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{portfolioDeadlines ? overdueCount : '—'}</p>
-          <p className="text-sm text-gray-500 mt-1">Overdue Deadlines</p>
+          <p className="text-sm text-cyan-300/70 mt-1">Overdue Deadlines</p>
         </div>
         {/* Portfolio Risk Score */}
-        <div className="bg-gray-900 rounded-xl p-4">
-          <div className="text-sm text-gray-400">Portfolio Risk Score</div>
+        <div className="bg-gradient-to-br from-cyan-900/30 to-purple-900/30 backdrop-blur-md rounded-2xl border border-cyan-500/20 p-4">
+          <div className="text-sm text-cyan-300/70">Portfolio Risk Score</div>
           <div className="text-2xl font-semibold">{portfolio?.portfolio_risk_score ?? '—'}%</div>
         </div>
       </div>
@@ -114,18 +114,18 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           </div>
         )}
         {/* Active Transactions */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200">
-          <div className="flex items-center justify-between p-5 border-b border-gray-100">
+        <div className="lg:col-span-2 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+          <div className="flex items-center justify-between p-5 border-b border-white/10">
             <div>
-              <h3 className="font-semibold text-gray-900">Active Transactions</h3>
-              <p className="text-sm text-gray-500">{total} deals in your pipeline</p>
+              <h3 className="font-semibold text-white">Active Transactions</h3>
+              <p className="text-sm text-gray-400">{total} deals in your pipeline</p>
             </div>
             <button
               onClick={() => onNavigate && onNavigate('transactions')}
               className="text-sm text-orange-500 hover:text-orange-600 font-medium"
             >View All →</button>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-white/5">
             {transactions.map(tx => {
               const state = tx.current_state || 'draft'
               const progress = PROGRESS_MAP[state] || 10
@@ -135,7 +135,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
                 <div
                   key={tx.id}
                   onClick={() => onOpenDeal && onOpenDeal(tx.id)}
-                  className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="p-4 hover:bg-white/5 cursor-pointer transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
@@ -143,8 +143,8 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
                         {tx.type === 'Buyer' ? 'B' : tx.type === 'Seller' ? 'S' : '?'}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{tx.address}</p>
-                        <p className="text-sm text-gray-500">{tx.client} · {tx.type || 'Transaction'}</p>
+                        <p className="font-medium text-white">{tx.address}</p>
+                        <p className="text-sm text-gray-400">{tx.client} · {tx.type || 'Transaction'}</p>
                       </div>
                     </div>
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${badgeClass}`}>{tx.state_label || 'Draft'}</span>
@@ -169,10 +169,10 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
         {/* Right Column */}
         <div className="space-y-6">
           {/* Upcoming Deadlines - Live from portfolio-deadlines API */}
-          <div className="bg-white rounded-xl border border-gray-200">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <div className=" bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+            <div className="flex items-center justify-between p-5 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-gray-900">Upcoming Deadlines</h3>
+                <h3 className="font-semibold text-white">Upcoming Deadlines</h3>
                 {overdueCount > 0 && (
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">{overdueCount} overdue</span>
                 )}
@@ -182,9 +182,9 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
                 className="text-sm text-orange-500 hover:text-orange-600 font-medium"
               >View All →</button>
             </div>
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-white/5">
               {upcomingDeadlines.length === 0 && (
-                <div className="p-4 text-sm text-gray-400 text-center">
+                <div className="p-4 text-sm text-cyan-300/70 text-center">
                   {portfolioDeadlines ? 'No deadlines in next 7 days' : 'Loading...'}
                 </div>
               )}
@@ -198,7 +198,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
                   <div key={i} className="p-4 flex items-start gap-3">
                     <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${dotColor}`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{d.label}</p>
+                      <p className="text-sm font-medium text-white truncate">{d.label}</p>
                       <p className="text-xs text-gray-500">{d.address}</p>
                     </div>
                     <div className="text-right">
@@ -212,8 +212,8 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
             </div>
           </div>
           {/* Quick Actions */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <div className=" bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5">
+            <h3 className="font-semibold text-white mb-4">Quick Actions</h3>
             <div className="space-y-2">
               <button
                 onClick={() => onNavigate && onNavigate('transactions')}
@@ -245,8 +245,8 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           </div>
 
           {/* Notification Settings */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h3 className="font-semibold text-gray-900 mb-3">Notification Settings</h3>
+          <div className=" bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5">
+            <h3 className="font-semibold text-white mb-3">Notification Settings</h3>
             <div className="space-y-3 text-sm text-gray-700">
               <label className="flex items-center justify-between bg-gray-50 p-3 rounded">
                 <div>
