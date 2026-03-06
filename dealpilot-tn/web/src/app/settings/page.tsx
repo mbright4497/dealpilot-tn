@@ -15,7 +15,7 @@ export default function SettingsPage(){
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch('/api/profile')
+        const res = await fetch('/api/profile', { credentials: 'same-origin' })
         if(!res.ok) throw new Error('Failed')
         const j = await res.json()
         const p = j.profile
