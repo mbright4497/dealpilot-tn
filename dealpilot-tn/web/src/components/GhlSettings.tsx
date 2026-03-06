@@ -16,8 +16,8 @@ export default function GhlSettings({ tenantId }: { tenantId?: string }){
     const idToUse = tenantId || null
     const fetchByUserFallback = async () => {
       try{
-        // hardcoded user_id=1 for now per instructions
-        const res = await fetch('/api/tenants?user_id=1')
+        // fetch tenant for current session (auth-aware)
+        const res = await fetch('/api/tenants')
         if(!res.ok) return
         const j = await res.json()
         if(j && j.tenant){ setSettings((s:any)=>({...s, ...j.tenant})); setTenantIdState(j.tenant.id) }

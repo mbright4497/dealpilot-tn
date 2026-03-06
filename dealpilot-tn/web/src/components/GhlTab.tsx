@@ -25,7 +25,7 @@ export default function GhlTab({ dealId, userId }: { dealId: string, userId: str
 
   async function fetchTenant(){
     try{
-      const res = await fetch(`/api/tenants?user_id=1`)
+      const res = await fetch(`/api/tenants`)
       if(!res.ok) return
       const j = await res.json()
       if(j && j.tenant){ setTenant(j.tenant); setConnected(!!(j.tenant.ghl_api_key && j.tenant.ghl_location_id)) }
