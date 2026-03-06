@@ -4,7 +4,6 @@ import CommHub from '@/components/CommHub'
 import GhlTab from '@/components/GhlTab'
 
 export default function CommunicationsPage(){
-  const sampleUserId = '1'
   const [activeTab, setActiveTab] = useState<'comms'|'ghl'>('comms')
   const [dealId, setDealId] = useState<string | null>(null)
   const [deals, setDeals] = useState<any[]>([])
@@ -68,7 +67,7 @@ export default function CommunicationsPage(){
           activeTab === 'comms' ? (
             <CommHub dealId={dealId} />
           ) : (
-            <GhlTab dealId={dealId} userId={sampleUserId} />
+            <GhlTab dealId={dealId} />
           )
         )}
 

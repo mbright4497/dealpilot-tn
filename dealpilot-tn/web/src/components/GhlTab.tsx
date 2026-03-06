@@ -13,7 +13,7 @@ type Msg = {
   metadata?: any
 }
 
-export default function GhlTab({ dealId, userId }: { dealId: string, userId: string }){
+export default function GhlTab({ dealId }: { dealId: string }){
   const [messages, setMessages] = useState<Msg[]>([])
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
