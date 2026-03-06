@@ -1,9 +1,9 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import { createBrowserClient } from '@/lib/supabase-browser'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function SettingsPage(){
-  const supabase = createBrowserClient()
+  const supabase = createClientComponentClient()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [profile, setProfile] = useState<any>({ full_name:'', email:'', phone:'', company:'', license:'' })
@@ -15,21 +15,23 @@ export default function SettingsPage(){
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch('/api/profile', { credentials: 'same-origin' })
-        if(!res.ok) throw new Error('Failed')
-        const j = await res.json()
-        const p = j.profile
+        const { data: { user } } = await supabase.auth.getUser()
+        if(!user) throw new Error('Not authenticated')
+        const { data: p, error } = await supabase.from('profiles').select('full_name,email,phone,brokerage,license_number,subscription_tier,notification_prefs').eq('id', user.id).limit(1).single()
+        if(error) throw error
         if(mounted && p){
           setProfile({ full_name: (p?.full_name||''), email: p?.email||'', phone: p?.phone||'', company: p?.brokerage||'', license: p?.license_number||'' })
           setPlan(p?.subscription_tier || 'Free')
+          if(p.notification_prefs) setNotif(p.notification_prefs)
         }
       }catch(e){
-        // fallback: try to get session email
+        // fallback: try to get session email and metadata
         try{
           const { data } = await supabase.auth.getUser()
           const user = data.user
-          if(user && mounted) setProfile((s:any)=>({...s, email: user.email || ''}))
-        }catch(_){}
+          const full = (user?.user_metadata as any)?.full_name || ''
+          if(user && mounted) setProfile((s:any)=>({...s, email: user.email || '', full_name: full }))
+        }catch(_){ }
         console.error(e)
       }
       if(mounted) setLoading(false)
