@@ -124,6 +124,12 @@ export async function GET() {
       // Run lifecycle integrity validation
       integrity = validateLifecycleIntegrity(ds)
 
+      // Flag mismatch between computed lifecycle from timeline and stored current_state
+      if (ds.current_state && ds.current_state !== lifecycle) {
+        integrity.valid = false
+        integrity.errors.push(`State mismatch: current_state is '${ds.current_state}' but timeline implies '${lifecycle}'`)
+      }
+
       if (ds.inspection_end_date) {
         timeline.push({
           event: 'Inspection Ends',
@@ -142,6 +148,7 @@ export async function GET() {
           new Date(b.date).getTime()
       )
 
+      // If mismatch, update stored current_state to computed lifecycle
       if (lifecycle !== ds.current_state) {
         supabase
           .from('deal_state')
