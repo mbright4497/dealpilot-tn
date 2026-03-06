@@ -1,0 +1,55 @@
+import { NextResponse } from 'next/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+
+export const runtime = 'nodejs'
+
+export async function GET(req: Request){
+  try{
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await supabase.auth.getUser()
+    if(!user) return NextResponse.json({ error: 'Unauthorized' }, { status:401 })
+
+    const { searchParams } = new URL(req.url)
+    const type = searchParams.get('type')
+
+    let query = supabase.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(100)
+    if(type) query = query.eq('type', type)
+    const { data, error } = await query
+    if(error) throw error
+    return NextResponse.json({ notifications: data || [] })
+  }catch(err:any){ return NextResponse.json({ error: err.message || String(err) }, { status:500 }) }
+}
+
+export async function POST(req: Request){
+  try{
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await supabase.auth.getUser()
+    if(!user) return NextResponse.json({ error: 'Unauthorized' }, { status:401 })
+
+    const body = await req.json().catch(()=> ({}))
+    const { deal_id, type, title, message, metadata } = body as any
+    if(!type) return NextResponse.json({ error: 'type required' }, { status:400 })
+
+    const insert = { user_id: user.id, deal_id: deal_id || null, type, title: title || null, message: message || null, metadata: metadata || {} }
+    const { data, error } = await supabase.from('notifications').insert(insert).select().single()
+    if(error) throw error
+    return NextResponse.json({ notification: data })
+  }catch(err:any){ return NextResponse.json({ error: err.message || String(err) }, { status:500 }) }
+}
+
+export async function PATCH(req: Request){
+  try{
+    const supabase = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await supabase.auth.getUser()
+    if(!user) return NextResponse.json({ error: 'Unauthorized' }, { status:401 })
+
+    const body = await req.json().catch(()=> ({}))
+    const { id, read } = body as any
+    if(!id) return NextResponse.json({ error: 'id required' }, { status:400 })
+
+    const { data, error } = await supabase.from('notifications').update({ read: !!read }).eq('id', id).eq('user_id', user.id).select().single()
+    if(error) throw error
+    return NextResponse.json({ notification: data })
+  }catch(err:any){ return NextResponse.json({ error: err.message || String(err) }, { status:500 }) }
+}

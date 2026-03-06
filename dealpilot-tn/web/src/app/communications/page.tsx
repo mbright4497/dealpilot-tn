@@ -1,76 +1,74 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import CommHub from '@/components/CommHub'
-import GhlTab from '@/components/GhlTab'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function CommunicationsPage(){
-  const [activeTab, setActiveTab] = useState<'comms'|'ghl'>('comms')
-  const [dealId, setDealId] = useState<string | null>(null)
-  const [deals, setDeals] = useState<any[]>([])
-  const [loadingDeals, setLoadingDeals] = useState(false)
+  const supabase = createClientComponentClient()
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<string>('all')
 
-  // support ?deal_id=xxx
-  useEffect(()=>{
-    const params = new URLSearchParams(window.location.search)
-    const q = params.get('deal_id')
-    if(q) setDealId(q)
-  },[])
+  async function load(){
+    setLoading(true)
+    try{
+      const url = filter==='all' ? '/api/notifications' : `/api/notifications?type=${encodeURIComponent(filter)}`
+      const res = await fetch(url)
+      if(!res.ok) throw new Error('Failed')
+      const j = await res.json()
+      setNotifications(j.notifications || [])
+    }catch(e){ console.error(e) }
+    setLoading(false)
+  }
 
-  useEffect(()=>{
-    let mounted = true
-    setLoadingDeals(true)
-    fetch('/api/deal-state/all').then(r=>r.json()).then(j=>{
-      if(!mounted) return
-      const list = Array.isArray(j) ? j : (j.results || j.deals || [])
-      setDeals(list)
-      // if no deal selected, pick first
-      if(!dealId && list && list.length>0){ setDealId(list[0].id || list[0].deal_id || String(list[0].id)) }
-    }).catch(()=>{}).finally(()=>{ if(mounted) setLoadingDeals(false) })
-    return ()=>{ mounted=false }
-  },[])
+  useEffect(()=>{ load() },[filter])
+
+  async function markRead(id:string){
+    try{
+      const res = await fetch('/api/notifications', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, read: true }) })
+      if(res.ok) load()
+    }catch(e){ console.error(e) }
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black p-8">
+    <div className="min-h-screen p-8 bg-gradient-to-b from-gray-900 to-black">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <a href="/" className="text-sm text-gray-300 hover:text-white">← Back to Dashboard</a>
-            <h1 className="text-3xl font-bold text-white drop-shadow-lg">Communications Hub</h1>
-            <p className="text-sm text-gray-400">Manage and compose communications for a deal</p>
+            <a href="/" className="text-sm text-gray-300 hover:text-white">← Back</a>
+            <h1 className="text-3xl font-bold text-white">Communications & Notifications</h1>
+            <p className="text-sm text-gray-400">Unified inbox for deal and system notifications</p>
+          </div>
+          <div>
+            <select value={filter} onChange={e=>setFilter(e.target.value)} className="bg-white/5 border border-white/10 rounded p-2 text-white">
+              <option value="all">All</option>
+              <option value="deadline_warning">Deadlines</option>
+              <option value="document_uploaded">Documents</option>
+              <option value="checklist_completed">Checklist</option>
+              <option value="system">System</option>
+            </select>
           </div>
         </div>
 
-        <div className="mb-4">
-          {loadingDeals ? (
-            <div className="text-sm text-gray-400">Loading deals…</div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-gray-300">Select Deal</label>
-              <select value={dealId ?? ''} onChange={e=>setDealId(e.target.value)} className="bg-white/5 border border-white/10 rounded-xl p-2 text-gray-200">
-                <option value="">-- Select a deal --</option>
-                {deals.map(d=> (
-                  <option key={d.deal_id || d.id} value={d.deal_id || d.id}>{(d.address || d.property_address || 'Unknown')} {d.client ? `— ${d.client}` : ''}</option>
-                ))}
-              </select>
-            </div>
-          )}
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4">
+          {loading && <div className="text-sm text-gray-400">Loading…</div>}
+          {!loading && notifications.length===0 && <div className="text-sm text-gray-400">No notifications</div>}
+          <div className="space-y-3">
+            {notifications.map((n:any)=> (
+              <div key={n.id} className={`p-3 rounded ${n.read? 'bg-gray-800':'bg-gray-700'}`}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="font-semibold text-white">{n.title || n.type}</div>
+                    <div className="text-sm text-gray-300">{n.message}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</div>
+                    {!n.read && <button onClick={()=>markRead(n.id)} className="text-xs text-cyan-300 mt-2">Mark read</button>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div className="mb-6 border-b border-white/10 flex gap-4">
-          <button onClick={() => setActiveTab('comms')} className={`pb-3 ${activeTab==='comms' ? 'text-white border-b-2 border-cyan-400' : 'text-gray-400'}`}>Platform Comms</button>
-          <button onClick={() => setActiveTab('ghl')} className={`pb-3 ${activeTab==='ghl' ? 'text-white border-b-2 border-cyan-400' : 'text-gray-400'}`}>GHL Channel</button>
-        </div>
-
-        {!dealId ? (
-          <div className="p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 text-gray-300">Select a deal to view communications</div>
-        ) : (
-          activeTab === 'comms' ? (
-            <CommHub dealId={dealId} />
-          ) : (
-            <GhlTab dealId={dealId} />
-          )
-        )}
-
       </div>
     </div>
   )
