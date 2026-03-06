@@ -14,6 +14,7 @@ import { previewVoice } from '@/lib/voice-engine'
 import TransactionStepper from '@/components/TransactionStepper'
 import ContractViewer from '@/components/ContractViewer'
 import ContractIntake from '@/components/ContractIntake'
+import MobileSidebar from '@/components/MobileSidebar'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -224,11 +225,17 @@ export default function ChatPage() {
   }
 
   const selectedTx = transactions.find(t => t.id === selectedTxId)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="flex h-screen bg-dp-bg-dark">
+      {/* Mobile hamburger */}
+      <button onClick={()=>setSidebarOpen(true)} className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-lg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+
       {/* Sidebar */}
-      <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800">
+      <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
         <div className="p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">DP</div>
           <div>
