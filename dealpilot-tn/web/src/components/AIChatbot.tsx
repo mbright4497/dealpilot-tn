@@ -14,6 +14,13 @@ const QUICK_PROMPTS = [
     'Summarize this deal',
 ]
 
+const QUICK_ACTIONS = [
+  { id: 'deadlines', label: 'What are my deadlines?', prompt: 'What deadlines are coming up?' },
+  { id: 'health', label: 'Deal health summary', prompt: 'Give me a deal health summary for my active deals.' },
+  { id: 'attention', label: 'What needs attention?', prompt: 'What needs attention across my active deals?' },
+  { id: 'draft', label: 'Help me draft a message', prompt: 'Help me draft a short message to a client about a price reduction.' },
+]
+
 const ACTION_CHIPS: { id: string; label: string; prompt: string }[] = [
   { id: 'pull', label: 'Pull File', prompt: "Open a TREC form and pre-fill from the active deal." },
   { id: 'email', label: 'Draft Email', prompt: "Draft a short email to the buyer introducing next steps." },
@@ -125,11 +132,16 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
                   {ACTION_CHIPS.map(c=>(
                     <button key={c.id} onClick={()=>{
                       if(c.id === 'pull'){
-                        // open mini picker
                         setSelectedFormId(null)
                         setShowFormModal(true)
                       } else onChip(c.id)
                     }} className="bg-gray-700 text-gray-200 rounded-full px-3 py-1.5 text-xs hover:bg-gray-600">{c.label}</button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  {QUICK_ACTIONS.map(a=> (
+                    <button key={a.id} onClick={()=>send(a.prompt)} className="bg-orange-500 text-white rounded-full px-3 py-1.5 text-xs hover:bg-orange-600">{a.label}</button>
                   ))}
                 </div>
 

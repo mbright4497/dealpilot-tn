@@ -86,6 +86,20 @@ export async function POST(req: Request) {
       } catch { /* no deal context */ }
     }
 
+    // Fetch portfolio-level context (active deals count, overdue deadlines, today's priorities)
+    try {
+      const ph = await fetch(new URL('/api/portfolio-health', process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost'))
+      const pd = await fetch(new URL('/api/portfolio-deadlines', process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost'))
+      if (ph.ok && pd.ok) {
+        const phd = await ph.json()
+        const pdd = await pd.json()
+        const activeCount = phd?.total_deals ?? phd?.portfolio_score ?? 0
+        const overdue = pdd?.overdue_count ?? 0
+        const todays = (pdd?.next_7_days || []).filter((d:any)=>d.date === new Date().toISOString().split('T')[0]).length
+        systemContent += `\n\nPortfolio Context:\n- Active deals: ${activeCount}\n- Overdue deadlines: ${overdue}\n- Deadlines today: ${todays}`
+      }
+    } catch (e) { /* ignore */ }
+
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({
         reply: "DealPilot AI is ready! Add your OPENAI_API_KEY to Vercel environment variables to activate. I can help fill out RF401, RF403, RF404, RF421, RF651, and RF625 forms, plus manage your transaction timeline and checklists.",
