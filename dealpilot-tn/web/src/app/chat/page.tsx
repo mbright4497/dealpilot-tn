@@ -262,10 +262,16 @@ export default function ChatPage() {
 
   const selectedTx = transactions.find(t => t.id === selectedTxId)
 
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   return (
     <div className="flex h-screen bg-dp-bg-dark">
+      {/* Mobile hamburger */}
+      <button onClick={()=>setSidebarOpen(true)} className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-lg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+
       {/* Sidebar */}
-      <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800">
+      <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
         <div className="p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">DP</div>
           <div>
@@ -325,6 +331,32 @@ export default function ChatPage() {
         </div>
       </aside>
 
+      {/* Mobile slide-over sidebar */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={()=>setSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-dp-sidebar p-4 transform transition-transform duration-300">
+            <div className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">DP</div>
+              <div>
+                <h2 className="text-white font-semibold text-sm leading-tight">DealPilot TN</h2>
+                <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
+              </div>
+            </div>
+            <nav className="mt-4 space-y-2">
+              {NAV_ITEMS.map(item=> (
+                <a key={item.id} href="#" onClick={()=>{ setView(item.id); setSidebarOpen(false) }} className="flex items-center gap-3 px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">{item.label}</a>
+              ))}
+              <a href="/communications" className="flex items-center gap-3 px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">Communications {unreadCount>0 && <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">{unreadCount}</span>}</a>
+              <a href="/settings" className="flex items-center gap-3 px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">Settings</a>
+            </nav>
+            <div className="mt-6 border-t border-gray-800 pt-4">
+              <button onClick={async ()=>{ const sb = (typeof window !== 'undefined') ? require('@/lib/supabase-browser').createBrowserClient() : null; if(sb){ await sb.auth.signOut(); window.location.href = '/login' } }} className="w-full flex items-center gap-3 px-3 py-2 rounded text-red-400 hover:bg-gray-800">Logout</button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} userName={sessionUserName || undefined} />}
