@@ -60,7 +60,7 @@ export default function CommunicationsPage(){
                     <div className="font-semibold text-white">{n.title || n.type}</div>
                     <div className="text-sm text-gray-300">{n.message}</div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex flex-col items-end">
                     <div className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</div>
                     {!n.read && <button onClick={()=>markRead(n.id)} className="text-xs text-cyan-300 mt-2">Mark read</button>}
                   </div>
