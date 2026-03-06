@@ -108,7 +108,7 @@ export async function GET() {
     (states || []).map((s) => [s.deal_id, s])
   )
 
-  const results = txns.map((tx) => {
+  const results = filtered.map((tx) => {
     const ds = stateMap.get(tx.id)
     let lifecycle: LifecycleState = 'draft'
     let timeline: { event: string; date: string }[] = []
