@@ -48,6 +48,29 @@ export async function POST(req: Request) {
       }
     }
 
+    // Ensure tenant has GHL credentials configured
+    if (!tenant.ghl_location_id || !tenant.ghl_api_key) {
+      // record failed communication attempt
+      const { data: commRow, error: commErr } = await supabase
+        .from('deal_communications')
+        .insert({
+          deal_id,
+          user_id: user.id,
+          comm_type,
+          direction: 'outbound',
+          recipient: recipient || null,
+          subject: subject || null,
+          body: body || null,
+          status: 'failed',
+          ai_generated: !!ai_generated,
+          metadata: { ghl: 'not_configured' },
+        })
+        .select()
+        .single()
+
+      return NextResponse.json({ error: 'GHL not connected', connected: false, communication: commRow }, { status: 400 })
+    }
+
     // Call GHL
     let ghlResult: any = null
     let sendStatus = 'sent'

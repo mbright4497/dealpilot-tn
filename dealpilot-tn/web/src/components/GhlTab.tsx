@@ -109,6 +109,7 @@ export default function GhlTab({ dealId }: { dealId: string }){
         ))}
       </div>
 
+      {connected ? (
       <div className="mt-4 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/5">
         <div className="grid grid-cols-1 gap-2">
           <div className="flex gap-2">
@@ -131,6 +132,9 @@ export default function GhlTab({ dealId }: { dealId: string }){
           </div>
         </div>
       </div>
+      ) : (
+        <div className="mt-4 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/5 text-gray-300">Connect GoHighLevel to start messaging. <a href="/settings/ghl" className="underline">Configure GHL</a></div>
+      )}
     </div>
   )
 }
