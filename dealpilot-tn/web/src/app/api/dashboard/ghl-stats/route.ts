@@ -8,8 +8,16 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    // hardcoded user_id=1 for dashboard preview
-    const userId = '1'
+    // try auth session first, fallback to hardcoded user id
+    let userId: string | null = null
+    try {
+      const auth = (await import('@supabase/auth-helpers-nextjs')).createRouteHandlerClient({ (await import('next/headers')).cookies() })
+      const { data: { user } } = await auth.auth.getUser()
+      userId = user?.id || null
+    } catch (e) {
+      // ignore
+    }
+    if (!userId) userId = '1'
 
     let tenantId: string | null = null
     try {

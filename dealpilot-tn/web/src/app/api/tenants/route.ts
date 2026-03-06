@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -15,9 +17,14 @@ function maskKey(key?: string) {
 
 export async function GET(req: Request) {
   try {
+    const auth = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await auth.auth.getUser()
+
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
-    const user_id = searchParams.get('user_id')
+    const user_id_param = searchParams.get('user_id')
+
+    const user_id = user?.id || user_id_param || null
 
     if (!id && !user_id) return NextResponse.json({ error: 'id or user_id required' }, { status: 400 })
 
@@ -54,6 +61,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const auth = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await auth.auth.getUser()
+
     const body = await req.json().catch(() => ({}))
     const { name, ghl_location_id, ghl_api_key, messages_limit } = body as any
     if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 })
@@ -71,6 +81,12 @@ export async function POST(req: Request) {
     const { data, error } = await supabase.from('tenants').insert(insert).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     data.ghl_api_key = maskKey(data.ghl_api_key)
+
+    // if user exists, upsert tenant_users
+    if (user && data && data.id) {
+      await supabase.from('tenant_users').insert({ tenant_id: data.id, user_id: user.id }).onConflict('tenant_id,user_id').ignore()
+    }
+
     return NextResponse.json({ tenant: data }, { status: 201 })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 })
@@ -79,6 +95,9 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
+    const auth = createRouteHandlerClient({ cookies })
+    const { data: { user } } = await auth.auth.getUser()
+
     const body = await req.json().catch(() => ({}))
     const { id, ghl_location_id, ghl_api_key, messages_limit, name } = body as any
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
