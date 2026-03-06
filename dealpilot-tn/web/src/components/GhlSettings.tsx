@@ -8,22 +8,46 @@ export default function GhlSettings({ tenantId }: { tenantId?: string }){
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string|null>(null)
   const [showKey, setShowKey] = useState(false)
+  const [tenantIdState, setTenantIdState] = useState<string|null>(null)
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
   useEffect(()=>{
-    if(!tenantId) return
     setLoading(true)
-    // placeholder fetch - API may be added later
-    fetch(`/api/tenants?id=${encodeURIComponent(tenantId)}`).then(r=>r.json()).then(j=>{
-      if(j && j.tenant){ setSettings((s:any)=>({...s, ...j.tenant})) }
-    }).catch(()=>{}).finally(()=>setLoading(false))
+    const idToUse = tenantId || null
+    const fetchByUserFallback = async () => {
+      try{
+        // hardcoded user_id=1 for now per instructions
+        const res = await fetch('/api/tenants?user_id=1')
+        if(!res.ok) return
+        const j = await res.json()
+        if(j && j.tenant){ setSettings((s:any)=>({...s, ...j.tenant})); setTenantIdState(j.tenant.id) }
+      }catch(e){}
+    }
+
+    if (idToUse) {
+      fetch(`/api/tenants?id=${encodeURIComponent(idToUse)}`).then(r=>r.json()).then(j=>{
+        if(j && j.tenant){ setSettings((s:any)=>({...s, ...j.tenant})); setTenantIdState(j.tenant.id) }
+      }).catch(()=>{}).finally(()=>setLoading(false))
+    } else {
+      fetchByUserFallback().finally(()=>setLoading(false))
+    }
   },[tenantId])
 
   async function handleSave(){
     setSaving(true); setError(null)
     try{
-      const res = await fetch('/api/tenants', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(settings) })
+      let res
+      if(tenantIdState){
+        const payload = { id: tenantIdState, ghl_location_id: settings.ghl_location_id, ghl_api_key: settings.ghl_api_key, messages_limit: settings.messages_limit }
+        res = await fetch('/api/tenants', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      } else {
+        const payload = { name: 'Default Tenant', ghl_location_id: settings.ghl_location_id, ghl_api_key: settings.ghl_api_key, messages_limit: settings.messages_limit }
+        res = await fetch('/api/tenants', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      }
       const j = await res.json()
       if(!res.ok || j.error){ setError(j.error||'Save failed'); setSaving(false); return }
+      // store tenant id if created
+      if(j.tenant && j.tenant.id) setTenantIdState(j.tenant.id)
       setSaved(true)
       setTimeout(()=>setSaved(false),3000)
     }catch(e:any){ setError(String(e)) }
@@ -32,11 +56,12 @@ export default function GhlSettings({ tenantId }: { tenantId?: string }){
 
   async function testConnection(){
     try{
-      const res = await fetch('/api/ghl/test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ locationId: settings.ghl_location_id, apiKey: settings.ghl_api_key }) })
+      setTestResult(null)
+      const res = await fetch('/api/ghl/test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ ghl_location_id: settings.ghl_location_id, ghl_api_key: settings.ghl_api_key }) })
       const j = await res.json()
-      if(!res.ok || j.error){ alert('Connection failed: '+(j.error||res.statusText)); return }
-      alert('Connection OK')
-    }catch(e:any){ alert('Connection error: '+String(e)) }
+      if(!res.ok || j.error){ setTestResult({ success: false, message: j.error || 'Connection failed' }); return }
+      setTestResult({ success: true, message: j.location_name || 'Connection successful!' })
+    }catch(e:any){ setTestResult({ success: false, message: String(e) }) }
   }
 
   const totalSent = (settings.comms_email_used||0) + (settings.comms_sms_used||0)
