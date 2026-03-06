@@ -226,6 +226,22 @@ export default function ChatPage() {
 
   const selectedTx = transactions.find(t => t.id === selectedTxId)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState<number>(0)
+
+  useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/notifications')
+        if(!res.ok) return
+        const j = await res.json()
+        if(!mounted) return
+        const list = j.notifications || []
+        setUnreadCount(list.filter((n:any)=>!n.read).length)
+      }catch(e){}
+    })()
+    return ()=>{ mounted=false }
+  },[])
 
   return (
     <div className="flex h-screen bg-dp-bg-dark">
