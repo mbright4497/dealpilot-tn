@@ -14,7 +14,7 @@ export const generateNotifications = (tx: Transaction, timelines: Deadline[], re
     const due = new Date(dl.due_date);
     const days = daysBetween(now, due);
     if (days === 7) {
-      recipients.forEach(r=> out.push({ transaction_id: tx.id, type: 'deadline_warning', recipient: r, channel: r.channel, message: `${dl.name} is 7 days away (${dl.due_date})`, urgency: 'medium', scheduled_at: now.toISOString() }));
+      recipients.forEach(r=> out.push({ transaction_id: tx.id, type: 'deadline_warning', recipient: r, channel: r.channel, message: `${dl.name} is 7 days away (${dl.due_date})`, urgency: 'warning', scheduled_at: now.toISOString() }));
     }
     if (days === 3) {
       recipients.forEach(r=> out.push({ transaction_id: tx.id, type: 'deadline_warning', recipient: r, channel: r.channel, message: `${dl.name} is 3 days away (${dl.due_date})`, urgency: 'warning', scheduled_at: now.toISOString() }));
@@ -33,7 +33,7 @@ export const generateNotifications = (tx: Transaction, timelines: Deadline[], re
 };
 
 export const formatWhatsApp = (n: Notification) => {
-  const emoji: Record<Urgency,string> = { info:'ℹ️', warning:'⚠️', medium:'⚠️', low:'ℹ️', high:'⚠️', critical:'🚨' } as any;
+  const emoji: Record<Urgency,string> = { info:'ℹ️', warning:'⚠️', critical:'🚨' } as any;
   return `${emoji[n.urgency] || ''} ${n.message} — Deal ${n.transaction_id}`;
 };
 
