@@ -279,7 +279,7 @@ export default function ChatPage() {
         <div className="p-4 border-t border-gray-800 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold">MB</div>
           <div>
-            <p className="text-white text-sm font-medium">Matt Bright</p>
+            <p className="text-white text-sm font-medium">{/** will be replaced with session user name at runtime */}User</p>
             <p className="text-gray-400 text-xs">iHome-KW Kingsport</p>
           </div>
         </div>

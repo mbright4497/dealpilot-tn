@@ -3,6 +3,7 @@
 import React from 'react'
 import DailyBriefing from './DailyBriefing'
 import GhlWidget from './GhlWidget'
+import { createBrowserClient } from '@/lib/supabase-browser'
 import type { Transaction as ChatTransaction } from '@/app/chat/page'
 interface Props {
   transactions?: ChatTransaction[]
@@ -38,6 +39,12 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const [portfolioBrief, setPortfolioBrief] = React.useState<string | null>(null);
   const [alerts, setAlerts] = React.useState<any[]>([]);
   const [notifPrefs, setNotifPrefs] = React.useState<any>(null);
+  const [userName, setUserName] = React.useState<string>('')
+
+  React.useEffect(()=>{
+    const sb = createBrowserClient()
+    sb.auth.getUser().then(res=>{ const user = res.data.user; if(user){ const full = (user.user_metadata as any)?.full_name || user.email || ''; setUserName(full.split(' ')[0] || '') } })
+  },[])
   // fetch portfolio health
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-health'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolio(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
   // fetch portfolio deadlines
@@ -52,7 +59,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const overdueCount = portfolioDeadlines?.overdue_count || 0
   return (
     <div className="space-y-6">
-      <DailyBriefing userName="Matt" transactions={transactions as ChatTransaction[]} onNavigate={(dest) => onNavigate && onNavigate(dest)} onOpenDeal={(txId) => onOpenDeal && onOpenDeal(txId)} />
+      <DailyBriefing userName={userName || 'there'} transactions={transactions as ChatTransaction[]} onNavigate={(dest) => onNavigate && onNavigate(dest)} onOpenDeal={(txId) => onOpenDeal && onOpenDeal(txId)} />
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">

@@ -116,7 +116,7 @@ export function previewVoice(style: AssistantStyle): void {
     'straight': "Good morning. Here is a quick sample.",
     'calm': "Good morning. Take a deep breath, we have got this.",
     'executive': "Morning. Here is a concise briefing sample.",
-    'friendly-tn': "Hey Matt! Ready when you are, partner.",
+    'friendly-tn': "Hey there! Ready when you are, partner.",
   }
   speak(samples[style] || samples['friendly-tn'], style)
 }
