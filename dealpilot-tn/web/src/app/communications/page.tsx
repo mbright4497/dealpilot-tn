@@ -22,6 +22,25 @@ export default function CommunicationsPage(){
 
   useEffect(()=>{ load() },[filter])
 
+  // poll unread count for sidebar badge
+  useEffect(()=>{
+    let mounted = true
+    const fetchCount = async ()=>{
+      try{
+        const res = await fetch('/api/notifications')
+        if(!res.ok) return
+        const j = await res.json()
+        if(!mounted) return
+        const unread = (j.notifications || []).filter((n:any)=>!n.read).length
+        // update badge via custom event so sidebar can listen
+        window.dispatchEvent(new CustomEvent('notifications:unread', { detail: { unread } }))
+      }catch(e){}
+    }
+    fetchCount()
+    const id = setInterval(fetchCount, 30000)
+    return ()=>{ mounted=false; clearInterval(id) }
+  },[])
+
   async function markRead(id:string){
     try{
       const res = await fetch('/api/notifications', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, read: true }) })
