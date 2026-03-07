@@ -47,6 +47,19 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
 
     useEffect(()=>{ fetch('/api/forms').then(r=>r.json()).then(j=>setFormsList(j.forms||[])) },[])
 
+    // load conversation from localStorage
+    useEffect(()=>{
+      try{
+        const raw = localStorage.getItem('eva_conversation')
+        if(raw){ setMessages(JSON.parse(raw)) }
+      }catch(e){}
+    },[])
+
+    // persist to localStorage on changes
+    useEffect(()=>{
+      try{ localStorage.setItem('eva_conversation', JSON.stringify(messages)) }catch(e){}
+    },[messages])
+
     const [lastSpokenText, setLastSpokenText] = useState<string>('')
 
     function speakMessage(text:string){
