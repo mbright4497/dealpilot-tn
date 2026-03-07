@@ -88,11 +88,11 @@ function NavIcon({ name }: { name: string }) {
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'transactions', label: 'Transactions' },
-  { id: 'forms', label: 'Forms Library' },
+  { id: 'forms', label: 'Deal Playbook' },
   { id: 'deadlines', label: 'Deadlines' },
-  { id: 'tx-steps', label: 'TX Steps'  },
-    { id: 'personality', label: 'Style' },
+  { id: 'tx-steps', label: 'Deal Progress'  },
 ]
+
 
 export default function ChatPage() {
   const [view, setView] = useState('dashboard')

@@ -1,55 +1,76 @@
 'use client'
 import React, {useEffect, useState} from 'react'
-import Link from 'next/link'
-import FormFillModal from '@/components/FormFillModal'
 
-export default function FormsPage(){
-  const [forms, setForms] = useState<any[]>([])
-  const [filter, setFilter] = useState<'all'|'purchase'|'lease'|'compensation'|'application'>('all')
+export default function DealPlaybook(){
   const [q, setQ] = useState('')
-  const [selected, setSelected] = useState<any|null>(null)
-  useEffect(()=>{ fetch('/api/forms').then(r=>r.json()).then(j=>setForms(j.forms||[])) },[])
-  const visible = forms.filter(f=> (filter==='all'||f.category===filter) && (q===''|| f.name.toLowerCase().includes(q.toLowerCase())||f.code.toLowerCase().includes(q.toLowerCase())))
+  const [phase, setPhase] = useState<'All'|'Contract'|'Inspection'|'Appraisal'|'Closing'>('All')
+
+  const forms = [
+    { code:'RF401', name:'Purchase & Sale', desc:'Standard purchase agreement', phase:'Contract', required:true },
+    { code:'RF403', name:'New Construction Addendum', desc:'New construction specifics', phase:'Contract', required:true },
+    { code:'RF201', name:'Property Disclosure', desc:'Seller disclosures', phase:'Contract', required:false },
+    { code:'RF304', name:'Disclaimer', desc:'Agent disclaimers', phase:'Contract', required:false },
+    { code:'RF656', name:'Notification to Seller', desc:'Notices and responses', phase:'Earnest Money & Loan', required:true },
+    { code:'RF653', name:'Amendment for Repairs', desc:'Amendment form', phase:'Inspection', required:false },
+    { code:'RF625', name:'FHA/VA Addendum', desc:'Lender addendum', phase:'Appraisal & Title', required:false },
+    { code:'RF657', name:'Closing Date Amendment', desc:'Change closing date', phase:'Underwriting & Clear to Close', required:false },
+    { code:'RF660', name:'Final Inspection', desc:'Final walkthrough report', phase:'Closing', required:true },
+  ]
+
+  const visible = forms.filter(f=> (phase==='All' || f.phase===phase) && (q===''|| f.name.toLowerCase().includes(q.toLowerCase())||f.code.toLowerCase().includes(q.toLowerCase())))
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Forms Library</h1>
-        <div className="text-sm text-gray-500">{visible.length} forms available — More forms coming soon</div>
-      </div>
-      <div className="mb-4 flex gap-3 items-center">
-        <div className="flex gap-2">
-          {['all','purchase','lease','compensation','application'].map((c:any)=> (
-            <button key={c} onClick={()=>setFilter(c)} className={`px-3 py-1 rounded ${filter===c? 'bg-orange-500 text-white':'bg-gray-100'}`}>{c==='all'? 'All': c.charAt(0).toUpperCase()+c.slice(1)}</button>
-          ))}
+        <div>
+          <h1 className="text-2xl font-bold">TN Deal Playbook</h1>
+          <div className="text-sm text-gray-500">Your guide to every form at every stage of a Tennessee real estate transaction</div>
         </div>
-        <div className="flex-1">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search forms by name or code" className="w-full border p-2 rounded" />
+        <div className="w-60">
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search RF number or keyword" className="w-full border p-2 rounded" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {visible.map(f=> (
-          <div key={f.id} className="p-4 bg-white rounded shadow">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-xs text-gray-400">{f.code}</div>
-                <div className="font-semibold text-lg">{f.name}</div>
-                <div className="text-sm text-gray-500">{f.description}</div>
-              </div>
-              <div className="text-right">
-                <div className={`px-2 py-1 rounded text-xs ${f.category==='compensation'?'bg-blue-100 text-blue-700': f.category==='lease'?'bg-green-100 text-green-700': f.category==='purchase'?'bg-orange-100 text-orange-700':'bg-purple-100 text-purple-700'}`}>{f.category}</div>
-                <div className="text-sm text-gray-400 mt-2">{f.pages} pages</div>
-              </div>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button onClick={()=>setSelected(f)} className="px-3 py-2 bg-orange-500 text-white rounded">Fill Out</button>
-              <button onClick={()=>alert(JSON.stringify(f, null, 2))} className="px-3 py-2 border rounded">View Details</button>
-            </div>
-          </div>
+      <div className="mb-4 flex gap-3">
+        {['All','Contract','Inspection','Appraisal','Closing'].map(p=> (
+          <button key={p} onClick={()=>setPhase(p as any)} className={`px-3 py-1 rounded ${phase===p? 'bg-orange-500 text-white':'bg-gray-100'}`}>{p}</button>
         ))}
       </div>
 
-      {selected && <FormFillModal formId={selected.id} onClose={()=>setSelected(null)} />}
+      <div className="mb-4">
+        <div className="p-3 bg-orange-50 border border-orange-100 rounded flex items-center gap-3">
+          <img src="/eva-avatar.png" alt="EVA" className="w-10 h-10 rounded-full" />
+          <div>
+            <div className="font-semibold">EVA Insight</div>
+            <div className="text-sm text-gray-600">You have 1 overdue deadline and 2 deadlines due within 3 days. Review 78 Pine Rd first.</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {visible.map(f=> (
+          <details key={f.code} className="p-4 bg-white rounded shadow">
+            <summary className="flex items-center justify-between cursor-pointer">
+              <div>
+                <div className="text-xs text-gray-400">{f.code}</div>
+                <div className="font-semibold">{f.name}</div>
+                <div className="text-sm text-gray-500">{f.desc}</div>
+              </div>
+              <div className="text-right">
+                <div className={`px-2 py-1 rounded text-xs ${f.required? 'bg-red-100 text-red-700':'bg-gray-100 text-gray-700'}`}>{f.required? 'Required':'Optional'}</div>
+                <div className="text-sm text-gray-400 mt-2">{f.phase}</div>
+              </div>
+            </summary>
+            <div className="mt-3 text-sm text-gray-700">
+              <p><strong>When to use:</strong> {f.desc} — use during {f.phase}.</p>
+              <p><strong>Who fills it out:</strong> Agent / {f.required? 'Buyer/Seller': 'Buyer or Seller'}</p>
+              <p><strong>Key fields:</strong> [TODO: list key fields]</p>
+              <p><strong>Related forms:</strong> [TODO]</p>
+            </div>
+          </details>
+        ))}
+      </div>
     </div>
   )
 }
+
