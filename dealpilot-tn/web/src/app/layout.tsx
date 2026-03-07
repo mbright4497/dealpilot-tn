@@ -7,12 +7,15 @@ import dynamic from 'next/dynamic'
 
 const EmailDraftModal = dynamic(() => import('@/components/eva/EmailDraftModal'), { ssr: false })
 
-export const metadata = { title: 'DealPilot TN' };
+export const metadata = { title: 'ClosingPilot TN' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }){
   return (
     <html lang="en">
-      <head />
+      <head>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#f97316" />
+</head>
       <body>
         <EvaProvider>
           {children}
