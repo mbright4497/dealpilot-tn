@@ -88,7 +88,7 @@ export default function DashboardV2() {
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="text-sm text-gray-300">DealPilot TN</div>
+            <div className="text-sm text-gray-300">ClosingPilot TN</div>
             <h1 className="text-2xl font-semibold tracking-tight">
               Mission Control
             </h1>

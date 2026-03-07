@@ -24,7 +24,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'server_error', details: [String(err.message || err)] });
 });
 const port = process.env.PORT || 3000;
-const server = app.listen(port, () => console.log(`DealPilot API listening ${port}`));
+const server = app.listen(port, () => console.log(`ClosingPilot API listening ${port}`));
 const shutdown = () => { server.close(() => process.exit(0)); };
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

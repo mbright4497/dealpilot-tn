@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     .single();
 
   if (prefs?.email_enabled) {
-    await sendEmail(profile.email, "DealPilot Alert", `<p>${message}</p>`);
+    await sendEmail(profile.email, "ClosingPilot Alert", `<p>${message}</p>`);
   }
 
   if (prefs?.sms_enabled && prefs?.high_risk_sms && severity === "high") {

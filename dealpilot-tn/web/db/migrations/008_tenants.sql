@@ -1,4 +1,4 @@
--- Tenants table: maps DealPilot users to GHL sub-accounts
+-- Tenants table: maps ClosingPilot users to GHL sub-accounts
 CREATE TABLE IF NOT EXISTS tenants (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,

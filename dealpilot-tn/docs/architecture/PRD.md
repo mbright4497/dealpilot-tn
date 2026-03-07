@@ -1,7 +1,7 @@
-# DealPilot TN — Product Requirements Document (PRD)
+# ClosingPilot TN — Product Requirements Document (PRD)
 
 ## Executive Summary
-DealPilot TN is a Tennessee-specialized transactional platform to manage purchase-and-sale deals, document generation (RF401 and related forms), two-sided deal representation, compliance auditing, and voice/chat guided document filling. The product targets brokerages and brokers (transaction coordinators) in Tennessee, ensuring RF401/RF623/RF656 compliance while enabling faster deal turnaround and reduced fall-throughs.
+ClosingPilot TN is a Tennessee-specialized transactional platform to manage purchase-and-sale deals, document generation (RF401 and related forms), two-sided deal representation, compliance auditing, and voice/chat guided document filling. The product targets brokerages and brokers (transaction coordinators) in Tennessee, ensuring RF401/RF623/RF656 compliance while enabling faster deal turnaround and reduced fall-throughs.
 
 ## Core Modules
 1. Deal Manager — create/manage deals, two-sided roles (buyer_side, seller_side), status lifecycle, milestones.

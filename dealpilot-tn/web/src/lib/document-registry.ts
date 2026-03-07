@@ -3,7 +3,7 @@
  * Source: Official 2025 TN REALTORS Residential Forms Index + 2026 Changes Packet
  * Effective: 01/01/2026
  *
- * Organized by transaction phase for DealPilot TN / EVA AI.
+ * Organized by transaction phase for ClosingPilot TN / EVA AI.
  */
 
 import type { TransactionPhaseKey } from './transaction-phases';

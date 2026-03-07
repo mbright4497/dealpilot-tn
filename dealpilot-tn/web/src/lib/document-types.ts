@@ -1,5 +1,5 @@
 /**
- * Document Types Registry for DealPilot TN
+ * Document Types Registry for ClosingPilot TN
  * Supports multi-document workflows (RF401, counter offers, VA/FHA addendums, etc.)
  * Data is interchangeable between document types like ListedKit.
  */

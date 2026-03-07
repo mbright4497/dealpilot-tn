@@ -42,11 +42,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex" style={{background:'var(--background)'}}>
       <aside className="dp-sidebar">
         <div className="dp-sidebar-logo">
-          <div className="dp-robot" title="DealPilot AI">
+          <div className="dp-robot" title="ClosingPilot AI">
             <span role="img" aria-label="robot">{String.fromCodePoint(0x1F916)}</span>
           </div>
           <div>
-            <div style={{fontSize:'1.1rem',fontWeight:700,color:'var(--foreground)'}}>DealPilot</div>
+            <div style={{fontSize:'1.1rem',fontWeight:700,color:'var(--foreground)'}}>ClosingPilot</div>
             <div style={{fontSize:'0.7rem',color:'var(--muted)',marginTop:2}}>TN Agent Platform</div>
           </div>
         </div>

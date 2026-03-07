@@ -1,4 +1,4 @@
-DealPilot TN
+ClosingPilot TN
 
 Quick start
 

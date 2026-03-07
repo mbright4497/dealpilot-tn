@@ -1,5 +1,5 @@
 -- supabase/migrations/20260303_dealpilot_v2.sql
--- DealPilot TN V2 core schema
+-- ClosingPilot TN V2 core schema
 -- Requires: pgcrypto extension for gen_random_uuid()
 
 begin;

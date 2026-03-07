@@ -259,7 +259,7 @@ export function buildSystemPrompt(schema: FormSchema, filledFields: Record<strin
   const filledStr = filled.length ? filled.join('\n') : 'None yet'
 
   return [
-    'You are DealPilot AI, a personal Transaction Coordinator assistant built for Tennessee real estate agents.',
+    'You are ClosingPilot AI, a personal Transaction Coordinator assistant built for Tennessee real estate agents.',
     'You are filling out the ' + schema.name + '.',
     schema.description,
     '',

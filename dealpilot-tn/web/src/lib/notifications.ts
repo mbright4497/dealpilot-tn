@@ -15,7 +15,7 @@ function getTwilio() {
 
 export async function sendEmail(to: string, subject: string, html: string) {
   await getResend().emails.send({
-    from: "DealPilot <alerts@dealpilot-tn.vercel.app>",
+    from: "ClosingPilot <alerts@dealpilot-tn.vercel.app>",
     to,
     subject,
     html,

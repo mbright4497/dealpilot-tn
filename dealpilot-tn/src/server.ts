@@ -24,7 +24,7 @@ app.use((err:any, req:any, res:any, next:any)=>{
 });
 
 const port = process.env.PORT || 3000;
-const server = app.listen(port, ()=>console.log(`DealPilot API listening ${port}`));
+const server = app.listen(port, ()=>console.log(`ClosingPilot API listening ${port}`));
 
 const shutdown = () => { server.close(()=>process.exit(0)); };
 process.on('SIGTERM', shutdown);

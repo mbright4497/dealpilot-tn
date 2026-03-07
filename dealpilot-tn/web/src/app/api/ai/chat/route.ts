@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 import { getSchema, buildSystemPrompt, FORM_LIST } from '@/lib/formSchemas'
 
-const TC_SYSTEM_PROMPT = `You are DealPilot AI — a personal Transaction Coordinator assistant built exclusively for Tennessee real estate agents.
+const TC_SYSTEM_PROMPT = `You are ClosingPilot AI — a personal Transaction Coordinator assistant built exclusively for Tennessee real estate agents.
 
 You are NOT a generic chatbot. You are a licensed-level TC who knows:
 - Tennessee Real Estate Commission (TREC) forms inside and out
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({
-        reply: "DealPilot AI is ready! Add your OPENAI_API_KEY to Vercel environment variables to activate. I can help fill out RF401, RF403, RF404, RF421, RF651, and RF625 forms, plus manage your transaction timeline and checklists.",
+        reply: "ClosingPilot AI is ready! Add your OPENAI_API_KEY to Vercel environment variables to activate. I can help fill out RF401, RF403, RF404, RF421, RF651, and RF625 forms, plus manage your transaction timeline and checklists.",
         extractedFields: null,
         formSuggestion: null,
         quickActions: ['Fill out RF401', 'Start new deal', 'View checklist']
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    assistant: 'DealPilot AI - Tennessee Transaction Coordinator',
+    assistant: 'ClosingPilot AI - Tennessee Transaction Coordinator',
     forms: FORM_LIST.map(f => ({ id: f.id, name: f.name })),
     capabilities: [
       'TN REALTORS form filling (RF401-RF625)',

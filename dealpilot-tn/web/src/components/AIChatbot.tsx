@@ -31,7 +31,7 @@ const ACTION_CHIPS: { id: string; label: string; prompt: string }[] = [
 
 export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled = false, transactionId }:{onClose: ()=>void, style?: AssistantStyle, voiceEnabled?: boolean, transactionId?: number}){
     const [voiceOn, setVoiceOn] = useState<boolean>(voiceEnabled)
-    const [messages,setMessages]=useState<any[]>([{role:'system',content:"Hi! I'm Eva, your DealPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
+    const [messages,setMessages]=useState<any[]>([{role:'system',content:"Hi! I'm Eva, your ClosingPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
     const [input,setInput]=useState('')
     const [minimized,setMinimized]=useState(false)
     const [speaking,setSpeaking]=useState(false)
@@ -101,7 +101,7 @@ export default function AIChatbot({onClose, style = 'friendly-tn', voiceEnabled 
     }
 
     function newChat(){
-        setMessages([{role:'system',content:"Hi! I'm your DealPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
+        setMessages([{role:'system',content:"Hi! I'm your ClosingPilot TN assistant \u2013 your personal Tennessee Transaction Coordinator. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?"}])
         setInput('')
     }
 

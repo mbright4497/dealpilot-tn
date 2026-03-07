@@ -52,7 +52,7 @@ function LoginContent() {
     <div className="min-h-screen bg-[#0B0F1A] text-white flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 shadow-xl">
         <div className="mb-6">
-          <p className="text-sm text-white/60">DealPilot TN</p>
+          <p className="text-sm text-white/60">ClosingPilot TN</p>
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
           <p className="mt-2 text-sm text-white/70">Log in to access your deals, deadlines, and Mission Control.</p>
         </div>

@@ -5,7 +5,7 @@ import OpenAI from 'openai'
 
 export const runtime = 'nodejs'
 
-const BASE_PROMPT = `You are EVA — DealPilot's expert Tennessee Transaction Coordinator assistant. Be concise, practical, and reference deal context when available.`
+const BASE_PROMPT = `You are EVA — ClosingPilot's expert Tennessee Transaction Coordinator assistant. Be concise, practical, and reference deal context when available.`
 
 export async function POST(req: Request) {
   try {

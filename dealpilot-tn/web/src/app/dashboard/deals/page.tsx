@@ -66,7 +66,7 @@ export default function DealsPage() {
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm text-gray-300">DealPilot TN</p>
+            <p className="text-sm text-gray-300">ClosingPilot TN</p>
             <h1 className="text-2xl font-semibold">Transactions</h1>
           </div>
           <div className="flex items-center gap-2">

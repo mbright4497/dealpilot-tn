@@ -1,4 +1,4 @@
-# DealPilot TN — Supabase Data Model
+# ClosingPilot TN — Supabase Data Model
 
 ## Overview
 Relational schema suitable for Supabase/Postgres. Includes two-sided deal model with buyer_side and seller_side data separated.
