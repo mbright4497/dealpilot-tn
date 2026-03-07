@@ -22,6 +22,8 @@ export async function POST(req: Request){
     for(const t of transactions){ counts[t.status] = (counts[t.status]||0)+1 }
 
     const today = Date.now()
+    // fetch deadlines
+    const { data: deadlines } = await sb.from('deal_deadlines').select('deal_id,key,label,date,status')
     const upcoming: any[] = []
     const needsAttention: any[] = []
 
