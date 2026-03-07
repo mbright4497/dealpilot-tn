@@ -1,118 +1,76 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import React, {useEffect, useState} from 'react'
+import { createBrowserClient } from '@/lib/supabase-browser'
 
 export default function SettingsPage(){
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
+  const [profile, setProfile] = useState<any>({name:'',email:'',phone:'',brokerage:'',license:''})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [profile, setProfile] = useState<any>({ full_name:'', email:'', phone:'', company:'', license:'' })
-  const [plan, setPlan] = useState('Free')
-  const [usage, setUsage] = useState({ transactions:0, storage:0 })
-  const [notif, setNotif] = useState({ email:true, sms:false, daily:true, deadlines:true, updates:true })
+  const [dark, setDark] = useState(true)
+  const [emailAlerts, setEmailAlerts] = useState(true)
+  const [deadlineReminders, setDeadlineReminders] = useState(true)
+  const [evaDaily, setEvaDaily] = useState(true)
 
-  useEffect(()=>{
-    let mounted = true
-    ;(async ()=>{
-      try{
-        const { data: { user } } = await supabase.auth.getUser()
-        if(!user) throw new Error('Not authenticated')
-        const { data: p, error } = await supabase.from('profiles').select('full_name,email,phone,brokerage,license_number,subscription_tier,notification_prefs').eq('id', user.id).limit(1).single()
-        if(error) throw error
-        if(mounted && p){
-          setProfile({ full_name: (p?.full_name||''), email: p?.email||'', phone: p?.phone||'', company: p?.brokerage||'', license: p?.license_number||'' })
-          setPlan(p?.subscription_tier || 'Free')
-          if(p.notification_prefs) setNotif(p.notification_prefs)
-        }
-      }catch(e){
-        // fallback: try to get session email and metadata
-        try{
-          const { data } = await supabase.auth.getUser()
-          const user = data.user
-          const full = (user?.user_metadata as any)?.full_name || ''
-          if(user && mounted) setProfile((s:any)=>({...s, email: user.email || '', full_name: full }))
-        }catch(_){ }
-        console.error(e)
-      }
-      if(mounted) setLoading(false)
-    })()
-    return ()=>{ mounted=false }
-  },[])
-
-  async function saveProfile(){
-    setSaving(true)
+  useEffect(()=>{(async ()=>{
     try{
-      const payload = { full_name: profile.full_name, phone: profile.phone, brokerage: profile.company, license_number: profile.license, notification_prefs: notif }
-      const res = await fetch('/api/profile', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
-      const j = await res.json()
-      if(!res.ok || j.error){ throw new Error(j.error || 'Save failed') }
-      alert('Profile saved')
-    }catch(e:any){ alert('Save failed: '+(e.message||e)) }
-    setSaving(false)
+      const { data } = await supabase.auth.getUser()
+      const email = data?.user?.email || ''
+      setProfile(p=>({...p,email}))
+      const res = await fetch('/api/profile')
+      if(res.ok){ const j = await res.json(); setProfile(j) }
+    }catch(e){}
+    setLoading(false)
+  })()},[])
+
+  async function save(){
+    await fetch('/api/profile', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(profile) })
+    alert('Saved')
   }
 
-  if(loading) return <div className="min-h-screen p-8 bg-gradient-to-b from-gray-900 to-black">Loading…</div>
-
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-b from-gray-900 to-black">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-          <h2 className="text-xl font-semibold text-white mb-4">Profile Information</h2>
-          <div className="grid grid-cols-1 gap-3">
-            <label className="text-sm text-gray-300">Full Name</label>
-            <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" value={profile.full_name} onChange={e=>setProfile({...profile, full_name: e.target.value})} />
-            <label className="text-sm text-gray-300">Email (read-only)</label>
-            <input className="w-full bg-white/6 border border-white/6 rounded-lg px-3 py-2 text-gray-300" value={profile.email} readOnly />
-            <label className="text-sm text-gray-300">Phone</label>
-            <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" value={profile.phone} onChange={e=>setProfile({...profile, phone: e.target.value})} />
-            <label className="text-sm text-gray-300">Brokerage / Company</label>
-            <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" value={profile.company} onChange={e=>setProfile({...profile, company: e.target.value})} />
-            <label className="text-sm text-gray-300">License Number</label>
-            <input className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white" value={profile.license} onChange={e=>setProfile({...profile, license: e.target.value})} />
-            <div className="flex justify-end mt-3">
-              <button onClick={saveProfile} disabled={saving} className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-lg">{saving? 'Saving...':'Save Changes'}</button>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold">Settings</h1>
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="font-semibold">Profile</h2>
+          <div className="mt-3 space-y-2">
+            <input value={profile.name} onChange={e=>setProfile({...profile,name:e.target.value})} placeholder="Name" className="w-full border p-2 rounded" />
+            <input value={profile.email} onChange={e=>setProfile({...profile,email:e.target.value})} placeholder="Email" className="w-full border p-2 rounded" />
+            <input value={profile.phone} onChange={e=>setProfile({...profile,phone:e.target.value})} placeholder="Phone" className="w-full border p-2 rounded" />
+            <input value={profile.brokerage} onChange={e=>setProfile({...profile,brokerage:e.target.value})} placeholder="Brokerage" className="w-full border p-2 rounded" />
+            <input value={profile.license} onChange={e=>setProfile({...profile,license:e.target.value})} placeholder="License Number" className="w-full border p-2 rounded" />
+            <div className="flex justify-end"><button onClick={save} className="px-4 py-2 bg-orange-500 text-white rounded">Save Profile</button></div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white rounded shadow">
+          <h2 className="font-semibold">Notifications</h2>
+          <div className="mt-3 space-y-2 text-sm">
+            <label className="flex items-center justify-between"><span>Email alerts</span><input type="checkbox" checked={emailAlerts} onChange={e=>setEmailAlerts(e.target.checked)} /></label>
+            <label className="flex items-center justify-between"><span>Deadline reminders</span><input type="checkbox" checked={deadlineReminders} onChange={e=>setDeadlineReminders(e.target.checked)} /></label>
+            <label className="flex items-center justify-between"><span>EVA daily briefing</span><input type="checkbox" checked={evaDaily} onChange={e=>setEvaDaily(e.target.checked)} /></label>
+          </div>
+          <h2 className="font-semibold mt-4">Appearance</h2>
+          <div className="mt-2"><label className="flex items-center justify-between"><span>Dark mode</span><input type="checkbox" checked={dark} onChange={e=>setDark(e.target.checked)} /></label></div>
+        </div>
+
+        <div className="p-4 bg-white rounded shadow col-span-1 md:col-span-2">
+          <h2 className="font-semibold">Subscription</h2>
+          <div className="mt-3 p-4 border rounded bg-gray-50 flex items-center justify-between">
+            <div>
+              <div className="font-semibold">Free Trial</div>
+              <div className="text-sm text-gray-600">Upgrade to unlock unlimited transactions and priority EVA.</div>
             </div>
+            <button className="px-4 py-2 bg-orange-500 text-white rounded">Upgrade</button>
           </div>
         </div>
 
-        <div className="p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-          <h3 className="text-lg font-semibold text-white mb-3">Account Security</h3>
-          <div className="space-y-3 text-sm text-gray-300">
-            <button className="px-3 py-2 bg-white/5 rounded-lg">Change password</button>
-            <div>Connected accounts: <span className="ml-2 text-white">Google</span></div>
-            <div>Two-factor authentication: <button className="ml-2 px-2 py-1 bg-white/5 rounded">Enable</button></div>
-          </div>
+        <div className="p-4 bg-white rounded shadow col-span-1 md:col-span-2">
+          <h2 className="font-semibold text-red-600">Danger Zone</h2>
+          <div className="mt-3 text-sm text-gray-600">Delete account is disabled in this demo.</div>
+          <div className="mt-3"><button disabled className="px-4 py-2 bg-red-300 text-white rounded">Delete Account (Disabled)</button></div>
         </div>
 
-        <div className="p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-          <h3 className="text-lg font-semibold text-white mb-3">Subscription & Services</h3>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-gray-300">Current Plan</div>
-            <div className="px-2 py-1 rounded-full text-sm bg-cyan-500/20 text-cyan-300">{plan}</div>
-          </div>
-          <div className="mb-3">
-            <div className="text-sm text-gray-300 mb-1">Usage</div>
-            <div className="w-full bg-white/10 rounded-full h-2 mb-2"><div className="h-2 rounded-full bg-cyan-400" style={{ width: '20%' }} /></div>
-            <div className="text-sm text-gray-300">Transactions used: {usage.transactions} • Storage used: {usage.storage}MB</div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between"><div className="text-sm text-white">EVA AI Assistant</div><input type="checkbox" defaultChecked /></div>
-            <div className="flex items-center justify-between"><div className="text-sm text-white">Priority Support</div><input type="checkbox" /></div>
-            <div className="flex items-center justify-between"><div className="text-sm text-white">Custom Branding</div><input type="checkbox" /></div>
-            <div className="flex items-center justify-between"><div className="text-sm text-white">API Access</div><input type="checkbox" /></div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-          <h3 className="text-lg font-semibold text-white mb-3">Notification Preferences</h3>
-          <div className="space-y-2 text-sm">
-            <label className="flex items-center justify-between"><span className="text-white">Email notifications</span><input type="checkbox" checked={notif.email} onChange={e=>setNotif({...notif, email: e.target.checked})} /></label>
-            <label className="flex items-center justify-between"><span className="text-white">SMS alerts</span><input type="checkbox" checked={notif.sms} onChange={e=>setNotif({...notif, sms: e.target.checked})} /></label>
-            <label className="flex items-center justify-between"><span className="text-white">Daily briefing</span><input type="checkbox" checked={notif.daily} onChange={e=>setNotif({...notif, daily: e.target.checked})} /></label>
-            <label className="flex items-center justify-between"><span className="text-white">Deadline reminders</span><input type="checkbox" checked={notif.deadlines} onChange={e=>setNotif({...notif, deadlines: e.target.checked})} /></label>
-            <label className="flex items-center justify-between"><span className="text-white">Transaction updates</span><input type="checkbox" checked={notif.updates} onChange={e=>setNotif({...notif, updates: e.target.checked})} /></label>
-          </div>
-        </div>
       </div>
     </div>
   )
