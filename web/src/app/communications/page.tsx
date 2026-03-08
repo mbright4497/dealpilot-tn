@@ -1,6 +1,8 @@
 'use client'
 import React, {useState} from 'react'
+import {ComposeModals} from './compose-modals'
 export default function CommunicationsPage(){
+  // Compose modals included
   const [tab,setTab]=useState('messages')
   return (
     <div className="p-6 bg-[#061021] min-h-screen text-gray-100">
@@ -62,7 +64,7 @@ export default function CommunicationsPage(){
           </div>
         )}
       </div>
-      <button className="fixed bottom-6 right-6 bg-orange-500 text-black w-14 h-14 rounded-full shadow-lg">+</button>
+      <ComposeModals/>
     </div>
   )
 }
