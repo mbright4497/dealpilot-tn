@@ -1,10 +1,8 @@
 'use client'
-import React
-import {useRouter} from "next/navigation"
-, {useEffect, useState} from 'react'
+import React, {useEffect, useState} from 'react'
+import {useRouter} from 'next/navigation'
 
 function Toggle({checked,onChange,ariaLabel}:{checked:boolean,onChange:(_:boolean)=>void,ariaLabel?:string}){
-  const router = useRouter()
   return (
     <button aria-label={ariaLabel} onClick={()=>onChange(!checked)} className={`w-12 h-6 rounded-full p-1 transition-colors ${checked? 'bg-[#f97316]':'bg-gray-700'}`}>
       <div className={`w-4 h-4 bg-white rounded-full transform transition-transform ${checked? 'translate-x-6':'translate-x-0'}`}></div>
@@ -13,6 +11,8 @@ function Toggle({checked,onChange,ariaLabel}:{checked:boolean,onChange:(_:boolea
 }
 
 export default function SettingsPage(){
+  const router = useRouter()
+
   const [tab,setTab]=useState('profile')
   const [profile,setProfile]=useState<any>({fullName:'',email:'',phone:'',brokerage:'',license:'',officeAddress:''})
   const [saving,setSaving]=useState(false)
