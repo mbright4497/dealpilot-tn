@@ -253,7 +253,7 @@ export default function ChatPage() {
       {/* Sidebar */}
       <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
         <div className="p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">DP</div>
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">CP</div>
           <div>
             <h2 className="text-white font-semibold text-sm leading-tight">ClosingPilot TN</h2>
             <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
@@ -280,7 +280,7 @@ export default function ChatPage() {
             AI Assistant
           </button>
 
-          {/* Communications & GHL Settings links */}
+          {/* Communications & Settings links */}
           <a href="/communications" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             Communications
@@ -290,7 +290,7 @@ export default function ChatPage() {
           </a>
           <a href="/settings/ghl" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15v2m0-6v2m0-6v2M4 7h16M4 11h16M4 15h10"/></svg>
-            GHL Settings
+            Settings
           </a>
         </nav>
         {selectedTxId && view === 'deal' && (
