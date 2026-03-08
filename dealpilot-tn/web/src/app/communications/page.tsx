@@ -43,6 +43,9 @@ export default function CommunicationsPage(){
 
       <div className="flex-1 bg-gray-800 p-4 rounded">
         <div className="mb-3 text-gray-300">Conversation</div>
+        <div className="mb-3">
+          <button id="useTemplate" className="text-sm text-gray-300 bg-gray-700 px-2 py-1 rounded">Use Template</button>
+        </div>
         {selected ? (
           <div>
             <div className="mb-2 font-semibold">{selected.contacts?.name}</div>
