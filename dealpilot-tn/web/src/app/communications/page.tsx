@@ -22,7 +22,7 @@ export default function CommunicationsPage(){
     else setLogs([])
   }
 
-  return (
+  return (<>
     <div className="min-h-screen bg-[#061021] text-gray-100 p-6 flex gap-4">
       <div className="w-1/4 bg-gray-800 p-4 rounded">
         <div className="mb-3 text-gray-300">Contacts</div>
@@ -106,4 +106,3 @@ export default function CommunicationsPage(){
     </>
   )
 }
-
