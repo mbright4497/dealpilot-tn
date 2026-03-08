@@ -1,6 +1,6 @@
 'use client'
-import React
-import {useRouter} from 'next/navigation' from 'react'
+import React from 'react'
+import {useRouter} from 'next/navigation'
 import GhlSettings from '@/components/GhlSettings'
 
 export default function GhlSettingsPage(){
