@@ -1,70 +1,99 @@
 'use client'
 import React, {useState} from 'react'
-import {ComposeModals} from './compose-modals'
-export default function CommunicationsPage(){
-  // Compose modals included
-  const [tab,setTab]=useState('messages')
+import ComposeModals from './compose-modals'
+
+function Avatar({name,unread}:{name:string,unread?:number}){
+  const initials=name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()
+  const bg='linear-gradient(135deg,#f97316,#fb923c)'
+  return <div className="flex items-center gap-3">
+    <div style={{background:bg}} className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold">{initials}</div>
+    <div className="flex flex-col">
+      <div className="text-sm font-medium">{name}</div>
+      <div className="text-xs text-gray-400">Last message preview…</div>
+    </div>
+    {unread? <div className="ml-auto bg-red-600 text-white text-xs px-2 py-0.5 rounded">{unread}</div>:null}
+  </div>
+}
+
+export default function Communications(){
+  const [tab,setTab]=useState<'messages'|'email'|'calls'>('messages')
+  const [selected,setSelected]=useState<string|null>('John Doe')
+  const contacts=[{name:'John Doe',unread:2},{name:'Builder Rep'},{name:'Lender Sam'}]
   return (
-    <div className="p-6 bg-[#061021] min-h-screen text-gray-100">
-      <header className="mb-6">
+    <div className="min-h-screen bg-[#061021] text-gray-100 p-6">
+      <header className="mb-4">
         <h1 className="text-3xl font-bold">Communications</h1>
-        <p className="text-sm text-gray-300">Manage all deal conversations</p>
+        <p className="text-sm text-gray-400">Manage all deal conversations</p>
       </header>
-      <div className="mb-4 flex gap-2">
-        {['messages','email','calls'].map(t=> (
-          <button key={t} onClick={()=>setTab(t)} className={`px-4 py-2 rounded-t-lg ${tab===t? 'bg-gray-800 text-orange-400':'bg-gray-700 text-gray-300'}`}>
-            {t.charAt(0).toUpperCase()+t.slice(1)}
-          </button>
-        ))}
-      </div>
-      <div className="bg-gray-800 border border-gray-700 rounded-b-lg p-4 grid grid-cols-3 gap-4">
-        {tab==='messages' && (
-          <>
-            <div className="col-span-1 bg-[#0f223a] border border-white/10 rounded p-3">
-              <div className="space-y-2">
-                <div className="p-2 rounded bg-gray-700 text-sm">John Doe — 45 Oak Ln <div className="text-xs text-gray-400">Hey — can we tour?</div></div>
-                <div className="p-2 rounded bg-gray-700 text-sm">Builder Rep — New Homes <div className="text-xs text-gray-400">Model open Sat</div></div>
+
+      <div className="bg-gray-800 border border-gray-700 rounded p-4 grid grid-cols-3 gap-4">
+        <div className="col-span-1">
+          <div className="mb-3 flex items-center gap-2">
+            <input className="flex-1 bg-[#0f223a] px-3 py-2 rounded" placeholder="Search contacts" />
+            <button className="bg-gray-700 px-3 py-2 rounded">🔍</button>
+          </div>
+
+          <div className="space-y-2 overflow-auto max-h-[60vh]">
+            {contacts.map(c=> (
+              <button key={c.name} onClick={()=>setSelected(c.name)} className="w-full text-left p-3 bg-[#0f223a] rounded hover:shadow">
+                <Avatar name={c.name} unread={c.unread} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="col-span-2 flex flex-col">
+          <div className="border-b border-gray-700 pb-2 mb-3">
+            <nav className="flex gap-6">
+              {['messages','email','calls'].map(t=> (
+                <button key={t} onClick={()=>setTab(t as any)} className={`pb-2 ${tab===t? 'border-b-2 border-[#f97316]':''}`}>{t.toUpperCase()}</button>
+              ))}
+            </nav>
+          </div>
+
+          {tab==='messages' && (
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="col-span-1 bg-[#0f223a] p-3 rounded space-y-3">
+                <div className="text-sm text-gray-300">{selected}</div>
+                <div className="space-y-3">
+                  <div className="max-w-[60%] ml-auto bg-[#f9731610] text-black px-3 py-2 rounded-lg relative">Sent message<div className="text-xs text-gray-400 mt-1">2m • ✓</div></div>
+                  <div className="max-w-[70%] bg-[#0f223a] text-gray-100 px-3 py-2 rounded-lg">Received message<div className="text-xs text-gray-400 mt-1">5m</div></div>
+                  <div className="text-xs text-gray-500 italic">Typing…</div>
+                </div>
+                <div className="mt-3 flex gap-2"><input className="flex-1 bg-[#1a1a2e] px-3 py-2 rounded" placeholder="Type a message" /><button className="bg-orange-500 px-3 py-2 rounded text-black">Send</button></div>
+              </div>
+
+              <div className="col-span-1 bg-[#0f223a] p-3 rounded">
+                <div className="text-center text-gray-400">Conversation details & deal badge</div>
               </div>
             </div>
-            <div className="col-span-2 bg-[#0f223a] border border-white/10 rounded p-3 flex flex-col">
-              <div className="flex-1 overflow-auto">
-                <div className="space-y-3">
-                  <div className="text-sm"><span className="font-semibold">You:</span> Sounds good — I'll schedule.</div>
-                  <div className="text-sm"><span className="font-semibold">John:</span> Thanks — can we do 5pm?</div>
+          )}
+
+          {tab==='email' && (
+            <div className="bg-[#0f223a] p-3 rounded h-80 overflow-auto">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-[#0f223a] rounded hover:shadow">
+                  <div><div className="font-medium">Lender@bank.com</div><div className="text-xs text-gray-400">Inspection reminder subject preview…</div></div>
+                  <div className="text-xs text-gray-400">2h</div>
                 </div>
               </div>
-              <div className="mt-3 flex gap-2">
-                <input className="flex-1 bg-[#0f223a] border border-gray-700 p-2 rounded" placeholder="Type a message" />
-                <button className="bg-orange-500 text-black px-4 py-2 rounded">Send</button>
-              </div>
             </div>
-          </>
-        )}
-        {tab==='email' && (
-          <>
-            <div className="col-span-1 bg-[#0f223a] border border-white/10 rounded p-3">
+          )}
+
+          {tab==='calls' && (
+            <div className="bg-[#0f223a] p-3 rounded h-80 overflow-auto">
               <div className="space-y-2">
-                <div className="p-2 rounded bg-gray-700 text-sm">Inspection Reminder — Lender@bank.com</div>
-                <div className="p-2 rounded bg-gray-700 text-sm">Offer Accepted — Seller@listings.com</div>
+                <div className="flex items-center justify-between p-3 bg-[#0f223a] rounded hover:shadow">
+                  <div><div className="font-medium">John Doe</div><div className="text-xs text-gray-400">Outgoing • 00:02:34</div></div>
+                  <div className="text-xs text-gray-400">Mar 8</div>
+                </div>
               </div>
             </div>
-            <div className="col-span-2 bg-[#0f223a] border border-white/10 rounded p-3">
-              <h3 className="font-semibold">Inspection Reminder</h3>
-              <p className="text-sm text-gray-300">Hi John, this is a reminder that your inspection is scheduled...</p>
-              <div className="mt-3">
-                <button className="bg-orange-500 text-black px-3 py-1 rounded">Reply</button>
-              </div>
-            </div>
-          </>
-        )}
-        {tab==='calls' && (
-          <div className="col-span-3 grid grid-cols-1 gap-3">
-            <div className="bg-[#0f223a] border border-white/10 p-3 rounded">Called John — 00:02:34 — Incoming — 2026-03-07</div>
-            <div className="bg-[#0f223a] border border-white/10 p-3 rounded">Called Builder — 00:04:12 — Outgoing — 2026-03-06</div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-      <ComposeModals/>
+
+      <ComposeModals />
     </div>
   )
 }
