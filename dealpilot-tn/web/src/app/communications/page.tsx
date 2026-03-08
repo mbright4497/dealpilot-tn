@@ -1,105 +1,88 @@
 'use client'
-import React, {useState} from 'react'
-import {useRouter} from 'next/navigation'
+import React, {useEffect, useState} from 'react'
 
-import ComposeModals from './compose-modals'
+export default function CommunicationsPage(){
+  const [contacts,setContacts]=useState([])
+  const [deals,setDeals]=useState([])
+  const [selected,setSelected]=useState<any>(null)
+  const [thread,setThread]=useState([])
+  const [query,setQuery]=useState('')
+  const [tab,setTab]=useState('messages')
+  useEffect(()=>{fetch('/api/communications/contacts?deal_id=all').then(r=>r.json()).then(j=>{if(j.ok) setContacts(j.contacts||[]);})
+    fetch('/api/communications/templates').then(r=>r.json()).then(j=>{})
+  },[])
 
-function Avatar({name,unread}:{name:string,unread?:number}){
-  const router = useRouter()
-  const initials=name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()
-  const bg='linear-gradient(135deg,#f97316,#fb923c)'
-  return <div className="flex items-center gap-3">
-    <div style={{background:bg}} className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold">{initials}</div>
-    <div className="flex flex-col">
-      <div className="text-sm font-medium">{name}</div>
-      <div className="text-xs text-gray-400">Last message preview…</div>
-    </div>
-    {unread? <div className="ml-auto bg-red-600 text-white text-xs px-2 py-0.5 rounded">{unread}</div>:null}
-  </div>
-}
+  async function selectContact(c:any){
+    setSelected(c)
+    const res=await fetch(`/api/communications/send?contact_id=${c.contact_id}&deal_id=${c.deal_id}`)
+    const j=await res.json()
+    if(j.ok) setThread(j.history||[])
+  }
 
-export default function Communications(){
-  const router = useRouter()
+  async function sendMessage(text:string){
+    if(!selected) return
+    const payload={deal_id:selected.deal_id, contact_id:selected.contact_id, channel: tab==='messages'?'sms': tab==='email'?'email':'phone', body: text}
+    // optimistic
+    setThread(prev=>[...prev,{id:Date.now(), from:'me', body:text, created_at:new Date().toISOString(), channel:payload.channel, status:'queued'}])
+    await fetch('/api/communications/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  }
 
-  const [tab,setTab]=useState<'messages'|'email'|'calls'>('messages')
-  const [selected,setSelected]=useState<string|null>('John Doe')
-  const contacts=[{name:'John Doe',unread:2},{name:'Builder Rep'},{name:'Lender Sam'}]
+  const filtered = contacts.filter((c:any)=> c.contacts && c.contacts.name && c.contacts.name.toLowerCase().includes(query.toLowerCase()))
+
   return (
-    <div className="min-h-screen bg-[#061021] text-gray-100 p-6">
-      <div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
-<header className="mb-4">
-        <h1 className="text-3xl font-bold">Communications</h1>
-        <p className="text-sm text-gray-400">Manage all deal conversations</p>
-      </header>
-
-      <div className="bg-gray-800 border border-gray-700 rounded p-4 grid grid-cols-3 gap-4">
-        <div className="col-span-1">
-          <div className="mb-3 flex items-center gap-2">
-            <input className="flex-1 bg-[#0f223a] px-3 py-2 rounded" placeholder="Search contacts" />
-            <button className="bg-gray-700 px-3 py-2 rounded">🔍</button>
-          </div>
-
-          <div className="space-y-2 overflow-auto max-h-[60vh]">
-            {contacts.map(c=> (
-              <button key={c.name} onClick={()=>setSelected(c.name)} className="w-full text-left p-3 bg-[#0f223a] rounded hover:shadow">
-                <Avatar name={c.name} unread={c.unread} />
-              </button>
-            ))}
-          </div>
+    <div className="min-h-screen bg-[#061021] text-gray-100 p-6 flex gap-4">
+      <div className="w-1/4 bg-gray-800 p-4 rounded">
+        <div className="flex items-center justify-between mb-3">
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search" className="bg-[#0f223a] p-2 rounded w-full" />
         </div>
-
-        <div className="col-span-2 flex flex-col">
-          <div className="border-b border-gray-700 pb-2 mb-3">
-            <nav className="flex gap-6">
-              {['messages','email','calls'].map(t=> (
-                <button key={t} onClick={()=>setTab(t as any)} className={`pb-2 ${tab===t? 'border-b-2 border-[#f97316]':''}`}>{t.toUpperCase()}</button>
-              ))}
-            </nav>
-          </div>
-
-          {tab==='messages' && (
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="col-span-1 bg-[#0f223a] p-3 rounded space-y-3">
-                <div className="text-sm text-gray-300">{selected}</div>
-                <div className="space-y-3">
-                  <div className="max-w-[60%] ml-auto bg-[#f9731610] text-black px-3 py-2 rounded-lg relative">Sent message<div className="text-xs text-gray-400 mt-1">2m • ✓</div></div>
-                  <div className="max-w-[70%] bg-[#0f223a] text-gray-100 px-3 py-2 rounded-lg">Received message<div className="text-xs text-gray-400 mt-1">5m</div></div>
-                  <div className="text-xs text-gray-500 italic">Typing…</div>
-                </div>
-                <div className="mt-3 flex gap-2"><input className="flex-1 bg-[#1a1a2e] px-3 py-2 rounded" placeholder="Type a message" /><button className="bg-orange-500 px-3 py-2 rounded text-black">Send</button></div>
-              </div>
-
-              <div className="col-span-1 bg-[#0f223a] p-3 rounded">
-                <div className="text-center text-gray-400">Conversation details & deal badge</div>
-              </div>
-            </div>
-          )}
-
-          {tab==='email' && (
-            <div className="bg-[#0f223a] p-3 rounded h-80 overflow-auto">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-[#0f223a] rounded hover:shadow">
-                  <div><div className="font-medium">Lender@bank.com</div><div className="text-xs text-gray-400">Inspection reminder subject preview…</div></div>
-                  <div className="text-xs text-gray-400">2h</div>
+        <div className="space-y-2">
+          {filtered.map((d:any)=> (
+            <button key={d.id} onClick={()=>selectContact(d)} className="w-full text-left p-2 bg-[#0f223a] rounded">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white">{(d.contacts.name||'')[0]}</div>
+                <div>
+                  <div className="font-medium">{d.contacts.name}</div>
+                  <div className="text-xs text-gray-400">{d.role}</div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {tab==='calls' && (
-            <div className="bg-[#0f223a] p-3 rounded h-80 overflow-auto">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-3 bg-[#0f223a] rounded hover:shadow">
-                  <div><div className="font-medium">John Doe</div><div className="text-xs text-gray-400">Outgoing • 00:02:34</div></div>
-                  <div className="text-xs text-gray-400">Mar 8</div>
-                </div>
-              </div>
-            </div>
-          )}
+            </button>
+          ))}
         </div>
       </div>
-
-      <ComposeModals />
+      <div className="flex-1 bg-gray-800 p-4 rounded">
+        <div className="mb-3">
+          <nav className="flex gap-4">
+            <button onClick={()=>setTab('messages')} className={tab==='messages'? 'border-b-2 border-orange-500':''}>Messages</button>
+            <button onClick={()=>setTab('email')} className={tab==='email'? 'border-b-2 border-orange-500':''}>Email</button>
+            <button onClick={()=>setTab('calls')} className={tab==='calls'? 'border-b-2 border-orange-500':''}>Calls</button>
+          </nav>
+        </div>
+        <div className="h-[60vh] overflow-auto space-y-3">
+          {thread.map((m:any)=> (
+            <div key={m.id} className={`max-w-[60%] p-3 rounded ${m.from==='me'? 'ml-auto bg-orange-500 text-black':'bg-[#0f223a] text-gray-100'}`}>
+              {m.subject && <div className="font-semibold">{m.subject}</div>}
+              <div>{m.body}</div>
+              <div className="text-xs text-gray-400 mt-1">{m.created_at}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <input id="msginput" className="flex-1 bg-[#0f223a] p-2 rounded" />
+          <button onClick={()=>{const v=(document.getElementById('msginput') as HTMLInputElement).value; sendMessage(v); (document.getElementById('msginput') as HTMLInputElement).value=''}} className="bg-orange-500 px-4 py-2 rounded">Send</button>
+        </div>
+      </div>
+      <div className="w-1/4 bg-gray-800 p-4 rounded">
+        {selected? (
+          <div>
+            <div className="text-lg font-semibold">{selected.contacts.name}</div>
+            <div className="text-sm text-gray-400">{selected.contacts.email}</div>
+            <div className="text-sm text-gray-400">{selected.contacts.phone}</div>
+            <div className="mt-3">
+              <button className="bg-gray-700 px-3 py-1 rounded">Enable auto-updates</button>
+            </div>
+          </div>
+        ): (<div className="text-gray-400">Select a contact to view details</div>)}
+      </div>
     </div>
   )
 }
