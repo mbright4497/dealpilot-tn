@@ -1,5 +1,4 @@
 'use client'
-<div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
 "use client";
 
 import * as React from "react";

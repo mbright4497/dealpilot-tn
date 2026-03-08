@@ -1,6 +1,4 @@
 'use client'
-<div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
-'use client'
 import React
 import {useRouter} from "next/navigation"
 , { useState, useEffect } from 'react'
@@ -100,6 +98,8 @@ const NAV_ITEMS = [
 
 
 export default function ChatPage() {
+  const router = useRouter()
+
   const [view, setView] = useState('dashboard')
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)

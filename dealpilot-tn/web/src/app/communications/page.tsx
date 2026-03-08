@@ -19,6 +19,8 @@ function Avatar({name,unread}:{name:string,unread?:number}){
 }
 
 export default function Communications(){
+  const router = useRouter()
+
   const [tab,setTab]=useState<'messages'|'email'|'calls'>('messages')
   const [selected,setSelected]=useState<string|null>('John Doe')
   const contacts=[{name:'John Doe',unread:2},{name:'Builder Rep'},{name:'Lender Sam'}]
