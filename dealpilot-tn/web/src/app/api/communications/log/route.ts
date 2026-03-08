@@ -7,7 +7,7 @@ export async function GET(req: Request){
   const contactId = url.searchParams.get('contact_id')
   if(!contactId) return NextResponse.json({ error:'missing contact_id' }, { status:400 })
   const supabase = getSupabaseSafe()
-  const { data, error } = await supabase.from('communication_log').select('*').eq('contact_id', contactId).order('created_at', { ascending: true })
+  const { data, error } = await supabase.from('communication_log').select('*').eq('contact_id', contactId).order('sent_at', { ascending: true })
   if(error) return NextResponse.json({ error: error.message }, { status:500 })
   return NextResponse.json({ ok:true, logs: data })
 }

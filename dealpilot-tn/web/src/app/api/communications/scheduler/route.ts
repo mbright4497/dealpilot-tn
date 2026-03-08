@@ -9,8 +9,8 @@ export async function GET(){
   // approach: left join contacts with latest communication_log by contact_id
   const { data, error } = await supabase
     .from('contacts')
-    .select(`*, communication_log!inner(id, created_at)`)
-    .lte('communication_log.created_at', threeDaysAgo)
+    .select(`*, communication_log!inner(id, sent_at)`)
+    .lte('communication_log.sent_at', threeDaysAgo)
   if(error) return NextResponse.json({ error: error.message }, { status:500 })
   return NextResponse.json({ ok:true, overdue: data })
 }
