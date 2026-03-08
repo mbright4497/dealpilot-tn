@@ -1,7 +1,11 @@
+<div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
 'use client'
-import React, {useEffect, useState} from 'react'
+import React
+import {useRouter} from "next/navigation"
+, {useEffect, useState} from 'react'
 
 export default function DealPlaybook(){
+  const router = useRouter()
   const [q, setQ] = useState('')
   const [phase, setPhase] = useState<'All'|'Contract'|'Inspection'|'Appraisal'|'Closing'>('All')
 

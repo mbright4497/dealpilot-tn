@@ -1,8 +1,11 @@
 'use client'
-import React, {useState} from 'react'
+import React
+import {useRouter} from "next/navigation"
+, {useState} from 'react'
 import ComposeModals from './compose-modals'
 
 function Avatar({name,unread}:{name:string,unread?:number}){
+  const router = useRouter()
   const initials=name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()
   const bg='linear-gradient(135deg,#f97316,#fb923c)'
   return <div className="flex items-center gap-3">
@@ -21,7 +24,8 @@ export default function Communications(){
   const contacts=[{name:'John Doe',unread:2},{name:'Builder Rep'},{name:'Lender Sam'}]
   return (
     <div className="min-h-screen bg-[#061021] text-gray-100 p-6">
-      <header className="mb-4">
+      <div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
+<header className="mb-4">
         <h1 className="text-3xl font-bold">Communications</h1>
         <p className="text-sm text-gray-400">Manage all deal conversations</p>
       </header>

@@ -1,5 +1,8 @@
+<div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
 'use client'
-import React, { useState, useEffect } from 'react'
+import React
+import {useRouter} from "next/navigation"
+, { useState, useEffect } from 'react'
 import TCDashboard from '@/components/TCDashboard'
 import TransactionList from '@/components/TransactionList'
 import FormsFillView from '@/components/FormsFillView'
@@ -17,6 +20,7 @@ import ContractIntake from '@/components/ContractIntake'
 import MobileSidebar from '@/components/MobileSidebar'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
+  const router = useRouter()
   constructor(p:any){super(p);this.state={error:null}}
   static getDerivedStateFromError(e:Error){return{error:e}}
   render(){

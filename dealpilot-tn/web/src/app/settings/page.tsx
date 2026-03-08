@@ -1,7 +1,10 @@
 'use client'
-import React, {useEffect, useState} from 'react'
+import React
+import {useRouter} from "next/navigation"
+, {useEffect, useState} from 'react'
 
 function Toggle({checked,onChange,ariaLabel}:{checked:boolean,onChange:(_:boolean)=>void,ariaLabel?:string}){
+  const router = useRouter()
   return (
     <button aria-label={ariaLabel} onClick={()=>onChange(!checked)} className={`w-12 h-6 rounded-full p-1 transition-colors ${checked? 'bg-[#f97316]':'bg-gray-700'}`}>
       <div className={`w-4 h-4 bg-white rounded-full transform transition-transform ${checked? 'translate-x-6':'translate-x-0'}`}></div>
@@ -34,7 +37,8 @@ export default function SettingsPage(){
 
   return (
     <div className="min-h-screen bg-[#061021] text-gray-100 p-6">
-      <header className="mb-6">
+      <div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
+<header className="mb-6">
         <h1 className="text-3xl font-bold flex items-center gap-3">⚙️ Settings</h1>
         <p className="text-sm text-gray-400">Manage your ClosingPilot TN account</p>
       </header>
