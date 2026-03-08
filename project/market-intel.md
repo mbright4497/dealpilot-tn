@@ -1,17 +1,24 @@
-MARKET INTEL — Tri-Cities TN (placeholder)
+Market Intel — Tri-Cities TN (placeholder) 
 
-NOTE: Live web search unavailable (web_search tool not configured). Replace placeholders after live data fetch.
+Status: LIVE DATA REQUIRED — web access unavailable
 
-Key metrics to update:
-- Median sale price: TBD
-- Inventory levels (active listings): TBD
-- Average days on market: TBD
-- Notable trends: TBD
-- Sources: Realtor.com, Zillow, local MLS reports
+What to populate:
+- Median sale price (last 30/90 days)
+- Active inventory (number of listings)
+- New construction inventory under $400K (Johnson City, Kingsport, Bristol)
+- Days on market (median)
+- Notable price trends (MoM, YoY)
 
-Action items:
-- Update metrics with latest data by 9:00 AM
-- Flag any rapid price changes or inventory shortages
-- Identify neighborhoods with new construction activity
+Key findings (TO FILL):
+- Median price: <PLACEHOLDER>
+- Inventory: <PLACEHOLDER>
+- DOM: <PLACEHOLDER>
+- New construction under $400K: <PLACEHOLDER> (list top 5 addresses with links)
 
-Saved: placeholder created by Mini; requires Workhorse or human to fill with live data.
+Recommended next steps:
+1. Verify top 5 new construction listings and capture agent contact info.
+2. Price-alert buyers for listings with recent reductions.
+3. Run targeted Facebook/Instagram ad for new construction under $400K in Tri-Cities.
+
+Owner: iHome Team — Keller Williams Kingsport
+Last updated: 2026-03-08 07:06 ET
