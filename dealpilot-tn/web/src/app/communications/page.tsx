@@ -1,13 +1,17 @@
 'use client'
-import React, {useEffect, useState} from 'react'
+import React, {useEffect, useState, useRef} from 'react'
 
 export default function CommunicationsPage(){
   const [contacts,setContacts]=useState<any[]>([])
   const [selected,setSelected]=useState<any>(null)
   const [logs,setLogs]=useState<any[]>([])
+  const [templates,setTemplates]=useState<any[]>([])
+  const [showTemplates,setShowTemplates]=useState(false)
+  const inputRef = useRef<HTMLInputElement|null>(null)
 
   useEffect(()=>{
     fetch('/api/communications/contacts?deal_id=all').then(r=>r.json()).then(j=>{ if(j.ok) setContacts(j.contacts||[]) }).catch(()=>setContacts([]))
+    fetch('/api/communications/templates').then(r=>r.json()).then(j=>{ if(j.ok) setTemplates(j.templates||[]) }).catch(()=>setTemplates([]))
   },[])
 
   async function loadLogs(contact:any){
@@ -44,7 +48,7 @@ export default function CommunicationsPage(){
       <div className="flex-1 bg-gray-800 p-4 rounded">
         <div className="mb-3 text-gray-300">Conversation</div>
         <div className="mb-3">
-          <button id="useTemplate" className="text-sm text-gray-300 bg-gray-700 px-2 py-1 rounded">Use Template</button>
+          <button id="useTemplate" onClick={()=>setShowTemplates(true)} className="text-sm text-gray-300 bg-gray-700 px-2 py-1 rounded">Use Template</button>
         </div>
         {selected ? (
           <div>
@@ -76,5 +80,30 @@ export default function CommunicationsPage(){
         ) : (<div className="text-gray-500 mt-3">No contact selected</div>)}
       </div>
     </div>
+    {showTemplates && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+        <div className="bg-[#0f223a] p-4 rounded w-96">
+          <h3 className="text-lg font-semibold">Templates</h3>
+          <div className="mt-3 space-y-2 max-h-60 overflow-auto">
+            {templates.map(t=> (
+              <div key={t.id} className="p-2 bg-[#081224] rounded flex justify-between">
+                <div>
+                  <div className="font-medium">{t.name}</div>
+                  <div className="text-xs text-gray-400">{t.category} • {t.channel}</div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button onClick={()=>{ if(inputRef.current) inputRef.current.value = t.body; setShowTemplates(false)}} className="bg-gray-700 px-2 py-1 rounded text-sm">Use</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 text-right">
+            <button onClick={()=>setShowTemplates(false)} className="bg-gray-600 px-3 py-1 rounded">Close</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
+
