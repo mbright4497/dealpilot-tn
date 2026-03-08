@@ -1,25 +1,20 @@
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createClient as _createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export function createClient() {
-  const cookieStore = cookies();
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
-        } catch {
-          // Server Component - middleware handles refresh
-        }
-      },
-    },
-  });
+export function getSupabase(){
+  const supabaseUrl = process.env.SUPABASE_URL || ''
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ''
+  if(!supabaseUrl || !supabaseKey) {
+    throw new Error('Supabase not configured: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing')
+  }
+  return _createClient(supabaseUrl, supabaseKey)
 }
+
+// lightweight helper to avoid throwing during import in build-time contexts
+export function getSupabaseSafe(){
+  try{ return getSupabase() }catch(e){
+    // return a minimal stub that errors when used
+    const stub:any = new Proxy({}, { get(){ return ()=>{ throw new Error('Supabase not configured') } } })
+    return stub as SupabaseClient
+  }
+}
+
