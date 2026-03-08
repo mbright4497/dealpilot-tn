@@ -5,7 +5,6 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useTransactions } from "@/lib/hooks/useTransactions";
 import {
-  const router = useRouter()
   BADGE_CLASSES,
   DEAL_STATUSES,
   HEALTH_LABELS,
