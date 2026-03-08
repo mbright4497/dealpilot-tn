@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 
 // Server runtime (uses fs via pdf-parse); do not run on edge

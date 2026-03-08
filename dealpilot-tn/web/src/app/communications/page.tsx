@@ -1,94 +1,105 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import React, {useState} from 'react'
+import {useRouter} from 'next/navigation'
 
-export default function CommunicationsPage(){
-  const supabase = createClientComponentClient()
-  const [notifications, setNotifications] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<string>('all')
+import ComposeModals from './compose-modals'
 
-  async function load(){
-    setLoading(true)
-    try{
-      const url = filter==='all' ? '/api/notifications' : `/api/notifications?type=${encodeURIComponent(filter)}`
-      const res = await fetch(url)
-      if(!res.ok) throw new Error('Failed')
-      const j = await res.json()
-      setNotifications(j.notifications || [])
-    }catch(e){ console.error(e) }
-    setLoading(false)
-  }
+function Avatar({name,unread}:{name:string,unread?:number}){
+  const router = useRouter()
+  const initials=name.split(' ').map(s=>s[0]).slice(0,2).join('').toUpperCase()
+  const bg='linear-gradient(135deg,#f97316,#fb923c)'
+  return <div className="flex items-center gap-3">
+    <div style={{background:bg}} className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold">{initials}</div>
+    <div className="flex flex-col">
+      <div className="text-sm font-medium">{name}</div>
+      <div className="text-xs text-gray-400">Last message preview…</div>
+    </div>
+    {unread? <div className="ml-auto bg-red-600 text-white text-xs px-2 py-0.5 rounded">{unread}</div>:null}
+  </div>
+}
 
-  useEffect(()=>{ load() },[filter])
+export default function Communications(){
+  const router = useRouter()
 
-  // poll unread count for sidebar badge
-  useEffect(()=>{
-    let mounted = true
-    const fetchCount = async ()=>{
-      try{
-        const res = await fetch('/api/notifications')
-        if(!res.ok) return
-        const j = await res.json()
-        if(!mounted) return
-        const unread = (j.notifications || []).filter((n:any)=>!n.read).length
-        // update badge via custom event so sidebar can listen
-        window.dispatchEvent(new CustomEvent('notifications:unread', { detail: { unread } }))
-      }catch(e){}
-    }
-    fetchCount()
-    const id = setInterval(fetchCount, 30000)
-    return ()=>{ mounted=false; clearInterval(id) }
-  },[])
-
-  async function markRead(id:string){
-    try{
-      const res = await fetch('/api/notifications', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, read: true }) })
-      if(res.ok) load()
-    }catch(e){ console.error(e) }
-  }
-
+  const [tab,setTab]=useState<'messages'|'email'|'calls'>('messages')
+  const [selected,setSelected]=useState<string|null>('John Doe')
+  const contacts=[{name:'John Doe',unread:2},{name:'Builder Rep'},{name:'Lender Sam'}]
   return (
-    <div className="min-h-screen p-8 bg-gradient-to-b from-gray-900 to-black">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <a href="/" className="text-sm text-gray-300 hover:text-white">← Back</a>
-            <h1 className="text-3xl font-bold text-white">Communications & Notifications</h1>
-            <p className="text-sm text-gray-400">Unified inbox for deal and system notifications</p>
-          </div>
-          <div>
-            <select value={filter} onChange={e=>setFilter(e.target.value)} className="bg-white/5 border border-white/10 rounded p-2 text-white">
-              <option value="all">All</option>
-              <option value="deadline_warning">Deadlines</option>
-              <option value="document_uploaded">Documents</option>
-              <option value="checklist_completed">Checklist</option>
-              <option value="system">System</option>
-            </select>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#061021] text-gray-100 p-6">
+      <div className="mb-3"><button onClick={()=>router.back()} className="text-slate-400 hover:text-orange-400 flex items-center gap-2">← Back</button></div>
+<header className="mb-4">
+        <h1 className="text-3xl font-bold">Communications</h1>
+        <p className="text-sm text-gray-400">Manage all deal conversations</p>
+      </header>
 
-        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-4">
-          {loading && <div className="text-sm text-gray-400">Loading…</div>}
-          {!loading && notifications.length===0 && <div className="text-sm text-gray-400">No notifications</div>}
-          <div className="space-y-3">
-            {notifications.map((n:any)=> (
-              <div key={n.id} className={`p-3 rounded ${n.read? 'bg-gray-800':'bg-gray-700'}`}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-semibold text-white">{n.title || n.type}</div>
-                    <div className="text-sm text-gray-300">{n.message}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</div>
-                    {!n.read && <button onClick={()=>markRead(n.id)} className="text-xs text-cyan-300 mt-2">Mark read</button>}
-                  </div>
-                </div>
-              </div>
+      <div className="bg-gray-800 border border-gray-700 rounded p-4 grid grid-cols-3 gap-4">
+        <div className="col-span-1">
+          <div className="mb-3 flex items-center gap-2">
+            <input className="flex-1 bg-[#0f223a] px-3 py-2 rounded" placeholder="Search contacts" />
+            <button className="bg-gray-700 px-3 py-2 rounded">🔍</button>
+          </div>
+
+          <div className="space-y-2 overflow-auto max-h-[60vh]">
+            {contacts.map(c=> (
+              <button key={c.name} onClick={()=>setSelected(c.name)} className="w-full text-left p-3 bg-[#0f223a] rounded hover:shadow">
+                <Avatar name={c.name} unread={c.unread} />
+              </button>
             ))}
           </div>
         </div>
+
+        <div className="col-span-2 flex flex-col">
+          <div className="border-b border-gray-700 pb-2 mb-3">
+            <nav className="flex gap-6">
+              {['messages','email','calls'].map(t=> (
+                <button key={t} onClick={()=>setTab(t as any)} className={`pb-2 ${tab===t? 'border-b-2 border-[#f97316]':''}`}>{t.toUpperCase()}</button>
+              ))}
+            </nav>
+          </div>
+
+          {tab==='messages' && (
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="col-span-1 bg-[#0f223a] p-3 rounded space-y-3">
+                <div className="text-sm text-gray-300">{selected}</div>
+                <div className="space-y-3">
+                  <div className="max-w-[60%] ml-auto bg-[#f9731610] text-black px-3 py-2 rounded-lg relative">Sent message<div className="text-xs text-gray-400 mt-1">2m • ✓</div></div>
+                  <div className="max-w-[70%] bg-[#0f223a] text-gray-100 px-3 py-2 rounded-lg">Received message<div className="text-xs text-gray-400 mt-1">5m</div></div>
+                  <div className="text-xs text-gray-500 italic">Typing…</div>
+                </div>
+                <div className="mt-3 flex gap-2"><input className="flex-1 bg-[#1a1a2e] px-3 py-2 rounded" placeholder="Type a message" /><button className="bg-orange-500 px-3 py-2 rounded text-black">Send</button></div>
+              </div>
+
+              <div className="col-span-1 bg-[#0f223a] p-3 rounded">
+                <div className="text-center text-gray-400">Conversation details & deal badge</div>
+              </div>
+            </div>
+          )}
+
+          {tab==='email' && (
+            <div className="bg-[#0f223a] p-3 rounded h-80 overflow-auto">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-[#0f223a] rounded hover:shadow">
+                  <div><div className="font-medium">Lender@bank.com</div><div className="text-xs text-gray-400">Inspection reminder subject preview…</div></div>
+                  <div className="text-xs text-gray-400">2h</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tab==='calls' && (
+            <div className="bg-[#0f223a] p-3 rounded h-80 overflow-auto">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-3 bg-[#0f223a] rounded hover:shadow">
+                  <div><div className="font-medium">John Doe</div><div className="text-xs text-gray-400">Outgoing • 00:02:34</div></div>
+                  <div className="text-xs text-gray-400">Mar 8</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      <ComposeModals />
     </div>
   )
 }

@@ -1,0 +1,41 @@
+:root{
+  --bg:#061021;
+  --card-bg:rgba(15,34,58,0.9);
+  --card-border:rgba(71,85,105,0.45);
+  --accent:#f97316;
+}
+/* Transitions */
+.tab-fade{transition:opacity 150ms ease, transform 150ms ease}
+.card-hover{transition:transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease}
+.card-hover:hover{transform:scale(1.02)}
+.btn-press:active{transform:scale(0.98)}
+
+/* Skeleton shimmer */
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.skeleton-shimmer{background:linear-gradient(90deg,#0f223a 25%,#1a2b45 37%,#0f223a 63%);background-size:200% 100%;animation:shimmer 1.2s linear infinite}
+
+/* Card */
+.card{background:var(--card-bg);border:1px solid var(--card-border);padding:16px;border-radius:12px}
+.card:hover{border-color:rgba(249,115,22,0.18)}
+
+/* Sidebar hover */
+.sidebar-nav button{transition:background 120ms ease,border-left-color 120ms ease}
+.sidebar-nav button:hover{background:rgba(255,255,255,0.02);border-left:4px solid var(--accent);padding-left:12px}
+
+/* Scrollbar */
+*::-webkit-scrollbar{width:8px;height:8px}
+*::-webkit-scrollbar-thumb{background:#182434;border-radius:8px}
+*::-webkit-scrollbar-track{background:transparent}
+
+/* Toast */
+.toast{position:fixed;top:16px;right:16px;min-width:220px;padding:12px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.5);transform:translateY(-10px);opacity:0;transition:opacity 180ms ease,transform 180ms ease}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#16a34a;color:white}
+.toast.error{background:#dc2626;color:white}
+.toast.info{background:#2563eb;color:white}
+
+/* Focus ring */
+.input:focus{outline:none;box-shadow:0 0 0 4px rgba(249,115,22,0.12);border-color:var(--accent)}
+
+/* Utility */
+.flex-center{display:flex;align-items:center;justify-content:center}

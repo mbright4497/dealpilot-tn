@@ -1,7 +1,9 @@
 'use client'
 import React, {useEffect, useState} from 'react'
+import {useRouter} from "next/navigation"
 
 export default function DealPlaybook(){
+  const router = useRouter()
   const [q, setQ] = useState('')
   const [phase, setPhase] = useState<'All'|'Contract'|'Inspection'|'Appraisal'|'Closing'>('All')
 
@@ -73,4 +75,3 @@ export default function DealPlaybook(){
     </div>
   )
 }
-

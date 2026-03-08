@@ -1,8 +1,11 @@
 'use client'
 import React from 'react'
+import {useRouter} from 'next/navigation'
 import GhlSettings from '@/components/GhlSettings'
 
 export default function GhlSettingsPage(){
+  const router = useRouter()
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black p-8">
       <div className="max-w-4xl mx-auto">

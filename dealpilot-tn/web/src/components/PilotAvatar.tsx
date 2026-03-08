@@ -26,7 +26,7 @@ export default function PilotAvatar({ size = 64 }:{ size?: number }){
   }
   return (
     <div style={style} className="flex items-center justify-center text-white font-bold">
-      <span style={{fontSize: Math.max(12, Math.floor(size/3))}}>DP</span>
+      <span style={{fontSize: Math.max(12, Math.floor(size/3))}}>CP</span>
     </div>
   )
 }

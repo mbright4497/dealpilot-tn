@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 /*
 Migration note: create profiles table if not exists
 

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 // app/api/contracts/upload/route.ts
 import { NextResponse } from "next/server";
 import { z } from "zod";
