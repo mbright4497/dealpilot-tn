@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import {NextResponse} from 'next/server'
 export async function GET(){
   // TODO: fetch real conversation history from Supabase for requested deal/user

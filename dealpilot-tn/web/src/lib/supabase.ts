@@ -18,3 +18,17 @@ export function getSupabaseSafe(){
   }
 }
 
+
+// Compatibility exports for existing code expecting these helpers
+export const createClient = (url: string, key: string) => _createClient(url, key)
+
+// Simple server helper alias (previous code used supabaseService)
+export const supabaseService = () => getSupabaseSafe()
+
+// Auth helper stubs used across the app - real implementations live elsewhere
+export async function requireUserId(req: Request){
+  // placeholder: in production this should verify auth and return user id
+  throw new Error('requireUserId not implemented in local dev')
+}
+
+export const supabaseUser = () => ({ user: null })
