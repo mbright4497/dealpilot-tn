@@ -3,6 +3,7 @@ import React, {useEffect, useState, useRef} from 'react'
 
 export default function CommunicationsPage(){
   const [contacts,setContacts]=useState<any[]>([])
+  const [overdue,setOverdue]=useState<string[]>([])
   const [selected,setSelected]=useState<any>(null)
   const [logs,setLogs]=useState<any[]>([])
   const [templates,setTemplates]=useState<any[]>([])
@@ -12,6 +13,7 @@ export default function CommunicationsPage(){
   useEffect(()=>{
     fetch('/api/communications/contacts?deal_id=all').then(r=>r.json()).then(j=>{ if(j.ok) setContacts(j.contacts||[]) }).catch(()=>setContacts([]))
     fetch('/api/communications/templates').then(r=>r.json()).then(j=>{ if(j.ok) setTemplates(j.templates||[]) }).catch(()=>setTemplates([]))
+    fetch('/api/communications/scheduler').then(r=>r.json()).then(j=>{ if(j.ok) setOverdue((j.overdue||[]).map((c:any)=>c.id)) }).catch(()=>setOverdue([]))
   },[])
 
   async function loadLogs(contact:any){
@@ -35,7 +37,7 @@ export default function CommunicationsPage(){
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white">{(c.contacts?.name||'')[0]||'?'}</div>
                   <div>
-                    <div className="font-medium">{c.contacts?.name}</div>
+                    <div className="flex items-center gap-2"><div className="font-medium">{c.contacts?.name}</div>{overdue.includes(c.contact_id) && <div className="text-xs bg-red-600 text-white px-2 py-0.5 rounded">Update due</div>}</div>
                     <div className="text-xs text-gray-400">{c.role}</div>
                   </div>
                 </div>
