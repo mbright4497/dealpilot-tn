@@ -89,7 +89,12 @@ export async function GET(req: Request){
     }
 
     // ensure common roles exist for UI/tests
-    if(!grouped.client) grouped.client = allContacts.filter((c:any)=>c.role==='client')
+    if(!grouped.client) {
+      grouped.client = allContacts.filter((c:any)=>c.role==='client')
+      if((grouped.client||[]).length===0 && Array.isArray(data)){
+        grouped.client = (data || []).map((r:any)=>({ name: r.contacts?.name || r.contacts?.fullname || '', id: r.contacts?.id }))
+      }
+    }
 
     return NextResponse.json({ contacts: allContacts, grouped })
   }catch(err:any){
