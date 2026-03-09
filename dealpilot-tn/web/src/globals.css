@@ -39,3 +39,16 @@
 
 /* Utility */
 .flex-center{display:flex;align-items:center;justify-content:center}
+
+
+/* Light theme tokens (prefers-color-scheme fallback) */
+@media (prefers-color-scheme: light){
+  :root{--bg:#f7fafc;--card-bg:#ffffff;--card-border:rgba(13,38,63,0.06);--accent:#f97316}
+}
+
+/* Mobile responsive helpers */
+.stack-sm{display:block}
+@media(min-width:768px){.stack-md{display:flex;gap:1rem}}
+
+/* Dark theme explicit class */
+.dark-theme{--bg:#061021;--card-bg:rgba(10,20,34,0.9);--card-border:rgba(71,85,105,0.35);--accent:#f97316}
