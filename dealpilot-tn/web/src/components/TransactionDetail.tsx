@@ -326,51 +326,126 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
+      {/* HEADER: compact */}
       <div className="flex items-center justify-between mb-4">
-        <div>
+        <div className="flex items-center gap-4">
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold mt-1">{String(mergedTx.address || '').replace(/\}/g, '')}</h2>
-            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
+          <div>
+            <div className="text-lg font-bold">{String(mergedTx.address || '').replace(/\}/g,'')}</div>
+            <div className="text-sm text-gray-300">{String(mergedTx.client || '').replace(/\}/g,'')} • {fmtDate(mergedTx.binding)} → {fmtDate((mergedTx as any).closing_date || mergedTx.closing)}{ (mergedTx.closing && daysUntil(mergedTx.closing)!==null) ? ` • ${daysUntil(mergedTx.closing)}d` : '' }</div>
           </div>
-          <div className="text-sm text-gray-300 font-semibold">Client: {String(mergedTx.client || '').replace(/\}/g, '')} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
-        <div className="text-right text-sm text-gray-300">
-          <div>Binding: <span className="font-semibold">{fmtDate(mergedTx.binding)}</span></div>
-          <div>Closing: <span className="font-semibold">{fmtDate((mergedTx as any).closing_date || mergedTx.closing)}</span></div>
+        <div>
+          <div className={`px-3 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700' : health?.status==='at_risk' ? 'bg-red-50 text-red-700' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status) : `#${transaction.id}`}</div>
         </div>
       </div>
 
-      {/* Document compliance bar */}
-      {(() => {
-        try{
-          const side = transaction.type === 'seller' ? 'seller' : 'buyer'
-          const cfg = getTransactionConfig({ state: 'TN', side })
-          const requiredDocs: any[] = []
-          for(const ph of cfg.phases){ for(const d of ph.documents){ if(d.requirement && d.requirement.level==='required') requiredDocs.push(d) }}
-          const total = requiredDocs.length
-          let done = 0
-          const missing: any[] = []
-          for(const d of requiredDocs){ const rec = documentsByKey[d.key]; if(rec && (rec.status==='uploaded' || rec.status==='signed')) done++; else missing.push(d) }
-          return (
-            <DocumentComplianceBar requiredTotal={total} doneCount={done} missingDocs={missing} onSelectMissing={(k:string)=>{ setMode('documents'); setTimeout(()=>{},20) }} />
-          )
-        }catch(e){ return null }
-      })()}
+      {/* EVA HERO (top) */}
+      <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6" style={{minHeight:'40vh'}}>
+        <div className="mb-2 text-sm text-gray-300">Eva — Deal Assistant</div>
+        <div className="h-[60%] overflow-auto p-2 bg-gray-800 rounded mb-3">
+          {chatMessages.map((m,i)=>(
+            <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
+              <div className={`inline-block p-2 rounded ${m.from==='assistant' ? 'bg-gray-700 text-gray-100' : 'bg-orange-500 text-black'}`}>{String(m.text||'').replace(/\}/g,'')}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 items-center">
+          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Eva about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" />
+          <button onClick={async ()=>{ if(!input) return; await sendAIMessage(input); setInput('') }} className="px-4 py-2 bg-orange-500 rounded">Ask</button>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button onClick={async ()=>{ await sendAIMessage("What's missing?") }} className="px-3 py-1 bg-gray-800 rounded">What's missing?</button>
+          <button onClick={async ()=>{ await sendAIMessage('Draft follow-up email') }} className="px-3 py-1 bg-gray-800 rounded">Draft follow-up email</button>
+          <button onClick={()=>setMode('deadlines')} className="px-3 py-1 bg-gray-800 rounded">Show deadlines</button>
+          <button onClick={()=>setShowIntake(true)} className="px-3 py-1 bg-gray-800 rounded">Upload document</button>
+        </div>
+      </div>
 
+      {/* PROGRESS TIMELINE */}
+      <div className="mb-4 p-3 bg-[#0d1b2a] rounded border border-white/6">
+        <div className="text-sm text-gray-300 mb-2">Timeline</div>
+        <div className="flex items-center gap-2">
+          {['Consultation','Binding','Under Contract','Post-Inspection','Closing','Closed'].map((s,i)=>{
+            const cur = (transaction?.status==='Closed' ? 5 : Math.floor(combinedProgress()/20))
+            const active = i <= cur
+            return <div key={s} className={`flex-1 text-center py-2 rounded text-xs ${active ? 'bg-orange-500 text-white' : 'bg-gray-700 text-gray-300'}`}>{s}</div>
+          })}
+        </div>
+      </div>
 
-      {/* pill toggles */}
+      {/* DOCUMENT COMPLIANCE (compact) */}
+      <div className="mb-4 flex items-center justify-between">
+        <div style={{flex:1}}>
+          {(() => {
+            try{
+              const side = transaction.type === 'seller' ? 'seller' : 'buyer'
+              const cfg = getTransactionConfig({ state: 'TN', side })
+              const requiredDocs: any[] = []
+              for(const ph of cfg.phases){ for(const d of ph.documents){ if(d.requirement && d.requirement.level==='required') requiredDocs.push(d) }}
+              const total = requiredDocs.length
+              let done = 0
+              const missing: any[] = []
+              for(const d of requiredDocs){ const rec = documentsByKey[d.key]; if(rec && (rec.status==='uploaded' || rec.status==='signed')) done++; else missing.push(d) }
+              return <DocumentComplianceBar requiredTotal={total} doneCount={done} missingDocs={missing} onSelectMissing={(k:string)=>{ setMode('documents'); setTimeout(()=>{},20) }} />
+            }catch(e){ return null }
+          })()}
+        </div>
+        <div className="ml-4 text-sm text-gray-300">{/* compact text */}{Object.keys(documentsByKey).length ? `${Object.keys(documentsByKey).length} docs` : ''}</div>
+      </div>
+
+      {/* QUICK ACTIONS */}
+      <div className="mb-4 flex gap-3">
+        <button onClick={()=>{ const input = ensureInput('upload'); if(input) input.click() }} className="px-4 py-2 bg-orange-500 rounded">Upload Document</button>
+        <button onClick={()=>setShowAddContact(true)} className="px-4 py-2 bg-gray-800 rounded">View Parties</button>
+        <button onClick={()=>setEditOpen(true)} className="px-4 py-2 bg-gray-800 rounded">Edit Deal</button>
+      </div>
+
+      {/* Compact checklist area */}
+      <div className="mb-4 p-3 bg-[#0d1b2a] rounded border border-white/6">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-300">Checklist</div>
+          <div className="text-sm text-gray-300">{checklistProgress(checklist)}%</div>
+        </div>
+        <div className="mt-3">
+          <button onClick={()=>setMode('documents')} className="px-3 py-1 bg-gray-800 rounded">Open Document Checklist</button>
+        </div>
+      </div>
+
+      {/* small timeline & deadlines list */}
       <div className="mb-4">
-        <div className="inline-flex bg-gray-800 rounded-full p-1">
-          <button onClick={()=>setMode('overview')} className={`px-4 py-1 rounded-full ${mode==='overview' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Overview</button>
-          <button onClick={()=>setMode('documents')} className={`px-4 py-1 rounded-full ${mode==='documents' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Documents</button>
-          <button onClick={()=>setMode('parties')} className={`px-4 py-1 rounded-full ${mode==='parties' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Parties</button>
-          <button onClick={()=>setMode('deadlines')} className={`px-4 py-1 rounded-full ${mode==='deadlines' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Deadlines</button>
-          <button onClick={()=>setMode('communications')} className={`px-4 py-1 rounded-full ${mode==='communications' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Communications</button>
+        <h4 className="text-sm text-gray-300 mb-2">Upcoming Deadlines</h4>
+        <div className="space-y-2">
+          {(dealDeadlines||[]).slice(0,5).map((d,i)=> (
+            <div key={i} className="p-2 bg-gray-800 rounded flex items-center justify-between">
+              <div className="text-sm">{d.title}</div>
+              <div className="text-sm text-gray-300">{d.date ? fmtDate(d.date) : 'TBD'}</div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Overview / Parties / Communications tabs content */}
+      <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+transaction.id); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
+
+      {showIntake && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="w-full max-w-5xl mx-4">
+            <ContractIntake onCancel={()=>setShowIntake(false)} onConfirm={async (parsed:any)=>{
+              try{
+                await fetch(`/api/deals/${transaction.id}/contract`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ extracted: parsed, pdfUrl: null }) })
+                setContractData(parsed)
+                const ref = await fetch(`/api/documents/${transaction.id}`)
+                if(ref.ok){ const rj = await ref.json(); setDocs(rj || []) }
+                const res = await fetch(`/api/deal-state/${transaction.id}`)
+                if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) }
+              }catch(e){ console.error(e) }
+              setShowIntake(false)
+            }} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
       {mode==='overview' && (
         <div className="p-4 rounded bg-[#061021]" style={{border: '1px solid rgba(249,115,22,0.12)'}}>
           <div className="mb-4">
