@@ -31,7 +31,37 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
           <div className="text-xs text-gray-400 mt-2">{progress}% • {daysToClose===null? 'TBD' : `${daysToClose}d to close`} • {tx.closing? tx.closing : 'No closing date'}</div>
         </div>
         <div className="mt-3 flex gap-2">
-          <button onClick={()=>{ addMessage({ id:`tell-${tx.id}-${Date.now()}`, role:'user', content: `Tell me about ${tx.address}` }); }} className="px-3 py-1 rounded bg-cyan-500 text-black">View Deal</button>
+          <button onClick={()=>{
+            // Ask Eva to show deal detail inline
+            addMessage({ id:`deal-detail-${tx.id}-${Date.now()}`, role:'eva', content: `Details for ${tx.address}`, payload: { type: 'deal_detail', data: tx } })
+            // also emit an event so page-level listeners can open legacy detail if needed
+            if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:viewDeal', { detail: { id: tx.id } }))
+          }} className="px-3 py-1 rounded bg-cyan-500 text-black">View Deal</button>
+        </div>
+      </div>
+    )
+  }
+  if(t==='deal_detail'){
+    const d = payload.data
+    const daysToClose = d.closing ? Math.max(0, Math.ceil((new Date(d.closing).getTime()-Date.now())/(1000*60*60*24))) : null
+    const progress = d.current_state === 'closed' ? 100 : d.current_state === 'draft' ? 10 : d.current_state === 'inspection_period' ? 65 : 40
+    return (
+      <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded-lg shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-semibold text-white">{String(d.address||'')}</div>
+            <div className="text-sm text-gray-300">{String(d.client||'')}</div>
+          </div>
+          <div className="text-sm text-gray-300">{daysToClose===null? 'TBD' : `${daysToClose}d`}</div>
+        </div>
+        <div className="mt-3">
+          <div className="w-full bg-gray-700 rounded-full h-2"><div className="h-2 rounded-full bg-cyan-400" style={{width:`${progress}%`}} /></div>
+          <div className="text-xs text-gray-400 mt-2">{progress}% • {d.closing? d.closing : 'No closing date'}</div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button onClick={()=>{ if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:uploadDocument', { detail: { dealId: d.id } })) }} className="px-3 py-1 rounded bg-gray-800 text-white">Upload Document</button>
+          <button onClick={()=>{ if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:viewParties', { detail: { dealId: d.id } })) }} className="px-3 py-1 rounded bg-gray-800 text-white">View Parties</button>
+          <button onClick={()=>{ if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:editDeal', { detail: { dealId: d.id } })) }} className="px-3 py-1 rounded bg-gray-800 text-white">Edit Deal</button>
         </div>
       </div>
     )
