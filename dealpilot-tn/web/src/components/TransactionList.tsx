@@ -1,5 +1,10 @@
 'use client'
 import React, {useState} from 'react'
+
+function formatDate(d: string): string {
+  const [y, m, day] = d.split('-')
+  return new Date(Number(y), Number(m) - 1, Number(day)).toLocaleDateString()
+}
 import ContractIntake from './ContractIntake'
 interface Transaction {
   id: number
@@ -97,8 +102,8 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 <td className="p-3 text-gray-300">{l.type}</td>
                 <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' : l.current_state === 'draft' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : l.current_state === 'inspection_period' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : l.current_state === 'post_inspection' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>{(l as any).state_label || '—'}</span></td>
                 
-                <td className="p-3 text-gray-400">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</td>
-                <td className="p-3 text-gray-400">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</td>
+                <td className="p-3 text-gray-400">{l.binding ? formatDate(l.binding) : '—'}</td>
+                <td className="p-3 text-gray-400">{l.closing ? formatDate(l.closing) : '—'}</td>
                 <td className="p-3">
                   <div className="flex items-center gap-3">
                     {/* Comms badge: shows last comm date and flags overdue (>=3 days) */}
@@ -131,8 +136,8 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                       <div className="grid grid-cols-2 gap-2">
                         <p>Client: <span className="font-medium text-white">{(l.client==='}'? '' : l.client)}</span></p>
                         <p>Type: <span className="font-medium text-white">{l.type}</span></p>
-                        <p>Binding: <span className="font-medium text-white">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</span></p>
-                        <p>Closing: <span className="font-medium text-white">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</span></p>
+                        <p>Binding: <span className="font-medium text-white">{l.binding ? formatDate(l.binding) : '—'}</span></p>
+                        <p>Closing: <span className="font-medium text-white">{l.closing ? formatDate(l.closing) : '—'}</span></p>
                       </div>
                       <button onClick={()=>onViewChecklist(l.id)} className="mt-3 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">Open Transaction Checklist</button>
                     </div>

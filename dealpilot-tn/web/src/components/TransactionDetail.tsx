@@ -125,7 +125,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   },[transaction.id])
 
   // helpers for dates and formatting
-  const fmtDate = (d?:string|Date|null)=>{ if(!d) return '—'; try{ const dt = typeof d==='string'? new Date(d): d; return isNaN(dt.getTime())? '—' : dt.toLocaleDateString() }catch(e){ return '—' } }
+  const fmtDate = (d?:string|Date|null)=>{ if(!d) return '—'; try{ if(typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)){ const [y,m,day] = d.split('-'); const dt = new Date(Number(y), Number(m)-1, Number(day)); return dt.toLocaleDateString() } const dt = typeof d === 'string'? new Date(d) : d as Date; return isNaN((dt as Date).getTime())? '—' : (dt as Date).toLocaleDateString() }catch(e){ return '—' } }
   const daysUntil = (d?:string|Date|null)=>{ if(!d) return null; const t = new Date(d).getTime(); if(isNaN(t)) return null; return Math.ceil((t-Date.now())/(1000*60*60*24)) }
 
   function genDeadlinesFromRemote(){
@@ -782,7 +782,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                     <div key={it.key} className="p-2 bg-gray-700 rounded flex justify-between items-center">
                       <div>
                         <div className="font-semibold">{it.title}</div>
-                        <div className="text-xs text-gray-400">{new Date(it.updated_at).toLocaleDateString()}</div>
+                        <div className="text-xs text-gray-400">{fmtDate(it.updated_at)}</div>
                       </div>
                       <input type="checkbox" checked={it.status==='done'} onChange={()=>{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]) }} />
                     </div>
