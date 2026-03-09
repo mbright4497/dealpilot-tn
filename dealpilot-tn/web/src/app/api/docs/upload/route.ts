@@ -17,15 +17,28 @@ export async function POST(req: Request) {
     const originalName = file.name || `${uuidv4()}.pdf`
     const filename = originalName
     const ext = (filename.split('.').pop() || 'pdf')
-    const storagePath = `contracts/docs/${transaction_id || 'unlinked'}/${uuidv4()}.${ext}`
+    const bucketName = 'documents'
+    const storagePath = `documents/docs/${transaction_id || 'unlinked'}/${uuidv4()}.${ext}`
 
     const supabase = createRouteHandlerClient({ cookies })
     const { data: { user } } = await supabase.auth.getUser()
-    const { error: uploadErr } = await supabase.storage.from('contracts').upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
+
+    // ensure bucket exists (create if missing)
+    try{
+      const { data: bucketList } = await supabase.storage.listBuckets()
+      const has = (bucketList || []).find((b:any)=>b.name===bucketName)
+      if(!has){
+        await supabase.storage.createBucket(bucketName, { public: true })
+      }
+    }catch(e){
+      // if listing/creation not supported in this SDK/env, continue — upload may still fail and return a clear error
+    }
+
+    const { error: uploadErr } = await supabase.storage.from(bucketName).upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
     if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 })
 
     // build public url
-    const { data: publicData } = supabase.storage.from('contracts').getPublicUrl(storagePath)
+    const { data: publicData } = supabase.storage.from(bucketName).getPublicUrl(storagePath)
     const publicUrl = publicData?.publicUrl || null
 
     // classification key
