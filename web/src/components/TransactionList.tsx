@@ -97,8 +97,8 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           {list.map(l => (
             <React.Fragment key={l.id}>
               <tr className="border-b border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all duration-200" onClick={()=>setExpanded(expanded===l.id?null:l.id)}>
-                <td className="p-3 font-medium text-gray-100">{(l.address==='}'? '' : l.address)}</td>
-                <td className="p-3 text-gray-200">{(l.client==='}'? '' : l.client)}</td>
+                <td className="p-3 font-medium text-gray-100">{String(l.address || '').replace(/\}/g, '')}</td>
+                <td className="p-3 text-gray-200">{String(l.client || '').replace(/\}/g, '')}</td>
                 <td className="p-3 text-gray-300">{l.type}</td>
                 <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' : l.current_state === 'draft' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : l.current_state === 'inspection_period' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : l.current_state === 'post_inspection' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>{(l as any).state_label || '—'}</span></td>
                 
@@ -132,9 +132,9 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 <tr>
                   <td colSpan={7} className="p-4 bg-white/5 backdrop-blur-md border-b border-white/10">
                     <div className="text-sm text-gray-300">
-                      <p className="font-semibold text-white mb-2">Transaction Details - {(l.address==='}'? '' : l.address)}</p>
+                      <p className="font-semibold text-white mb-2">Transaction Details - {String(l.address || '').replace(/\}/g, '')}</p>
                       <div className="grid grid-cols-2 gap-2">
-                        <p>Client: <span className="font-medium text-white">{(l.client==='}'? '' : l.client)}</span></p>
+                        <p>Client: <span className="font-medium text-white">{String(l.client || '').replace(/\}/g, '')}</span></p>
                         <p>Type: <span className="font-medium text-white">{l.type}</span></p>
                         <p>Binding: <span className="font-medium text-white">{l.binding ? formatDate(l.binding) : '—'}</span></p>
                         <p>Closing: <span className="font-medium text-white">{l.closing ? formatDate(l.closing) : '—'}</span></p>
