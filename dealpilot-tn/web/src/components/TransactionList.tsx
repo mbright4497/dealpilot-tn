@@ -61,7 +61,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   }
   return (
     <div>
-      {/* Skeleton when no transactions loaded */}
+      {/* skeleton */}
       {transactions.length === 0 && (
         <div className="space-y-3">
           {[...Array(6)].map((_,i)=> (
@@ -72,82 +72,78 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           ))}
         </div>
       )}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-100">Transactions</h2>
-        <div className="flex items-center gap-3">
-          <select onChange={e=>setFilter(e.target.value)} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-2 text-gray-200 hover:border-cyan-500/30 transition-all">
-            <option>All</option><option>Active</option><option>Pending</option><option>Closed</option>
-          </select>
-          <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:from-orange-400 hover:to-amber-400 hover:shadow-lg hover:shadow-orange-500/20 transition-all duration-300 font-semibold">Add Transaction</button>
-        </div>
-      </div>
-      <table className="w-full bg-white/5 backdrop-blur-md shadow-xl rounded-2xl overflow-hidden border border-white/10">
-        <thead className="bg-white/5">
-          <tr>
-            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Address</th>
-            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Client</th>
-            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
-            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Lifecycle</th>
-            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Binding Date</th>
-            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Closing Date</th>
-            <th className="p-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.map(l => (
-            <React.Fragment key={l.id}>
-              <tr className="border-b border-b border-white/5 hover:bg-white/5 cursor-pointer transition-all duration-200" onClick={()=>setExpanded(expanded===l.id?null:l.id)}>
-                <td className="p-3 font-medium text-gray-100">{String(l.address || '').replace(/\}/g, '')}</td>
-                <td className="p-3 text-gray-200">{String(l.client || '').replace(/\}/g, '')}</td>
-                <td className="p-3 text-gray-300">{l.type}</td>
-                <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' : l.current_state === 'draft' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : l.current_state === 'inspection_period' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : l.current_state === 'post_inspection' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>{(l as any).state_label || '—'}</span></td>
-                
-                <td className="p-3 text-gray-400">{l.binding ? formatDate(l.binding) : '—'}</td>
-                <td className="p-3 text-gray-400">{l.closing ? formatDate(l.closing) : '—'}</td>
-                <td className="p-3">
-                  <div className="flex items-center gap-3">
-                    {/* Comms badge: shows last comm date and flags overdue (>=3 days) */}
-                    {(() => {
-                      const badge = (window as any).__commsByTx && (window as any).__commsByTx[l.id]
-                      if (badge) {
-                        const overdue = badge.overdue
-                        return (
-                          <div className={`px-2 py-1 text-xs font-semibold rounded-full ${overdue ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-100'}`} title={`Last comm: ${new Date(badge.last_comm).toLocaleString()}`}>
-                            {overdue ? `Follow-up ${badge.days_since}d` : `Last: ${new Date(badge.last_comm).toLocaleDateString()}`}
-                          </div>
-                        )
-                      }
-                      return <div className="px-2 py-1 text-xs rounded-full bg-white/5 text-gray-300">No comms</div>
-                    })()}
 
-                    <div className="flex gap-2">
-                      <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500/20 text-orange-300 text-sm rounded-lg border border-orange-500/30 hover:bg-orange-500/40 hover:shadow-orange-500/10 hover:shadow-lg transition-all duration-200">Open Deal</button>
-                      <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-white/5 text-gray-300 text-xs rounded-lg border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 font-medium transition-all duration-200">Checklist</button>
-                      <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 text-xs font-medium transition-all duration-200">Delete</button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-              {expanded===l.id && (
-                <tr>
-                  <td colSpan={7} className="p-4 bg-white/5 backdrop-blur-md border-b border-white/10">
-                    <div className="text-sm text-gray-300">
-                      <p className="font-semibold text-white mb-2">Transaction Details - {String(l.address || '').replace(/\}/g, '')}</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        <p>Client: <span className="font-medium text-white">{String(l.client || '').replace(/\}/g, '')}</span></p>
-                        <p>Type: <span className="font-medium text-white">{l.type}</span></p>
-                        <p>Binding: <span className="font-medium text-white">{l.binding ? formatDate(l.binding) : '—'}</span></p>
-                        <p>Closing: <span className="font-medium text-white">{l.closing ? formatDate(l.closing) : '—'}</span></p>
-                      </div>
-                      <button onClick={()=>onViewChecklist(l.id)} className="mt-3 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">Open Transaction Checklist</button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
+      {/* Eva summary bar */}
+      <div className="mb-4 p-4 rounded-lg bg-[#061021] border border-white/6">
+        {(() => {
+          const activeCount = transactions.filter(t=> (t.status||'').toLowerCase() !== 'closed').length
+          const needs = transactions.find(t => !t.binding || t.binding === '' )
+          const highlight = needs ? `${String(needs.address||'').replace(/\}/g,'') } needs attention — missing binding` : (transactions[0] ? `${String(transactions[0].address||'').replace(/\}/g,'')} is on track` : 'No active deals')
+          return (
+            <div className="flex items-center justify-between gap-4">
+              <div className="text-sm text-gray-300">You have <span className="font-semibold text-white">{activeCount}</span> active deals.</div>
+              <div className="text-sm text-gray-300">{highlight}</div>
+              <div />
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* pill tabs */}
+      <div className="mb-4">
+        <div className="inline-flex rounded-full bg-gray-800 p-1">
+          {['All','Active','Pending','Closed'].map(p=> (
+            <button key={p} onClick={()=>setFilter(p)} className={`px-4 py-1 rounded-full ${filter===p ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>{p}</button>
           ))}
-        </tbody>
-      </table>
+        </div>
+        <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="ml-4 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:from-orange-400 hover:to-amber-400 transition-all">Add Transaction</button>
+      </div>
+
+      {/* card grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {list.map(tx=>{
+          const state = (tx.current_state||'').toLowerCase()
+          const stateMap:any = { draft:10, active:45, inspection_period:65, post_inspection:80, closed:100 }
+          const percent = stateMap[state] ?? (tx.status==='Closed'?100:40)
+          const daysToClose = tx.closing ? Math.max(0, Math.ceil((new Date(tx.closing).getTime() - Date.now())/(1000*60*60*24))) : null
+          return (
+            <div key={tx.id} onClick={()=>{ if(onOpenDeal) onOpenDeal(tx.id) }} className="p-4 rounded-lg bg-[#0d1b2a] border border-white/6 hover:shadow-lg hover:shadow-orange-500/10 cursor-pointer transition-all">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-lg font-bold text-white">{String(tx.address||'').replace(/\}/g,'')}</div>
+                  <div className="text-sm text-gray-300">{String(tx.client||'').replace(/\}/g,'')}</div>
+                </div>
+                <div className="text-right">
+                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${tx.current_state==='closed' ? 'bg-gray-500/20 text-gray-300' : tx.current_state==='draft' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-blue-500/20 text-blue-300'}`}>{(tx as any).state_label||tx.status||'—'}</div>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <svg className="w-12 h-12" viewBox="0 0 36 36">
+                    <path className="text-gray-800" d="M18 2a16 16 0 1 0 16 16A16 16 0 0 0 18 2" fill="#0f1724"/>
+                    <path className="text-orange-400" d="M18 2a16 16 0 1 0 16 16A16 16 0 0 0 18 2" stroke="#0f1724" stroke-width="0" fill="none"/>
+                    <circle cx="18" cy="18" r="10" fill="transparent" stroke="#111827" stroke-width="4"/>
+                    <circle cx="18" cy="18" r="10" fill="transparent" stroke="#F97316" stroke-width="4" stroke-dasharray={`${percent} 100`} stroke-dashoffset="25" stroke-linecap="round"/>
+                    <text x="18" y="20" fill="#fff" font-size="8" text-anchor="middle" className="font-mono">{percent}%</text>
+                  </svg>
+                  <div className="text-sm text-gray-300">
+                    <div>Days to close</div>
+                    <div className="font-semibold text-white">{daysToClose===null? 'TBD' : `${daysToClose}d`}</div>
+                  </div>
+                </div>
+
+                <div className="text-sm text-gray-400">
+                  <div>Closing</div>
+                  <div className="font-semibold text-white">{tx.closing ? formatDate(tx.closing) : '—'}</div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
       {successMsg && (
         <div className="mb-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">{successMsg}</div>
       )}
