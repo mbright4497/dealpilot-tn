@@ -90,9 +90,7 @@ function NavIcon({ name }: { name: string }) {
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'transactions', label: 'Transactions' },
-  { id: 'forms', label: 'Deal Playbook' },
   { id: 'deadlines', label: 'Deadlines' },
-  { id: 'tx-steps', label: 'Deal Progress'  },
 ]
 
 

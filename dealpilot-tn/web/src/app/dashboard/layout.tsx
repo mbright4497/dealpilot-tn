@@ -10,7 +10,6 @@ const navItems = [
   { href: '/dashboard/documents', label: 'Documents', icon: '📄' },
   { href: '/dashboard/checklists', label: 'Checklists', icon: '✅' },
   { href: '/dashboard/offers', label: 'Offer Scores', icon: '🏷' },
-  { href: '/dashboard/transaction-steps', label: 'TX Steps', icon: '📋' },
   { href: '/dashboard/contracts', label: 'RF401 Guide', icon: '📑' },
   { href: '/dashboard/chat', label: 'AI Chat', icon: '🤖' },
 ];
