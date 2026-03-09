@@ -165,23 +165,51 @@ export default function ContractUpload({ dealId, onExtracted, onSave, onDelete }
 
   const handleSave = async () => {
     if (!extractedData) return;
+
+    // Primary: apply extraction to deal (maps to transactions + contacts + deadlines)
     try {
-      const res = await fetch(`/api/deals/${dealId}/contract`, {
-        method: 'PUT',
+      const res = await fetch('/api/deals/apply-extraction', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ extracted: extractedData, pdfUrl: pdfUrl }),
+        body: JSON.stringify({ dealId, extracted: extractedData, pdfUrl }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        console.warn('API save failed:', err);
+        console.warn('apply-extraction failed:', err);
       }
     } catch (e) {
-      console.warn('Save to Supabase failed, falling back to localStorage', e);
+      console.warn('apply-extraction error, falling back to contract PUT', e);
+      // fallback: persist to contract endpoint
+      try {
+        await fetch(`/api/deals/${dealId}/contract`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ extracted: extractedData, pdfUrl }),
+        });
+      } catch (e2) {
+        console.warn('Fallback save failed', e2);
+      }
     }
+
+    // save locally for immediate UI persistence
     try {
       localStorage.setItem(`dp-contract-${dealId}`, JSON.stringify(extractedData));
     } catch (_e) { /* ignore */ }
-    if (onSave) onSave(extractedData);
+
+    // refresh deal-state and documents so parent UI updates without a full reload
+    try {
+      const ds = await fetch(`/api/deal-state/${dealId}`);
+      if (ds.ok) {
+        const j = await ds.json();
+        // notify parent via onSave/onExtracted with latest remote state where available
+        if (onSave) onSave({ ...extractedData, __remote: j });
+      } else {
+        if (onSave) onSave(extractedData);
+      }
+    } catch (e) {
+      if (onSave) onSave(extractedData);
+    }
+
     setSaved(true);
   };
 
