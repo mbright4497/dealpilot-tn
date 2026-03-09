@@ -136,6 +136,24 @@ export default function SettingsPage(){
                   </div>
                 </div>
                 <div className="mt-3 text-right"><button className="bg-gray-700 px-3 py-1 rounded">Configure</button></div>
+                {i.key === 'ghl' && (
+                  <div className="mt-3 text-sm text-gray-300">
+                    <div className="flex items-center gap-3">
+                      <button onClick={async ()=>{
+                        try{
+                          setSyncing(true)
+                          const res = await fetch('/api/ghl/contacts/sync',{ method: 'POST' })
+                          const j = await res.json()
+                          if(res.ok){ setLastGhlSync(new Date().toISOString()); setToast(`Sync complete: ${j.synced || 0} contacts`) }
+                          else { setToast(`Sync failed`) }
+                        }catch(e){ setToast('Sync error') }
+                        setSyncing(false)
+                        setTimeout(()=>setToast(''),4000)
+                      }} className="bg-orange-500 text-black px-3 py-1 rounded">{syncing? 'Syncing...':'Sync Contacts'}</button>
+                      <div className="text-xs text-gray-400">Last sync: {lastGhlSync ? new Date(lastGhlSync).toLocaleString() : 'Never'}</div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
