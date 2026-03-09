@@ -7,6 +7,10 @@ export default function DealPartiesPanel({ transactionId }: { transactionId?: nu
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name:'', role:'', email:'', phone:'', comm_preference:'' })
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [selectedContactId, setSelectedContactId] = useState<number|null>(null)
+  const [query, setQuery] = useState('')
+  const [suggestOpen, setSuggestOpen] = useState(false)
 
   useEffect(()=>{
     let mounted = true
@@ -57,13 +61,23 @@ export default function DealPartiesPanel({ transactionId }: { transactionId?: nu
 
         {showForm && (
           <form onSubmit={handleAdd} className="space-y-2 p-2 bg-gray-900 rounded">
+            <div className="relative">
+              <input placeholder="Search GHL contacts or type a name" value={query} onChange={async e=>{ const v=e.target.value; setQuery(v); setSelectedContactId(null); setForm({...form, name:v}); if(v && v.length>1){ try{ const r=await fetch(`/api/contacts/search?q=${encodeURIComponent(v)}&ghl_only=true`); if(r.ok){ const j=await r.json(); setSuggestions(j.contacts||[]); setSuggestOpen(true) } }catch(e){ setSuggestions([]); setSuggestOpen(false) } } else { setSuggestions([]); setSuggestOpen(false) } }} className="w-full p-2 bg-gray-800 rounded" />
+              {suggestOpen && suggestions.length>0 && (
+                <div className="absolute z-20 bg-gray-900 border border-gray-700 mt-1 w-full rounded max-h-48 overflow-auto">
+                  {suggestions.map((s:any,i:number)=> (
+                    <div key={i} className="p-2 hover:bg-gray-800 cursor-pointer" onClick={()=>{ setSelectedContactId(s.id); setForm({...form, name: s.name || '', email: s.email || '', phone: s.phone || ''}); setQuery(s.name||''); setSuggestOpen(false) }}>{s.name} <span className="text-xs text-gray-400">{s.email ? ' • '+s.email : ''}</span> <span className="ml-2 px-1 py-0.5 text-xs bg-blue-600 rounded text-white">GHL</span></div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2">
-              <input placeholder="Name" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="flex-1 p-2 bg-gray-800 rounded" />
               <input placeholder="Role" value={form.role} onChange={e=>setForm({...form, role: e.target.value})} className="w-36 p-2 bg-gray-800 rounded" />
+              <input placeholder="Email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className="flex-1 p-2 bg-gray-800 rounded" />
             </div>
             <div className="flex gap-2">
-              <input placeholder="Email" value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className="flex-1 p-2 bg-gray-800 rounded" />
-              <input placeholder="Phone" value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} className="w-36 p-2 bg-gray-800 rounded" />
+              <input placeholder="Phone" value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} className="flex-1 p-2 bg-gray-800 rounded" />
             </div>
             <div className="flex justify-end">
               <button type="button" onClick={()=>setShowForm(false)} className="px-3 py-1 bg-gray-700 rounded mr-2">Cancel</button>
