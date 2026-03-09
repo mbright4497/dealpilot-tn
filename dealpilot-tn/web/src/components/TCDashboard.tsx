@@ -1,7 +1,6 @@
 'use client'
 // Phase 11: Deterministic Deadline Layer
 import React from 'react'
-import DailyBriefing from './DailyBriefing'
 import GhlWidget from './GhlWidget'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import type { Transaction as ChatTransaction } from '@/app/chat/page'
@@ -81,67 +80,55 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
     ...( (portfolioDeadlines.next_7_days && portfolioDeadlines.next_7_days.length > 0) ? portfolioDeadlines.next_7_days : (portfolioDeadlines.all_deadlines || []).filter((d: any) => d.status === 'upcoming' || d.status === 'overdue' || d.status === 'today') ).slice(0, 6)
   ] : []
   const overdueCount = portfolioDeadlines?.overdue_count || 0
+  // compute Eva briefing
+  const activeDeals = transactions.filter(t=> (t.status||'').toLowerCase() !== 'closed')
+  const activeCount = activeDeals.length
+  // next closing deal
+  const withClosing = transactions.filter(t=> t.closing_date || t.closing)
+  const nextClosing = withClosing.map(t=>({ tx: t, date: new Date(t.closing_date || t.closing) })).sort((a,b)=>a.date.getTime()-b.date.getTime())[0]
+  // documents needed heuristic: tx with no binding or no purchase_price
+  const docsNeeded = transactions.filter(t=> !t.binding || (!((t as any).purchase_price) ) ).length
+  const evaBrief = `Good afternoon, ${userName || 'there'}. You have ${activeCount} active deals. ${ nextClosing ? `${String(nextClosing.tx.address||'').replace(/\}/g,'')} closes in ${Math.max(0, Math.ceil((nextClosing.date.getTime()-Date.now())/(1000*60*60*24)))} days — ${ (nextClosing.tx.binding ? 'on track' : 'missing binding') }.` : 'No upcoming closings.' }
+  `
+
   return (
     <div className="space-y-6">
-      <DailyBriefing userName={userName || 'there'} transactions={transactions as ChatTransaction[]} onNavigate={(dest) => onNavigate && onNavigate(dest)} onOpenDeal={(txId) => onOpenDeal && onOpenDeal(txId)} />
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* EVA Briefing (computed) */}
+      <div className="rounded-2xl border border-blue-500/20 bg-blue-500/8 p-4">
+        <div className="text-sm text-blue-200 font-semibold">EVA Briefing</div>
+        <div className="mt-2 text-white">{evaBrief}</div>
+      </div>
+
+      {/* Stats Row: Active Deals / Next Closing / Documents Needed */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📊</span>
           </div>
-          {portfolio === null ? (
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-700 rounded w-32 mb-2"></div>
-              <div className="h-4 bg-gray-700 rounded w-48"></div>
-            </div>
-          ) : (
-            <>
-              <p className="text-3xl font-bold text-white">{total}</p>
-              <p className="text-sm text-cyan-300/70 mt-1">Total Transactions</p>
-            </>
-          )}
+          <p className="text-3xl font-bold text-white">{activeCount}</p>
+          <p className="text-sm text-cyan-300/70 mt-1">Active Deals</p>
         </div>
-        {/* Portfolio Health */}
-        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${portfolio ? (portfolio.overall_status==='healthy' ? 'bg-green-500' : portfolio.overall_status==='attention' ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300'}`} />
-              <span className="text-sm font-medium">Portfolio Health</span>
-            </div>
-          </div>
-          <p className="text-3xl font-bold text-white capitalize">{portfolio ? (portfolio.overall_status === 'at_risk' ? 'At Risk' : portfolio.overall_status === 'healthy' ? 'Healthy' : portfolio.overall_status === 'attention' ? 'Needs Attention' : portfolio.overall_status) : '—'}</p>
-          <p className="text-sm text-cyan-300/70 mt-1">Overall Status</p>
-        </div>
-        {/* Deal Breakdown */}
-        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-2xl">🧾</span>
-          </div>
-          <p className="text-3xl font-bold text-white">{portfolio ? `${portfolio.summary?.healthy ?? 0}/${portfolio.summary?.attention ?? 0}/${portfolio.summary?.at_risk ?? 0}` : '—'}</p>
-          <p className="text-sm text-cyan-300/70 mt-1">Healthy / Attention / At Risk</p>
-        </div>
-        {/* Overdue Deadlines */}
-        {/* Overdue Deadlines */}
+
         <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📅</span>
           </div>
-          <p className={`text-3xl font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{portfolioDeadlines ? overdueCount : '—'}</p>
-          <p className="text-sm text-cyan-300/70 mt-1">Overdue Deadlines</p>
+          {nextClosing ? (
+            <>
+              <p className="text-3xl font-bold text-white">{String(nextClosing.tx.address||'').replace(/\}/g,'')}</p>
+              <p className="text-sm text-cyan-300/70 mt-1">{Math.max(0, Math.ceil((nextClosing.date.getTime()-Date.now())/(1000*60*60*24)))} days</p>
+            </>
+          ) : (
+            <p className="text-3xl font-bold text-white">—</p>
+          )}
         </div>
-        {/* Follow-ups (comms) */}
-        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-red-500/30 hover:shadow-lg transition-all duration-300">
+
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-2xl">📬</span>
+            <span className="text-2xl">🧾</span>
           </div>
-          <p className="text-3xl font-bold text-white">{followUps}</p>
-          <p className="text-sm text-cyan-300/70 mt-1">Transactions needing follow-up (3+ days)</p>
-        </div>
-        {/* Portfolio Risk Score */}
-        <div className="bg-gradient-to-br from-cyan-900/30 to-purple-900/30 backdrop-blur-md rounded-2xl border border-cyan-500/20 p-4">
-          <div className="text-sm text-cyan-300/70">Portfolio Risk Score</div>
-          <div className="text-2xl font-semibold">{portfolio?.portfolio_risk_score ?? '—'}%</div>
+          <p className="text-3xl font-bold text-white">{docsNeeded}</p>
+          <p className="text-sm text-cyan-300/70 mt-1">Documents Needed</p>
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
