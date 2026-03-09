@@ -248,6 +248,24 @@ export default function ChatPage() {
     return ()=>{ mounted=false }
   },[])
 
+  // Listen to Eva events for conversation-driven actions
+  useEffect(()=>{
+    const onViewDeal = (e:any) => { try{ const id = e.detail?.id; if(id) openDeal(Number(id)) }catch(_){ } }
+    const onUpload = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('add-transaction') } }catch(_){ } }
+    const onViewParties = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
+    const onEditDeal = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
+    window.addEventListener('eva:viewDeal', onViewDeal)
+    window.addEventListener('eva:uploadDocument', onUpload)
+    window.addEventListener('eva:viewParties', onViewParties)
+    window.addEventListener('eva:editDeal', onEditDeal)
+    return ()=>{
+      window.removeEventListener('eva:viewDeal', onViewDeal)
+      window.removeEventListener('eva:uploadDocument', onUpload)
+      window.removeEventListener('eva:viewParties', onViewParties)
+      window.removeEventListener('eva:editDeal', onEditDeal)
+    }
+  }, [transactions])
+
   return (
     <div className="flex h-screen bg-dp-bg-dark">
       {/* Mobile hamburger */}
