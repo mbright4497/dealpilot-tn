@@ -117,13 +117,23 @@ export async function GET() {
     let inspectionEndDate: string | null = null
     let purchasePrice = 0
     let integrity = { valid: true, errors: [] as string[] }
+    // additional fields from transactions table
+    let buyer_names: string | null = (tx as any).buyer_names || null
+    let seller_names: string | null = (tx as any).seller_names || null
+    let earnest_money: number | null = (tx as any).earnest_money || null
+    let value: any = (tx as any).value || null
 
     if (ds) {
       lifecycle = computeLifecycleState(ds)
-      bindingDate = ds.binding_date
-      closingDate = ds.closing_date
-      inspectionEndDate = ds.inspection_end_date
-      purchasePrice = ds.purchase_price || 0
+      // prefer deal_state values but fall back to transactions table fields
+      bindingDate = ds.binding_date || (tx as any).binding || null
+      closingDate = ds.closing_date || (tx as any).closing || null
+      inspectionEndDate = ds.inspection_end_date || (tx as any).inspection_end_date || null
+      purchasePrice = ds.purchase_price || (tx as any).purchase_price || (tx as any).value || 0
+      buyer_names = ds.buyer_names || buyer_names
+      seller_names = ds.seller_names || seller_names
+      earnest_money = ds.earnest_money || earnest_money
+      value = ds.value || value
 
       // Run lifecycle integrity validation
       integrity = validateLifecycleIntegrity(ds)
