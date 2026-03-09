@@ -17,6 +17,7 @@ import TransactionStepper from '@/components/TransactionStepper'
 import ContractViewer from '@/components/ContractViewer'
 import ContractIntake from '@/components/ContractIntake'
 import MobileSidebar from '@/components/MobileSidebar'
+import EvaMainView from '@/components/eva/EvaMainView'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
