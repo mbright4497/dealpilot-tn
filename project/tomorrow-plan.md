@@ -1,21 +1,25 @@
-# Tomorrow Plan — 2026-03-08
+# Tomorrow Plan — 2026-03-10
 
 ## Top 3 Priority Actions
-- **Agent follow-ups on builder hotspots**: Call Stone Castle Village, Colonial Heights, Willow Creek, and Boones Creek leads to confirm incentives, pre-approvals, and weekend tour slots (source: `project/follow-ups.md`).
-- **Amplify content + socials**: Post the finalized new construction post (daily-post.md) across Keller Williams and iHome channels, then boost the afternoon buyer tip (afternoon-post.md) with the `afternoon-boost` tag for real-time lead capture.
-- **GoHighLevel execution and CRM hygiene**: Trigger the builder warm-up and price drop automations (ghl-actions.md), log today’s outreach notes, and add interested buyers to the `New Construction` drip for next-day touchpoints.
+1. Execute a live web scan first thing to update market intel and follow-ups with current builder news, inventory, and rate movements; document findings for afternoon posts.
+2. Launch the Facebook ad campaign (3 variations, $20/day) and confirm lead-form/tag routing into the GHL workflow so automation can deliver the New Construction Guide instantly.
+3. Call or text the warmest prospects tagged from price-drop alerts/new construction inquiries (prioritize those within 48h of inquiry) and schedule tours for quick-move-in homes in Stone Castle Village + Colonial Heights.
 
-## Key Follow-ups
-- Confirm price change alerts for Willow Creek and Colonial Heights models; once verified, push the `price-drop` campaign and alert weekend buyers via SMS/email (from `project/follow-ups.md`).
-- Share updated timing/pricing intel with loan officers to anchor messaging around the 3.50%–3.75% rate backdrop (source: market-intel guidance and rate reminders).
-- Check with builders for any lot holds or incentive adjustments overnight, especially within Meadowview Villas and Hunter’s Ridge, before Friday-to-Saturday scroll spikes.
+## Key Follow-ups (by lead/tag)
+- **Tag: New Construction - TriCities** — Reach out within 2 hours to confirm needs, share guide, and book a builder tour.
+- **Tag: price_drop_newbuild** — Send SMS/email alert for latest incentive list and assign to agent for concierge follow-up.
+- **Tag: mortgage_interested** — Push lender rate update email and task lender partner to call the hottest leads.
 
-## Content Topics to Cover
-- Finalize the new construction social copy with actual listing links/Matt’s contact info and push it live across social channels and the landing page.
-- Refresh the afternoon buyer tip with any new quick-move-in confirmations or price drops captured after evening outreach; include direct links to the weekend preview calendar.
-- Develop a short video script highlighting the Tri-Cities market (inventory uptick, builder incentives) and the need for pre-approval + price-drop vigilance.
+## Content Topics to Publish
+- Quick-move-in spotlight: Stone Castle Village + Colonial Heights ranch options with incentives and DOM stats.
+- "Stop scrolling Zillow" hook: highlight how AI assistant delivers builder intel in 60 seconds (tie to new ad variation B).
+- First-time buyer assurance: emphasize new build warranties + energy efficiency to support ad variation C.
 
 ## Time-sensitive Opportunities
-- Weekend buyer rush (Saturday/Sunday) means quick follow-up on builder quick-move-ins; prioritize any price-drop watchers tagged `price-drop` or `afternoon-boost`.
-- Fed-rate stability messaging (3.50%–3.75%) continues to provide urgency—use it to nudge rate-sensitive buyers toward locking financing before lender rate sheets tighten.
-- Monitor for any fresh builder announcements (price resets, new phases) at DR Horton, Ryan Homes, Smith Douglas, Lennar; those updates can refresh the weekend pitch with concrete incentives.
+- DR Horton quick-move-ins in Stone Castle Village (limited inventory, DOM 10-14 days) — prioritize tours for buyers available this weekend.
+- Ryan Homes Colonial Heights incentives window closes soon; push urgency on social and SMS alerts.
+- Builder price tweaks in Willow Creek + Meadowview Villas making resale/infill competitive — keep buyers notified and ready to act before listings contract.
+
+## Web Scan
+- **Status:** SKIPPED (Brave Search API key missing).
+- **Suggested sources:** TN real estate news feeds, builder community pages (DR Horton, Ryan Homes, Smith Douglas, Lennar), Freddie/Fannie announcements, and Fed rate headlines for mortgage context.
