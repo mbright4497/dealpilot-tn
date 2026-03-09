@@ -1,11 +1,35 @@
 'use client'
-import React from 'react'
+'use client'
+import React, {useEffect} from 'react'
 import EvaConversation from './EvaConversation'
 import EvaComposer from './EvaComposer'
 import EvaRichCardRenderer from './EvaRichCardRenderer'
+import { useEva } from './EvaProvider'
 import './eva-styles.css'
 
 export default function EvaMainView({ transactions = [], onViewDeal }:{ transactions?: any[], onViewDeal?: (id:number)=>void }){
+  const { addMessage } = useEva()
+
+  useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/eva/briefing')
+        if(!res.ok) return
+        const j = await res.json()
+        if(!mounted) return
+        if(j?.message){ addMessage({ id: 'briefing-1', role: 'eva', content: j.message }) }
+        // add transaction cards
+        (transactions||[]).forEach((tx:any)=>{
+          addMessage({ id: `deal-${tx.id}`, role: 'eva', content: '', payload: { type: 'transaction_card', data: tx } })
+        })
+        // final prompt
+        addMessage({ id: 'briefing-2', role: 'eva', content: "What would you like to work on?", payload: { type: 'chips', chips: ['Check deadlines','Upload a document','Draft an email','Start new transaction'] } })
+      }catch(e){ console.error('eva briefing failed', e) }
+    })()
+    return ()=>{ mounted=false }
+  },[transactions, addMessage])
+
   return (
     <div className="eva-main bg-[#0a1628] min-h-screen flex">
       {/* Left strip */}
@@ -34,10 +58,10 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
         {/* Composer area */}
         <div className="p-4 bg-[#071022] border-t border-white/6">
           <div className="mb-2 flex gap-2">
-            <button className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">My Deals</button>
-            <button className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Add Transaction</button>
-            <button className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Deadlines</button>
-            <button className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Upload Document</button>
+            <button onClick={()=>{ addMessage({ id: 'pill-mydeals', role: 'user', content: 'My Deals' }) }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">My Deals</button>
+            <button onClick={()=>{ addMessage({ id: 'pill-addtx', role: 'user', content: 'Add Transaction' }) }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Add Transaction</button>
+            <button onClick={()=>{ addMessage({ id: 'pill-deadlines', role: 'user', content: 'Deadlines' }) }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Deadlines</button>
+            <button onClick={()=>{ addMessage({ id: 'pill-upload', role: 'user', content: 'Upload Document' }) }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Upload Document</button>
           </div>
           <EvaComposer />
         </div>
