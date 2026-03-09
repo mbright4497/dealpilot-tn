@@ -16,16 +16,43 @@ async function POST(req) {
         if (!file)
             return server_1.NextResponse.json({ error: 'no file' }, { status: 400 });
         const buffer = Buffer.from(await file.arrayBuffer());
-        const filename = `${(0, uuid_1.v4)()}.pdf`;
-        const path = `documents/${transaction_id || 'unlinked'}/${filename}`;
+        const originalName = file.name || `${(0, uuid_1.v4)()}.pdf`;
+        const filename = originalName;
+        const ext = (filename.split('.').pop() || 'pdf');
+        const bucketName = 'documents';
+        const storagePath = `documents/docs/${transaction_id || 'unlinked'}/${(0, uuid_1.v4)()}.${ext}`;
         const supabase = (0, auth_helpers_nextjs_1.createRouteHandlerClient)({ cookies: headers_1.cookies });
         const { data: { user } } = await supabase.auth.getUser();
-        const { data: uploadRes, error: uploadErr } = await supabase.storage.from('documents').upload(path, buffer, { contentType: 'application/pdf' });
+        // ensure bucket exists (create if missing)
+        try {
+            const { data: bucketList } = await supabase.storage.listBuckets();
+            const has = (bucketList || []).find((b) => b.name === bucketName);
+            if (!has) {
+                await supabase.storage.createBucket(bucketName, { public: true });
+            }
+        }
+        catch (e) {
+            // if listing/creation not supported in this SDK/env, continue — upload may still fail and return a clear error
+        }
+        const { error: uploadErr } = await supabase.storage.from(bucketName).upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' });
         if (uploadErr)
             return server_1.NextResponse.json({ error: uploadErr.message }, { status: 500 });
-        // insert documents row
+        // build public url
+        const { data: publicData } = supabase.storage.from(bucketName).getPublicUrl(storagePath);
+        const publicUrl = publicData?.publicUrl || null;
+        // classification key
         const classification = form.get('classification');
-        const { data, error } = await supabase.from('documents').insert([{ file_name: filename, path, status: 'uploaded', transaction_id: transaction_id || null, classification: classification || null, user_id: user?.id || null }]).select('*').single();
+        // insert into deal_documents
+        const { data, error } = await supabase.from('deal_documents').insert([{
+                deal_id: transaction_id ? Number(transaction_id) : null,
+                doc_key: classification || null,
+                file_name: filename,
+                file_url: publicUrl,
+                status: 'uploaded',
+                uploaded_at: new Date().toISOString(),
+                storage_path: storagePath,
+                user_id: user?.id || null,
+            }]).select().single();
         if (error)
             return server_1.NextResponse.json({ error: error.message }, { status: 500 });
         return server_1.NextResponse.json({ document: data });
