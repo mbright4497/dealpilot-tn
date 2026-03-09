@@ -18,6 +18,7 @@ import ContractViewer from '@/components/ContractViewer'
 import ContractIntake from '@/components/ContractIntake'
 import MobileSidebar from '@/components/MobileSidebar'
 import EvaMainView from '@/components/eva/EvaMainView'
+import { EvaProvider } from '@/components/eva/EvaProvider'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -337,7 +338,7 @@ export default function ChatPage() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
-        {view === 'dashboard' && <EvaMainView transactions={transactions} onViewDeal={openDeal} />}
+        {view === 'dashboard' && <EvaProvider><EvaMainView transactions={transactions} onViewDeal={openDeal} /></EvaProvider>}
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
             <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} /></>)}
