@@ -341,6 +341,28 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       </div>
 
+      {/* EVA HERO (top) - small iterative addition */}
+      <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6">
+        <div className="mb-2 text-sm text-gray-300">Eva — Deal Assistant</div>
+        <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
+          {chatMessages.map((m,i)=>(
+            <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
+              <div className={`inline-block p-2 rounded ${m.from==='assistant' ? 'bg-gray-700 text-gray-100' : 'bg-orange-500 text-black'}`}>{String(m.text||'').replace(/\}/g,'')}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 items-center">
+          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Eva about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" />
+          <button onClick={async ()=>{ if(!input) return; await sendAIMessage(input); setInput('') }} className="px-4 py-2 bg-orange-500 rounded">Ask</button>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button onClick={async ()=>{ await sendAIMessage("What's missing?") }} className="px-3 py-1 bg-gray-800 rounded">What's missing?</button>
+          <button onClick={async ()=>{ await sendAIMessage('Draft follow-up email') }} className="px-3 py-1 bg-gray-800 rounded">Draft follow-up email</button>
+          <button onClick={()=>setMode('deadlines')} className="px-3 py-1 bg-gray-800 rounded">Show deadlines</button>
+          <button onClick={()=>setShowIntake(true)} className="px-3 py-1 bg-gray-800 rounded">Upload document</button>
+        </div>
+      </div>
+
       {/* Document compliance bar */}
       {(() => {
         try{
