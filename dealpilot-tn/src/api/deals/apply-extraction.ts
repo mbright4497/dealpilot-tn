@@ -20,19 +20,28 @@ router.post('/apply-extraction', async (req,res)=>{
 
     // map extraction to transaction fields
     const txUpdates = mapExtractionToTransaction(data);
+
+    // ensure we persist contacts into transactions.contacts jsonb and into deal_contacts table
+    const contactsToUpsert = txUpdates.contacts && Array.isArray(txUpdates.contacts) ? txUpdates.contacts : (data.contacts && Array.isArray(data.contacts) ? data.contacts : []);
+
+    // upsert transaction row (includes binding/closing_date/value)
     await supabaseAdmin.from('transactions').upsert({ deal_id: dealId, ...txUpdates }, { onConflict: 'deal_id' });
 
-    // upsert contacts
-    if (data.contacts && Array.isArray(data.contacts)){
-      for (const c of data.contacts){
-        const contactPayload = { deal_id: dealId, name: c.name, email: c.email, phone: c.phone, role: c.role };
-        await supabaseAdmin.from('deal_contacts').upsert(contactPayload, { onConflict: ['deal_id','role'] });
+    // persist contacts both as normalized rows and as jsonb in transactions
+    if (Array.isArray(contactsToUpsert) && contactsToUpsert.length){
+      for (const c of contactsToUpsert){
+        const contactPayload = { deal_id: dealId, name: c.name, email: c.email || null, phone: c.phone || null, role: c.role || null };
+        try{ await supabaseAdmin.from('deal_contacts').upsert(contactPayload, { onConflict: ['deal_id','role'] }); }catch(_e){}
       }
+      // also update transactions.contacts jsonb column for quick reads
+      try{
+        await supabaseAdmin.from('transactions').update({ contacts: contactsToUpsert }).eq('deal_id', dealId);
+      }catch(_e){}
     }
 
     // compute deadlines using timeline engine helper
-    // expect txUpdates to include contract_date or binding_date
-    const bindingDate = (txUpdates as any).contract_date || (txUpdates as any).binding_date || (txUpdates as any).contractDate;
+    // expect txUpdates to include binding or contract_date
+    const bindingDate = (txUpdates as any).binding || (txUpdates as any).contract_date || (txUpdates as any).binding_date || (txUpdates as any).contractDate;
     if (bindingDate){
       const deadlines = generateDeadlinesForDeal(dealId, bindingDate, { inspection_days: txUpdates.inspection_days, financingType: txUpdates.financingType });
       if (deadlines && deadlines.length){
