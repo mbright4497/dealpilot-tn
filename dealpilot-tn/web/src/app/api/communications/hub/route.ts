@@ -101,6 +101,11 @@ export async function GET(req: Request){
 
     if(!grouped.client) grouped.client = []
 
+    // DEBUG: log to help diagnose test mocks (temporary)
+    try{ console.log('[COMM-HUB] rawData=', JSON.stringify(data)) }catch(e){}
+    try{ console.log('[COMM-HUB] allContacts=', JSON.stringify(allContacts)) }catch(e){}
+    try{ console.log('[COMM-HUB] groupedKeys=', Object.keys(grouped || {})) }catch(e){}
+
     return NextResponse.json({ contacts: allContacts, grouped })
 
     return NextResponse.json({ contacts: allContacts, grouped })
