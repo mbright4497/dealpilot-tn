@@ -685,8 +685,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       )}
 
-      {/* Deal Room: reuse previous tabs (contract, documents, contacts, checklist, forms, assistant) */}
-      {mode==='documents' && (
+      {/* Deal Room / other panels — only show in Overview (not in Documents tab) */}
+      {mode==='overview' && (
         <div>
           <div className="mb-3 text-sm text-gray-300">Deal Room — core deal artifacts and workflows</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
