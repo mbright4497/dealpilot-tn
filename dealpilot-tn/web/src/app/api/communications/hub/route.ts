@@ -49,8 +49,8 @@ export async function GET(req: Request){
         .eq('deal_id', dealId)
         .in('recipient', [c.email, c.phone].filter(Boolean))
         .order('created_at', { ascending: false })
-        .limit(1)
-      c.last_communication = comms && comms[0] ? comms[0].created_at : null
+        .limit(1);
+      ;(c as any).last_communication = comms && comms[0] ? comms[0].created_at : null
     }
 
     // Group by role for left-panel UI

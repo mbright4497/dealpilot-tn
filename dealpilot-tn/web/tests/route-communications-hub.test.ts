@@ -1,9 +1,8 @@
-import { GET } from '@/app/api/communications/hub/route'
-
 jest.mock('@supabase/auth-helpers-nextjs', ()=>({ createRouteHandlerClient: jest.fn() }))
 jest.mock('next/headers', ()=>({ cookies: {} }))
 
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+const { GET } = require('../src/app/api/communications/hub/route')
+const { createRouteHandlerClient } = require('@supabase/auth-helpers-nextjs')
 
 describe('GET /api/communications/hub', ()=>{
   it('returns grouped contacts for deal', async ()=>{

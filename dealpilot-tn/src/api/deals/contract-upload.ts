@@ -1,9 +1,9 @@
 import express from 'express';
-import multer from 'multer';
+import multer from '../../lib/multer';
 import { supabaseAdmin } from '../../lib/supabase';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer();
 
 router.post('/:id/contract-upload', upload.single('file'), async (req:any, res:any)=>{
   try{
@@ -14,7 +14,8 @@ router.post('/:id/contract-upload', upload.single('file'), async (req:any, res:a
     const bucket = process.env.SUPABASE_BUCKET || 'documents';
     const { data, error } = await supabaseAdmin.storage.from(bucket).upload(filename, file.buffer, {upsert: false});
     if (error) return res.status(500).json({error: error.message});
-    const publicUrl = `${process.env.SUPABASE_URL.replace(/\/$/,'')}/storage/v1/object/public/${bucket}/${encodeURIComponent(filename)}`;
+    const base = process.env.SUPABASE_URL || '';
+    const publicUrl = `${base.replace(/\/$/,'')}/storage/v1/object/public/${bucket}/${encodeURIComponent(filename)}`;
     // store in deals.pdf_url field
     await supabaseAdmin.from('deals').update({ pdf_url: publicUrl }).eq('id', dealId);
     res.json({ pdfUrl: publicUrl });

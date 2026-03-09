@@ -367,7 +367,6 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <button onClick={()=>setMode('parties')} className={`px-4 py-1 rounded-full ${mode==='parties' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Parties</button>
           <button onClick={()=>setMode('deadlines')} className={`px-4 py-1 rounded-full ${mode==='deadlines' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Deadlines</button>
           <button onClick={()=>setMode('communications')} className={`px-4 py-1 rounded-full ${mode==='communications' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Communications</button>
-          <button onClick={()=>setMode('documents')} className={`px-4 py-1 rounded-full ${mode==='documents' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Documents</button>
         </div>
       </div>
 

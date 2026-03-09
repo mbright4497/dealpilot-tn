@@ -1,5 +1,5 @@
 // Minimal multer shim for build-time only. At runtime, install 'multer' for production.
-export default function multer(opts: any){
+export default function multer(opts?: any){
   const memStore = {
     memoryStorage: () => ({})
   };

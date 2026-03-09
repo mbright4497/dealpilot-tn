@@ -32,7 +32,7 @@ router.post('/apply-extraction', async (req,res)=>{
 
     // compute deadlines using timeline engine helper
     // expect txUpdates to include contract_date or binding_date
-    const bindingDate = txUpdates.contract_date || txUpdates.binding_date || txUpdates.contractDate;
+    const bindingDate = (txUpdates as any).contract_date || (txUpdates as any).binding_date || (txUpdates as any).contractDate;
     if (bindingDate){
       const deadlines = generateDeadlinesForDeal(dealId, bindingDate, { inspection_days: txUpdates.inspection_days, financingType: txUpdates.financingType });
       if (deadlines && deadlines.length){
