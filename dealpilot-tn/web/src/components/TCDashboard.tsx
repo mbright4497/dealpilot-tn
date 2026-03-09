@@ -40,12 +40,35 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const [alerts, setAlerts] = React.useState<any[]>([]);
   const [notifPrefs, setNotifPrefs] = React.useState<any>(null);
   const [userName, setUserName] = React.useState<string>(userNameProp || '')
+  const [followUps, setFollowUps] = React.useState<number>(0)
 
   React.useEffect(()=>{
     if (userNameProp) return
     const sb = createBrowserClient()
     sb.auth.getUser().then(res=>{ const user = res.data.user; if(user){ const full = (user.user_metadata as any)?.full_name || user.email || ''; setUserName(full.split(' ')[0] || '') } })
   },[userNameProp])
+
+  // fetch comms badge data to compute follow-ups
+  React.useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/transactions/comms-badge')
+        if(!res.ok) return
+        const j = await res.json()
+        const map: Record<string, any> = {}
+        if(Array.isArray(j.result)){
+          for(const row of j.result){ map[String(row.transaction_id)] = row }
+        }
+        // expose globally for other components
+        ;(window as any).__commsByTx = map
+        if(!mounted) return
+        const count = Object.values(map).filter((r:any)=>r.overdue).length
+        setFollowUps(count)
+      }catch(e){ console.error('Failed fetching comms-badge',e) }
+    })()
+    return ()=>{ mounted=false }
+  },[transactions])
   // fetch portfolio health
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ const res = await fetch('/api/portfolio-health'); if(!mounted) return; if(res.ok){ const j = await res.json(); setPortfolio(j) } }catch(e){} })(); return ()=>{ mounted=false } },[])
   // fetch portfolio deadlines
@@ -99,12 +122,21 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           <p className="text-sm text-cyan-300/70 mt-1">Healthy / Attention / At Risk</p>
         </div>
         {/* Overdue Deadlines */}
+        {/* Overdue Deadlines */}
         <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-2xl">📅</span>
           </div>
           <p className={`text-3xl font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{portfolioDeadlines ? overdueCount : '—'}</p>
           <p className="text-sm text-cyan-300/70 mt-1">Overdue Deadlines</p>
+        </div>
+        {/* Follow-ups (comms) */}
+        <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 hover:border-red-500/30 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-2xl">📬</span>
+          </div>
+          <p className="text-3xl font-bold text-white">{followUps}</p>
+          <p className="text-sm text-cyan-300/70 mt-1">Transactions needing follow-up (3+ days)</p>
         </div>
         {/* Portfolio Risk Score */}
         <div className="bg-gradient-to-br from-cyan-900/30 to-purple-900/30 backdrop-blur-md rounded-2xl border border-cyan-500/20 p-4">

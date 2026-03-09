@@ -98,10 +98,26 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 <td className="p-3 text-gray-400">{l.binding ? new Date(l.binding).toLocaleDateString() : '—'}</td>
                 <td className="p-3 text-gray-400">{l.closing ? new Date(l.closing).toLocaleDateString() : '—'}</td>
                 <td className="p-3">
-                  <div className="flex gap-2">
-                    <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500/20 text-orange-300 text-sm rounded-lg border border-orange-500/30 hover:bg-orange-500/40 hover:shadow-orange-500/10 hover:shadow-lg transition-all duration-200">Open Deal</button>
-                    <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-white/5 text-gray-300 text-xs rounded-lg border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 font-medium transition-all duration-200">Checklist</button>
-                    <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 text-xs font-medium transition-all duration-200">Delete</button>
+                  <div className="flex items-center gap-3">
+                    {/* Comms badge: shows last comm date and flags overdue (>=3 days) */}
+                    {(() => {
+                      const badge = (window as any).__commsByTx && (window as any).__commsByTx[l.id]
+                      if (badge) {
+                        const overdue = badge.overdue
+                        return (
+                          <div className={`px-2 py-1 text-xs font-semibold rounded-full ${overdue ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-100'}`} title={`Last comm: ${new Date(badge.last_comm).toLocaleString()}`}>
+                            {overdue ? `Follow-up ${badge.days_since}d` : `Last: ${new Date(badge.last_comm).toLocaleDateString()}`}
+                          </div>
+                        )
+                      }
+                      return <div className="px-2 py-1 text-xs rounded-full bg-white/5 text-gray-300">No comms</div>
+                    })()}
+
+                    <div className="flex gap-2">
+                      <button onClick={(e)=>{ e.stopPropagation(); onOpenDeal && onOpenDeal(l.id) }} className="px-3 py-1 bg-orange-500/20 text-orange-300 text-sm rounded-lg border border-orange-500/30 hover:bg-orange-500/40 hover:shadow-orange-500/10 hover:shadow-lg transition-all duration-200">Open Deal</button>
+                      <button onClick={(e)=>{ e.stopPropagation(); onViewChecklist(l.id) }} className="px-3 py-1 bg-white/5 text-gray-300 text-xs rounded-lg border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 font-medium transition-all duration-200">Checklist</button>
+                      <button onClick={(e)=>{ e.stopPropagation(); if(onDeleteTransaction && window.confirm('Delete this transaction?')) onDeleteTransaction(l.id) }} className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 text-xs font-medium transition-all duration-200">Delete</button>
+                    </div>
                   </div>
                 </td>
               </tr>
