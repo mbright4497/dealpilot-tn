@@ -109,32 +109,34 @@ export default function ChatPage() {
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
-          setTransactions(data.map((d: any) => ({
-            id: d.id,
-            address: d.address || '',
-            client: d.client || '',
-            type: d.type || 'Buyer',
-            status: d.current_state === 'closed' ? 'Closed' : d.current_state === 'draft' ? 'Active' : 'Pending',
-            binding: d.binding_date || '',
-            closing: d.closing_date || '',
-            contacts: [],
-            notes: '',
-            current_state: d.current_state || 'draft',
-            state_label: d.state_label || 'Draft',
-            binding_date: d.binding_date,
-            closing_date: d.closing_date,
-            inspection_end_date: d.inspection_end_date,
-            purchase_price: d.purchase_price,
-            earnest_money: d.earnest_money,
-            seller_names: d.seller_names,
-            buyer_names: d.buyer_names,
-            financing_contingency_date: d.financing_contingency_date,
-            special_stipulations: d.special_stipulations,
-            contract_type: d.contract_type,
-            timeline: d.timeline || [],
-            issues: d.issues || [],
-            documents: d.documents || [],
-          })))
+          setTransactions(data
+            .filter((d: any) => d.address && String(d.address).trim() && String(d.address).trim() !== '}')
+            .map((d: any) => ({
+              id: d.id,
+              address: d.address || '',
+              client: d.client || '',
+              type: d.type || 'Buyer',
+              status: d.current_state === 'closed' ? 'Closed' : d.current_state === 'draft' ? 'Active' : 'Pending',
+              binding: d.binding_date || '',
+              closing: d.closing_date || '',
+              contacts: [],
+              notes: '',
+              current_state: d.current_state || 'draft',
+              state_label: d.state_label || 'Draft',
+              binding_date: d.binding_date,
+              closing_date: d.closing_date,
+              inspection_end_date: d.inspection_end_date,
+              purchase_price: d.purchase_price,
+              earnest_money: d.earnest_money,
+              seller_names: d.seller_names,
+              buyer_names: d.buyer_names,
+              financing_contingency_date: d.financing_contingency_date,
+              special_stipulations: d.special_stipulations,
+              contract_type: d.contract_type,
+              timeline: d.timeline || [],
+              issues: d.issues || [],
+              documents: d.documents || [],
+            })))
         }
       })
       .catch(err => console.error('Failed to load deal states:', err))
