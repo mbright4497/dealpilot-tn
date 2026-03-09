@@ -96,6 +96,8 @@ const NAV_ITEMS = [
 ]
 
 
+export const dynamic = 'force-dynamic'
+
 export default function ChatPage() {
   const router = useRouter()
 
