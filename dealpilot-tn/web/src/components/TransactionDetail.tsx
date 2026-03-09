@@ -751,7 +751,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               <div className="p-4 bg-gray-800 rounded">
                 <h4 className="font-semibold mb-2">Assistant</h4>
                 <div className="p-3 bg-gray-700 rounded mb-2 h-40 overflow-auto">
-                  {chatMessages.map((m,i)=>(<div key={i} className={m.from==='assistant'? 'text-left mb-2':'text-right mb-2'}><div className="inline-block p-2 rounded bg-gray-600 text-gray-100">{m.text}</div></div>))}
+                  {chatMessages.map((m,i)=>(<div key={i} className={m.from==='assistant'? 'text-left mb-2':'text-right mb-2'}><div className="inline-block p-2 rounded bg-gray-600 text-gray-100">{(m.text === '}') ? '' : m.text}</div></div>))}
                 </div>
                 <div className="flex gap-2">
                   <input value={input} onChange={e=>setInput(e.target.value)} className="flex-1 px-3 py-2 rounded bg-gray-800 border border-gray-700" placeholder="Ask Eva about this deal" />
