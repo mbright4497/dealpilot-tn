@@ -101,10 +101,45 @@ export async function GET(
     .single()
 
   if (error || !data) {
-    return NextResponse.json(
-      { error: 'Deal state not found', details: error?.message },
-      { status: 404 }
-    )
+    // Fallback to transactions table when no deal_state row exists
+    const { data: tx, error: txErr } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', dealId)
+      .single()
+
+    if (txErr || !tx) {
+      return NextResponse.json(
+        { error: 'Deal state not found', details: error?.message },
+        { status: 404 }
+      )
+    }
+
+    const bindingDate = (tx as any).binding || null
+    const closingDate = (tx as any).closing || null
+    const inspectionEndDate = (tx as any).inspection_end_date || null
+    const purchasePrice = (tx as any).purchase_price || (tx as any).value || 0
+    const computed = computeLifecycleState({ binding_date: bindingDate, inspection_end_date: inspectionEndDate, closing_date: closingDate })
+    const timeline = buildTimeline({ inspection_end_date: inspectionEndDate, closing_date: closingDate })
+    const integrity = validateLifecycleIntegrity({ binding_date: bindingDate, inspection_end_date: inspectionEndDate, closing_date: closingDate })
+
+    return NextResponse.json({
+      deal_id: tx.id,
+      binding_date: bindingDate,
+      closing_date: closingDate,
+      inspection_end_date: inspectionEndDate,
+      purchase_price: purchasePrice,
+      buyer_names: (tx as any).buyer_names || null,
+      seller_names: (tx as any).seller_names || null,
+      earnest_money: { amount: (tx as any).earnest_money || null, due_date: null },
+      financing: { type: null },
+      inspection_period_days: null,
+      appraisal_contingency: null,
+      possession_date: null,
+      current_state: computed,
+      timeline,
+      lifecycle_integrity: integrity,
+    })
   }
 
   const computed = computeLifecycleState(data)
