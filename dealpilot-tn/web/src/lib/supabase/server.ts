@@ -31,3 +31,8 @@ export function createServerSupabaseClient() {
 
   return supabase;
 }
+
+// Backwards-compatible export for code that expects `supabaseService()` helper
+export function supabaseService(){
+  return createServerSupabaseClient()
+}

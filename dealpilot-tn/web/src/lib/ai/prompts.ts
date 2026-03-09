@@ -60,3 +60,7 @@ Return ONLY valid JSON in this format:
 }
 `;
 }
+
+// Minimal exports expected by some API routes — stubs for build/unblock.
+export const CONTRACT_EXTRACTION_SYSTEM = `You are Contract Extractor. Extract key fields (dates, names, amounts) into JSON.`
+export const CONTRACT_EXTRACTION_USER = ({ text, state }:{ text:string, state:string }) => `Extract contract fields from the following text (state=${state}):\n\n${String(text).slice(0, 20000)}`
