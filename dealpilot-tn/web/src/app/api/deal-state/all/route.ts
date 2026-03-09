@@ -173,6 +173,17 @@ export async function GET() {
           .eq('deal_id', tx.id)
           .then()
       }
+    } else {
+      // No deal_state row — fallback entirely to transactions table
+      bindingDate = (tx as any).binding || null
+      closingDate = (tx as any).closing || null
+      inspectionEndDate = (tx as any).inspection_end_date || null
+      purchasePrice = (tx as any).purchase_price || (tx as any).value || 0
+      lifecycle = computeLifecycleState({ binding_date: bindingDate, inspection_end_date: inspectionEndDate, closing_date: closingDate })
+      // build timeline from transaction fields
+      if (inspectionEndDate) timeline.push({ event: 'Inspection Ends', date: inspectionEndDate })
+      if (closingDate) timeline.push({ event: 'Closing Date', date: closingDate })
+      timeline.sort((a,b)=> new Date(a.date).getTime() - new Date(b.date).getTime())
     }
 
     return {
@@ -186,6 +197,10 @@ export async function GET() {
       closing_date: closingDate,
       inspection_end_date: inspectionEndDate,
       purchase_price: purchasePrice,
+      buyer_names: buyer_names,
+      seller_names: seller_names,
+      earnest_money: earnest_money,
+      value: value,
       timeline,
       lifecycle_integrity: integrity,
     }
