@@ -370,6 +370,92 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       </div>
 
+      {/* Overview / Parties / Communications tabs content */}
+      {mode==='overview' && (
+        <div className="p-4 rounded bg-[#061021]" style={{border: '1px solid rgba(249,115,22,0.12)'}}>
+          <div className="mb-4">
+            {/* document compliance badges already rendered above; stats row below */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
+                <div className="text-sm text-gray-300">Days to Close</div>
+                <div className="text-xl font-bold text-white">{(() => { const d = (mergedTx as any).closing_date || mergedTx.closing; const days = daysUntil(d); return days===null? '—' : (days+' days') })()}</div>
+              </div>
+              <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
+                <div className="text-sm text-gray-300">Documents</div>
+                <div className="text-xl font-bold text-white">{docs ? docs.length : '—'}</div>
+              </div>
+              <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
+                <div className="text-sm text-gray-300">Next Deadline</div>
+                <div className="text-xl font-bold text-white">{deadlines && deadlines.length>0 ? fmtDate(deadlines[0].date) : '—'}</div>
+              </div>
+              <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
+                <div className="text-sm text-gray-300">Deal Value</div>
+                <div className="text-xl font-bold text-white">{(remote && remote.value) ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(remote.value) : '—'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
+              <div className="text-sm text-gray-300">Property</div>
+              <div className="text-lg font-bold text-white">{mergedTx.address || '—'}</div>
+              <div className="text-sm text-gray-400">Type: {mergedTx.type || '—'}</div>
+            </div>
+            <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
+              <div className="text-sm text-gray-300">Client</div>
+              <div className="text-lg font-bold text-white">{mergedTx.client || '—'}</div>
+              <div className="text-sm text-gray-400">Status: {mergedTx.status || '—'} • Agent: {(remote && remote.agent) || '—'}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mode==='parties' && (
+        <div className="p-4 rounded bg-[#061021]" style={{border: '1px solid rgba(249,115,22,0.12)'}}>
+          {(!localContacts || localContacts.length===0) ? (
+            <div className="text-center py-8">
+              <div className="text-lg font-semibold text-white mb-2">No parties added yet</div>
+              <div className="text-sm text-gray-400 mb-4">Add parties to this deal to keep contact info and roles in one place.</div>
+              <button onClick={()=>setShowAddContact(true)} className="px-4 py-2 rounded bg-orange-500 text-white">Add Party</button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {localContacts.map((c, i) => (
+                <div key={i} className="p-3 rounded" style={{background: '#0d1b2a'}}>
+                  <div className="font-semibold text-white">{c.name}</div>
+                  <div className="text-sm text-gray-300">{c.role}</div>
+                  <div className="text-sm text-gray-400">{c.email || '—'} • {c.phone || '—'}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode==='communications' && (
+        <div className="p-4 rounded bg-[#061021]" style={{border: '1px solid rgba(249,115,22,0.12)'}}>
+          {(!(remote && (remote.communication_log || remote.communications)) || (remote.communication_log && remote.communication_log.length===0) || (remote.communications && remote.communications.length===0)) ? (
+            <div className="text-center py-8">
+              <div className="text-lg font-semibold text-white mb-2">No communications logged</div>
+              <div className="text-sm text-gray-400 mb-4">Log phone calls, emails, and notes to keep the deal history complete.</div>
+              <button className="px-4 py-2 rounded bg-orange-500 text-white">Log Entry</button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(remote.communication_log || remote.communications || []).map((e:any,i:number)=> (
+                <div key={i} className="p-3 rounded" style={{background: '#0d1b2a'}}>
+                  <div className="flex justify-between items-center">
+                    <div className="font-semibold text-white">{e.subject || e.title || e.type || 'Entry'}</div>
+                    <div className="text-sm text-gray-300">{fmtDate(e.date || e.created_at)}</div>
+                  </div>
+                  <div className="text-sm text-gray-400 mt-1">{e.note || e.body || e.summary || ''}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Mission Control */}
       {mode==='mission' && (
         <div>
