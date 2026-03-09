@@ -330,10 +330,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <div>
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
+            <h2 className="text-2xl font-bold mt-1">{String(mergedTx.address || '').replace(/\}/g, '')}</h2>
             <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
           </div>
-          <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
+          <div className="text-sm text-gray-300 font-semibold">Client: {String(mergedTx.client || '').replace(/\}/g, '')} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
         <div className="text-right text-sm text-gray-300">
           <div>Binding: <span className="font-semibold">{fmtDate(mergedTx.binding)}</span></div>
@@ -475,7 +475,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
             <div>
               <div className="text-sm text-gray-300">Mission Cockpit</div>
-              <div className="text-xl font-bold">{mergedTx.address} — {mergedTx.client}</div>
+              <div className="text-xl font-bold">{String(mergedTx.address || '').replace(/\}/g, '')} — {String(mergedTx.client || '').replace(/\}/g, '')}</div>
               <div className="text-sm text-gray-400">Stage: <span className="font-semibold">{transaction?.status === 'Closed' ? 'Closed' : stageFromProgress(combinedProgress())}</span> • {transaction?.status === 'Closed' ? 100 : combinedProgress()}% complete</div>
             </div>
             <div className="flex items-center gap-4">
@@ -756,7 +756,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               <div className="p-4 bg-gray-800 rounded">
                 <h4 className="font-semibold mb-2">Assistant</h4>
                 <div className="p-3 bg-gray-700 rounded mb-2 h-40 overflow-auto">
-                  {chatMessages.map((m,i)=>(<div key={i} className={m.from==='assistant'? 'text-left mb-2':'text-right mb-2'}><div className="inline-block p-2 rounded bg-gray-600 text-gray-100">{(m.text === '}') ? '' : m.text}</div></div>))}
+                  {chatMessages.map((m,i)=>(<div key={i} className={m.from==='assistant'? 'text-left mb-2':'text-right mb-2'}><div className="inline-block p-2 rounded bg-gray-600 text-gray-100">{String(m.text || '').replace(/\}/g, '')}</div></div>))}
                 </div>
                 <div className="flex gap-2">
                   <input value={input} onChange={e=>setInput(e.target.value)} className="flex-1 px-3 py-2 rounded bg-gray-800 border border-gray-700" placeholder="Ask Eva about this deal" />
