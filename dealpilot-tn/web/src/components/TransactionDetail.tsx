@@ -331,7 +331,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
-            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</span>
+            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
           </div>
           <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
@@ -390,7 +390,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               </div>
               <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
                 <div className="text-sm text-gray-300">Deal Value</div>
-                <div className="text-xl font-bold text-white">{(remote && remote.value) ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(remote.value) : '—'}</div>
+                <div className="text-xl font-bold text-white">{((mergedTx as any).purchase_price || (mergedTx as any).value) ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number((mergedTx as any).purchase_price || (mergedTx as any).value)) : '—'}</div>
               </div>
             </div>
           </div>
@@ -412,21 +412,26 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
       {mode==='parties' && (
         <div className="p-4 rounded bg-[#061021]" style={{border: '1px solid rgba(249,115,22,0.12)'}}>
-          {(!localContacts || localContacts.length===0) ? (
+          {((mergedTx as any).buyer_names || (mergedTx as any).seller_names) ? (
+            <div className="grid grid-cols-1 gap-2">
+              {((mergedTx as any).buyer_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                <div key={`buyer-${i}`} className="p-2 bg-gray-800 rounded">
+                  <div className="font-semibold text-white">{name}</div>
+                  <div className="text-xs text-gray-400">Buyer</div>
+                </div>
+              ))}
+              {((mergedTx as any).seller_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                <div key={`seller-${i}`} className="p-2 bg-gray-800 rounded">
+                  <div className="font-semibold text-white">{name}</div>
+                  <div className="text-xs text-gray-400">Seller</div>
+                </div>
+              ))}
+            </div>
+          ) : (
             <div className="text-center py-8">
               <div className="text-lg font-semibold text-white mb-2">No parties added yet</div>
               <div className="text-sm text-gray-400 mb-4">Add parties to this deal to keep contact info and roles in one place.</div>
               <button onClick={()=>setShowAddContact(true)} className="px-4 py-2 rounded bg-orange-500 text-white">Add Party</button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {localContacts.map((c, i) => (
-                <div key={i} className="p-3 rounded" style={{background: '#0d1b2a'}}>
-                  <div className="font-semibold text-white">{c.name}</div>
-                  <div className="text-sm text-gray-300">{c.role}</div>
-                  <div className="text-sm text-gray-400">{c.email || '—'} • {c.phone || '—'}</div>
-                </div>
-              ))}
             </div>
           )}
         </div>
@@ -478,7 +483,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 <div className="text-xs text-gray-300">Deal Health</div>
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${health?.status==='healthy' ? 'bg-green-500' : health?.status==='attention' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
-                  <div className="font-semibold">{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : 'Loading...'}</div>
+                  <div className="font-semibold">{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</div>
                   <div className="text-xs text-gray-300 ml-2">{health ? health.score + '%' : ''}</div>
                 </div>
                 {/* existing signals (structured) */}
