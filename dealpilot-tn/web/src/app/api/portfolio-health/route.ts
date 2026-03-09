@@ -6,7 +6,13 @@ export const dynamic = 'force-dynamic'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  {
+    global: {
+      fetch: (url: any, options: any = {}) =>
+        fetch(url, { ...options, cache: 'no-store' }),
+    },
+  }
 )
 
 function computeDealHealth(row: any): { status: string; score: number; signals: { label: string; impact: string }[]; closing_soon: boolean; inspection_expiring: boolean } {
