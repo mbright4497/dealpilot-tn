@@ -10,7 +10,12 @@ const form_engine_1 = require("../../lib/form-engine");
 const phase_machine_1 = require("../../lib/phase-machine");
 const crm_integration_1 = require("../../lib/crm-integration");
 const supabase_1 = require("../../lib/supabase");
+const contract_upload_1 = __importDefault(require("./contract-upload"));
+const apply_extraction_1 = __importDefault(require("./apply-extraction"));
 const router = express_1.default.Router();
+// mount new routes
+router.use('/', contract_upload_1.default);
+router.use('/ai', apply_extraction_1.default);
 // Helper endpoint functions (also exported for unit tests)
 const createDealEndpoint = async (payload) => {
     // insert into deals

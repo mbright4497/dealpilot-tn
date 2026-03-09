@@ -4,8 +4,14 @@ import { evaluateFormsForDeal } from '../../lib/form-engine';
 import { advancePhase, auditTransaction } from '../../lib/phase-machine';
 import { syncDealToCrm } from '../../lib/crm-integration';
 import { supabaseAdmin } from '../../lib/supabase';
+import contractUploadRouter from './contract-upload';
+import applyExtractionRouter from './apply-extraction';
 
 const router = express.Router();
+
+// mount new routes
+router.use('/', contractUploadRouter);
+router.use('/ai', applyExtractionRouter);
 
 // Helper endpoint functions (also exported for unit tests)
 export const createDealEndpoint = async (payload: any) => {
