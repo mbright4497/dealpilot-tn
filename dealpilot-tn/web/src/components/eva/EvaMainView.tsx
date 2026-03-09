@@ -20,9 +20,11 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
         if(!mounted) return
         if(j?.message){ addMessage({ id: 'briefing-1', role: 'eva', content: j.message }) }
         // add transaction cards
-        (transactions||[]).forEach((tx:any)=>{
-          addMessage({ id: `deal-${tx.id}`, role: 'eva', content: '', payload: { type: 'transaction_card', data: tx } })
-        })
+        if(Array.isArray(transactions)){
+          transactions.forEach((tx:any)=>{
+            addMessage({ id: `deal-${tx.id}`, role: 'eva', content: '', payload: { type: 'transaction_card', data: tx } })
+          })
+        }
         // final prompt
         addMessage({ id: 'briefing-2', role: 'eva', content: "What would you like to work on?", payload: { type: 'chips', chips: ['Check deadlines','Upload a document','Draft an email','Start new transaction'] } })
       }catch(e){ console.error('eva briefing failed', e) }
