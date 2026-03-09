@@ -14,8 +14,8 @@ type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
 
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
-  // mode: mission (default), dealroom, timeline
-  const [mode,setMode] = useState<'mission'|'dealroom'|'timeline'|'documents'>('mission')
+  // mode: overview (default), documents, parties, deadlines, communications
+  const [mode,setMode] = useState<'overview'|'documents'|'parties'|'deadlines'|'communications'>('overview')
   const [remote, setRemote] = useState<any>(null)
   const [mergedTx, setMergedTx] = useState<Transaction>(transaction)
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
