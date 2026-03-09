@@ -360,7 +360,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       {/* pill toggles */}
       <div className="mb-4">
         <div className="inline-flex bg-gray-800 rounded-full p-1">
-          <button onClick={()=>setMode('mission')} className={`px-4 py-1 rounded-full ${mode==='mission' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Mission Control</button>
+          <button onClick={()=>setMode('overview')} className={`px-4 py-1 rounded-full ${mode==='overview' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Overview</button>
           <button onClick={()=>setMode('dealroom')} className={`px-4 py-1 rounded-full ${mode==='dealroom' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Deal Room</button>
           <button onClick={()=>setMode('timeline')} className={`px-4 py-1 rounded-full ${mode==='timeline' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Timeline</button>
           <button onClick={()=>setMode('documents')} className={`px-4 py-1 rounded-full ${mode==='documents' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Documents</button>
