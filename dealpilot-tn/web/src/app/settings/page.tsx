@@ -14,13 +14,15 @@ export default function SettingsPage(){
   const router = useRouter()
 
   const [tab,setTab]=useState('profile')
-  const [profile,setProfile]=useState<any>({fullName:'',email:'',phone:'',brokerage:'',license:'',officeAddress:''})
+  const [profile,setProfile]=useState<any>({fullName:'',email:'',phone:'',brokerage:'',license:'',officeAddress:'', last_ghl_sync: null})
+  const [lastGhlSync, setLastGhlSync] = useState<string|null>(null)
+  const [syncing,setSyncing] = useState(false)
   const [saving,setSaving]=useState(false)
   const [toast,setToast]=useState('')
   const [notifications,setNotifications]=useState<any>({newDeal:true,inspectionReminder:true,evaDaily:true,productUpdates:false})
   const [integrations,setIntegrations]=useState<any>({ghl:false,mls:false,stripe:false,calendar:false})
   useEffect(()=>{async function load(){
-    try{const r=await fetch('/api/profile'); if(r.ok){const j=await r.json(); setProfile({...profile,...j})}}
+    try{const r=await fetch('/api/profile'); if(r.ok){const j=await r.json(); setProfile({...profile,...j}); setLastGhlSync(j?.last_ghl_sync || null)}}
     catch(e){console.error(e)} }
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
