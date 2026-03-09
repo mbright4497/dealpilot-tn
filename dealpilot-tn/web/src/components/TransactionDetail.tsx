@@ -6,6 +6,7 @@ import ContractUpload from './ContractUpload'
 import DocumentChecklist from './DocumentChecklist'
 import DocumentComplianceBar from './DocumentComplianceBar'
 import EditTransactionModal from './EditTransactionModal'
+import DealPartiesPanel from './DealPartiesPanel/DealPartiesPanel'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
@@ -665,46 +666,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             </div>
 
             <div>
-              <div className="p-4 bg-gray-800 rounded mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold">Contacts</h4>
-                  <button onClick={()=>setShowAddContact(!showAddContact)} className="text-xs px-2 py-1 bg-orange-500 rounded">{showAddContact? 'Cancel' : '+ Add'}</button>
-                </div>
-                {showAddContact && (
-                  <div className="p-3 bg-gray-700 rounded mb-2">
-                    <div className="grid grid-cols-1 gap-2 mb-2">
-                      <select value={newContact.role} onChange={e=>setNewContact({...newContact,role:e.target.value})} className="w-full bg-gray-800 p-2 rounded text-sm">
-                        <option value="">Select role...</option>
-                        <option>Buyer Agent</option><option>Listing Agent</option><option>Lender</option>
-                        <option>Title Company</option><option>Inspector</option><option>Appraiser</option>
-                        <option>Attorney</option><option>Buyer</option><option>Seller</option><option>Other</option>
-                      </select>
-                      <input value={newContact.name} onChange={e=>setNewContact({...newContact,name:e.target.value})} className="w-full bg-gray-800 p-2 rounded text-sm" placeholder="Full name" />
-                      <input value={newContact.email||''} onChange={e=>setNewContact({...newContact,email:e.target.value})} className="w-full bg-gray-800 p-2 rounded text-sm" placeholder="Email" />
-                      <div className="flex gap-2">
-                        <button onClick={addContact} className="px-3 py-2 bg-orange-500 rounded">Save</button>
-                        <button onClick={()=>setShowAddContact(false)} className="px-3 py-2 bg-gray-700 rounded">Cancel</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  {localContacts.map((c,i)=> (
-                    <div key={i} className="p-2 bg-gray-700 rounded flex justify-between items-center">
-                      <div>
-                        <div className="text-sm text-gray-300">{c.role}</div>
-                        <div className="font-semibold">{c.name}</div>
-                        <div className="text-xs text-gray-400">{c.company}</div>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <a href={`tel:${c.phone}`} className="text-xs text-gray-300">Call</a>
-                        <a href={`mailto:${c.email}`} className="text-xs text-gray-300">Email</a>                 <button onClick={()=>removeContact(i)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
-                      </div>
-                    </div>
-                  ))}
-                  {localContacts.length===0 && <div className="text-gray-500 text-sm">No contacts yet.</div>}
-                </div>
+              <div className="mb-4">
+                {/* replaced contacts with DealPartiesPanel */}
+                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                {/* @ts-ignore */}
+                <DealPartiesPanel transactionId={transaction.id} />
               </div>
 
               <div className="p-4 bg-gray-800 rounded">
