@@ -23,6 +23,7 @@ export default function CommHub({ dealId }:{ dealId: string }){
   const [showCompose, setShowCompose] = useState(false)
   const [form, setForm] = useState({ comm_type: 'email', recipient: '', subject: '', body: '', ai_generated: false })
   const [error, setError] = useState<string| null>(null)
+  const [contactsGrouped, setContactsGrouped] = useState<any>({})
 
   async function fetchComms(){
     if(!dealId) return
@@ -36,7 +37,17 @@ export default function CommHub({ dealId }:{ dealId: string }){
     setLoading(false)
   }
 
-  useEffect(()=>{ fetchComms() },[dealId])
+  async function fetchHub(){
+    if(!dealId) return
+    try{
+      const res = await fetch(`/api/communications/hub?deal_id=${encodeURIComponent(dealId)}`)
+      if(!res.ok) return
+      const j = await res.json()
+      setContactsGrouped(j.grouped || {})
+    }catch(e){}
+  }
+
+  useEffect(()=>{ fetchComms(); fetchHub() },[dealId])
 
   async function handleSend(saveAsDraft = false){
     setError(null)
@@ -73,43 +84,60 @@ export default function CommHub({ dealId }:{ dealId: string }){
   }
 
   return (
-    <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-bold text-white">Communications Hub</h3>
-          <p className="text-sm text-gray-400">Manage messages & outreach for this deal</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="inline-flex bg-white/5 border border-white/10 rounded-xl p-1">
-            {['all','email','sms','call'].map(t=> (
-              <button key={t} onClick={()=>setFilter(t as any)} className={`px-3 py-1 text-sm ${filter===t? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-gray-300' } rounded-lg`}>{t.toUpperCase()}</button>
-            ))}
-          </div>
-          <button onClick={()=>setShowCompose(true)} className="px-3 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl hover:from-cyan-400 hover:to-purple-400 transition-all">New Communication</button>
+    <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg flex gap-4">
+      <div className="w-64">
+        <h4 className="text-sm font-semibold text-white mb-2">Contacts</h4>
+        {Object.keys(contactsGrouped).length === 0 && <div className="text-xs text-gray-400">No contacts</div>}
+        <div className="space-y-2 max-h-96 overflow-auto">
+          {Object.entries(contactsGrouped).map(([role, list]:any) => (
+            <div key={role}>
+              <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{role}</div>
+              {list.map((c:any)=> (
+                <button key={c.id} onClick={()=>{ setForm({...form, recipient: c.email || c.phone || c.name}); setShowCompose(true) }} className="w-full text-left px-2 py-1 rounded hover:bg-white/5 text-sm text-gray-300">{c.name} <span className="text-xs text-gray-500">{c.email || c.phone}</span></button>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
 
-      <div>
-        {loading && <div className="text-sm text-gray-400">Loading…</div>}
-        {!loading && filtered.length === 0 && <div className="text-sm text-gray-500">No communications</div>}
-        <div className="space-y-3 mt-3">
-          {filtered.map(c => (
-            <div key={c.id} className="p-3 bg-white/3 backdrop-blur-sm rounded-xl border border-white/5 flex items-start gap-3">
-              <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-cyan-700 to-purple-700 text-white font-bold">{c.comm_type === 'email' ? '✉️' : c.comm_type === 'sms' ? '💬' : c.comm_type === 'call' ? '📞' : '📝'}</div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-white">{c.recipient || '—'}</div>
-                    <div className="text-xs text-gray-400">{c.comm_type === 'email' && c.subject ? c.subject : (c.body ? (c.body.slice(0,80)) : '')}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-xs px-2 py-1 rounded-full ${statusClasses(c.status)}`}>{c.status || 'draft'}</div>
-                    <div className="text-xs text-gray-400 mt-1">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-white">Communications Hub</h3>
+            <p className="text-sm text-gray-400">Manage messages & outreach for this deal</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex bg-white/5 border border-white/10 rounded-xl p-1">
+              {['all','email','sms','call'].map(t=> (
+                <button key={t} onClick={()=>setFilter(t as any)} className={`px-3 py-1 text-sm ${filter===t? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-gray-300' } rounded-lg`}>{t.toUpperCase()}</button>
+              ))}
+            </div>
+            <button onClick={()=>setShowCompose(true)} className="px-3 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl hover:from-cyan-400 hover:to-purple-400 transition-all">New Communication</button>
+          </div>
+        </div>
+
+        <div>
+          {loading && <div className="text-sm text-gray-400">Loading…</div>}
+          {!loading && filtered.length === 0 && <div className="text-sm text-gray-500">No communications</div>}
+          <div className="space-y-3 mt-3">
+            {filtered.map(c => (
+              <div key={c.id} className="p-3 bg-white/3 backdrop-blur-sm rounded-xl border border-white/5 flex items-start gap-3">
+                <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gradient-to-br from-cyan-700 to-purple-700 text-white font-bold">{c.comm_type === 'email' ? '✉️' : c.comm_type === 'sms' ? '💬' : c.comm_type === 'call' ? '📞' : '📝'}</div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-white">{c.recipient || '—'}</div>
+                      <div className="text-xs text-gray-400">{c.comm_type === 'email' && c.subject ? c.subject : (c.body ? (c.body.slice(0,80)) : '')}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`text-xs px-2 py-1 rounded-full ${statusClasses(c.status)}`}>{c.status || 'draft'}</div>
+                      <div className="text-xs text-gray-400 mt-1">{c.created_at ? new Date(c.created_at).toLocaleString() : ''}</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
