@@ -91,10 +91,17 @@ export async function GET(req: Request){
     // ensure common roles exist for UI/tests
     if(!grouped.client) {
       grouped.client = allContacts.filter((c:any)=>c.role==='client')
-      if((grouped.client||[]).length===0 && Array.isArray(data)){
-        grouped.client = (data || []).map((r:any)=>({ name: r.contacts?.name || r.contacts?.fullname || '', id: r.contacts?.id }))
+      if((grouped.client||[]).length===0){
+        try{
+          const raw = data || []
+          grouped.client = (Array.isArray(raw) ? raw : []).map((r:any)=>({ name: r?.contacts?.name || r?.contacts?.fullname || '', id: r?.contacts?.id }))
+        }catch(e){ grouped.client = [] }
       }
     }
+
+    if(!grouped.client) grouped.client = []
+
+    return NextResponse.json({ contacts: allContacts, grouped })
 
     return NextResponse.json({ contacts: allContacts, grouped })
   }catch(err:any){
