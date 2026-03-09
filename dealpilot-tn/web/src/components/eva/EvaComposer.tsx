@@ -8,7 +8,15 @@ export default function EvaComposer(){
   const sendMessage = async (msg:string, ctx:any={})=>{
     const id = String(Date.now())
     addMessage({id,role:'user',content:msg})
-    // optimistic add
+    // detect quick NL 'new deal' intent and route to parse-text
+    try{
+      if(/\b(new deal|deal at|start new deal)\b/i.test(msg)){
+        const res = await fetch('/api/eva/wizard/parse-text',{ method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text: msg }) })
+        if(res.ok){ const parsed = await res.json(); addMessage({ id: 'contract-review-'+Date.now(), role:'eva', content: 'I parsed your description', payload: { type: 'contract_review', data: parsed } }); return }
+      }
+    }catch(e){ console.error('parse-text failed', e) }
+
+    // fallback: normal EVA chat
     try{
       const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg, context: ctx})})
       const j = await res.json()
