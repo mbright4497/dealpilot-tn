@@ -3,6 +3,7 @@ import React, {useState, useEffect, useRef} from 'react'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
+import ContractIntake from './ContractIntake'
 import DocumentChecklist from './DocumentChecklist'
 import DocumentComplianceBar from './DocumentComplianceBar'
 import EditTransactionModal from './EditTransactionModal'
@@ -218,6 +219,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     return ()=>{ mounted=false }
   },[transaction.id])
 
+  const [showIntake, setShowIntake] = useState(false)
   // file inputs helper (kept from previous implementation)
   const fileInputsRef = useRef<Record<string,HTMLInputElement|null>>({} as any)
   const ensureInput = (cat:string)=>{
@@ -605,6 +607,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
               <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div />
+                  <div className="flex gap-2">
+                    <button onClick={()=>setMode('documents')} className="px-3 py-1 rounded-lg bg-[#0f3460] border border-white/10 text-sm text-gray-200">Open Contract</button>
+                    <button onClick={()=>setShowIntake(true)} className="px-3 py-1 rounded-lg bg-[#16213e] border border-white/10 text-sm text-gray-200">Upload Contract (AI)</button>
+                  </div>
+                </div>
                 <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} onDelete={()=>setContractData(null)} />
               </div>
 
@@ -738,6 +747,26 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       )}
 
       <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+transaction.id); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
+
+      {showIntake && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="w-full max-w-5xl mx-4">
+            <ContractIntake onCancel={()=>setShowIntake(false)} onConfirm={async (parsed:any)=>{
+              try{
+                // save extracted to contract_store for this deal
+                await fetch(`/api/deals/${transaction.id}/contract`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ extracted: parsed, pdfUrl: null }) })
+                setContractData(parsed)
+                // refresh docs and deal-state
+                const ref = await fetch(`/api/documents/${transaction.id}`)
+                if(ref.ok){ const rj = await ref.json(); setDocs(rj || []) }
+                const res = await fetch(`/api/deal-state/${transaction.id}`)
+                if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) }
+              }catch(e){ console.error(e) }
+              setShowIntake(false)
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

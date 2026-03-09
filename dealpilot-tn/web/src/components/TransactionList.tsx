@@ -1,5 +1,6 @@
 'use client'
 import React, {useState} from 'react'
+import ContractIntake from './ContractIntake'
 interface Transaction {
   id: number
   address: string
@@ -25,6 +26,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [showIntake, setShowIntake] = useState(false)
   const list = transactions.filter(m => filter === 'All' || m.status === filter)
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -182,12 +184,49 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-white/10 rounded-lg text-gray-300 hover:bg-white/10 transition-all">Cancel</button>
+                <button type="button" onClick={() => setShowIntake(true)} className="px-4 py-2 border border-white/10 rounded-lg text-gray-300 hover:bg-white/10 transition-all">Upload Contract</button>
                 <button type="submit" className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-lg hover:from-emerald-400 hover:to-cyan-400 hover:shadow-lg hover:shadow-emerald-500/20 font-semibold transition-all duration-300">Save Transaction</button>
               </div>
             </form>
           </div>
         </div>
       )}
+      {showIntake && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="w-full max-w-5xl mx-4">
+            <ContractIntake onCancel={()=>setShowIntake(false)} onConfirm={async (parsed:any)=>{
+              try{
+                // create transaction from parsed extraction
+                const payload = {
+                  fields: {
+                    propertyAddress: parsed.fields.propertyAddress || '',
+                    contractType: parsed.fields.contractType || (parsed.fields.contractType==='buyer'?'buyer':'unknown'),
+                    clientName: (parsed.fields.buyerNames && parsed.fields.buyerNames.length>0) ? parsed.fields.buyerNames.join(', ') : (parsed.fields.sellerNames||[]).join(', '),
+                    bindingDate: parsed.fields.bindingDate || null,
+                    closingDate: parsed.fields.closingDate || null,
+                    purchasePrice: parsed.fields.purchasePrice || null,
+                    earnestMoney: parsed.fields.earnestMoney || null,
+                    timeline: parsed.timeline || []
+                  },
+                  extracted: parsed
+                }
+                const res = await fetch('/api/transactions/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+                const j = await res.json()
+                if(!res.ok || j.error){ alert('Failed to create transaction from contract: '+(j.error||res.statusText)); return }
+                const newId = j.id
+                const newTx: Transaction = { id: newId, address: parsed.fields.propertyAddress||'', client: (parsed.fields.buyerNames&&parsed.fields.buyerNames[0])||'', type: 'Buyer', status: 'Active', binding: parsed.fields.bindingDate || '', closing: parsed.fields.closingDate || '' }
+                if (onAddTransaction) onAddTransaction(newTx)
+                if (onOpenDeal) onOpenDeal(newId)
+                setShowIntake(false)
+                setShowModal(false)
+                setSuccessMsg('Transaction created from contract')
+                setTimeout(()=>setSuccessMsg(null),3000)
+              }catch(err){ console.error(err); alert('Error creating transaction from contract') }
+            }} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
