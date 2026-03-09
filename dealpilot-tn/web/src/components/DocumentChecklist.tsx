@@ -263,11 +263,7 @@ export default function DocumentChecklist({
                                       </div>
                                     </div>
                                   </div>
-                                ) : (
-                                  <p className="mt-1 text-xs text-gray-500 break-all">
-                                    <span className="text-gray-500">Key:</span> {doc.key}
-                                  </p>
-                                )}
+                                ) : null}
                               </div>
 
                               <div className="shrink-0 flex items-center gap-2">
