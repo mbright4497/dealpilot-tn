@@ -34,6 +34,22 @@ function LoginContent() {
       setMsg(error.message);
       return;
     }
+    // after successful login, kick off background GHL sync if more than 1 hour since last sync
+    (async ()=>{
+      try{
+        const p = await fetch('/api/profile');
+        if(p.ok){
+          const j = await p.json();
+          const last = j?.last_ghl_sync ? new Date(j.last_ghl_sync).getTime() : 0
+          const now = Date.now()
+          if(!last || (now - last) > (1000*60*60)){
+            // fire-and-forget
+            fetch('/api/ghl/contacts/sync', { method: 'POST' }).catch(()=>{})
+          }
+        }
+      }catch(e){ }
+    })()
+
     router.replace("/");
   }
 
