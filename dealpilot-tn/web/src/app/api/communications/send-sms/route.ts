@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getSupabaseSafe } from '@/lib/supabase'
-import { resolveGhlConfig, sendViaGhl } from '@/lib/ghl'
+import { deliverViaGhl } from '../utils'
 
 export async function POST(req: Request) {
   try {
@@ -17,35 +17,18 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseSafe()
     const sentAt = new Date().toISOString()
-    const channel = 'sms'
 
-    let status: 'sent' | 'failed' | 'mock' = 'sent'
-    let provider = 'ghl'
-    let provider_response: any = null
-    const config = resolveGhlConfig()
-
-    if (!config) {
-      status = 'mock'
-      provider = 'mock'
-      provider_response = { error: 'GHL credentials not configured' }
-    } else {
-      try {
-        provider_response = await sendViaGhl({ channel: 'sms', to: recipient, message, retries: 2, credentials: config })
-      } catch (err: any) {
-        status = 'failed'
-        provider_response = { error: err.message || 'failed to send SMS', details: err.body || null }
-      }
-    }
+    const delivery = await deliverViaGhl({ channel: 'sms', recipient, message })
 
     const payload: any = {
       contact_id,
       deal_id,
-      channel,
+      channel: 'sms',
       recipient,
       body: message,
-      status,
-      provider,
-      provider_response,
+      status: delivery.status,
+      provider: delivery.provider,
+      provider_response: delivery.provider_response,
       sent_at: sentAt,
     }
 
@@ -54,7 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ ok: true, log: data, provider_response, provider, status, connected: !!config })
+    return NextResponse.json({ ok: true, log: data, ...delivery })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'invalid request' }, { status: 500 })
   }

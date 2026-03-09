@@ -1,13 +1,46 @@
 export const dynamic = 'force-dynamic'
-import {NextResponse} from 'next/server'
-export async function POST(req:Request){
-  try{
-    const body=await req.json()
-    const {to,subject,body:content,dealId}=body
-    if(!to || !content) return NextResponse.json({error:'missing to or body'}, {status:400})
-    // TODO: integrate with GHL/SendGrid/Resend to send email. Save message to Supabase.
-    return NextResponse.json({ok:true, provider:'mock', to, subject, dealId}, {status:200})
-  }catch(e){
-    return NextResponse.json({error:'invalid json'}, {status:400})
+import { NextResponse } from 'next/server'
+import { getSupabaseSafe } from '@/lib/supabase'
+import { deliverViaGhl } from '../utils'
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({} as any))
+    const contact_id = body.contact_id || body.contactId
+    const deal_id = body.deal_id || body.dealId || null
+    const recipient = body.recipient || body.to || ''
+    const message = body.message || body.body || ''
+    const subject = body.subject || ''
+
+    if (!contact_id || !recipient || !message) {
+      return NextResponse.json({ error: 'contact_id, recipient, and message are required' }, { status: 400 })
+    }
+
+    const supabase = getSupabaseSafe()
+    const sentAt = new Date().toISOString()
+
+    const delivery = await deliverViaGhl({ channel: 'email', recipient, message, subject })
+
+    const payload: any = {
+      contact_id,
+      deal_id,
+      channel: 'email',
+      recipient,
+      subject,
+      body: message,
+      status: delivery.status,
+      provider: delivery.provider,
+      provider_response: delivery.provider_response,
+      sent_at: sentAt,
+    }
+
+    const { data, error } = await supabase.from('communication_log').insert(payload).select().single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, log: data, ...delivery })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'invalid request' }, { status: 500 })
   }
 }

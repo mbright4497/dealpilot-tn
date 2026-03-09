@@ -1,30 +1,66 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getSupabaseSafe } from '@/lib/supabase'
+import { deliverViaGhl } from '../utils'
 
-export async function POST(req: Request){
-  const body = await req.json()
-  const { deal_id, contact_id, channel, body: content, template_id } = body
-  if(!deal_id || !contact_id || !channel) return NextResponse.json({ error:'missing fields' }, { status:400 })
-  // Log to communication_log
-  const supabase = getSupabaseSafe()
-  const payload:any = { deal_id, contact_id, channel, subject: null, body: content || null, template_id: template_id || null, status: 'queued', is_automated: false }
-  const { data, error } = await supabase.from('communication_log').insert(payload).select().single()
-  if(error) return NextResponse.json({ error: error.message }, { status:500 })
-  // TODO: enqueue/send via GHL or provider in Phase 2
-  return NextResponse.json({ ok:true, log: data })
+export async function POST(req: Request) {
+  try {
+    const body = await req.json().catch(() => ({} as any))
+    const contact_id = body.contact_id || body.contactId
+    const deal_id = body.deal_id || body.dealId || null
+    const channel = (body.channel || 'sms').toLowerCase()
+    const recipient = body.recipient || body.to || ''
+    const message = body.message || body.body || ''
+    const subject = body.subject || ''
+
+    if (!contact_id || !recipient || !message) {
+      return NextResponse.json({ error: 'contact_id, recipient, and message are required' }, { status: 400 })
+    }
+
+    if (!['sms', 'email'].includes(channel)) {
+      return NextResponse.json({ error: 'channel must be sms or email' }, { status: 400 })
+    }
+
+    const supabase = getSupabaseSafe()
+    const sentAt = new Date().toISOString()
+
+    const delivery = await deliverViaGhl({ channel: channel as 'sms' | 'email', recipient, message, subject })
+
+    const payload: any = {
+      contact_id,
+      deal_id,
+      channel,
+      recipient,
+      subject: channel === 'email' ? subject : null,
+      body: message,
+      status: delivery.status,
+      provider: delivery.provider,
+      provider_response: delivery.provider_response,
+      sent_at: sentAt,
+    }
+
+    const { data, error } = await supabase.from('communication_log').insert(payload).select().single()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, log: data, ...delivery })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'invalid request' }, { status: 500 })
+  }
 }
 
-export async function GET(req: Request){
+export async function GET(req: Request) {
   const url = new URL(req.url)
   const contactId = url.searchParams.get('contact_id')
   const dealId = url.searchParams.get('deal_id')
-  if(!contactId) return NextResponse.json({ error:'missing contact_id' }, { status:400 })
+  if (!contactId) return NextResponse.json({ error: 'missing contact_id' }, { status: 400 })
+
   const supabase = getSupabaseSafe()
-  let q = supabase.from('communication_log').select('*').eq('contact_id', contactId)
-  if(dealId) q = q.eq('deal_id', dealId)
-  q = q.order('created_at', { ascending: true })
-  const { data, error } = await q
-  if(error) return NextResponse.json({ error: error.message }, { status:500 })
-  return NextResponse.json({ ok:true, history: data })
+  let query = supabase.from('communication_log').select('*').eq('contact_id', contactId)
+  if (dealId) query = query.eq('deal_id', dealId)
+  query = query.order('created_at', { ascending: true })
+  const { data, error } = await query
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true, history: data })
 }
