@@ -17,8 +17,15 @@ export async function POST(req: Request){
     if(!documentId) return NextResponse.json({ error: 'documentId required' }, { status: 400 })
     if(!status) return NextResponse.json({ error: 'status required' }, { status: 400 })
 
-    const { data, error } = await supabase.from('documents').update({ doc_status: status }).eq('id', documentId).select().single()
-    if(error) return NextResponse.json({ error: error.message }, { status: 500 })
+    // attempt to update in documents table first
+    let { data, error } = await supabase.from('documents').update({ doc_status: status }).eq('id', documentId).select().single().catch(()=>({ data:null, error: null }))
+    if((error && error.message) || !data){
+      // fall back to deal_documents
+      const res = await supabase.from('deal_documents').update({ status }).eq('id', documentId).select().single().catch(()=>({ data:null, error:null }))
+      if(res && res.data) return NextResponse.json(res.data)
+      if(res && res.error) return NextResponse.json({ error: res.error.message }, { status: 500 })
+      return NextResponse.json({ error: 'document not found' }, { status: 404 })
+    }
     return NextResponse.json(data)
   }catch(err:any){
     return NextResponse.json({ error: err.message||String(err) }, { status: 500 })

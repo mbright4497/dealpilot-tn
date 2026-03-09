@@ -14,18 +14,34 @@ export async function POST(req: Request) {
     if (!file) return NextResponse.json({ error: 'no file' }, { status: 400 })
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const filename = `${uuidv4()}.pdf`
-    const path = `documents/${transaction_id || 'unlinked'}/${filename}`
+    const originalName = file.name || `${uuidv4()}.pdf`
+    const filename = originalName
+    const ext = (filename.split('.').pop() || 'pdf')
+    const storagePath = `contracts/docs/${transaction_id || 'unlinked'}/${uuidv4()}.${ext}`
 
     const supabase = createRouteHandlerClient({ cookies })
     const { data: { user } } = await supabase.auth.getUser()
-    const { data: uploadRes, error: uploadErr } = await supabase.storage.from('documents').upload(path, buffer, { contentType: 'application/pdf' })
+    const { error: uploadErr } = await supabase.storage.from('contracts').upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
     if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 })
 
-    // insert documents row
+    // build public url
+    const { data: publicData } = supabase.storage.from('contracts').getPublicUrl(storagePath)
+    const publicUrl = publicData?.publicUrl || null
+
+    // classification key
     const classification = form.get('classification') as string | null
 
-    const { data, error } = await supabase.from('documents').insert([{ file_name: filename, path, status: 'uploaded', transaction_id: transaction_id || null, classification: classification || null, user_id: user?.id || null }]).select('*').single()
+    // insert into deal_documents
+    const { data, error } = await supabase.from('deal_documents').insert([{
+      deal_id: transaction_id ? Number(transaction_id) : null,
+      doc_key: classification || null,
+      file_name: filename,
+      file_url: publicUrl,
+      status: 'uploaded',
+      uploaded_at: new Date().toISOString(),
+      storage_path: storagePath,
+      user_id: user?.id || null,
+    }]).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({ document: data })

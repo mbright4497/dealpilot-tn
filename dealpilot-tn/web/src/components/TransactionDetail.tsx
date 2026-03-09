@@ -633,7 +633,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                     if(res.ok){
                       const j = await res.json();
                       // refresh docs
-                      const refresh = await fetch('/api/documents/' + transaction.id);
+                      const refresh = await fetch('/api/deal_documents/' + transaction.id);
                       if(refresh.ok){ const rj = await refresh.json(); setDocs(rj || []); }
                     } else {
                       console.error('Upload failed', await res.text())
@@ -647,14 +647,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             onView={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('documents').createSignedUrl(path, 60)
+                const { data } = await supabase.storage.from('contracts').createSignedUrl(path, 60)
                 if(data?.signedUrl) window.open(data.signedUrl, '_blank')
               }catch(e){ console.error('view error', e) }
             }}
             onDownload={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('documents').createSignedUrl(path, 60)
+                const { data } = await supabase.storage.from('contracts').createSignedUrl(path, 60)
                 if(data?.signedUrl){
                   const a = document.createElement('a')
                   a.href = data.signedUrl
