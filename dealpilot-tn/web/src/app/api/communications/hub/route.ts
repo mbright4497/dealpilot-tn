@@ -51,8 +51,18 @@ export async function GET(req: Request){
       role: r.role,
     }))
 
+    // Also include GHL-synced contacts (not linked to this deal) so agents can start conversations
+    const { data: ghlContacts } = await supabase.from('contacts').select('id,name,email,phone,company,ghl_contact_id').not('ghl_contact_id','is',null).order('name', { ascending: true }).limit(200)
+    const ghlList = (ghlContacts || []).map((c:any)=>({ id: c.id, name: c.name, email: c.email, phone: c.phone, role: 'GHL', company: c.company, ghl: true }))
+
+    // merge unique contacts (linked first, then ghl extras)
+    const map = new Map<string, any>()
+    for(const c of contacts) if(c && c.email) map.set(String(c.email), c)
+    for(const g of ghlList) if(g && g.email && !map.has(String(g.email))) map.set(String(g.email), g)
+    const allContacts = Array.from(map.values())
+
     // For each contact, fetch last communication timestamp
-    for(const c of contacts){
+    for(const c of allContacts){
       let comms:any = null
       const q2 = supabase.from('deal_communications').select('created_at').eq('deal_id', dealId).in('recipient', [c.email, c.phone].filter(Boolean)).order('created_at', { ascending: false }).limit(1)
       if (typeof (q2 as any).then === 'function') {
@@ -66,16 +76,16 @@ export async function GET(req: Request){
 
     // Group by role for left-panel UI
     const grouped:any = {}
-    for(const c of contacts){
-      const role = c.role || 'other'
+    for(const c of allContacts){
+      const role = c.role || (c.ghl ? 'GHL' : 'other')
       if(!grouped[role]) grouped[role] = []
       grouped[role].push(c)
     }
 
     // ensure common roles exist for UI/tests
-    if(!grouped.client) grouped.client = contacts.filter((c:any)=>c.role==='client')
+    if(!grouped.client) grouped.client = allContacts.filter((c:any)=>c.role==='client')
 
-    return NextResponse.json({ contacts, grouped })
+    return NextResponse.json({ contacts: allContacts, grouped })
   }catch(err:any){
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 })
   }
