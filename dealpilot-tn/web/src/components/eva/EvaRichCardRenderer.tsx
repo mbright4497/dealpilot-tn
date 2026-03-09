@@ -41,6 +41,38 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
       </div>
     )
   }
+  if(t==='contract_review'){
+    const d = payload.data
+    const buyers = (d.buyerNames||[]).join(', ')
+    const sellers = (d.sellerNames||[]).join(', ')
+    return (
+      <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded-lg shadow-sm">
+        <div className="font-semibold text-white text-lg">Contract Review</div>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-300">
+          <div><div className="text-xs text-gray-400">Property</div><div className="font-medium text-white">{d.propertyAddress||'—'}</div></div>
+          <div><div className="text-xs text-gray-400">Type</div><div className="font-medium text-white">{d.contractType || '—'}</div></div>
+          <div><div className="text-xs text-gray-400">Buyer(s)</div><div className="font-medium text-white">{buyers || '—'}</div></div>
+          <div><div className="text-xs text-gray-400">Seller(s)</div><div className="font-medium text-white">{sellers || '—'}</div></div>
+          <div><div className="text-xs text-gray-400">Price</div><div className="font-medium text-white">{d.purchasePrice ? `$${Number(d.purchasePrice).toLocaleString()}` : '—'}</div></div>
+          <div><div className="text-xs text-gray-400">Earnest</div><div className="font-medium text-white">{d.earnestMoney ? `$${Number(d.earnestMoney).toLocaleString()}` : '—'}</div></div>
+          <div><div className="text-xs text-gray-400">Binding</div><div className="font-medium text-white">{d.bindingDate || '—'}</div></div>
+          <div><div className="text-xs text-gray-400">Closing</div><div className="font-medium text-white">{d.closingDate || '—'}</div></div>
+        </div>
+        <div className="mt-3 text-sm text-gray-300">Issues: {d.issues && d.issues.length? d.issues.join(', ') : 'None detected'}</div>
+        <div className="mt-4 flex gap-2">
+          <button onClick={async ()=>{
+            try{
+              const res = await fetch('/api/eva/wizard/create-deal', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(d) })
+              const j = await res.json()
+              if(!res.ok){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content: 'Failed to create deal: '+(j?.error||'unknown') }); return }
+              addMessage({ id:'deal-created-'+Date.now(), role:'eva', content: `✅ Deal Created: ${j.address || ''}`, payload: { type:'deal_created', data: j } })
+            }catch(e){ console.error(e); addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'Failed to create deal.' }) }
+          }} className="px-3 py-1 rounded bg-green-500 text-black">✅ Looks Good — Create Deal</button>
+          <button onClick={()=>{ addMessage({ id:'eva_edit_req_'+Date.now(), role:'eva', content: 'Tell me what needs to change.' }) }} className="px-3 py-1 rounded bg-gray-800 text-white">✏️ Edit Details</button>
+        </div>
+      </div>
+    )
+  }
   if(t==='deal_detail'){
     const d = payload.data
     const daysToClose = d.closing ? Math.max(0, Math.ceil((new Date(d.closing).getTime()-Date.now())/(1000*60*60*24))) : null
