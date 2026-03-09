@@ -11,10 +11,7 @@ export default function CommunicationsPage(){
   const [recent,setRecent]=useState<any[]>([])
 
   useEffect(()=>{ fetch('/api/communications/history').then(r=>r.json()).then(j=>{ if(j.ok) setRecent(j.history||[]) }).catch(()=>setRecent([])) },[])
-
-  useEffect(()=>{
-    fetch('/api/communications/contacts?deal_id=all').then(r=>r.json()).then(j=>{ if(j.ok) setContacts(j.contacts||[]) }).catch(()=>setContacts([]))
-  },[])
+  useEffect(()=>{ fetch('/api/communications/contacts?deal_id=all').then(r=>r.json()).then(j=>{ if(j.ok) setContacts(j.contacts||[]) }).catch(()=>setContacts([])) },[])
 
   async function loadHistory(contact:any){
     setSelected(contact)
@@ -34,7 +31,6 @@ export default function CommunicationsPage(){
       </a>
 
       <div className="grid grid-cols-12 gap-4">
-        {/* Left */}
         <div className="col-span-3 bg-gray-800 p-4 rounded card">
           <div className="flex items-center gap-2 mb-3">
             <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search contacts" className="flex-1 bg-[#0f223a] p-2 rounded input" />
@@ -54,7 +50,6 @@ export default function CommunicationsPage(){
           </div>
         </div>
 
-        {/* Center */}
         <div className="col-span-6 bg-gray-800 p-4 rounded card flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4">
@@ -68,14 +63,18 @@ export default function CommunicationsPage(){
           </div>
 
           <div className="flex-1 overflow-auto space-y-3" style={{minHeight:300}}>
-            {selected ? history.filter((h:any)=> tab==='all' || h.channel===tab).map((m:any)=> (
-              <div key={m.id} className={`max-w-[70%] p-3 rounded ${m.from_agent? 'ml-auto bg-teal-600 text-black':'bg-[#0f223a] text-gray-100'}`}>
-                <div className="text-xs text-gray-300">{m.channel.toUpperCase()} • {new Date(m.sent_at||m.created_at||Date.now()).toLocaleString()}</div>
-                {m.subject && <div className="font-semibold">{m.subject}</div>}
-                <div className="mt-1">{m.body}</div>
-                <div className="text-xs text-gray-400 mt-1">{m.status||'sent'}</div>
-              </div>
-            )) : <div className="text-gray-500">Select a contact to view the conversation</div>}
+            {selected ? (
+              history.filter((h:any)=> tab==='all' || h.channel===tab).map((m:any)=> (
+                <div key={m.id} className={`max-w-[70%] p-3 rounded ${m.from_agent? 'ml-auto bg-teal-600 text-black':'bg-[#0f223a] text-gray-100'}`}>
+                  <div className="text-xs text-gray-300">{(m.channel||'').toUpperCase()} • {new Date(m.sent_at||m.created_at||Date.now()).toLocaleString()}</div>
+                  {m.subject && <div className="font-semibold">{m.subject}</div>}
+                  <div className="mt-1">{m.body}</div>
+                  <div className="text-xs text-gray-400 mt-1">{m.status||'sent'}</div>
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500">Select a contact to view the conversation</div>
+            )}
           </div>
 
           <div className="mt-3">
@@ -83,40 +82,9 @@ export default function CommunicationsPage(){
           </div>
         </div>
 
-        {/* Right */}
         <div className="col-span-3 bg-gray-800 p-4 rounded card">
           {selected ? (
-          <div>
-            <div className="mb-2 font-semibold">{selected.contacts?.name}</div>
-            <div className="h-[50vh] overflow-auto space-y-3">
-              {history.filter(h=> tab==='all' || h.channel===tab).map((m:any)=> (
-                <div key={m.id} className={`max-w-[70%] p-3 rounded ${m.from_agent? 'ml-auto bg-teal-600 text-black':'bg-[#0f223a] text-gray-100'}`}>
-                  <div className="text-xs text-gray-300">{m.channel.toUpperCase()} • {new Date(m.sent_at||m.created_at||Date.now()).toLocaleString()}</div>
-                  {m.subject && <div className="font-semibold">{m.subject}</div>}
-                  <div className="mt-1">{m.body}</div>
-                  <div className="text-xs text-gray-400 mt-1">{m.status||'sent'}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button onClick={() => { if(selected) { setShowCompose(true); /* prefill mock */ }}} className="bg-gray-700 px-3 py-1 rounded">Quick Reply</button>
-              <button onClick={() => { if(selected) { setShowCompose(true); /* schedule showing template */ }}} className="bg-gray-700 px-3 py-1 rounded">Schedule showing</button>
-              <button onClick={() => { if(selected) { setShowCompose(true); }}} className="bg-gray-700 px-3 py-1 rounded">Send update</button>
-            </div>
-            <div className="mt-4 border-t border-gray-700 pt-3 text-sm text-gray-300">
-              <div className="font-semibold mb-2">Activity</div>
-              <div className="space-y-2 max-h-40 overflow-auto">
-                {/* recent activity feed - fetch from /api/communications/history without contact filter */}
-                {recent.map(r=> (
-                  <div key={r.id} className="flex items-center justify-between bg-[#081224] p-2 rounded">
-                    <div><div className="font-medium">{r.contact_name}</div><div className="text-xs text-gray-400">{r.summary}</div></div>
-                    <div className="text-xs text-gray-400">{new Date(r.sent_at||r.created_at).toLocaleString()}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-            <div>
+            <>
               <div className="text-lg font-semibold">{selected.contacts?.name}</div>
               <div className="text-sm text-gray-400">{selected.contacts?.email}</div>
               <div className="text-sm text-gray-400">{selected.contacts?.phone}</div>
@@ -130,8 +98,28 @@ export default function CommunicationsPage(){
                 <button className="bg-gray-700 px-3 py-1 rounded">SMS</button>
                 <button className="bg-gray-700 px-3 py-1 rounded">Email</button>
               </div>
-            </div>
-          ) : <div className="text-gray-500">No contact selected</div>}
+
+              <div className="mt-4 border-t border-gray-700 pt-3 text-sm text-gray-300">
+                <div className="font-semibold mb-2">Activity</div>
+                <div className="space-y-2 max-h-40 overflow-auto">
+                  {recent.map(r=> (
+                    <div key={r.id} className="flex items-center justify-between bg-[#081224] p-2 rounded">
+                      <div><div className="font-medium">{r.contact_name}</div><div className="text-xs text-gray-400">{r.summary}</div></div>
+                      <div className="text-xs text-gray-400">{new Date(r.sent_at||r.created_at).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => { setShowCompose(true) }} className="bg-gray-700 px-3 py-1 rounded">Quick Reply</button>
+                <button onClick={() => { setShowCompose(true) }} className="bg-gray-700 px-3 py-1 rounded">Schedule showing</button>
+                <button onClick={() => { setShowCompose(true) }} className="bg-gray-700 px-3 py-1 rounded">Send update</button>
+              </div>
+            </>
+          ) : (
+            <div className="text-gray-500">No contact selected</div>
+          )}
         </div>
       </div>
     </div>
