@@ -1,18 +1,20 @@
-Follow-Ups — Priority Actions for 2026-03-08
+FOLLOW-UPS — Priority Actions for Today
 
-Context: Web search unavailable; these are procedural follow-ups to complete once live data is retrieved.
+NOTE: Lead and listing specifics require live search. Below are templates and actions to complete once leads/listings are identified.
 
-Priority calls:
-1. Contact listing agents for top new-construction listings under $400K in Johnson City, Kingsport, Bristol — confirm availability and incentives.
-2. Call top warm leads from last 7 days who expressed interest in new construction or under $400K homes — confirm financing status and urgency.
-3. Reach out to mortgage lender partners to confirm current rates and financing programs for new builds.
+1) Leads to call (priority):
+- New construction inquiries from Realtor/Zillow within last 48 hours — call within 2 hours of identification.
+- Past buyers looking to up/downsize — offer new construction options.
 
-Listings to promote:
-- Prepare featured social post (project/daily-post.md) and boost on FB/IG targeted to ages 25–45 within 25-mile radius of Tri-Cities.
-- Create email blast to buyers list highlighting "New Construction Under $400K" — include 3–5 top listings.
+2) Listings to promote:
+- Any new construction under $400k in Johnson City, Kingsport, Bristol — prepare social posts, boost budget $50/day for 3 days.
+- Price reductions in target neighborhoods — alert active buyer list via SMS.
 
-Price-change alerts:
-- Monitor MLS for price reductions; if a new construction listing drops >3%, notify buyers via SMS and update social.
+3) Price-change alerts for buyers:
+- Monitor listings with price drops >3% in last 7 days — send targeted emails.
 
-Owner: iHome Team
-Last updated: 2026-03-08 07:06 ET
+4) Admin:
+- Update CRM with new leads and tag as "New Construction - TriCities"
+- Schedule open house tours for weekend showings
+
+Action items owner: iHome Team agents. Update this file after live searches are run.
