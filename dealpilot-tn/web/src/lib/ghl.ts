@@ -2,6 +2,92 @@ import fetch from 'node-fetch'
 
 const DEFAULT_BASE = 'https://services.leadconnectorhq.com'
 
+type GhlChannel = 'sms' | 'email'
+
+export interface GhlCredentials {
+  apiKey: string
+  locationId: string
+  baseUrl: string
+}
+
+export interface GhlMessageProps {
+  channel: GhlChannel
+  to: string
+  message: string
+  subject?: string
+  credentials?: Partial<GhlCredentials>
+  retries?: number
+}
+
+export function resolveGhlConfig(overrides?: Partial<GhlCredentials>) {
+  const apiKey = overrides?.apiKey ?? process.env.GHL_API_KEY
+  const locationId = overrides?.locationId ?? process.env.GHL_LOCATION_ID
+  const baseUrl = overrides?.baseUrl ?? process.env.GHL_BASE_URL ?? DEFAULT_BASE
+  if (!apiKey || !locationId) return null
+  return { apiKey, locationId, baseUrl }
+}
+
+async function sendGhlPayload(params: { creds: GhlCredentials; payload: Record<string, any> }) {
+  const url = `${params.creds.baseUrl.replace(/\/+$/, '')}/conversations/messages`
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${params.creds.apiKey}`,
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params.payload),
+  })
+
+  const text = await res.text()
+  let json: any = null
+  if (text) {
+    try { json = JSON.parse(text) } catch (e) { json = { raw: text } }
+  }
+
+  if (!res.ok) {
+    const err: any = new Error(`GHL request failed: ${res.status} ${res.statusText}`)
+    err.status = res.status
+    err.body = json
+    throw err
+  }
+
+  return json
+}
+
+export async function sendViaGhl(opts: GhlMessageProps) {
+  const creds = resolveGhlConfig(opts.credentials)
+  if (!creds) throw new Error('GHL credentials missing (GHL_API_KEY / GHL_LOCATION_ID)')
+
+  const payload: Record<string, any> = {
+    to: opts.to,
+    location_id: creds.locationId,
+    channel: opts.channel,
+  }
+
+  if (opts.channel === 'sms') {
+    payload.message = opts.message
+  } else {
+    payload.body = opts.message
+    if (opts.subject) payload.subject = opts.subject
+  }
+
+  const retries = Math.max(1, opts.retries ?? 1)
+  let attempt = 0
+  while (true) {
+    try {
+      return await sendGhlPayload({ creds, payload })
+    } catch (err) {
+      attempt += 1
+      if (attempt >= retries) {
+        throw err
+      }
+      await new Promise(resolve => setTimeout(resolve, 200 * attempt))
+    }
+  }
+}
+
 export class GHLClient {
   apiKey: string | undefined
   baseUrl: string
@@ -24,7 +110,7 @@ export class GHLClient {
 
     const text = await res.text()
     let json = null
-    try { json = text ? JSON.parse(text) : null } catch(e) { json = { raw: text } }
+    try { json = text ? JSON.parse(text) : null } catch (e) { json = { raw: text } }
 
     if (!res.ok) {
       const err = new Error(`GHL request failed: ${res.status} ${res.statusText}`)
