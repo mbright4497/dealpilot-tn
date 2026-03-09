@@ -699,7 +699,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                     <button onClick={()=>setShowIntake(true)} className="px-3 py-1 rounded-lg bg-[#16213e] border border-white/10 text-sm text-gray-200">Upload Contract (AI)</button>
                   </div>
                 </div>
-                <ContractUpload dealId={String(transaction.id)} onSave={(data)=>setContractData(data)} onDelete={()=>setContractData(null)} />
+                <ContractUpload dealId={String(transaction.id)} onSave={(data)=>{ setContractData(data); if((data as any)?.__remote){ const r=(data as any).__remote; setRemote(r); setMergedTx(prev=>({ ...prev, ...(r||{}) })); if(r.contacts) setLocalContacts(r.contacts) } }} onDelete={()=>setContractData(null)} />
               </div>
 
               <div className="p-4 bg-gray-800 rounded mb-4">
