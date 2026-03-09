@@ -599,7 +599,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       )}
 
       {/* Deal Room: reuse previous tabs (contract, documents, contacts, checklist, forms, assistant) */}
-      {mode==='dealroom' && (
+      {mode==='documents' && (
         <div>
           <div className="mb-3 text-sm text-gray-300">Deal Room — core deal artifacts and workflows</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -695,8 +695,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       )}
 
-      {/* Timeline mode */}
-      {mode==='timeline' && (
+      {/* Deadlines mode */}
+      {mode==='deadlines' && (
         <div>
           <h3 className="font-semibold mb-3">Timeline</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
