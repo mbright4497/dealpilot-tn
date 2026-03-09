@@ -24,8 +24,13 @@ router.post('/apply-extraction', async (req,res)=>{
     // ensure we persist contacts into transactions.contacts jsonb and into deal_contacts table
     const contactsToUpsert = txUpdates.contacts && Array.isArray(txUpdates.contacts) ? txUpdates.contacts : (data.contacts && Array.isArray(data.contacts) ? data.contacts : []);
 
-    // upsert transaction row (includes binding/closing_date/value)
-    await supabaseAdmin.from('transactions').upsert({ deal_id: dealId, ...txUpdates }, { onConflict: 'deal_id' });
+    // update transaction row by integer id (transactions.id is int4 in this schema)
+    try{
+      await supabaseAdmin.from('transactions').update(txUpdates).eq('id', Number(dealId));
+    }catch(_e){
+      // fallback: upsert by deal_id if numeric id update fails
+      try{ await supabaseAdmin.from('transactions').upsert({ deal_id: dealId, ...txUpdates }, { onConflict: 'deal_id' }); }catch(__e){}
+    }
 
     // persist contacts both as normalized rows and as jsonb in transactions
     if (Array.isArray(contactsToUpsert) && contactsToUpsert.length){
@@ -35,7 +40,7 @@ router.post('/apply-extraction', async (req,res)=>{
       }
       // also update transactions.contacts jsonb column for quick reads
       try{
-        await supabaseAdmin.from('transactions').update({ contacts: contactsToUpsert }).eq('deal_id', dealId);
+        await supabaseAdmin.from('transactions').update({ contacts: contactsToUpsert }).eq('id', Number(dealId));
       }catch(_e){}
     }
 
