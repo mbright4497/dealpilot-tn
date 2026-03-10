@@ -9,8 +9,13 @@ import './eva-styles.css'
 
 export default function EvaMainView({ transactions = [], onViewDeal }:{ transactions?: any[], onViewDeal?: (id:number)=>void }){
   const { addMessage } = useEva()
+  const briefingInjectedRef = React.useRef(false)
 
   useEffect(()=>{
+    // prevent double injection (StrictMode/useEffect double-call) by guarding once per component mount
+    if(briefingInjectedRef.current) return
+    briefingInjectedRef.current = true
+
     let mounted = true
     ;(async ()=>{
       try{
@@ -25,19 +30,19 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
           for(const d of deals){
             if(d.closing_date){
               const days = Math.ceil((new Date(d.closing_date).getTime() - Date.now())/(1000*60*60*24))
-              if(days <= 3) urgent.push({ id: d.id, address: d.address, days })
+              if(days <= 3) urgent.push({ id: d.id, address: d.property_address || d.address, days })
             }
-            if(!d.documents || d.documents.length === 0) missingDocs.push({ id: d.id, address: d.address })
+            if(!d.documents || d.documents.length === 0) missingDocs.push({ id: d.id, address: d.property_address || d.address })
           }
         }
-        const activeCount = Array.isArray(deals) ? deals.filter((t:any)=> (t.current_state||'') !== 'closed').length : 0
+        const activeCount = Array.isArray(deals) ? deals.filter((t:any)=> (t.current_state||t.phase||'') !== 'closed').length : 0
         let brief = `Good afternoon. I see ${activeCount} active deals.`
         if(urgent.length>0) brief += ` Urgent: ${urgent.length} deal(s) due within 3 days.`
         if(missingDocs.length>0) brief += ` Missing documents on ${missingDocs.length} deal(s).`
         addMessage({ id: 'briefing-proactive-'+Date.now(), role: 'eva', content: brief })
         // Inject transaction cards for quick review (if any)
         if(Array.isArray(deals) && deals.length>0){
-          deals.slice(0,6).forEach((tx:any)=> addMessage({ id:`deal-${tx.id}`, role:'eva', content:'', payload:{ type:'transaction_card', data: tx }}))
+          deals.slice(0,6).forEach((tx:any)=> addMessage({ id:`deal-${tx.id || tx.deal_id}`, role:'eva', content:'', payload:{ type:'transaction_card', data: tx }}))
         } else {
           // If no deals or fetch failed, fallback to server briefing API
           try{
