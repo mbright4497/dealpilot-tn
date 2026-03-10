@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function CommunicationsPage(){
   const [contacts,setContacts]=useState<any[]>([])
@@ -135,6 +136,17 @@ export default function CommunicationsPage(){
           </div>
 
           <div className="flex-1 overflow-auto space-y-3" style={{minHeight:300}}>
+            {/* Empty state when there are no conversations */}
+            {!loading && history.length===0 && !selected && (
+              <div className="text-center py-10">
+                <div className="text-lg font-semibold text-white mb-2">No conversations yet</div>
+                <div className="text-sm text-gray-400 mb-4">Connect your GHL account in Settings to sync contacts, or ask Eva to draft a message.</div>
+                <div className="flex justify-center">
+                  <button onClick={()=>{ const router = useRouter(); router.push('/chat'); setTimeout(()=>{ if(typeof window !== 'undefined') localStorage.setItem('eva_prefill','Draft a message to introduce myself and ask about missing documents') },300) }} className="px-4 py-2 bg-orange-500 rounded">Ask Eva to draft a message</button>
+                </div>
+              </div>
+            )}
+
             {selected ? (
               history.filter((h:any)=> tab==='all' || h.channel===tab).map((m:any)=> (
                 <div key={m.id} className={`max-w-[70%] p-3 rounded ${m.from_agent? 'ml-auto bg-teal-600 text-black':'bg-[#0f223a] text-gray-100'}`}>
