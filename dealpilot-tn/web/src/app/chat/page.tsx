@@ -387,8 +387,8 @@ export default function ChatPage() {
           const activeDeals = transactions.filter(t=>{ const s = (t.current_state||t.status||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
           // sort by closing proximity
           activeDeals.sort((a:any,b:any)=>{
-            const ad = a.closing ? new Date(a.closing).getTime() : Infinity
-            const bd = b.closing ? new Date(b.closing).getTime() : Infinity
+            const ad = a.closing_date ? new Date(a.closing_date).getTime() : Infinity
+            const bd = b.closing_date ? new Date(b.closing_date).getTime() : Infinity
             return ad - bd
           })
           return (
@@ -412,7 +412,7 @@ export default function ChatPage() {
               {/* Middle: active deals grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {activeDeals.map((d:any)=>{
-                  const daysToClose = d.closing ? Math.ceil((new Date(d.closing).getTime()-Date.now())/(1000*60*60*24)) : null
+                  const daysToClose = d.closing_date ? Math.ceil((new Date(d.closing_date).getTime()-Date.now())/(1000*60*60*24)) : null
                   const daysClass = daysToClose===null ? 'text-amber-400' : (daysToClose<=3 ? 'text-red-400' : (daysToClose<=14? 'text-amber-300':'text-green-300'))
                   const progress = playbookProgressMap[d.id] ?? 0
                   return (
@@ -429,7 +429,7 @@ export default function ChatPage() {
                       <div className="mt-3 flex items-center justify-between">
                         <div>
                           <div className="text-xs text-gray-300">Closing</div>
-                          <div className={`font-semibold ${daysClass}`}>{d.closing ? new Date(d.closing).toLocaleDateString() : 'No closing date'}</div>
+                          <div className={`font-semibold ${daysClass}`}>{d.closing_date ? new Date(d.closing_date).toLocaleDateString() : 'No closing date'}</div>
                         </div>
                         <div className="w-1/3">
                           <div className="text-xs text-gray-300">Playbook Progress</div>

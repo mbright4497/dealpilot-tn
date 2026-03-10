@@ -30,8 +30,8 @@ export async function POST(req: Request){
 
     const today = new Date()
     function computeExpected(rule:any, deal:any){
-      const binding = deal.binding || deal.binding_agreement_date || null
-      const closing = deal.closing || null
+      const binding = deal.binding_date || deal.binding || deal.binding_agreement_date || null
+      const closing = deal.closing_date || deal.closing || null
       if(rule.days_from_binding != null && binding){ const b = new Date(binding); b.setDate(b.getDate()+Number(rule.days_from_binding)); return b }
       if(rule.days_before_closing != null && closing){ const c = new Date(closing); c.setDate(c.getDate()-Number(rule.days_before_closing)); return c }
       return null
