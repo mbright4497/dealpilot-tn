@@ -356,10 +356,35 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <button onClick={async ()=>{ if(!input) return; await sendAIMessage(input); setInput('') }} className="px-4 py-2 bg-orange-500 rounded">Ask</button>
         </div>
         <div className="mt-3 flex gap-2">
-          <button onClick={async ()=>{ await sendAIMessage("What's missing?") }} className="px-3 py-1 bg-gray-800 rounded">What's missing?</button>
-          <button onClick={async ()=>{ await sendAIMessage('Draft follow-up email') }} className="px-3 py-1 bg-gray-800 rounded">Draft follow-up email</button>
-          <button onClick={()=>setMode('deadlines')} className="px-3 py-1 bg-gray-800 rounded">Show deadlines</button>
-          <button onClick={()=>setShowIntake(true)} className="px-3 py-1 bg-gray-800 rounded">Upload document</button>
+          {/* Dynamic actions driven by playbook gaps */}
+          {(()=>{
+            const [gapActions, setGapActions] = React.useState<any[]|null>(null)
+            React.useEffect(()=>{
+              let mounted = true
+              ;(async ()=>{
+                try{
+                  const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }) })
+                  if(!res.ok) return
+                  const j = await res.json()
+                  if(!mounted) return
+                  const gaps = j.results && j.results[0] ? j.results[0].gaps || [] : []
+                  const actions = (gaps || []).slice(0,4).map((g:any)=> ({ key: g.milestone_key, label: `${g.milestone_label} — ${g.status === 'overdue' ? `${Math.abs(g.days_diff)}d overdue` : g.status === 'due_today' ? 'due today' : g.days_diff!=null? `${g.days_diff}d` : ''}`, gap: g }))
+                  setGapActions(actions)
+                }catch(e){ console.warn('playbook gaps error', e) }
+              })()
+              return ()=>{ mounted = false }
+            },[transaction.id])
+
+            if(!gapActions) return <div className="text-sm text-gray-400">Loading actions…</div>
+            if(gapActions.length===0) return <>
+              <button onClick={async ()=>{ await sendAIMessage("What's missing?") }} className="px-3 py-1 bg-gray-800 rounded">What's missing?</button>
+              <button onClick={async ()=>{ await sendAIMessage('Draft follow-up email') }} className="px-3 py-1 bg-gray-800 rounded">Draft follow-up email</button>
+            </>
+
+            return gapActions.map((a:any,i:number)=>(
+              <button key={i} onClick={async ()=>{ const txt = `Action request: ${a.label} for ${String(mergedTx.address||'')}. Context: ${JSON.stringify(a.gap)}`; addMessage({ id:`user_${Date.now()}`, role:'user', content: txt }); await sendAIMessage(txt) }} className="px-3 py-1 bg-gray-800 rounded">{a.label}</button>
+            ))
+          })()}
         </div>
       </div>
 
