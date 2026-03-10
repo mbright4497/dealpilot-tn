@@ -330,7 +330,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }) })
+        const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
         if(!res.ok) return
         const j = await res.json()
         if(!mounted) return
@@ -349,7 +349,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       if(!res.ok) throw new Error('failed')
       const j = await res.json()
       // refresh steps
-      const refresh = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }) })
+      const refresh = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
       if(refresh.ok){ const rj = await refresh.json(); const rows = (rj.results && rj.results[0] && rj.results[0].gaps) ? rj.results[0].gaps : []; setPlaybookSteps(rows) }
     }catch(e){ console.error('mark milestone failed', e) }
   }
@@ -430,7 +430,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               let mounted = true
               ;(async ()=>{
                 try{
-                  const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }) })
+                  const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
                   if(!res.ok) return
                   const j = await res.json()
                   if(!mounted) return
