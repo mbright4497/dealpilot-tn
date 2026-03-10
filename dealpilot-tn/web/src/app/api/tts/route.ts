@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 
+// This helper always locks the voice to 'nova'. Do NOT allow dynamic voice selection from query or request body.
 async function callOpenAITTS(text:string){
   return fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
