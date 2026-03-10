@@ -26,7 +26,7 @@ export async function POST(req: Request){
       if(deal) deals = [deal]
     } else {
       // active deals (exclude Closed/Cancelled)
-      const { data: allDeals, error: allErr } = await sb.from('transactions').select('*').neq('current_state','closed').neq('current_state','Cancelled')
+      const { data: allDeals, error: allErr } = await sb.from('transactions').select('*').neq('status','Closed').neq('status','Cancelled')
       if(allErr) console.warn('deals fetch error', allErr)
       deals = Array.isArray(allDeals) ? allDeals : []
     }
@@ -44,8 +44,8 @@ export async function POST(req: Request){
 
     function computeExpectedDateForRule(rule:any, deal:any){
       // prefer binding date for days_from_binding
-      const binding = deal.binding_date || deal.binding || deal.binding_agreement_date || null
-      const closing = deal.closing_date || deal.closing || null
+      const binding = deal.binding || deal.binding_agreement_date || null
+      const closing = deal.closing || null
       if(rule.days_from_binding != null && binding){
         const b = new Date(binding)
         b.setDate(b.getDate() + Number(rule.days_from_binding))

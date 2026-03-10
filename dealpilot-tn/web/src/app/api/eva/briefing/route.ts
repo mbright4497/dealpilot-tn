@@ -20,7 +20,7 @@ export async function POST(req: Request){
     const rules = Array.isArray(rulesData) ? rulesData : []
 
     // fetch active deals
-    const { data: allDeals } = await sb.from('transactions').select('*').neq('current_state','closed').neq('current_state','Cancelled')
+    const { data: allDeals } = await sb.from('transactions').select('*').neq('status','Closed').neq('status','Cancelled')
     const deals = Array.isArray(allDeals) ? allDeals : []
 
     // fetch progress rows
@@ -30,8 +30,8 @@ export async function POST(req: Request){
 
     const today = new Date()
     function computeExpected(rule:any, deal:any){
-      const binding = deal.binding_date || deal.binding || deal.binding_agreement_date || null
-      const closing = deal.closing_date || deal.closing || null
+      const binding = deal.binding || deal.binding_agreement_date || null
+      const closing = deal.closing || null
       if(rule.days_from_binding != null && binding){ const b = new Date(binding); b.setDate(b.getDate()+Number(rule.days_from_binding)); return b }
       if(rule.days_before_closing != null && closing){ const c = new Date(closing); c.setDate(c.getDate()-Number(rule.days_before_closing)); return c }
       return null

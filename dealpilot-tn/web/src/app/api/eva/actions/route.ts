@@ -11,7 +11,7 @@ export async function GET(req: Request){
 
     // load rules and active deals
     const { data: rules } = await sb.from('deal_playbook_rules').select('*')
-    const { data: deals } = await sb.from('transactions').select('*').neq('current_state','closed').neq('current_state','Cancelled')
+    const { data: deals } = await sb.from('transactions').select('*').neq('status','Closed').neq('status','Cancelled')
     const dealIds = (deals||[]).map((d:any)=>d.id)
     const { data: progress } = await sb.from('deal_playbook_progress').select('*').in('deal_id', dealIds)
 
@@ -24,8 +24,8 @@ export async function GET(req: Request){
         const completed = !!matched && (matched.status==='completed' || matched.status==='done')
         if(completed) continue
         // compute expected date
-        const binding = d.binding_date || d.binding || d.binding_agreement_date || null
-        const closing = d.closing_date || d.closing || null
+        const binding = d.binding || d.binding_agreement_date || null
+        const closing = d.closing || null
         let expected: Date | null = null
         if(r.days_from_binding != null && binding) { const b=new Date(binding); b.setDate(b.getDate()+Number(r.days_from_binding)); expected = b }
         if(!expected && r.days_before_closing != null && closing){ const c=new Date(closing); c.setDate(c.getDate()-Number(r.days_before_closing)); expected = c }
