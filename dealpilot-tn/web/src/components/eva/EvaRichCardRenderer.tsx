@@ -13,27 +13,32 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
     return (<div className="bg-[#0f1c2e] border border-[#1e3a5f] p-3 rounded"><div className="font-semibold">Deadline Risk</div><div className="text-sm text-gray-300">{payload.note}</div></div>)
   }
   if(t==='transaction_card'){
-    const tx = payload.data
-    const daysToClose = tx.closing ? Math.max(0, Math.ceil((new Date(tx.closing).getTime()-Date.now())/(1000*60*60*24))) : null
-    const progress = tx.current_state === 'closed' ? 100 : tx.current_state === 'draft' ? 10 : tx.current_state === 'inspection_period' ? 65 : 40
-    const badge = tx.state_label || tx.status || '—'
+    const tx = payload.data || {}
+    // tolerate multiple API field names
+    const addr = tx.address || tx.property_address || tx.address_line || tx.propertyAddress || ''
+    const client = tx.client || tx.client_name || tx.buyer || tx.primary_contact || ''
+    const closingDate = tx.closing || tx.closing_date || tx.closingDate || tx.closing_at || null
+    const daysToClose = closingDate ? Math.max(0, Math.ceil((new Date(closingDate).getTime()-Date.now())/(1000*60*60*24))) : null
+    const state = tx.current_state || tx.state || tx.status || ''
+    const progress = state === 'closed' ? 100 : state === 'draft' ? 10 : state === 'inspection_period' ? 65 : 40
+    const badge = tx.state_label || tx.status_label || tx.status || state || '—'
     return (
       <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded-lg shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <div className="font-semibold text-white">{String(tx.address||'')}</div>
-            <div className="text-sm text-gray-300">{String(tx.client||'')}</div>
+            <div className="font-semibold text-white">{addr || 'No address available'}</div>
+            <div className="text-sm text-gray-300">{client || 'No client name'}</div>
           </div>
           <div className="text-xs font-semibold px-2 py-1 rounded-full bg-orange-500 text-black">{badge}</div>
         </div>
         <div className="mt-3">
           <div className="w-full bg-gray-700 rounded-full h-2"><div className="h-2 rounded-full bg-cyan-400" style={{width:`${progress}%`}} /></div>
-          <div className="text-xs text-gray-400 mt-2">{progress}% • {daysToClose===null? 'TBD' : `${daysToClose}d to close`} • {tx.closing? tx.closing : 'No closing date'}</div>
+          <div className="text-xs text-gray-400 mt-2">{progress}% • {daysToClose===null? 'TBD' : `${daysToClose}d to close`} • {closingDate? new Date(closingDate).toLocaleDateString() : 'No closing date'}</div>
         </div>
         <div className="mt-3 flex gap-2">
           <button onClick={()=>{
             // Ask Eva to show deal detail inline
-            addMessage({ id:`deal-detail-${tx.id}-${Date.now()}`, role:'eva', content: `Details for ${tx.address}`, payload: { type: 'deal_detail', data: tx } })
+            addMessage({ id:`deal-detail-${tx.id}-${Date.now()}`, role:'eva', content: `Details for ${addr}`, payload: { type: 'deal_detail', data: tx } })
             // also emit an event so page-level listeners can open legacy detail if needed
             if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:viewDeal', { detail: { id: tx.id } }))
           }} className="px-3 py-1 rounded bg-cyan-500 text-black">View Deal</button>
