@@ -37,7 +37,7 @@ export default function SettingsPage(){
         )}
         {tab==='notifications' && (
           <div className="grid gap-4">
-            {['Email Alerts','Deadline Reminders','EVA Daily Briefing','SMS Notifications'].map((label)=> (
+            {['Email Alerts','Deadline Reminders','REVA Daily Briefing','SMS Notifications'].map((label)=> (
               <div key={label} className="flex items-center justify-between bg-[#0f223a] border border-gray-700 p-3 rounded">
                 <div className="text-gray-200">{label}</div>
                 <input type="checkbox" />
