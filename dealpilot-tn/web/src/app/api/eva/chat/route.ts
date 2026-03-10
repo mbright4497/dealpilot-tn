@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
@@ -39,32 +40,33 @@ export async function POST(req: Request) {
       messages = []
     }
 
-    // gather portfolio context
+    // gather portfolio context directly from DB
     let portfolioSummary = ''
-    try {
-      const ph = await fetch(new URL('/api/portfolio-health', process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost'))
-      const pd = await fetch(new URL('/api/portfolio-deadlines', process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost'))
-      if (ph.ok) {
-        const phd = await ph.json()
-        portfolioSummary += `Active deals: ${phd?.active_count ?? phd?.total_upcoming ?? 'unknown'}. `
+    try{
+      const svc = supabase || (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY) : null)
+      if(svc){
+        // active deals count (exclude Closed and Cancelled)
+        const { count: activeCount } = await svc.from('deal_state').select('id', { count: 'exact', head: true }).neq('current_state', 'Closed').neq('current_state', 'Cancelled')
+        // next 7 days deadlines
+        const { data: nextDeadlines } = await svc.from('deal_deadlines').select('*').lte('deadline_date', new Date(Date.now() + 7*24*60*60*1000).toISOString()).order('deadline_date', { ascending: true }).limit(10)
+        portfolioSummary += `Active deals: ${activeCount ?? 'unknown'}. `
+        portfolioSummary += `Next7: ${Array.isArray(nextDeadlines)? nextDeadlines.length : 0}. `
       }
-      if (pd.ok) {
-        const pdd = await pd.json()
-        portfolioSummary += `Overdue: ${pdd?.overdue_count ?? 0}. Next 7 days: ${Array.isArray(pdd?.next_7_days)? pdd.next_7_days.length : 0}. `
-      }
-    } catch (e) {
-      // ignore
-    }
+    }catch(e){ console.warn('portfolio summary fetch failed', e) }
 
     // deal-specific context
     let dealContext = ''
     if (dealId) {
       try {
-        const { data: deal } = await supabase.from('deal_state').select('id,address,client,current_state,inspection_end_date,closing_date,sale_price').eq('id', dealId).single()
-        if (deal) {
-          dealContext = `Deal ${dealId}: ${deal.address || ''} · client: ${deal.client || ''} · state: ${deal.current_state || ''} · inspection_end: ${deal.inspection_end_date || 'TBD'} · closing: ${deal.closing_date || 'TBD'} · price: ${deal.sale_price || 'TBD'}`
+        // if supabase client is not available from auth helpers, create a service-role client to read context
+        const svc = supabase || (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY) : null)
+        if(svc){
+          const { data: deal } = await svc.from('deal_state').select('id,address,client,current_state,inspection_end_date,closing_date,sale_price').eq('id', dealId).single()
+          if (deal) {
+            dealContext = `Deal ${dealId}: ${deal.address || ''} · client: ${deal.client || ''} · state: ${deal.current_state || ''} · inspection_end: ${deal.inspection_end_date || 'TBD'} · closing: ${deal.closing_date || 'TBD'} · price: ${deal.sale_price || 'TBD'}`
+          }
         }
-      } catch (e) { }
+      } catch (e) { console.warn('failed to load deal context', e) }
     }
 
     // build system prompt
