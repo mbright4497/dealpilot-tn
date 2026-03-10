@@ -383,80 +383,57 @@ export default function ChatPage() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && (()=>{
-          // Command Center layout
-          const activeDeals = transactions.filter(t=>{ const s = (t.current_state||t.status||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
-          // sort by closing proximity
+          // EVA-first hero + ticker layout
+          const activeDeals = transactions.filter(t=>{ const s = (t.status||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
           activeDeals.sort((a:any,b:any)=>{
             const ad = a.closing_date ? new Date(a.closing_date).getTime() : Infinity
             const bd = b.closing_date ? new Date(b.closing_date).getTime() : Infinity
             return ad - bd
           })
           return (
-            <div>
-              {/* Top: Eva briefing card */}
-              <div className="mb-6 p-6 rounded-lg bg-[#061021] border border-white/6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-sm text-gray-300">Eva Morning Briefing</div>
-                    <div className="mt-2 text-white text-lg">{loading? 'Loading briefing...' : (briefing || 'No briefing available')}</div>
-                    <div className="text-xs text-gray-400 mt-2">Last updated: {lastUpdated ? lastUpdated.toLocaleString() : '—'}</div>
-
-                    {/* structured deals summary will render here when briefing is structured JSON */}
+            <div className="min-h-[80vh] flex flex-col">
+              {/* TOP HALF - Eva's Zone */}
+              <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
+                <div className="relative">
+                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-orange-400/30 via-pink-400/20 to-indigo-400/10 blur-xl animate-pulse-slow" style={{width:220,height:220}}></div>
+                  <img src="/avatar-pilot.png" alt="Eva" className="w-56 h-56 rounded-full relative z-10 shadow-2xl" />
+                </div>
+                <div className="mt-6 max-w-3xl">
+                  <div className="bg-[#071827] rounded-xl p-6 inline-block text-left">
+                    <div className="text-2xl md:text-3xl font-semibold leading-relaxed text-white" dangerouslySetInnerHTML={{__html: (briefing || 'No briefing available').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br/>')}} />
+                    <div className="text-sm text-gray-400 mt-3">Last updated: {lastUpdated ? lastUpdated.toLocaleString() : '—'}</div>
                   </div>
-                  <div>
-                    <img src="/avatar-pilot.png" alt="Eva" className="w-16 h-16 rounded-full animate-pulse-slow" />
-                  </div>
+                </div>
+                <div className="mt-6 flex items-center gap-4">
+                  <button className="w-12 h-12 rounded-full bg-[#0f1724] border border-white/6 flex items-center justify-center text-gray-200" disabled title="Voice (coming soon)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1v11"/><path d="M19 11a7 7 0 01-14 0"/></svg></button>
+                  <input placeholder="Ask Eva anything..." className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white" />
                 </div>
               </div>
 
-              {/* Middle: active deals grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {activeDeals.map((d:any)=>{
-                  const daysToClose = d.closing_date ? Math.ceil((new Date(d.closing_date).getTime()-Date.now())/(1000*60*60*24)) : null
-                  const daysClass = daysToClose===null ? 'text-amber-400' : (daysToClose<=3 ? 'text-red-400' : (daysToClose<=14? 'text-amber-300':'text-green-300'))
-                  const progress = playbookProgressMap[d.id] ?? 0
-                  return (
-                    <div key={d.id} className="p-4 bg-[#0d1b2a] rounded border border-white/6 cursor-pointer hover:shadow-lg transition-all" onClick={()=>openDeal(d.id)}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-white">{d.address}</div>
-                          <div className="text-sm text-gray-400">{d.client}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`px-2 py-1 rounded-full text-xs font-semibold ${d.status==='Closed' ? 'bg-gray-500/20 text-gray-300' : d.status==='Pending' ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}`}>{d.status}</div>
-                        </div>
+              {/* BOTTOM HALF - Deal ticker + action pills */}
+              <div className="h-44 bg-[#071224] rounded-lg p-4">
+                <div className="mb-2 text-sm text-gray-400">Deal Ticker</div>
+                <div className="flex gap-3 overflow-x-auto py-2">
+                  {activeDeals.map((d:any)=>{
+                    const days = d.closing_date ? Math.ceil((new Date(d.closing_date).getTime()-Date.now())/(1000*60*60*24)) : null
+                    const daysClass = days===null ? 'text-amber-400' : (days<=3 ? 'text-red-400' : (days<=14? 'text-amber-300':'text-green-300'))
+                    const progress = playbookProgressMap[d.id] ?? 0
+                    return (
+                      <div key={d.id} onClick={()=>openDeal(d.id)} className="min-w-[220px] cursor-pointer p-3 bg-[#0f1c2e] rounded border border-white/6">
+                        <div className="font-semibold text-white">{d.address}</div>
+                        <div className="text-xs text-gray-400">{d.client} • <span className={daysClass}>{days!==null? `${days}d` : 'No close'}</span></div>
+                        <div className="mt-2 w-full bg-gray-700 h-2 rounded"><div className="h-2 bg-cyan-400 rounded" style={{width:`${progress}%`}} /></div>
                       </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <div>
-                          <div className="text-xs text-gray-300">Closing</div>
-                          <div className={`font-semibold ${daysClass}`}>{d.closing_date ? new Date(d.closing_date).toLocaleDateString() : 'No closing date'}</div>
-                        </div>
-                        <div className="w-1/3">
-                          <div className="text-xs text-gray-300">Playbook Progress</div>
-                          <div className="w-full bg-gray-700 h-2 rounded mt-1"><div className="h-2 rounded bg-cyan-400" style={{width:`${Math.min(100,Math.max(0,progress))}%`}} /></div>
-                        </div>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-400">{progress}% complete</div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Bottom: Eva's Actions */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3">Eva's Actions</h3>
-                <div className="flex gap-3 flex-wrap">
-                  {actions.map((a:any, idx:number)=> (
-                    <div key={`${a.dealId}-${a.milestone_key||a.action}`} className={`p-3 bg-[#0f1c2e] rounded border border-white/6 w-full md:w-1/3 transform transition-all duration-500 ${idx<3 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-80'}`} style={{animation: `slideIn 400ms ${idx*80}ms ease both`}}>
-                      <div className="font-semibold text-white">{a.action}</div>
-                      <div className="text-sm text-gray-400">{a.address}</div>
-                      <div className="text-xs text-gray-500 mt-2">{a.reason || ''}</div>
-                      <div className="mt-3">
-                        <button onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const j=await res.json(); // refresh actions
-                          const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} marked complete for ${a.address}`) } else { addToast('Failed to execute action') } }} className="px-3 py-1 bg-orange-500 rounded">Do it</button>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
+                </div>
+                <div className="mt-3">
+                  <div className="text-sm text-gray-300 mb-2">Eva's Actions</div>
+                  <div className="flex gap-2">
+                    {actions.length===0 ? <div className="text-gray-400">All caught up! No pending actions.</div> : actions.map((a:any)=> (
+                      <button key={`${a.dealId}-${a.milestone_key||a.action}`} onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} for ${a.address}`) } else addToast('Failed') }} className={`px-3 py-1 rounded-full text-sm ${a.urgency==='critical' ? 'bg-red-600 text-white' : a.urgency==='high' ? 'bg-amber-500 text-black' : 'bg-gray-700 text-white'}`}>{a.action} • {a.address}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
