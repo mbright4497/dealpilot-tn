@@ -6,7 +6,7 @@ import EvaConversation from './EvaConversation'
 import EvaComposer from './EvaComposer'
 
 export default function EvaDrawer(){
-  const { isOpen, closeEva, pageContext, messages } = useEva()
+  const { isOpen, closeEva, pageContext, messages, clearMessages, addMessage } = useEva()
   const [mounted, setMounted] = useState(false)
 
   useEffect(()=>{
@@ -30,7 +30,8 @@ export default function EvaDrawer(){
               <div className="text-xs text-gray-400">{pageContext?.route || 'Global'}</div>
             </div>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
+            <button onClick={()=>{ clearMessages(); addMessage({ id:`eva_greeting_${Date.now()}`, role:'eva', content: 'Hello — how can I help with your transactions today?' }) }} className="text-gray-300">New Chat</button>
             <button onClick={closeEva} className="text-gray-300">Close</button>
           </div>
         </div>
