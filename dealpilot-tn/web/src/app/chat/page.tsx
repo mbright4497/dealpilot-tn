@@ -1,6 +1,6 @@
 'use client'
 import React, {useState, useEffect} from 'react'
-import { speakText, stopSpeaking, isSpeaking } from '@/lib/eva-tts'
+import { speakAPI as speakText, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
 import {useRouter} from 'next/navigation'
 
 import TCDashboard from '@/components/TCDashboard'
