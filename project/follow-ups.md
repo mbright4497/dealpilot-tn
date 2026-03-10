@@ -1,20 +1,28 @@
-FOLLOW-UPS — Priority Actions for Today
+# Follow-Ups — Priority Actions (Tri-Cities New Construction)
 
-NOTE: Lead and listing specifics require live search. Below are templates and actions to complete once leads/listings are identified.
+**Status:** Pending web data (Realtor/Zillow access blocked).
+**Date:** 2026-03-10
 
-1) Leads to call (priority):
-- New construction inquiries from Realtor/Zillow within last 48 hours — call within 2 hours of identification.
-- Past buyers looking to up/downsize — offer new construction options.
+## Leads to Call (Top 5 new construction listings under $400K)
+| Listing | Source | Price | Builder / Community | Next Action |
+| --- | --- | --- | --- | --- |
+| TODO: Pull from Realtor.com/Zillow | Realtor.com | <$400K | ?? | Call to confirm incentives |
+| TODO: Pull from Realtor.com/Zillow | Zillow | <$400K | ?? | Schedule AI tour/chat |
+| TODO: Pull from Realtor.com/Zillow | Realtor.com | <$400K | ?? | Text with guide link |
+| TODO: Pull from Realtor.com/Zillow | Zillow | <$400K | ?? | Follow-up on builder incentives |
+| TODO: Pull from Realtor.com/Zillow | Realtor.com | <$400K | ?? | Tag in GHL workflow |
 
-2) Listings to promote:
-- Any new construction under $400k in Johnson City, Kingsport, Bristol — prepare social posts, boost budget $50/day for 3 days.
-- Price reductions in target neighborhoods — alert active buyer list via SMS.
+**Recommended data gathering:**
+- Run `web_search "Tri-Cities new construction homes under 400k"` to locate current lead listings.
+- Visit https://www.realtor.com/new-construction (filter: Tri-Cities, price <= 400000) and https://www.zillow.com/tri-cities-tn/ to capture addresses, prices, contact info.
+- Note builder name, incentives, expected completion date.
 
-3) Price-change alerts for buyers:
-- Monitor listings with price drops >3% in last 7 days — send targeted emails.
+## Listings to Promote
+- TODO: Identify 1-2 builder communities with active incentives under $400K.
+- TODO: Collect marketing bullets (warranty, energy efficiency, HOA). Use builder websites (e.g., https://www.danielbuilders.com/tri-cities/) or MLS.
 
-4) Admin:
-- Update CRM with new leads and tag as "New Construction - TriCities"
-- Schedule open house tours for weekend showings
+## Price-Change Alerts
+- TODO: Watch for adjustments in < $400K segment (Realtor/Zillow alerts or local MLS).
+- TODO: Log price adjustments in GHL contact notes.
 
-Action items owner: iHome Team agents. Update this file after live searches are run.
+*Workhorse* — unable to pull live listings; please update once web access restored.
