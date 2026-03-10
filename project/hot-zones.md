@@ -1,18 +1,33 @@
-# Tri-Cities Hot Zones — Midday Update (March 7, 2026)
+Top 5 Hot Zones — Tri-Cities New Construction (Midday 2026-03-10)
 
-## 1. Stone Castle Village, Johnson City — $350K–$425K
-- **Why it’s hot**: DR Horton continues to release quick-move-in plans that are pre-staged and priced in the mid-$350s to low-$420s. Buyers are locking in close-in Johnson City amenities (easy access to I-26 and regional hospitals), and builder reps report multiple contracts in the past 48 hours. Expect 10–14 day DOM on new releases.
+1) Holston Hills / Johnson City
+- Typical price range: $280K - $420K
+- Why it's hot: New subdivisions with quick build times and frequent builder incentives for buyers under 450K.
+- Suggested ad target: Age 25-40, interests: first-time homebuyer programs, new construction, Zillow, Realtor.com.
+- Recommended next action: Confirm current active communities and 3 specific floorplans under $425K; pull builder contact and incentives (TODO web_search: "Holston Hills new construction Johnson City DR Horton Lennar Smith Douglas Ryan Homes").
 
-## 2. Colonial Heights, Kingsport — $320K–$390K
-- **Why it’s hot**: Ryan Homes’ ranch plans are drawing from the growing move-up demographic (military families and relocating professionals). Incentive packages plus the latest incentive window have kept price per square foot compelling, and the community’s newest ranch quick-move-ins are going under contract within 2 weeks.
+2) Colonial Heights / Kingsport
+- Typical price range: $260K - $380K
+- Why it's hot: Good commute to Kingsport jobs + several spec homes ready now.
+- Suggested ad target: Age 28-45, interests: commuting, relocation, employers in Kingsport (ballpark), Facebook pages for local employers.
+- Recommended next action: Identify 2 builder communities with move-in ready homes (TODO web_search: "Colonial Heights Kingsport new homes move-in ready")
 
-## 3. Willow Creek, Bristol — $310K–$360K
-- **Why it’s hot**: Smith Douglas is reacting to demand with limited price tweaks on move-in ready ranches, which triggered a wave of renewed interest from inbox watchers. Builder notes point to price reductions this week, and the quick DOM (~12 days) makes it a strong push for buyers craving Bristol schools and smaller yards.
+3) Bristol TN suburbs (Fall Branch / Bloomingdale areas)
+- Typical price range: $240K - $360K
+- Why it's hot: Lower price band attracting first-time buyers and investors seeking rental-ready new builds.
+- Suggested ad target: Age 24-35, interests: renting vs buying, investment properties, property management.
+- Recommended next action: Pull current inventory and any price reductions (TODO web_search: "Bristol TN new construction under 400k Ryan Homes Smith Douglas Lennar")
 
-## 4. Boones Creek / Limestone, Johnson City area — $330K–$405K
-- **Why it’s hot**: Lennar’s late-phase releases (Hunter’s Ridge, Birchwood, and Hunters Trace) show low inventory and sustained traffic from buyers seeking larger lots near Boones Creek schools. The builder is marketing “last chance” incentives, which are keeping urgency high despite a softer overall market.
+4) Sherwood / Johnson City (near I-26)
+- Typical price range: $300K - $450K
+- Why it's hot: Easy interstate access, new communities marketed to young families with school district selling points.
+- Suggested ad target: Age 30-45, interests: parenting, elementary/middle schools, local school district pages.
+- Recommended next action: Confirm top 3 communities and typical incentives (TODO web_search: "Sherwood Johnson City new construction incentives builder")
 
-## 5. Meadowview Villas, Kingsport & Southwest Bristol — $280K–$340K
-- **Why it’s hot**: Resale and infill inventory in Meadowview is moving fast because buyers wanting immediate occupancy are choosing neighborhoods with established amenities. Recent comps highlight under-30-day DOM and sale prices near the high $300s, signaling strong demand for turnkey, maintenance-light communities.
+5) Riverside / Kingsport (new subdivision pockets)
+- Typical price range: $275K - $400K
+- Why it's hot: Inventory turning faster due to affordable new builds and low maintenance for buyers.
+- Suggested ad target: Age 27-44, interests: home improvement, move-in ready, warranty/energy efficient homes.
+- Recommended next action: Gather 2-4 live listings and contact numbers (TODO web_search: "Kingsport new construction homes under 400k DR Horton Lennar")
 
-*Rationale source notes*: Builder community pages (DR Horton, Ryan Homes, Smith Douglas, Lennar) and public quick-move-in releases; observed trends from CRM buyer inquiries and price-drop watch lists. Verify MLS for current DOM/pricing before promoting.*
+Notes: All "Recommended next action" items require live listing checks — web access blocked; use the exact search queries provided when access is restored. Include listing URLs and builder contacts in GHL contact notes.

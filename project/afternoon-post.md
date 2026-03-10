@@ -1,22 +1,16 @@
-# Midday Buyer-Focused Social Post — March 7, 2026
+Headline: Quick Tip: Find the best new-build deals in the Tri-Cities
 
-**Primary copy (Facebook/Instagram)**
-> **Heading**: "Tri-Cities Buyers: Know your power window before the weekend rush."
->
-> The midday market pulse shows a few pockets still moving faster than the rest—and the buyers who arrive with pre-approval + clear must-haves are getting first dibs. Today’s focus: new construction quick-move-ins in Stone Castle Village, Colonial Heights, and Willow Creek priced near $340K–$400K.
->
-> 🧠 Tip: If you can’t tour today, send a short video walkthrough request and ask for the order-of-operations (financing > inspection window > seller credits). That keeps everyone aligned and keeps you competitive.
->
-> 💬 Bonus: Ask your agent to keep you looped into price-drop alerts for builder communities in Johnson City/Kingsport/Bristol—those sellers are being more flexible midweek.
->
-> ✅ CTA: DM for the latest vacancy list or click the link to lock in a weekend preview (link to landing page/dealer page).  
+Body (<=125 chars): New to buying? New construction means warranties & lower maintenance — see top value neighborhoods near Johnson City. 
 
-**Image Caption Option 1**
-> “Midday heat map: quick-move-ins at these builder neighborhoods are under contract in <15 days.”
+Supporting bullets:
+- Low-maintenance homes with builder warranties
+- Move-in ready options under $400K (we'll find them)
+- Local market moving fast — act before price changes
 
-**Image Caption Option 2**
-> “Bring proof-of-funds or pre-approval, and we’ll highlight the newest releases before the weekend crush.”
+CTA: Tap to get the free New Construction Guide + instant AI answers
 
-**Suggested CTA**
-- “Tap to tell us your must-haves, and we’ll text you a curated list + builder incentives hitting the market tonight.”
-- Use landing page link: [Insert link from campaign].
+Image suggestions:
+- Carousel: 1) Exterior of a modern new-build (neutral siding/covered porch) 2) Bright open kitchen interior 3) Map pin showing Johnson City/Kingsport/Bristol
+- Text overlay on first image: "New Construction Guide — Tri-Cities"
+
+Notes: Different angle than morning post — focuses on buyer tips and market urgency. Use 4:5 aspect ratio for FB/IG, keep headline readable at thumbnail size.
