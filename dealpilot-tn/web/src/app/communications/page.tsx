@@ -18,6 +18,8 @@ export default function CommunicationsPage(){
   const [composeError,setComposeError]=useState('')
   const [composeStatus,setComposeStatus]=useState('')
   const [composeLoading,setComposeLoading]=useState(false)
+  const [loading,setLoading]=useState(false)
+  const router = useRouter()
 
   useEffect(()=>{ fetch('/api/communications/contacts?deal_id=all').then(r=>r.json()).then(j=>{ if(j.ok) setContacts(j.contacts||[]) }).catch(()=>setContacts([])) },[])
 
