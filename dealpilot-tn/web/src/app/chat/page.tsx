@@ -466,13 +466,12 @@ export default function ChatPage() {
  onClick={async () => {
  try {
  if (evaSpeaking) {
- // stop
  stopSpeaking();
  setEvaSpeaking(false);
  return;
  }
  if (!briefing) return;
- speak(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
+ await speakText(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
  setEvaSpeaking(false)
  );
  } catch (e) {
