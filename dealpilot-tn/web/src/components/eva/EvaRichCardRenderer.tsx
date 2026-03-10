@@ -109,5 +109,20 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
       </div>
     )
   }
+
+  if(t==='draft_email'){
+    const e = payload.data
+    return (
+      <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded-lg">
+        <div className="font-semibold text-white">Draft Email: {e.subject}</div>
+        <pre className="text-sm text-gray-300 mt-2 whitespace-pre-wrap">{e.body}</pre>
+        <div className="mt-3 flex gap-2">
+          <button onClick={()=>{ addMessage({ id:'eva_send_confirm_'+Date.now(), role:'eva', content:'(Placeholder) I would send this now if sending were enabled.' }) }} className="px-3 py-1 rounded bg-cyan-500 text-black">Send (placeholder)</button>
+          <button onClick={()=>{ addMessage({ id:'eva_edit_'+Date.now(), role:'eva', content:'Okay — tell me what to change.' }) }} className="px-3 py-1 rounded bg-gray-800 text-white">Edit</button>
+        </div>
+      </div>
+    )
+  }
+
   return (<div className="bg-[#0f1c2e] border border-[#1e3a5f] p-3 rounded">Unknown payload</div>)
 }
