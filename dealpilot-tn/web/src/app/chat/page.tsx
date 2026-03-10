@@ -431,8 +431,7 @@ export default function ChatPage() {
                     <div className="mt-2 text-white text-lg">{loading? 'Loading briefing...' : (briefing || 'No briefing available')}</div>
                     <div className="text-xs text-gray-400 mt-2">Last updated: {lastUpdated ? lastUpdated.toLocaleString() : '—'}</div>
 
-                    {/* structured deals summary (if available) */}
-                    {!loading && briefing && Array.isArray((awaitable(briefing)).then?[]:[])}
+                    {/* structured deals summary will render here when briefing is structured JSON */}
                   </div>
                   <div>
                     <img src="/avatar-pilot.png" alt="Eva" className="w-16 h-16 rounded-full animate-pulse-slow" />
