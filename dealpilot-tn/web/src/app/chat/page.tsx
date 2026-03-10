@@ -257,11 +257,18 @@ export default function ChatPage() {
     const onUpload = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('add-transaction') } }catch(_){ } }
     const onViewParties = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
     const onEditDeal = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
-    const onDoAction = async (e:any) => { try{ const detail = e.detail; if(!detail) return; if(detail.id === 'remind-inspector'){ addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'Drafting reminder to inspector...' }); // placeholder action
-          // In production: call /api/communications/send or draft email API
-          addMessage({ id:'eva_action_done_'+Date.now(), role:'eva', content:'Reminder drafted (placeholder). I can send it if you confirm.' }) }
-          else if(detail.id === 'send-disclosure'){ addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'Preparing disclosure to buyer...' }); addMessage({ id:'eva_action_done_'+Date.now(), role:'eva', content:'Disclosure prepared (placeholder).' }) }
-          else if(detail.id === 'check-title'){ addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'Checking title commitment status...' }); addMessage({ id:'eva_action_done_'+Date.now(), role:'eva', content:'Title commitment is pending (placeholder).' }) }
+    const onDoAction = async (e:any) => { try{ const detail = e.detail; if(!detail) return; if(detail.id === 'remind-inspector'){ // draft email to inspector
+            const draft = `Subject: Reminder — Inspection for ${selectedTx?.address || 'your property'}\n\nHi [Inspector Name],\n\nPlease confirm availability for the inspection for ${selectedTx?.address || ''}. The inspection period ends on ${selectedTx?.inspection_end_date || 'TBD'}. Please reply with available times.\n\nThanks,\n${'Matt'}`
+            addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'I drafted a reminder to the inspector. Review below and tell me to send or edit.', payload: { type:'draft_email', data: { subject: `Reminder — Inspection for ${selectedTx?.address || ''}`, body: draft } } })
+          }
+          else if(detail.id === 'send-disclosure'){ // draft disclosure email to buyer
+            const draft = `Subject: Required Disclosure for ${selectedTx?.address || ''}\n\nHi ${selectedTx?.client || ''},\n\nAttached is the required disclosure for ${selectedTx?.address || ''}. Please review and confirm receipt.\n\nThanks,\n${'Matt'}`
+            addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'I prepared a disclosure email for the buyer. Review and confirm to send.', payload: { type:'draft_email', data: { subject: `Disclosure — ${selectedTx?.address || ''}`, body: draft } } })
+          }
+          else if(detail.id === 'check-title'){ // draft title inquiry
+            const draft = `Subject: Title Commitment Status — ${selectedTx?.address || ''}\n\nHello Title Team,\n\nCould you please provide the current status of the title commitment for ${selectedTx?.address || ''}? We are tracking deadlines and need any exceptions or outstanding requirements.\n\nThanks,\n${'Matt'}`
+            addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'I prepared a title inquiry draft. Review below and tell me to send.', payload: { type:'draft_email', data: { subject: `Title Commitment Status — ${selectedTx?.address || ''}`, body: draft } } })
+          }
       }catch(_){ } }
     window.addEventListener('eva:viewDeal', onViewDeal)
     window.addEventListener('eva:uploadDocument', onUpload)
