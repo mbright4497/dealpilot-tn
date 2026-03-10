@@ -399,6 +399,12 @@ export default function ChatPage() {
               {/* TOP HALF - Eva's Zone */}
 <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
  {/* Avatar + glow + talking animation */}
+ <div className="flex flex-col items-center gap-4 mb-2">
+ <img
+ src="/reva-jet-logo.png"
+ alt="ClosingPilot Reva"
+ className="h-10 md:h-12 w-auto drop-shadow-lg"
+ />
  <div className="relative flex flex-col items-center">
  <div
  className={
