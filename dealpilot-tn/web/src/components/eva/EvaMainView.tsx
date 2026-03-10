@@ -14,20 +14,40 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch('/api/eva/briefing')
-        if(!res.ok) return
-        const j = await res.json()
+        // fetch all deals for proactive briefing
+        const res = await fetch('/api/deal-state/all')
+        const deals = res.ok ? await res.json() : []
         if(!mounted) return
-        if(j?.message){ addMessage({ id: 'briefing-1', role: 'eva', content: j.message }) }
-        // add transaction cards
-        if(Array.isArray(transactions)){
-          transactions.forEach((tx:any)=>{
-            addMessage({ id: `deal-${tx.id}`, role: 'eva', content: '', payload: { type: 'transaction_card', data: tx } })
-          })
+        // compute urgent deadlines and missing docs
+        const urgent: any[] = []
+        const missingDocs: any[] = []
+        if(Array.isArray(deals)){
+          for(const d of deals){
+            if(d.closing_date){
+              const days = Math.ceil((new Date(d.closing_date).getTime() - Date.now())/(1000*60*60*24))
+              if(days <= 3) urgent.push({ id: d.id, address: d.address, days })
+            }
+            if(!d.documents || d.documents.length === 0) missingDocs.push({ id: d.id, address: d.address })
+          }
         }
-        // final prompt
-        addMessage({ id: 'briefing-2', role: 'eva', content: "What would you like to work on?", payload: { type: 'chips', chips: ['Check deadlines','Upload a document','Draft an email','Start new transaction'] } })
-      }catch(e){ console.error('eva briefing failed', e) }
+        const activeCount = Array.isArray(deals) ? deals.filter((t:any)=> (t.current_state||'') !== 'closed').length : 0
+        let brief = `Good afternoon. I see ${activeCount} active deals.`
+        if(urgent.length>0) brief += ` Urgent: ${urgent.length} deal(s) due within 3 days.`
+        if(missingDocs.length>0) brief += ` Missing documents on ${missingDocs.length} deal(s).`
+        addMessage({ id: 'briefing-proactive-'+Date.now(), role: 'eva', content: brief })
+        // Inject transaction cards for quick review (if any)
+        if(Array.isArray(deals) && deals.length>0){
+          deals.slice(0,6).forEach((tx:any)=> addMessage({ id:`deal-${tx.id}`, role:'eva', content:'', payload:{ type:'transaction_card', data: tx }}))
+        } else {
+          // If no deals or fetch failed, fallback to server briefing API
+          try{
+            const b = await fetch('/api/eva/briefing')
+            if(b.ok){ const bj = await b.json(); if(bj?.message) addMessage({ id:'eva_briefing_fallback_'+Date.now(), role:'eva', content: bj.message }) }
+          }catch(_){ }
+        }
+        // Action suggestions
+        addMessage({ id:'briefing-actions-'+Date.now(), role:'eva', content:'What would you like me to do?', payload:{ type:'chips', chips:[ {id:'remind-inspector',label:'Draft reminder to inspector'}, {id:'send-disclosure',label:'Send disclosure to buyer'}, {id:'check-title',label:'Check title commitment status'} ] } })
+      }catch(e){ console.error('eva briefing failed', e); addMessage({ id:'eva_brief_err_'+Date.now(), role:'eva', content:'I had trouble loading your briefing. Try reloading or checking your connection.' }) }
     })()
     return ()=>{ mounted=false }
   },[transactions, addMessage])
