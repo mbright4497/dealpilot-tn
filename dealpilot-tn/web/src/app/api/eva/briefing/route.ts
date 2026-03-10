@@ -77,7 +77,10 @@ export async function POST(req: Request){
     const completion = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }], temperature:0.2, max_tokens:500 })
     const aiGeneratedBrief = completion.choices?.[0]?.message?.content || ''
 
-    return NextResponse.json({ message: aiGeneratedBrief, gaps: topGaps, chips: chips.length>0?chips:['Prioritize deals','Review urgent deadlines','Contact title company'] })
+    // Build structured deals array
+    const dealsStructured = topGaps.map((g:any)=>({ address: g.address, client: g.client, urgency: g.status==='overdue' ? 'critical' : g.status==='due_today' ? 'high' : 'normal', nextAction: g.milestone_label, daysToClose: g.days_diff }))
+    const topAction = chips.length>0 ? chips[0] : null
+    return NextResponse.json({ summary: aiGeneratedBrief, deals: dealsStructured, topAction, chips: chips.length>0?chips:['Prioritize deals','Review urgent deadlines','Contact title company'] })
 
   }catch(err:any){ console.error('eva briefing (playbook/db) error', err); return NextResponse.json({ message: 'EVA briefing unavailable.' , chips: [] }, { status:500 }) }
 }
