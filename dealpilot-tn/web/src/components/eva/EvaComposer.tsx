@@ -18,7 +18,7 @@ export default function EvaComposer(){
     }catch(e){ console.error('parse-text failed', e) }
 
     // build messages array from conversation history for API
-    const history = Array.isArray(messages) ? messages.map((m:any)=>({ role: m.role, content: m.content })) : []
+    const history = Array.isArray(messages) ? messages.map((m:any)=>({ role: m.role === 'eva' ? 'assistant' : (m.role === 'assistant' || m.role === 'system' ? m.role : 'user'), content: m.content })) : []
     // append the new user message (ensure it's last)
     const apiMessages = [...history, { role: 'user', content: msg }]
 
