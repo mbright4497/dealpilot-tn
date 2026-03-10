@@ -23,8 +23,9 @@ export async function speakAPI(
     audio.onerror = () => { speakingState = false; currentAudio = null; if (onEnd) onEnd() }
     await audio.play()
   } catch (e) {
-    console.error('TTS API error, falling back to browser:', e)
-    speakBrowser(text, style, onStart, onEnd)
+    console.error('TTS API error:', e)
+    speakingState = false
+    if (onEnd) onEnd()
   }
 }
 
@@ -45,52 +46,7 @@ function waitForVoices(): Promise<SpeechSynthesisVoice[]> {
   })
 }
 
-function speakBrowser(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
-  const utter = new SpeechSynthesisUtterance(text)
-  const voiceConfig: Record<string, {rate:number,pitch:number}> = {
-    'joyful': {rate:1.15, pitch:1.2},
-    'straight': {rate:1.0, pitch:0.9},
-    'calm': {rate:0.85, pitch:0.95},
-    'executive': {rate:0.95, pitch:0.85},
-    'friendly-tn': {rate:1.05, pitch:1.1},
-  }
-  const cfg = (voiceConfig as any)[style] || voiceConfig['friendly-tn']
-  utter.rate = cfg.rate
-  // we'll set pitch to 1.1 for a consistent female sound
-
-  utter.onstart = () => { speakingState = true; if (onStart) onStart() }
-  utter.onend = () => { speakingState = false; if (onEnd) onEnd() }
-
-  waitForVoices().then(voices => {
-    try{
-      if (voices.length > 0) {
-        const preferredNames = ['Samantha','Karen','Moira','Tessa','Victoria','Google US English Female']
-        let femaleVoice = voices.find(v => {
-          const n = (v.name||'').toLowerCase()
-          return preferredNames.some(p => n.includes(p.toLowerCase())) || n.includes('female')
-        })
-        if(!femaleVoice){
-          // fallback: first en voice not in common male names
-          const maleNames = ['alex','daniel','fred','thomas']
-          femaleVoice = voices.find(v => {
-            const n = (v.name||'').toLowerCase()
-            const lang = (v.lang||'').toLowerCase()
-            return lang.includes('en') && !maleNames.some(m=>n.includes(m))
-          })
-        }
-        if(femaleVoice) {
-          utter.voice = femaleVoice
-        }
-        // enforce higher pitch for feminine sound
-        utter.pitch = 1.1
-      } else {
-        utter.pitch = 1.1
-      }
-    }catch(e){ utter.pitch = 1.1 }
-    window.speechSynthesis.speak(utter)
-  }).catch(()=>{ utter.pitch = 1.1; window.speechSynthesis.speak(utter) })
-}
+/* speakBrowser removed to disable browser TTS fallback. */
 
 export function speak(text: string, style: AssistantStyle, onStart?: () => void, onEnd?: () => void) {
   // Try server-side TTS (OpenAI) first, fallback to browser TTS
