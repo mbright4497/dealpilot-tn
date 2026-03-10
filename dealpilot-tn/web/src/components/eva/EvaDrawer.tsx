@@ -31,7 +31,7 @@ export default function EvaDrawer(){
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={()=>{ clearMessages(); addMessage({ id:`eva_greeting_${Date.now()}`, role:'eva', content: 'Hello — how can I help with your transactions today?' }) }} className="text-gray-300">New Chat</button>
+            <button onClick={()=>{ clearMessages(); addMessage({ id:`eva_greeting_${Date.now()}`, role:'eva', content: 'Hello — how can I help with your transactions today?' }) }} className="text-gray-300 hover:text-white text-sm">New Chat</button>
             <button onClick={closeEva} className="text-gray-300">Close</button>
           </div>
         </div>
