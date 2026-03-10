@@ -959,6 +959,23 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   })}
                 </div>
               </div>
+
+              {/* Notes section */}
+              <div className="mt-4 p-4 bg-gray-800 rounded">
+                <h4 className="font-semibold mb-2">Notes</h4>
+                <div className="space-y-3 mb-3">
+                  {notes.length===0 ? <div className="text-gray-400">No notes yet</div> : notes.map((n:any,i:number)=>(
+                    <div key={n.id||i} className="p-2 bg-gray-700 rounded">
+                      <div className="text-xs text-gray-400">{n.author || 'Unknown'} • {new Date(n.created_at).toLocaleString()}</div>
+                      <div className="mt-1 text-sm text-white">{n.content}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder="Add a note..." className="flex-1 bg-[#0d1b2a] p-2 rounded" />
+                  <button onClick={addNote} className="px-3 py-2 bg-orange-500 rounded">Add</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
