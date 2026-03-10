@@ -271,33 +271,17 @@ export default function ContractUpload({ dealId, onExtracted, onSave, onDelete }
   return (
     <div className="flex gap-6">
       <div className="flex-1">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Extracted Contract Data</h3>
-          <div className="flex gap-2">
-            <button onClick={() => { if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; } setPdfUrl(null); setExtractedData(null); setError(null); setSaved(false); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">Upload New</button>
-            <button onClick={handleDelete} disabled={deleting} className="text-xs px-3 py-1.5 rounded-lg border border-red-400 text-red-400 hover:bg-red-900/20 disabled:opacity-50">{deleting ? 'Deleting...' : 'Delete Contract'}</button>
-            <button onClick={handleSave} className="text-xs px-3 py-1.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600">{saved ? '\u2713 Saved' : 'Save to Deal'}</button>
-          </div>
-        </div>
         {uploading && (
           <p className="text-orange-500 animate-pulse mb-4">Extracting contract data with AI...</p>
         )}
         {error && (
           <p className="text-red-500 text-sm mb-4">{error}</p>
         )}
-        {extractedData && (
+
+        {/* Show full details only when explicitly expanded by the user */}
+        {extractedData && showFull && (
           <div className="mb-4">
-            <div className="flex items-center justify-between p-3 border rounded-lg mb-3 bg-gray-900">
-              <div>
-                <div className="text-sm text-gray-400">Contract Summary</div>
-                <div className="text-lg font-bold text-white">{extractedData.buyer_names?.join(', ') || extractedData.buyer || 'Buyer'} • {extractedData.property_address || 'Property'}</div>
-                <div className="text-sm text-gray-400">Price: {extractedData.sale_price ? fmt(extractedData.sale_price) : '\u2014'} • Closing: {extractedData.closing_date || '\u2014'}</div>
-              </div>
-              <div>
-                <button onClick={()=> setShowFull(prev=>!prev)} className="px-3 py-1 bg-gray-800 rounded text-sm">{showFull ? 'Hide details' : 'Show full details'}</button>
-              </div>
-            </div>
-            {showFull && getSections(extractedData).map((section) => (
+            {getSections(extractedData).map((section) => (
               <div key={section.title} className="mb-4 border rounded-lg p-4">
                 <h4 className="text-sm font-semibold text-orange-500 mb-2">{section.title}</h4>
                 <div className="grid grid-cols-2 gap-2">
