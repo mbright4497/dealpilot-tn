@@ -101,12 +101,26 @@ export const dynamic = 'force-dynamic'
 export default function ChatPage() {
   const router = useRouter()
 
-  const [view, setView] = useState('dashboard')
+  // Command Center state
+  const [briefing, setBriefing] = useState<string|null>(null)
+  const [actions, setActions] = useState<any[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
-  const [voiceEnabled, setVoiceEnabled] = useState(true)
+
+  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const b = await fetch('/api/eva/briefing', { method:'POST' }); if(b.ok){ const bj=await b.json(); if(mounted) setBriefing(bj.message||null) } const r = await fetch('/api/eva/actions'); if(r.ok){ const aj=await r.json(); if(mounted) setActions(aj.actions||[]) } const d = await fetch('/api/deal-state/all'); if(d.ok){ const dj=await d.json(); if(mounted) setTransactions(Array.isArray(dj)?dj:[]) } }catch(e){ console.warn('command center load',e) } finally{ if(mounted) setLoading(false) } })(); return ()=>{ mounted=false } },[])
+
+  // helper to execute action
+  const executeAction = async (a:any)=>{
+    try{
+      const res = await fetch('/api/eva/execute-action', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) })
+      if(res.ok){ // refresh actions
+        const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) }
+        alert(`Done - ${a.action} marked complete for ${a.address}`)
+      } else { alert('Failed to execute action') }
+    }catch(e){ console.error('execute action error', e); alert('Failed to execute') }
+  }
 
   useEffect(() => {
     fetch('/api/deal-state/all')
@@ -356,8 +370,63 @@ export default function ChatPage() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && (()=>{
-          const filteredTransactions = transactions.filter(t=>{ const s = (t.current_state||t.status||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
-          return <EvaProvider><EvaMainView transactions={filteredTransactions} onViewDeal={openDeal} /></EvaProvider>
+          // Command Center layout
+          const activeDeals = transactions.filter(t=>{ const s = (t.current_state||t.status||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
+          // sort by closing proximity
+          activeDeals.sort((a:any,b:any)=>{
+            const ad = a.closing ? new Date(a.closing).getTime() : Infinity
+            const bd = b.closing ? new Date(b.closing).getTime() : Infinity
+            return ad - bd
+          })
+          return (
+            <div>
+              {/* Top: Eva briefing card */}
+              <div className="mb-6 p-6 rounded-lg bg-[#061021] border border-white/6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-sm text-gray-300">Eva Morning Briefing</div>
+                    <div className="mt-2 text-white text-lg">{loading? 'Loading briefing...' : (briefing || 'No briefing available')}</div>
+                    <div className="text-xs text-gray-400 mt-2">Last updated: {new Date().toLocaleTimeString()}</div>
+                  </div>
+                  <div>
+                    <img src="/avatar-pilot.png" alt="Eva" className="w-16 h-16 rounded-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle: active deals grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {activeDeals.map((d:any)=> (
+                  <div key={d.id} className="p-4 bg-[#0d1b2a] rounded border border-white/6 cursor-pointer" onClick={()=>openDeal(d.id)}>
+                    <div className="font-semibold text-white">{d.address}</div>
+                    <div className="text-sm text-gray-400">{d.client}</div>
+                    <div className="mt-2 text-xs text-gray-300">Closing: {d.closing ? new Date(d.closing).toLocaleDateString() : 'TBD'}</div>
+                    <div className="mt-3">
+                      {/* reuse the transaction card renderer via payload injection — quick inline rendering simplified */}
+                      <div className="text-sm text-gray-400">Phase: {(d.current_state||d.status)||'—'}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom: Eva's Actions */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Eva's Actions</h3>
+                <div className="flex gap-3 flex-wrap">
+                  {actions.map((a:any)=> (
+                    <div key={`${a.dealId}-${a.milestone_key||a.action}`} className="p-3 bg-[#0f1c2e] rounded border border-white/6 w-full md:w-1/3">
+                      <div className="font-semibold text-white">{a.action}</div>
+                      <div className="text-sm text-gray-400">{a.address}</div>
+                      <div className="text-xs text-gray-500 mt-2">{a.reason || ''}</div>
+                      <div className="mt-3">
+                        <button onClick={()=>executeAction(a)} className="px-3 py-1 bg-orange-500 rounded">Do it</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )
         })()}
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
