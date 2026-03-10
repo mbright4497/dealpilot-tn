@@ -47,6 +47,7 @@ export default function ContractUpload({ dealId, onExtracted, onSave, onDelete }
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [showFull, setShowFull] = useState(false);
   const onExtractedRef = useRef(onExtracted);
   onExtractedRef.current = onExtracted;
   const blobUrlRef = useRef<string | null>(null);
