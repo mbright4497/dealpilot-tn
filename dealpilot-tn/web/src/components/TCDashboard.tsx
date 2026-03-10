@@ -81,11 +81,11 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   ] : []
   const overdueCount = portfolioDeadlines?.overdue_count || 0
   // compute Eva briefing
-  const activeDeals = transactions.filter(t=> { const s = (t.current_state || t.status || '').toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
+  const activeDeals = transactions.filter(t=> { const s = (t.status || '').toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
   const activeCount = activeDeals.length
   // next closing deal (consider active deals)
-  const withClosing = activeDeals.filter(t=> t.closing_date || t.closing)
-  const nextClosing = withClosing.map(t=>({ tx: t, date: new Date(t.closing_date || t.closing) })).sort((a,b)=>a.date.getTime()-b.date.getTime())[0]
+  const withClosing = activeDeals.filter(t=> t.closing || t.closing_date)
+  const nextClosing = withClosing.map(t=>({ tx: t, date: new Date(t.closing || t.closing_date) })).sort((a,b)=>a.date.getTime()-b.date.getTime())[0]
   // documents needed heuristic: active tx with no binding or no purchase_price
   const docsNeeded = activeDeals.filter(t=> !t.binding || (!((t as any).purchase_price) ) ).length
   // time-aware greeting for evaBrief (America/New_York)
@@ -170,7 +170,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           </div>
           <div className="divide-y divide-white/5">
             {activeDeals.map(tx => {
-              const state = tx.current_state || 'draft'
+              const state = tx.status || 'draft'
               const progress = PROGRESS_MAP[state] || 10
               const colorClass = STATE_COLORS[state] || 'bg-gray-400'
               const badgeClass = BADGE_COLORS[state] || 'bg-gray-100 text-gray-600'

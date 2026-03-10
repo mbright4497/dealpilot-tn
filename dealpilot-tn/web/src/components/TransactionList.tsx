@@ -37,7 +37,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   const [showIntake, setShowIntake] = useState(false)
 
   let list = transactions.filter(m => filter === 'All' || m.status === filter)
-  if(phaseFilter !== 'All') list = list.filter(m=> (m.current_state||m.status||'').toLowerCase() === phaseFilter.toLowerCase())
+  if(phaseFilter !== 'All') list = list.filter(m=> (m.status||'').toLowerCase() === phaseFilter.toLowerCase())
   if(searchQuery) list = list.filter(m=> (String(m.address||'')+String(m.client||'')).toLowerCase().includes(searchQuery.toLowerCase()))
   if(sortBy === 'closing') list = list.sort((a,b)=> (a.closing? new Date(a.closing).getTime():Infinity) - (b.closing? new Date(b.closing).getTime():Infinity))
   if(sortBy === 'days') list = list.sort((a,b)=> (a.closing? Math.ceil((new Date(a.closing).getTime()-Date.now())/(1000*60*60*24)):9999) - (b.closing? Math.ceil((new Date(b.closing).getTime()-Date.now())/(1000*60*60*24)):9999))
