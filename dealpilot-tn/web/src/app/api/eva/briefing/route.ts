@@ -1,69 +1,68 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import OpenAI from 'openai'
+
+export const runtime = 'nodejs'
+
+const BASE_PROMPT = `You are Eva, an expert Tennessee Transaction Coordinator at ClosingPilot TN. You're briefing your agent first thing in the morning. You've already reviewed every deal and know exactly what's overdue, what's due today, and what's coming this week. Speak like a real TC who arrived at the office at 6am and has already been working. Reference specific addresses, client names, party names, and dates. Never be generic. If something is overdue, say what you already did about it (e.g., 'I drafted a follow-up to the inspector'). If something is due today, tell the agent exactly what needs to happen. Prioritize by urgency. Keep it to 3-5 sentences max. End with the single most important thing the agent should do right now.`
+
+async function fetchPlaybookGaps(){
+  const base = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || ''
+  const url = base + '/api/eva/playbook-gaps'
+  try{
+    const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) })
+    if(!res.ok) return null
+    const j = await res.json()
+    return j
+  }catch(e){ console.warn('fetchPlaybookGaps error', e); return null }
+}
 
 export async function POST(req: Request){
   try{
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
-    let transactions: any[] = []
+    const gapsResp = await fetchPlaybookGaps()
+    if(!gapsResp || !gapsResp.ok) return NextResponse.json({ message: 'No briefing available', chips: [] })
 
-    let sb: any = null
-    if(SUPABASE_URL && SUPABASE_KEY){
-      sb = createClient(SUPABASE_URL, SUPABASE_KEY)
-      const { data, error } = await sb.from('transactions').select('id,address,client,binding,closing,status,notes')
-      if(data && Array.isArray(data)) transactions = data
-    } else {
-      transactions = [
-        { id:'1', address:'123 Elm St', client:'Alice', binding: new Date(Date.now()+5*24*3600*1000).toISOString(), closing: null, status:'active' },
-        { id:'2', address:'45 Oak Ave', client:'Bob', binding: new Date(Date.now()-2*24*3600*1000).toISOString(), closing: null, status:'active' }
-      ]
+    const results = gapsResp.results || []
+    const flat: any[] = []
+    for(const r of results){
+      const top = (r.gaps || []).slice(0,3)
+      for(const g of top){ flat.push({ dealId: r.dealId, address: r.address, client: r.client, ...g }) }
     }
 
-    // filter out Closed/Cancelled for active count
-    const activeTransactions = transactions.filter((t:any)=>{ const s = (t.status||t.current_state||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
-    const counts: Record<string,number> = {}
-    for(const t of activeTransactions){ counts[t.status || t.current_state || 'active'] = (counts[t.status || t.current_state || 'active']||0)+1 }
+    const rank: any = { critical:0, high:1, normal:2 }
+    const statusRank: any = { overdue:0, due_today:1, due_this_week:2, upcoming:3, unscheduled:4, completed:5 }
+    flat.sort((a,b)=> (statusRank[a.status]||99) - (statusRank[b.status]||99) || ( (rank[a.priority]||9) - (rank[b.priority]||9) ) || ((a.days_diff||999)-(b.days_diff||999)))
 
-    const today = Date.now()
-    const upcoming: any[] = []
-    const needsAttention: any[] = []
-    // fetch deadlines if sb available
-    if(sb){
-      try{
-        const { data: deadlines } = await sb.from('deal_deadlines').select('deal_id,key,label,date,status')
-        // we don't strictly need deadlines for now beyond future work
-      }catch(e){ /* ignore */ }
-    }
+    const topGaps = flat.slice(0,6)
+    const chips = topGaps.slice(0,3).map((g:any)=> {
+      const when = g.status === 'overdue' ? `${Math.abs(g.days_diff)}d overdue` : g.status === 'due_today' ? 'due today' : g.days_diff != null ? `${g.days_diff}d` : ''
+      return `Follow up: ${g.milestone_label} — ${g.address || ''} (${when})`
+    })
 
-    for(const t of transactions){
-      if(t.binding){
-        const diff = Math.ceil((new Date(t.binding).getTime()-today)/(1000*60*60*24))
-        if(diff <=7 && diff >=0) upcoming.push({id:t.id,address:t.address,days:diff,kind:'binding'})
-        if(diff < 0) needsAttention.push({id:t.id,address:t.address,reason:'binding missed'})
-      }
-      // naive missing docs check
-      if(!t.notes || t.notes.length<10) needsAttention.push({id:t.id,address:t.address,reason:'missing notes/docs'})
-    }
+    // build prompt
+    const system = BASE_PROMPT
+    const userContent = `Brief me on the top items right now. Use the following gaps (address | client | milestone | expected_date | status | priority):\n${topGaps.map((g:any)=> `${g.address || '—'} | ${g.client || '—'} | ${g.milestone_label} | ${g.expected_date || 'TBD'} | ${g.status} | ${g.priority || 'normal'}`).join('\n')}`
 
-    const urgent = upcoming[0]
-    const risk = needsAttention[0]
+    if(!process.env.OPENAI_API_KEY) return NextResponse.json({ message: 'OpenAI API key not configured.' })
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-    // time-aware greeting in America/New_York
-    let hour = new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false })
-    hour = String(hour)
-    let h = Number(hour.match(/\d+/)?.[0] ?? new Date().getHours())
-    let greeting = 'Good afternoon'
-    if(h>=5 && h<=11) greeting = 'Good morning'
-    else if(h>=12 && h<=17) greeting = 'Good afternoon'
-    else if(h>=18 && h<=23) greeting = 'Good evening'
-    else greeting = 'Hey there'
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: userContent }
+      ],
+      temperature: 0.2,
+      max_tokens: 500
+    })
 
-    const activeCount = activeTransactions.length
-    const message = `${greeting}! You have ${activeCount} active deals. ${urgent? `${urgent.address} has a binding deadline in ${urgent.days} days.`: ''} ${risk? `${risk.address} needs attention (${risk.reason}).`: ''} Want me to prioritize your day?`
-    const chips = ['Prioritize deals','Generate brief','Export CSV']
-    return NextResponse.json({ message, chips })
+    const aiGeneratedBrief = completion.choices?.[0]?.message?.content || ''
+
+    const dynamicChips = chips.length>0 ? chips : ['Prioritize deals','Review urgent deadlines','Contact title company']
+
+    return NextResponse.json({ message: aiGeneratedBrief, gaps: topGaps, chips: dynamicChips })
   }catch(err:any){
+    console.error('eva briefing (playbook) error', err)
     return NextResponse.json({ message: 'EVA briefing unavailable.' , chips: [] }, { status:500 })
   }
 }
