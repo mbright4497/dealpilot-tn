@@ -399,8 +399,8 @@ export default function ChatPage() {
                   <img src="/avatar-pilot.png" alt="Eva" className="w-56 h-56 rounded-full relative z-10 shadow-2xl" />
                 </div>
                 <div className="mt-6 max-w-3xl">
-                  <div className="bg-[#071827] rounded-xl p-6 inline-block text-left">
-                    <div className="text-2xl md:text-3xl font-semibold leading-relaxed text-white" dangerouslySetInnerHTML={{__html: (briefing || 'No briefing available').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br/>')}} />
+                  <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
+                    <div className="text-base md:text-lg font-normal leading-relaxed text-white" dangerouslySetInnerHTML={{__html: (briefing || 'No briefing available').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br/>')}} />
                     <div className="text-sm text-gray-400 mt-3">Last updated: {lastUpdated ? lastUpdated.toLocaleString() : '—'}</div>
                   </div>
                 </div>
