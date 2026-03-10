@@ -381,16 +381,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       })()}
 
 
-      {/* pill toggles */}
-      <div className="mb-4">
-        <div className="inline-flex bg-gray-800 rounded-full p-1">
-          <button onClick={()=>setMode('overview')} className={`px-4 py-1 rounded-full ${mode==='overview' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Overview</button>
-          <button onClick={()=>setMode('documents')} className={`px-4 py-1 rounded-full ${mode==='documents' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Documents</button>
-          <button onClick={()=>setMode('parties')} className={`px-4 py-1 rounded-full ${mode==='parties' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Parties</button>
-          <button onClick={()=>setMode('deadlines')} className={`px-4 py-1 rounded-full ${mode==='deadlines' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Deadlines</button>
-          <button onClick={()=>setMode('communications')} className={`px-4 py-1 rounded-full ${mode==='communications' ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>Communications</button>
-        </div>
-      </div>
+      {/* Tabs removed — AI-first contextual panels. Showing streamlined overview by default. */}
+      <div style={{display:'none'}} />
 
       {/* Overview / Parties / Communications tabs content */}
       {mode==='overview' && (
@@ -802,15 +794,18 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 <h4 className="font-semibold mb-2">Checklist</h4>
                 <div className="w-full bg-gray-700 h-3 rounded mb-2"><div className="h-3 bg-orange-500 rounded" style={{width: checklistProgress(checklist)+'%'}}></div></div>
                 <div className="space-y-2">
-                  {checklist.map((it:any)=> (
-                    <div key={it.key} className="p-2 bg-gray-700 rounded flex justify-between items-center">
-                      <div>
-                        <div className="font-semibold">{it.title}</div>
-                        <div className="text-xs text-gray-400">{fmtDate(it.updated_at)}</div>
+                  {checklist.map((it:any)=> {
+                    const dl = (dealDeadlines || []).find((d:any)=> String(d.key) === String(it.key))
+                    return (
+                      <div key={it.key} className="p-2 bg-gray-700 rounded flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold">{it.title}</div>
+                          <div className="text-xs text-gray-400">{dl ? fmtDate(dl.date) : 'Not set'}</div>
+                        </div>
+                        <input type="checkbox" checked={it.status==='done'} onChange={()=>{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]) }} />
                       </div>
-                      <input type="checkbox" checked={it.status==='done'} onChange={()=>{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]) }} />
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
