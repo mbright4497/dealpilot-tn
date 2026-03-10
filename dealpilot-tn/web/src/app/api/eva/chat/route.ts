@@ -71,6 +71,8 @@ export async function POST(req: Request) {
 
     // build system prompt
     let systemContent = BASE_PROMPT + '\n\n' + (portfolioSummary ? `Portfolio: ${portfolioSummary}\n` : '') + (dealContext ? `DealContext: ${dealContext}\n` : '')
+    // Append spoken-response style guidance for voice/briefings
+    systemContent += `\n---\nSTYLE FOR SPOKEN RESPONSES (BRIEFINGS + VOICE):\n- When you generate text that will be read out loud, keep a fast, energetic tempo.\n- Use short, clear sentences and avoid long, winding paragraphs.\n- Sound warm, encouraging, and optimistic — like a friendly, confident Tennessee transaction coordinator who “has it handled.”\n- Be direct about risks and deadlines, but don’t sound alarmist. Calm urgency, not panic.\n- Prefer active phrasing: "We’re on track to close," "I’ve already reached out," "Here’s your next move."\n- Avoid legalese or robotic phrasing. No "per my last correspondence" or "the aforementioned."\n---\n`
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ reply: 'OpenAI API key not configured. Please set OPENAI_API_KEY.' })
