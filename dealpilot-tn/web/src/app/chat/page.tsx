@@ -257,15 +257,23 @@ export default function ChatPage() {
     const onUpload = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('add-transaction') } }catch(_){ } }
     const onViewParties = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
     const onEditDeal = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
+    const onDoAction = async (e:any) => { try{ const detail = e.detail; if(!detail) return; if(detail.id === 'remind-inspector'){ addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'Drafting reminder to inspector...' }); // placeholder action
+          // In production: call /api/communications/send or draft email API
+          addMessage({ id:'eva_action_done_'+Date.now(), role:'eva', content:'Reminder drafted (placeholder). I can send it if you confirm.' }) }
+          else if(detail.id === 'send-disclosure'){ addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'Preparing disclosure to buyer...' }); addMessage({ id:'eva_action_done_'+Date.now(), role:'eva', content:'Disclosure prepared (placeholder).' }) }
+          else if(detail.id === 'check-title'){ addMessage({ id:'eva_action_'+Date.now(), role:'eva', content:'Checking title commitment status...' }); addMessage({ id:'eva_action_done_'+Date.now(), role:'eva', content:'Title commitment is pending (placeholder).' }) }
+      }catch(_){ } }
     window.addEventListener('eva:viewDeal', onViewDeal)
     window.addEventListener('eva:uploadDocument', onUpload)
     window.addEventListener('eva:viewParties', onViewParties)
     window.addEventListener('eva:editDeal', onEditDeal)
+    window.addEventListener('eva:doAction', onDoAction)
     return ()=>{
       window.removeEventListener('eva:viewDeal', onViewDeal)
       window.removeEventListener('eva:uploadDocument', onUpload)
       window.removeEventListener('eva:viewParties', onViewParties)
       window.removeEventListener('eva:editDeal', onEditDeal)
+      window.removeEventListener('eva:doAction', onDoAction)
     }
   }, [transactions])
 
