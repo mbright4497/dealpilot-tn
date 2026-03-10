@@ -108,6 +108,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
+  const [view, setView] = useState('dashboard')
 
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
   const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
