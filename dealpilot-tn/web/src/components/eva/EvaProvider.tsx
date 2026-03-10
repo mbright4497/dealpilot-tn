@@ -35,6 +35,7 @@ export const EvaProvider = ({children}:{children:React.ReactNode})=>{
   const toggleEva = useCallback(()=>setIsOpen(v=>!v),[])
   const setPageContext = useCallback((ctx:PageContext)=>setPageContextState(ctx),[])
   const addMessage = useCallback((m:Message)=> setMessages(prev=>[...prev,m]),[])
+  const clearMessages = useCallback(()=> setMessages([]),[])
 
   // listen for window events to set context (deal page mounts dispatch)
   React.useEffect(()=>{
