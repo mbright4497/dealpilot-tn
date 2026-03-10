@@ -120,6 +120,7 @@ export default function ChatPage() {
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [evaSpeaking, setEvaSpeaking] = useState(false)
+  const [voiceAutoPlay, setVoiceAutoPlay] = useState(()=>{ try{ return typeof window !== 'undefined' ? localStorage.getItem('eva-voice-auto') !== 'false' : true }catch(e){ return true } })
   // addMessage is used by some EVA event handlers — provide a no-op fallback here (real addMessage exists in EvaProvider consumer contexts)
   const addMessage = (m:any)=>{ /* noop fallback to avoid runtime errors when handlers fire outside provider */ }
 
@@ -397,9 +398,16 @@ export default function ChatPage() {
             <div className="min-h-[80vh] flex flex-col">
               {/* TOP HALF - Eva's Zone */}
               <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
-                <div className="relative">
-                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-orange-400/30 via-pink-400/20 to-indigo-400/10 blur-xl animate-pulse-slow" style={{width:220,height:220}}></div>
-                  <img src="/avatar-pilot.png" alt="Eva" className="w-56 h-56 rounded-full relative z-10 shadow-2xl" />
+                <div className="relative flex flex-col items-center">
+                  <div className={`absolute -inset-2 rounded-full bg-gradient-to-r from-orange-400/30 via-pink-400/20 to-indigo-400/10 blur-xl ${evaSpeaking ? 'animate-pulse-slow' : ''}`} style={{width:220,height:220}}></div>
+                  <img src="/avatar-pilot.png" alt="Eva" className="w-56 h-56 rounded-full relative z-10 shadow-2xl" style={evaSpeaking?{animation:'evaTalk 0.6s ease-in-out infinite'}:{}} />
+                  {evaSpeaking && (
+                    <div className="mt-3 flex items-end gap-1 justify-center h-6">
+                      <div style={{width:4, background:'#fb923c', borderRadius:4, animation:'soundWave 600ms ease-in-out infinite'}} />
+                      <div style={{width:4, background:'#fb923c', borderRadius:4, animation:'soundWave 600ms ease-in-out 150ms infinite'}} />
+                      <div style={{width:4, background:'#fb923c', borderRadius:4, animation:'soundWave 600ms ease-in-out 300ms infinite'}} />
+                    </div>
+                  )}
                 </div>
                 <div className="mt-6 max-w-3xl">
                   <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
