@@ -411,7 +411,7 @@ export default function ChatPage() {
  src="/avatar-pilot.png"
  alt="Eva"
  className="w-56 h-56 rounded-full relative z-10 shadow-2xl"
- style={evaSpeaking ? { animation: "evaTalk 0.6s ease-in-out infinite" } : {}}
+ style={evaSpeaking ? { animation: "evaTalk 0.9s ease-in-out infinite" } : {}}
  />
  {evaSpeaking && (
  <div className="mt-3 flex items-end gap-1 justify-center h-6">
@@ -543,7 +543,7 @@ export default function ChatPage() {
  transform: scale(1);
  }
  50% {
- transform: scale(1.03);
+ transform: scale(1.06);
  }
  100% {
  transform: scale(1);
