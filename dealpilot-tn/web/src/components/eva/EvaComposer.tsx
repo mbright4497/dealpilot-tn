@@ -4,10 +4,11 @@ import { useEva } from './EvaProvider'
 
 export default function EvaComposer(){
   const [text,setText] = useState('')
-  const { addMessage, pageContext } = useEva()
+  const { addMessage, pageContext, messages } = useEva()
   const sendMessage = async (msg:string, ctx:any={})=>{
     const id = String(Date.now())
     addMessage({id,role:'user',content:msg})
+
     // detect quick NL 'new deal' intent and route to parse-text
     try{
       if(/\b(new deal|deal at|start new deal)\b/i.test(msg)){
@@ -16,9 +17,17 @@ export default function EvaComposer(){
       }
     }catch(e){ console.error('parse-text failed', e) }
 
+    // build messages array from conversation history for API
+    const history = Array.isArray(messages) ? messages.map((m:any)=>({ role: m.role, content: m.content })) : []
+    // append the new user message (ensure it's last)
+    const apiMessages = [...history, { role: 'user', content: msg }]
+
+    // include dealId in request body if present
+    const body = { messages: apiMessages, dealId: ctx?.dealId || pageContext?.dealId }
+
     // fallback: normal EVA chat
     try{
-      const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg, context: ctx})})
+      const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       const j = await res.json()
       addMessage({id: 'eva_'+Date.now(), role:'eva', content: j.reply || 'EVA placeholder response', payload: j.renderPayload})
     }catch(e){
