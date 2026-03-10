@@ -23,7 +23,26 @@ export default function EvaComposer(){
     const apiMessages = [...history, { role: 'user', content: msg }]
 
     // include dealId in request body if present
-    const body = { messages: apiMessages, dealId: ctx?.dealId || pageContext?.dealId }
+    // If on dashboard chat route with no dealId, fetch a brief portfolio summary and prepend as a context message
+    let apiMessagesWithContext = apiMessages
+    try{
+      const route = pageContext?.route || ''
+      const hasDeal = ctx?.dealId || pageContext?.dealId
+      if(route === '/chat' && !hasDeal){
+        const res = await fetch('/api/deal-state/all')
+        if(res.ok){
+          const all = await res.json()
+          if(Array.isArray(all) && all.length>0){
+            const activeCount = all.filter((d:any)=> (d.current_state||d.phase||'').toLowerCase() !== 'closed').length
+            const preview = `Active deals: ${activeCount}. Top: ${all.slice(0,3).map((d:any)=>d.property_address||d.address||d.propertyAddress||'').filter(Boolean).join('; ')}`
+            const ctxMsg = preview.slice(0,500)
+            apiMessagesWithContext = [{ role: 'user', content: `[CONTEXT] ${ctxMsg}` }, ...apiMessages]
+          }
+        }
+      }
+    }catch(_){ }
+
+    const body = { messages: apiMessagesWithContext, dealId: ctx?.dealId || pageContext?.dealId }
 
     // fallback: normal EVA chat
     try{
