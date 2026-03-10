@@ -405,8 +405,11 @@ export default function ChatPage() {
                   </div>
                 </div>
                 <div className="mt-6 flex items-center gap-4">
-                  <button className="w-12 h-12 rounded-full bg-[#0f1724] border border-white/6 flex items-center justify-center text-gray-200" disabled title="Voice (coming soon)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1v11"/><path d="M19 11a7 7 0 01-14 0"/></svg></button>
-                  <input placeholder="Ask Eva anything..." className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white" />
+                  <button title="Voice chat coming soon" className="w-12 h-12 rounded-full bg-[#0f1724] border border-white/6 flex items-center justify-center text-gray-200" disabled>🎤</button>
+                  <form onSubmit={async (e)=>{ e.preventDefault(); const val = (e.target as any).elements.ask.value; if(!val) return; try{ const res = await fetch('/api/eva/chat',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages:[{role:'user', content: val}] }) }); if(res.ok){ const j=await res.json(); setBriefing(j.reply || j.message || j.summary || ''); addToast('Eva replied') } }catch(err){ addToast('Chat failed') } }} className="flex-1">
+                    <input name="ask" placeholder="Ask Eva anything..." className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition" />
+                  </form>
+                  <button onClick={loadCommandCenter} className="px-3 py-2 bg-gray-800 rounded text-sm">Refresh</button>
                 </div>
               </div>
 
