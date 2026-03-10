@@ -7,11 +7,16 @@ export const runtime = 'nodejs'
 const BASE_PROMPT = `You are Eva, an expert Tennessee Transaction Coordinator at ClosingPilot TN. You're briefing your agent first thing in the morning. You've already reviewed every deal and know exactly what's overdue, what's due today, and what's coming this week. Speak like a real TC who arrived at the office at 6am and has already been working. Reference specific addresses, client names, party names, and dates. Never be generic. If something is overdue, say what you already did about it (e.g., 'I drafted a follow-up to the inspector'). If something is due today, tell the agent exactly what needs to happen. Prioritize by urgency. Keep it to 3-5 sentences max. End with the single most important thing the agent should do right now.`
 
 async function fetchPlaybookGaps(){
-  const base = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || ''
-  const url = base + '/api/eva/playbook-gaps'
+  // Build an absolute URL for server-side fetch. Prefer NEXT_PUBLIC_BASE_URL, then VERCEL_URL, then localhost fallback.
+  const publicBase = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+  const base = publicBase || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`
+  const url = new URL('/api/eva/playbook-gaps', base).toString()
   try{
     const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) })
-    if(!res.ok) return null
+    if(!res.ok){
+      console.warn('playbook-gaps fetch non-ok status', res.status)
+      return null
+    }
     const j = await res.json()
     return j
   }catch(e){ console.warn('fetchPlaybookGaps error', e); return null }
