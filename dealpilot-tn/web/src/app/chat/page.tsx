@@ -129,6 +129,31 @@ export default function ChatPage() {
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
 
+  // compute playbook completion percent for active deals
+  useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const map: Record<number, number> = {}
+        for(const d of transactions){
+          try{
+            const res = await fetch('/api/eva/playbook-gaps', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: d.id }), credentials: 'include' })
+            if(!res.ok) continue
+            const j = await res.json()
+            const gaps = j.results && j.results[0] ? j.results[0].gaps || [] : []
+            if(gaps.length===0){ map[d.id]=0; continue }
+            const completed = gaps.filter((g:any)=> g.status==='completed').length
+            const pct = Math.round((completed/gaps.length)*100)
+            map[d.id]=pct
+          }catch(_){ }
+        }
+        if(mounted) setPlaybookProgressMap(map)
+      }catch(e){ console.warn('playbook progress map error', e) }
+    })()
+    return ()=>{ mounted = false }
+  },[transactions])
+
+
   // helper to execute action
   const executeAction = async (a:any)=>{
     try{
