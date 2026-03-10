@@ -354,6 +354,43 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     }catch(e){ console.error('mark milestone failed', e) }
   }
 
+  // Inline edit states
+  const [editing, setEditing] = useState(false)
+  const [editStatus, setEditStatus] = useState<string>(mergedTx.status || '')
+  const [editBinding, setEditBinding] = useState<string|undefined>((mergedTx as any).binding || '')
+  const [editClosing, setEditClosing] = useState<string|undefined>((mergedTx as any).closing_date || (mergedTx as any).closing || '')
+  const [editValue, setEditValue] = useState<number|undefined>((mergedTx as any).purchase_price || (mergedTx as any).value || undefined)
+
+  // notes
+  const [notes, setNotes] = useState<any[]>([])
+  const [noteText, setNoteText] = useState('')
+  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch(`/api/deal-notes?dealId=${transaction.id}`); if(!mounted) return; if(res.ok){ const j = await res.json(); setNotes(j.notes || []) } }catch(e){} })(); return ()=>{ mounted=false } },[transaction.id])
+
+  const saveInlineEdits = async ()=>{
+    try{
+      const payload:any = { fields: {} }
+      payload.fields.status = editStatus
+      if(editBinding) payload.fields.binding = editBinding
+      if(editClosing) payload.fields.closing = editClosing
+      if(editValue != null) payload.fields.purchase_price = editValue
+      const res = await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      if(!res.ok){ console.error('update failed'); return }
+      const j = await res.json()
+      // refresh remote
+      const r = await fetch(`/api/deal-state/${transaction.id}`)
+      if(r.ok){ const rd = await r.json(); setRemote(rd); setMergedTx({...mergedTx, ...(rd||{})}) }
+      setEditing(false)
+    }catch(e){ console.error('save edits failed', e) }
+  }
+
+  const addNote = async ()=>{
+    if(!noteText) return
+    try{
+      const res = await fetch('/api/deal-notes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, author: 'web', content: noteText }) })
+      if(res.ok){ const j = await res.json(); setNotes(prev=>[j.note, ...prev]); setNoteText('') }
+    }catch(e){ console.error('add note failed', e) }
+  }
+
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
       <div className="flex items-center justify-between mb-4">
@@ -474,6 +511,40 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               <div className="text-sm text-gray-300">Client</div>
               <div className="text-lg font-bold text-white">{mergedTx.client || '—'}</div>
               <div className="text-sm text-gray-400">Status: {mergedTx.status || '—'} • Agent: {(remote && remote.agent) || '—'}</div>
+
+              {/* Inline edit controls */}
+              <div className="mt-3 space-y-2">
+                {!editing ? (
+                  <div className="flex gap-2 items-center">
+                    <button onClick={()=>{ setEditing(true); setEditStatus(mergedTx.status||''); setEditBinding((mergedTx as any).binding||''); setEditClosing((mergedTx as any).closing_date || (mergedTx as any).closing || ''); setEditValue((mergedTx as any).purchase_price || (mergedTx as any).value || undefined) }} className="px-3 py-1 bg-gray-700 rounded text-sm">Edit deal</button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <label className="text-xs text-gray-400">Status</label>
+                      <select value={editStatus} onChange={e=>setEditStatus(e.target.value)} className="bg-[#0f223a] px-2 py-1 rounded">
+                        {['Pending','Active','Under Contract','Closing','Closed','Cancelled'].map(s=> (<option key={s} value={s}>{s}</option>))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <label className="text-xs text-gray-400">Binding</label>
+                      <input type="date" value={editBinding||''} onChange={e=>setEditBinding(e.target.value)} className="bg-[#0f223a] px-2 py-1 rounded" />
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <label className="text-xs text-gray-400">Closing</label>
+                      <input type="date" value={editClosing||''} onChange={e=>setEditClosing(e.target.value)} className="bg-[#0f223a] px-2 py-1 rounded" />
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <label className="text-xs text-gray-400">Value</label>
+                      <input type="number" value={editValue||''} onChange={e=>setEditValue(Number(e.target.value))} className="bg-[#0f223a] px-2 py-1 rounded" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={saveInlineEdits} className="px-3 py-1 bg-orange-500 rounded">Save</button>
+                      <button onClick={()=>setEditing(false)} className="px-3 py-1 bg-gray-700 rounded">Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
