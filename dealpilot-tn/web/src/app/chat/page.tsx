@@ -417,17 +417,35 @@ export default function ChatPage() {
 
               {/* Middle: active deals grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {activeDeals.map((d:any)=> (
-                  <div key={d.id} className="p-4 bg-[#0d1b2a] rounded border border-white/6 cursor-pointer" onClick={()=>openDeal(d.id)}>
-                    <div className="font-semibold text-white">{d.address}</div>
-                    <div className="text-sm text-gray-400">{d.client}</div>
-                    <div className="mt-2 text-xs text-gray-300">Closing: {d.closing ? new Date(d.closing).toLocaleDateString() : 'TBD'}</div>
-                    <div className="mt-3">
-                      {/* reuse the transaction card renderer via payload injection — quick inline rendering simplified */}
-                      <div className="text-sm text-gray-400">Phase: {(d.current_state||d.status)||'—'}</div>
+                {activeDeals.map((d:any)=>{
+                  const daysToClose = d.closing ? Math.ceil((new Date(d.closing).getTime()-Date.now())/(1000*60*60*24)) : null
+                  const daysClass = daysToClose===null ? 'text-amber-400' : (daysToClose<=3 ? 'text-red-400' : (daysToClose<=14? 'text-amber-300':'text-green-300'))
+                  const progress = playbookProgressMap[d.id] ?? 0
+                  return (
+                    <div key={d.id} className="p-4 bg-[#0d1b2a] rounded border border-white/6 cursor-pointer hover:shadow-lg transition-all" onClick={()=>openDeal(d.id)}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-white">{d.address}</div>
+                          <div className="text-sm text-gray-400">{d.client}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`px-2 py-1 rounded-full text-xs font-semibold ${d.status==='Closed' ? 'bg-gray-500/20 text-gray-300' : d.status==='Pending' ? 'bg-amber-500/20 text-amber-300' : 'bg-green-500/20 text-green-300'}`}>{d.status}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs text-gray-300">Closing</div>
+                          <div className={`font-semibold ${daysClass}`}>{d.closing ? new Date(d.closing).toLocaleDateString() : 'No closing date'}</div>
+                        </div>
+                        <div className="w-1/3">
+                          <div className="text-xs text-gray-300">Playbook Progress</div>
+                          <div className="w-full bg-gray-700 h-2 rounded mt-1"><div className="h-2 rounded bg-cyan-400" style={{width:`${Math.min(100,Math.max(0,progress))}%`}} /></div>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-400">{progress}% complete</div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* Bottom: Eva's Actions */}
