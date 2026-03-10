@@ -384,7 +384,7 @@ export default function ChatPage() {
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && (()=>{
           // EVA-first hero + ticker layout
-          const activeDeals = transactions.filter(t=>{ const s = (t.status||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
+          const activeDeals = transactions.filter(t=>{ const s = ((t as any).current_state || (t as any).state_label || t.status || '').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
           activeDeals.sort((a:any,b:any)=>{
             const ad = a.closing_date ? new Date(a.closing_date).getTime() : Infinity
             const bd = b.closing_date ? new Date(b.closing_date).getTime() : Infinity
