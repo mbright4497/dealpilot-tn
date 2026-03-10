@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password", "/api/auth", "/embed", "/api/eva/playbook-gaps", "/api/eva/briefing"]
+const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password", "/api/auth", "/embed"]
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers }, });

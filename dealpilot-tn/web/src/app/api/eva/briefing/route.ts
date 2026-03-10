@@ -1,73 +1,83 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
 const BASE_PROMPT = `You are Eva, an expert Tennessee Transaction Coordinator at ClosingPilot TN. You're briefing your agent first thing in the morning. You've already reviewed every deal and know exactly what's overdue, what's due today, and what's coming this week. Speak like a real TC who arrived at the office at 6am and has already been working. Reference specific addresses, client names, party names, and dates. Never be generic. If something is overdue, say what you already did about it (e.g., 'I drafted a follow-up to the inspector'). If something is due today, tell the agent exactly what needs to happen. Prioritize by urgency. Keep it to 3-5 sentences max. End with the single most important thing the agent should do right now.`
 
-async function fetchPlaybookGaps(){
-  // Build an absolute URL for server-side fetch. Prefer NEXT_PUBLIC_BASE_URL, then VERCEL_URL, then localhost fallback.
-  const publicBase = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
-  const base = publicBase || process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`
-  const url = new URL('/api/eva/playbook-gaps', base).toString()
-  try{
-    const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) })
-    if(!res.ok){
-      console.warn('playbook-gaps fetch non-ok status', res.status)
-      return null
-    }
-    const j = await res.json()
-    return j
-  }catch(e){ console.warn('fetchPlaybookGaps error', e); return null }
-}
-
 export async function POST(req: Request){
   try{
-    const gapsResp = await fetchPlaybookGaps()
-    if(!gapsResp || !gapsResp.ok) return NextResponse.json({ message: 'No briefing available', chips: [] })
+    // Server-side DB access to compute playbook gaps directly (no internal fetch)
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
+    if(!SUPABASE_URL || !SUPABASE_KEY) return NextResponse.json({ message: 'No briefing available', chips: [] })
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-    const results = gapsResp.results || []
-    const flat: any[] = []
-    for(const r of results){
-      const top = (r.gaps || []).slice(0,3)
-      for(const g of top){ flat.push({ dealId: r.dealId, address: r.address, client: r.client, ...g }) }
+    // fetch rules
+    const { data: rulesData } = await sb.from('deal_playbook_rules').select('*').order('sort_order', { ascending: true })
+    const rules = Array.isArray(rulesData) ? rulesData : []
+
+    // fetch active deals
+    const { data: allDeals } = await sb.from('transactions').select('*').neq('current_state','closed').neq('current_state','Cancelled')
+    const deals = Array.isArray(allDeals) ? allDeals : []
+
+    // fetch progress rows
+    const dealIds = deals.map(d=>d.id).filter(Boolean)
+    let progressRows:any[] = []
+    if(dealIds.length>0){ const { data:p } = await sb.from('deal_playbook_progress').select('*').in('deal_id', dealIds); progressRows = Array.isArray(p)?p:[] }
+
+    const today = new Date()
+    function computeExpected(rule:any, deal:any){
+      const binding = deal.binding_date || deal.binding || deal.binding_agreement_date || null
+      const closing = deal.closing_date || deal.closing || null
+      if(rule.days_from_binding != null && binding){ const b = new Date(binding); b.setDate(b.getDate()+Number(rule.days_from_binding)); return b }
+      if(rule.days_before_closing != null && closing){ const c = new Date(closing); c.setDate(c.getDate()-Number(rule.days_before_closing)); return c }
+      return null
+    }
+    function categorize(expected:Date|null, completed:boolean){ if(!expected) return 'unscheduled'; const expOnly = new Date(expected.getFullYear(), expected.getMonth(), expected.getDate()); const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate()); const diff = Math.ceil((expOnly.getTime()-todayOnly.getTime())/(1000*60*60*24)); if(completed) return 'completed'; if(diff<0) return 'overdue'; if(diff===0) return 'due_today'; if(diff<=7) return 'due_this_week'; return 'upcoming' }
+
+    const results:any[] = []
+    for(const deal of deals){
+      const dealProgress = progressRows.filter((p:any)=> p.deal_id === deal.id)
+      const gaps:any[] = []
+      for(const rule of rules){
+        const expected = computeExpected(rule, deal)
+        const matched = dealProgress.find((p:any)=> p.milestone_key === rule.milestone_key)
+        const completed = !!(matched && (matched.status === 'completed' || matched.status === 'done'))
+        const status = categorize(expected, completed)
+        const daysDiff = expected ? Math.ceil(((expected as Date).getTime()-today.getTime())/(1000*60*60*24)) : null
+        gaps.push({ milestone_key: rule.milestone_key, milestone_label: rule.milestone_label, expected_date: expected? expected.toISOString(): null, status, responsible_party: rule.responsible_party, priority: rule.priority, advisory_source: rule.advisory_source, days_diff: daysDiff })
+      }
+      const orderRank:any = { overdue:0, due_today:1, due_this_week:2, upcoming:3, unscheduled:4, completed:5 }
+      gaps.sort((a:any,b:any)=> (orderRank[a.status]||99)-(orderRank[b.status]||99) || ((a.days_diff||999)-(b.days_diff||999)))
+      results.push({ dealId: deal.id, address: deal.address || null, client: deal.client || null, gaps })
     }
 
-    const rank: any = { critical:0, high:1, normal:2 }
-    const statusRank: any = { overdue:0, due_today:1, due_this_week:2, upcoming:3, unscheduled:4, completed:5 }
-    flat.sort((a,b)=> (statusRank[a.status]||99) - (statusRank[b.status]||99) || ( (rank[a.priority]||9) - (rank[b.priority]||9) ) || ((a.days_diff||999)-(b.days_diff||999)))
-
+    // flatten top gaps across deals
+    const flat:any[] = []
+    for(const r of results){
+      const top = (r.gaps || []).slice(0,3)
+      for(const g of top) flat.push({ dealId: r.dealId, address: r.address, client: r.client, ...g })
+    }
+    const rank:any = { critical:0, high:1, normal:2 }
+    const statusRank:any = { overdue:0, due_today:1, due_this_week:2, upcoming:3, unscheduled:4, completed:5 }
+    flat.sort((a:any,b:any)=> (statusRank[a.status]||99)-(statusRank[b.status]||99) || ((rank[a.priority]||9)-(rank[b.priority]||9)) || ((a.days_diff||999)-(b.days_diff||999)))
     const topGaps = flat.slice(0,6)
-    const chips = topGaps.slice(0,3).map((g:any)=> {
-      const when = g.status === 'overdue' ? `${Math.abs(g.days_diff)}d overdue` : g.status === 'due_today' ? 'due today' : g.days_diff != null ? `${g.days_diff}d` : ''
-      return `Follow up: ${g.milestone_label} — ${g.address || ''} (${when})`
-    })
+    const chips = topGaps.slice(0,3).map((g:any)=>{ const when = g.status==='overdue' ? `${Math.abs(g.days_diff)}d overdue` : g.status==='due_today' ? 'due today' : g.days_diff!=null? `${g.days_diff}d` : ''; return `Follow up: ${g.milestone_label} — ${g.address || ''} (${when})` })
 
-    // build prompt
+    // generate AI brief
     const system = BASE_PROMPT
     const userContent = `Brief me on the top items right now. Use the following gaps (address | client | milestone | expected_date | status | priority):\n${topGaps.map((g:any)=> `${g.address || '—'} | ${g.client || '—'} | ${g.milestone_label} | ${g.expected_date || 'TBD'} | ${g.status} | ${g.priority || 'normal'}`).join('\n')}`
 
     if(!process.env.OPENAI_API_KEY) return NextResponse.json({ message: 'OpenAI API key not configured.' })
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: userContent }
-      ],
-      temperature: 0.2,
-      max_tokens: 500
-    })
-
+    const completion = await openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }], temperature:0.2, max_tokens:500 })
     const aiGeneratedBrief = completion.choices?.[0]?.message?.content || ''
 
-    const dynamicChips = chips.length>0 ? chips : ['Prioritize deals','Review urgent deadlines','Contact title company']
+    return NextResponse.json({ message: aiGeneratedBrief, gaps: topGaps, chips: chips.length>0?chips:['Prioritize deals','Review urgent deadlines','Contact title company'] })
 
-    return NextResponse.json({ message: aiGeneratedBrief, gaps: topGaps, chips: dynamicChips })
-  }catch(err:any){
-    console.error('eva briefing (playbook) error', err)
-    return NextResponse.json({ message: 'EVA briefing unavailable.' , chips: [] }, { status:500 })
-  }
+  }catch(err:any){ console.error('eva briefing (playbook/db) error', err); return NextResponse.json({ message: 'EVA briefing unavailable.' , chips: [] }, { status:500 }) }
 }
