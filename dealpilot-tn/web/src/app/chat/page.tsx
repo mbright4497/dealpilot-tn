@@ -397,32 +397,172 @@ export default function ChatPage() {
           return (
             <div className="min-h-[80vh] flex flex-col">
               {/* TOP HALF - Eva's Zone */}
-              <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
-                <div className="relative flex flex-col items-center">
-                  <div className={`absolute -inset-2 rounded-full bg-gradient-to-r from-orange-400/30 via-pink-400/20 to-indigo-400/10 blur-xl ${evaSpeaking ? 'animate-pulse-slow' : ''}`} style={{width:220,height:220}}></div>
-                  <img src="/avatar-pilot.png" alt="Eva" className="w-56 h-56 rounded-full relative z-10 shadow-2xl" style={evaSpeaking?{animation:'evaTalk 0.6s ease-in-out infinite'}:{}} />
-                  {evaSpeaking && (
-                    <div className="mt-3 flex items-end gap-1 justify-center h-6">
-                      <div style={{width:4, background:'#fb923c', borderRadius:4, animation:'soundWave 600ms ease-in-out infinite'}} />
-                      <div style={{width:4, background:'#fb923c', borderRadius:4, animation:'soundWave 600ms ease-in-out 150ms infinite'}} />
-                      <div style={{width:4, background:'#fb923c', borderRadius:4, animation:'soundWave 600ms ease-in-out 300ms infinite'}} />
-                    </div>
-                  )}
-                </div>
-                <div className="mt-6 max-w-3xl">
-                  <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
-                    <div className="text-base md:text-lg font-normal leading-relaxed text-white" dangerouslySetInnerHTML={{__html: (briefing || 'No briefing available').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br/>')}} />
-                    <div className="text-sm text-gray-400 mt-3">Last updated: {lastUpdated ? lastUpdated.toLocaleString() : '—'}</div>
-                  </div>
-                </div>
-                <div className="mt-6 flex items-center gap-4">
-                  <button onClick={()=>{ if(evaSpeaking){ stopSpeaking(); setEvaSpeaking(false) } else { const ut = speakText(briefing||'', ()=>setEvaSpeaking(true), ()=>setEvaSpeaking(false)); if(!ut) addToast('TTS not available') } }} title={evaSpeaking? 'Stop briefing' : 'Play briefing'} className={`w-12 h-12 rounded-full flex items-center justify-center text-gray-200 ${evaSpeaking? 'bg-orange-500 animate-pulse' : 'bg-[#0f1724] border border-white/6'}`}>{evaSpeaking? '⏹️' : '▶️'}</button>
-                  <form onSubmit={async (e)=>{ e.preventDefault(); const val = (e.target as any).elements.ask.value; if(!val) return; try{ const res = await fetch('/api/eva/chat',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages:[{role:'user', content: val}] }) }); if(res.ok){ const j=await res.json(); setBriefing(j.reply || j.message || j.summary || ''); addToast('Eva replied') } }catch(err){ addToast('Chat failed') } }} className="flex-1">
-                    <input name="ask" placeholder="Ask Eva anything..." className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition" />
-                  </form>
-                  <button onClick={loadCommandCenter} className="px-3 py-2 bg-gray-800 rounded text-sm">Refresh</button>
-                </div>
-              </div>
+<div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
+ {/* Avatar + glow + talking animation */}
+ <div className="relative flex flex-col items-center">
+ <div
+ className={
+ "absolute -inset-2 rounded-full bg-gradient-to-r from-orange-400/30 via-pink-400/20 to-indigo-400/10 blur-xl " +
+ (evaSpeaking ? "animate-pulse-slow" : "")
+ }
+ style={{ width: 220, height: 220 }}
+ />
+ <img
+ src="/avatar-pilot.png"
+ alt="Eva"
+ className="w-56 h-56 rounded-full relative z-10 shadow-2xl"
+ style={evaSpeaking ? { animation: "evaTalk 0.6s ease-in-out infinite" } : {}}
+ />
+ {evaSpeaking && (
+ <div className="mt-3 flex items-end gap-1 justify-center h-6">
+ <div
+ style={{
+ width: 4,
+ background: "#fb923c",
+ borderRadius: 4,
+ animation: "soundWave 600ms ease-in-out infinite",
+ }}
+ />
+ <div
+ style={{
+ width: 4,
+ background: "#fb923c",
+ borderRadius: 4,
+ animation: "soundWave 600ms ease-in-out 150ms infinite",
+ }}
+ />
+ <div
+ style={{
+ width: 4,
+ background: "#fb923c",
+ borderRadius: 4,
+ animation: "soundWave 600ms ease-in-out 300ms infinite",
+ }}
+ />
+ </div>
+ )}
+ </div>
+
+ {/* Briefing bubble */}
+ <div className="mt-6 max-w-3xl">
+ <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
+ <div
+ className="text-base md:text-lg font-normal leading-relaxed text-white"
+ dangerouslySetInnerHTML={{
+ __html: (briefing || "No briefing available")
+ .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+ .replace(/\n/g, "<br/>"),
+ }}
+ />
+ <div className="text-sm text-gray-400 mt-3">
+ Last updated: {lastUpdated ? lastUpdated.toLocaleString() : "—"}
+ </div>
+ </div>
+ </div>
+
+ {/* Controls: play/stop + input + refresh */}
+ <div className="mt-6 flex items-center gap-4">
+ <button
+ onClick={async () => {
+ try {
+ if (evaSpeaking) {
+ // stop
+ stopSpeaking();
+ setEvaSpeaking(false);
+ return;
+ }
+ if (!briefing) return;
+ speak(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
+ setEvaSpeaking(false)
+ );
+ } catch (e) {
+ console.error(e);
+ setEvaSpeaking(false);
+ }
+ }}
+ className={
+ "w-12 h-12 rounded-full flex items-center justify-center text-white " +
+ (evaSpeaking
+ ? "bg-orange-500 animate-pulse"
+ : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
+ }
+ title={evaSpeaking ? "Stop Eva" : "Play Eva briefing"}
+ >
+ {evaSpeaking ? "⏹" : "▶️"}
+ </button>
+
+ <form
+ onSubmit={async (e) => {
+ e.preventDefault();
+ const val = (e.target as any).elements.ask.value;
+ if (!val) return;
+ try {
+ const res = await fetch("/api/eva/chat", {
+ method: "POST",
+ headers: { "Content-Type": "application/json" },
+ body: JSON.stringify({ messages: [{ role: "user", content: val }] }),
+ });
+ if (res.ok) {
+ const j = await res.json();
+ setBriefing(j.reply || j.message || j.summary || "");
+ addToast("Eva replied");
+ }
+ } catch (err) {
+ console.error(err);
+ addToast("Chat failed");
+ }
+ }}
+ className="flex-1"
+ >
+ <input
+ name="ask"
+ placeholder="Ask Eva anything..."
+ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
+ />
+ </form>
+
+ <button
+ onClick={async () => {
+ try {
+ stopSpeaking();
+ setEvaSpeaking(false);
+ await loadCommandCenter();
+ } catch (e) {
+ console.error(e);
+ }
+ }}
+ className="px-3 py-2 bg-gray-800 rounded text-sm hover:bg-gray-700 transition"
+ >
+ Refresh
+ </button>
+ </div>
+
+ {/* Local keyframes */}
+ <style jsx>{`
+ @keyframes evaTalk {
+ 0% {
+ transform: scale(1);
+ }
+ 50% {
+ transform: scale(1.03);
+ }
+ 100% {
+ transform: scale(1);
+ }
+ }
+ @keyframes soundWave {
+ 0% {
+ height: 4px;
+ }
+ 50% {
+ height: 16px;
+ }
+ 100% {
+ height: 4px;
+ }
+ }
+ `}</style>
+</div>
 
               {/* BOTTOM HALF - Deal ticker + action pills */}
               <div className="h-44 bg-[#071224] rounded-lg p-4">
