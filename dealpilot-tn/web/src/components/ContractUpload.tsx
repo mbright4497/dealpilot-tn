@@ -284,19 +284,33 @@ export default function ContractUpload({ dealId, onExtracted, onSave, onDelete }
         {error && (
           <p className="text-red-500 text-sm mb-4">{error}</p>
         )}
-        {extractedData && getSections(extractedData).map((section) => (
-          <div key={section.title} className="mb-4 border rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-orange-500 mb-2">{section.title}</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {section.fields.map((f) => (
-                <div key={f.label}>
-                  <p className="text-xs text-gray-500">{f.label}</p>
-                  <p className="text-sm">{f.value || '\u2014'}</p>
-                </div>
-              ))}
+        {extractedData && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between p-3 border rounded-lg mb-3 bg-gray-900">
+              <div>
+                <div className="text-sm text-gray-400">Contract Summary</div>
+                <div className="text-lg font-bold text-white">{extractedData.buyer_names?.join(', ') || extractedData.buyer || 'Buyer'} • {extractedData.property_address || 'Property'}</div>
+                <div className="text-sm text-gray-400">Price: {extractedData.sale_price ? fmt(extractedData.sale_price) : '\u2014'} • Closing: {extractedData.closing_date || '\u2014'}</div>
+              </div>
+              <div>
+                <button onClick={()=> setShowFull(prev=>!prev)} className="px-3 py-1 bg-gray-800 rounded text-sm">{showFull ? 'Hide details' : 'Show full details'}</button>
+              </div>
             </div>
+            {showFull && getSections(extractedData).map((section) => (
+              <div key={section.title} className="mb-4 border rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-orange-500 mb-2">{section.title}</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {section.fields.map((f) => (
+                    <div key={f.label}>
+                      <p className="text-xs text-gray-500">{f.label}</p>
+                      <p className="text-sm">{f.value || '\u2014'}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
       {pdfUrl && (
         <div className="flex-1">
