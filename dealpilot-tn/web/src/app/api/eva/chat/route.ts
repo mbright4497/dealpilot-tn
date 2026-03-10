@@ -11,8 +11,14 @@ const BASE_PROMPT = `You are EVA — ClosingPilot's expert Tennessee Transaction
 export async function POST(req: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // make auth optional: attempt to get user but do not block if missing
+    let user = null
+    try{
+      const supRes = await supabase.auth.getUser()
+      user = supRes?.data?.user || null
+    }catch(e){ user = null }
+    // if no user, continue as anonymous (do not return 401)
+
 
     const body = await req.json().catch(() => ({}))
     const { messages = [], dealId } = body as any
