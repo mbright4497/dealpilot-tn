@@ -27,7 +27,7 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
         const urgent: any[] = []
         const missingDocs: any[] = []
         if(Array.isArray(deals)){
-          for(const d of deals){
+          for(const d of deals.filter((x:any)=>{ const s=(x.current_state||x.status||x.phase||'').toLowerCase(); return s!=='closed'&&s!=='cancelled' })){
             if(d.closing_date){
               const days = Math.ceil((new Date(d.closing_date).getTime() - Date.now())/(1000*60*60*24))
               if(days <= 3) urgent.push({ id: d.id, address: d.property_address || d.address, days })
@@ -35,14 +35,17 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
             if(!d.documents || d.documents.length === 0) missingDocs.push({ id: d.id, address: d.property_address || d.address })
           }
         }
-        const activeCount = Array.isArray(deals) ? deals.filter((t:any)=> (t.current_state||t.phase||'') !== 'closed').length : 0
-        let brief = `Good afternoon. I see ${activeCount} active deals.`
+        const activeCount = Array.isArray(deals) ? deals.filter((t:any)=> { const s=(t.current_state||t.status||t.phase||'').toLowerCase(); return s!=='closed'&&s!=='cancelled' }).length : 0
+        const _fmt = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'numeric',hour12:false})
+        const _hh = parseInt(_fmt.format(new Date()),10)||12
+        const _greet = _hh>=5&&_hh<=11? 'Good morning' : _hh>=18 ? 'Good evening' : _hh<=4 ? 'Hey there' : 'Good afternoon'
+        let brief = `${_greet}. I see ${activeCount} active deals.`
         if(urgent.length>0) brief += ` Urgent: ${urgent.length} deal(s) due within 3 days.`
         if(missingDocs.length>0) brief += ` Missing documents on ${missingDocs.length} deal(s).`
         addMessage({ id: 'briefing-proactive-'+Date.now(), role: 'eva', content: brief })
         // Inject transaction cards for quick review (if any)
         if(Array.isArray(deals) && deals.length>0){
-          deals.slice(0,6).forEach((tx:any)=> addMessage({ id:`deal-${tx.id || tx.deal_id}`, role:'eva', content:'', payload:{ type:'transaction_card', data: tx }}))
+          deals.filter((tx:any)=>{ const s=(tx.current_state||tx.status||tx.phase||'').toLowerCase(); return s!=='closed'&&s!=='cancelled' }).slice(0,6).forEach((tx:any)=> addMessage({ id:`deal-${tx.id || tx.deal_id}`, role:'eva', content:'', payload:{ type:'transaction_card', data: tx }}))
         } else {
           // If no deals or fetch failed, fallback to server briefing API
           try{
