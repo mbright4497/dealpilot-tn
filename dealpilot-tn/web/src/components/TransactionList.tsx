@@ -27,12 +27,23 @@ interface Props {
 }
 export default function TransactionList({ transactions, onViewChecklist, onOpenDeal, onAddTransaction, onDeleteTransaction, onStartAdd }: Props){
   const [filter, setFilter] = useState('All')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'closing'|'days'|'value'|'updated'>('closing')
+  const [phaseFilter, setPhaseFilter] = useState('All')
   const [expanded, setExpanded] = useState<number|null>(null)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [showIntake, setShowIntake] = useState(false)
-  const list = transactions.filter(m => filter === 'All' || m.status === filter)
+
+  let list = transactions.filter(m => filter === 'All' || m.status === filter)
+  if(phaseFilter !== 'All') list = list.filter(m=> (m.current_state||m.status||'').toLowerCase() === phaseFilter.toLowerCase())
+  if(searchQuery) list = list.filter(m=> (String(m.address||'')+String(m.client||'')).toLowerCase().includes(searchQuery.toLowerCase()))
+  if(sortBy === 'closing') list = list.sort((a,b)=> (a.closing? new Date(a.closing).getTime():Infinity) - (b.closing? new Date(b.closing).getTime():Infinity))
+  if(sortBy === 'days') list = list.sort((a,b)=> (a.closing? Math.ceil((new Date(a.closing).getTime()-Date.now())/(1000*60*60*24)):9999) - (b.closing? Math.ceil((new Date(b.closing).getTime()-Date.now())/(1000*60*60*24)):9999))
+  // value sorting requires purchase_price on transaction; fallback to 0
+  if(sortBy === 'value') list = list.sort((a,b)=> (Number((a as any).purchase_price||0)) - (Number((b as any).purchase_price||0)))
+  if(sortBy === 'updated') list = list.sort((a:any,b:any)=> (new Date(b.updated_at||b.modified_at||0).getTime()) - (new Date(a.updated_at||a.modified_at||0).getTime()))
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try{
@@ -89,14 +100,31 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
         })()}
       </div>
 
-      {/* pill tabs */}
-      <div className="mb-4">
+      {/* controls: tabs + search + sort + phase filter */}
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div className="inline-flex rounded-full bg-gray-800 p-1">
           {['All','Active','Pending','Closed'].map(p=> (
             <button key={p} onClick={()=>setFilter(p)} className={`px-4 py-1 rounded-full ${filter===p ? 'bg-orange-500 text-white font-semibold' : 'text-gray-300'}`}>{p}</button>
           ))}
         </div>
-        <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="ml-4 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:from-orange-400 hover:to-amber-400 transition-all">Add Transaction</button>
+        <div className="flex items-center gap-2">
+          <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="Search address or client" className="bg-[#0f223a] p-2 rounded input text-sm" />
+          <select value={sortBy} onChange={e=>setSortBy(e.target.value as any)} className="bg-[#0f223a] p-2 rounded text-sm">
+            <option value="closing">Sort: Closing date</option>
+            <option value="days">Sort: Days to close</option>
+            <option value="value">Sort: Deal value</option>
+            <option value="updated">Sort: Last updated</option>
+          </select>
+          <select value={phaseFilter} onChange={e=>setPhaseFilter(e.target.value)} className="bg-[#0f223a] p-2 rounded text-sm">
+            <option value="All">Phase: All</option>
+            <option value="draft">Phase: Draft</option>
+            <option value="binding">Phase: Binding</option>
+            <option value="inspection_period">Phase: Inspection</option>
+            <option value="post_inspection">Phase: Post Inspection</option>
+            <option value="closed">Phase: Closed</option>
+          </select>
+          <button onClick={() => onStartAdd ? onStartAdd() : setShowModal(true)} className="ml-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:from-orange-400 hover:to-amber-400 transition-all text-sm">Add</button>
+        </div>
       </div>
 
       {/* card grid */}
