@@ -315,6 +315,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-dp-bg-dark">
+      <style>{`@keyframes pulseRing{0%{transform:scale(1);opacity:0.9}50%{transform:scale(1.06);opacity:0.5}100%{transform:scale(1);opacity:0.9}}@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {/* Mobile hamburger */}
       <button onClick={()=>setSidebarOpen(true)} className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-lg">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
