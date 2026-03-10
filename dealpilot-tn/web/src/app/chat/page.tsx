@@ -124,7 +124,7 @@ export default function ChatPage() {
   const loadCommandCenter = async ()=>{
     try{
       const b = await fetch('/api/eva/briefing', { method:'POST' })
-      if(b.ok){ const bj=await b.json(); setBriefing(bj.message||null) }
+      if(b.ok){ const bj=await b.json(); setBriefing(bj.summary||bj.message||null) }
       const r = await fetch('/api/eva/actions')
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
       const d = await fetch('/api/deal-state/all')
