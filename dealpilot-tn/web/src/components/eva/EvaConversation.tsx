@@ -11,7 +11,7 @@ export default function EvaConversation({messages, isTyping}:{messages?:any[], i
   useEffect(()=>{ endRef.current?.scrollIntoView({behavior:'smooth'}) },[msgs,isTyping])
   return (
     <div className="flex flex-col gap-3 p-4">
-      {Array.isArray(msgs) && msgs.map((m:any)=>(<EvaMessageBubble key={m.id} role={m.role} content={m.content} renderPayload={m.payload}/>))}
+      {Array.isArray(msgs) && msgs.map((m:any)=>(<EvaMessageBubble key={m.id} role={m.role} content={m.content} payload={m.payload}/>))}
       {isTyping && <EvaTypingIndicator />}
       <div ref={endRef} />
     </div>
