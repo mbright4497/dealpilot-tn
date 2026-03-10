@@ -5,6 +5,7 @@ import dealsApi from './api/deals';
 import offersApi from './api/offers';
 import voiceApi from './api/voice';
 import webhook from './api/webhook';
+import communicationsApi from './api/communications';
 
 const app = express();
 app.use(cors());
@@ -15,6 +16,7 @@ app.get('/health', (req,res)=>res.json({ok:true, time: new Date().toISOString()}
 app.use('/api/deals', dealsApi);
 app.use('/api/offers', offersApi);
 app.use('/api/voice', voiceApi);
+app.use('/api/communications', communicationsApi);
 app.use('/whatsapp', webhook);
 
 // error handler
