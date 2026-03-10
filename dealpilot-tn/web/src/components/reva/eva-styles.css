@@ -1,3 +1,3 @@
-/* Minimal EVA styles used by EvaMainView - extend later */
-.eva-main { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
-.eva-main .eva-header { }
+/* Minimal REVA styles used by EvaMainView - extend later */
+.reva-main { font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+.reva-main .reva-header { }

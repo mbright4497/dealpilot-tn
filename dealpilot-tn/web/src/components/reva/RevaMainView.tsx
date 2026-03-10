@@ -5,7 +5,7 @@ import EvaConversation from './EvaConversation'
 import EvaComposer from './EvaComposer'
 import EvaRichCardRenderer from './EvaRichCardRenderer'
 import { useEva } from './EvaProvider'
-import './eva-styles.css'
+import './reva-styles.css'
 
 export default function EvaMainView({ transactions = [], onViewDeal }:{ transactions?: any[], onViewDeal?: (id:number)=>void }){
   const { addMessage } = useEva()
@@ -68,7 +68,7 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
   },[transactions, addMessage])
 
   return (
-    <div className="eva-main bg-[#0a1628] min-h-screen flex">
+    <div className="reva-main bg-[#0a1628] min-h-screen flex">
       {/* Left strip */}
       <aside className="w-16 bg-[#071022] flex flex-col items-center py-4">
         <div className="mb-6 text-white font-bold">CP</div>
@@ -78,11 +78,11 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
 
       {/* Main area */}
       <main className="flex-1 flex flex-col">
-        {/* Eva header */}
+        {/* Reva header */}
         <header className="flex items-center gap-4 p-4 bg-[#0f1d32] border-b border-white/6">
-          <img src="/avatar-pilot.png" alt="Eva" className="w-20 h-20 rounded-full" />
+          <img src="/avatar-pilot.png" alt="Reva" className="w-20 h-20 rounded-full" />
           <div>
-            <div className="text-white font-bold text-lg">Eva</div>
+            <div className="text-white font-bold text-lg">Reva</div>
             <div className="text-gray-300 text-sm">Your Transaction Coordinator <span className="ml-2 inline-block w-2 h-2 bg-green-400 rounded-full" /></div>
           </div>
         </header>
@@ -95,10 +95,10 @@ export default function EvaMainView({ transactions = [], onViewDeal }:{ transact
         {/* Composer area */}
         <div className="p-4 bg-[#071022] border-t border-white/6">
           <div className="mb-2 flex gap-2">
-            <button onClick={async ()=>{ addMessage({ id: 'pill-mydeals', role: 'user', content: 'My Deals' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'My Deals' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'EVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'EVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">My Deals</button>
-            <button onClick={async ()=>{ addMessage({ id: 'pill-addtx', role: 'user', content: 'Add Transaction' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'Add Transaction' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'EVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'EVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Add Transaction</button>
-            <button onClick={async ()=>{ addMessage({ id: 'pill-deadlines', role: 'user', content: 'Deadlines' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'Deadlines' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'EVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'EVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Deadlines</button>
-            <button onClick={async ()=>{ addMessage({ id: 'pill-upload', role: 'user', content: 'Upload Document' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'Upload Document' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'EVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'EVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Upload Document</button>
+            <button onClick={async ()=>{ addMessage({ id: 'pill-mydeals', role: 'user', content: 'My Deals' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'My Deals' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'REVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'REVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">My Deals</button>
+            <button onClick={async ()=>{ addMessage({ id: 'pill-addtx', role: 'user', content: 'Add Transaction' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'Add Transaction' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'REVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'REVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Add Transaction</button>
+            <button onClick={async ()=>{ addMessage({ id: 'pill-deadlines', role: 'user', content: 'Deadlines' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'Deadlines' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'REVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'REVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Deadlines</button>
+            <button onClick={async ()=>{ addMessage({ id: 'pill-upload', role: 'user', content: 'Upload Document' }); const history = Array.isArray(ctx?.messages)? ctx.messages.map((m:any)=>({ role:m.role, content:m.content })):[]; try{ const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ messages:[...history, { role:'user', content:'Upload Document' }], dealId: ctx?.pageContext?.dealId })}); const j=await res.json(); addMessage({ id:'eva_'+Date.now(), role:'eva', content: j.reply || 'REVA response', payload: j.renderPayload }) }catch(e){ addMessage({ id:'eva_err_'+Date.now(), role:'eva', content:'REVA unavailable.'}) } }} className="px-3 py-1 rounded border border-cyan-500 text-cyan-400">Upload Document</button>
           </div>
           <EvaComposer />
         </div>
