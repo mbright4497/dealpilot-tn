@@ -116,13 +116,32 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
   }
 
   if(t==='draft_email'){
-    const e = payload.data
+    const e = payload.data || {}
+    const sendPreview = async ()=>{
+      // show a preview message in the conversation so user can inspect before confirming
+      addMessage({ id:'eva_email_preview_'+Date.now(), role:'eva', content:'Previewing email below. Click Confirm Send to actually send.' })
+      addMessage({ id:'eva_email_preview_body_'+Date.now(), role:'eva', content:`To: ${e.to || '—'}\nSubject: ${e.subject || '—'}\n\n${e.body || ''}` })
+    }
+    const confirmAndSend = async ()=>{
+      if(typeof window !== 'undefined'){
+        const ok = window.confirm('Confirm send this email? This will deliver the message to the recipient.')
+        if(!ok){ addMessage({ id:'eva_send_cancel_'+Date.now(), role:'eva', content:'Send cancelled.' }); return }
+      }
+      try{
+        const res = await fetch('/api/communications/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ draft: e, confirmed: true }) })
+        const j = await res.json()
+        if(!res.ok){ addMessage({ id:'eva_send_err_'+Date.now(), role:'eva', content:'Failed to send: '+(j?.error||'unknown') }); return }
+        addMessage({ id:'eva_sent_'+Date.now(), role:'eva', content:'✅ Email sent.' })
+      }catch(err){ console.error(err); addMessage({ id:'eva_send_err_'+Date.now(), role:'eva', content:'Failed to send email.' }) }
+    }
+
     return (
       <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded-lg">
         <div className="font-semibold text-white">Draft Email: {e.subject}</div>
         <pre className="text-sm text-gray-300 mt-2 whitespace-pre-wrap">{e.body}</pre>
         <div className="mt-3 flex gap-2">
-          <button onClick={()=>{ addMessage({ id:'eva_send_confirm_'+Date.now(), role:'eva', content:'(Placeholder) I would send this now if sending were enabled.' }) }} className="px-3 py-1 rounded bg-cyan-500 text-black">Send (placeholder)</button>
+          <button onClick={sendPreview} className="px-3 py-1 rounded bg-cyan-500 text-black">Preview</button>
+          <button onClick={confirmAndSend} className="px-3 py-1 rounded bg-green-600 text-black">Confirm Send</button>
           <button onClick={()=>{ addMessage({ id:'eva_edit_'+Date.now(), role:'eva', content:'Okay — tell me what to change.' }) }} className="px-3 py-1 rounded bg-gray-800 text-white">Edit</button>
         </div>
       </div>
