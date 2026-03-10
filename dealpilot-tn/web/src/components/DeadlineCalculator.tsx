@@ -384,7 +384,8 @@ export default function DeadlineCalculator() {
                         onClick={() => {
                           // If your app supports transaction drill-in via view state, swap this with your navigation handler.
                           // Keeping this purely API-wired and dependency-free.
-                          window.location.href = `/transactions/${encodeURIComponent(d.dealId)}`;
+                          // SPA navigation: emit event for app to open deal in chat/transaction detail
+                          if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:viewDeal', { detail: { id: d.dealId } }));
                         }}
                         className="rounded-xl bg-[#16213e] border border-white/10 px-3 py-1.5 text-xs text-gray-200 hover:border-orange-500/30 hover:text-orange-100 transition"
                       >

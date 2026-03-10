@@ -28,7 +28,8 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
     const navigateToDeal = (targetId:any)=>{
       if(!targetId) return
       if(typeof window !== 'undefined'){
-        try{ window.location.href = `/transactions/${targetId}` }catch(_){ window.dispatchEvent(new CustomEvent('eva:viewDeal', { detail: { id: targetId } })) }
+        // SPA navigation: dispatch event to open deal detail in-app
+        if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:viewDeal', { detail: { id: targetId } }))
       }
     }
 
