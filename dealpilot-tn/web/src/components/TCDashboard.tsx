@@ -81,13 +81,13 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   ] : []
   const overdueCount = portfolioDeadlines?.overdue_count || 0
   // compute Eva briefing
-  const activeDeals = transactions.filter(t=> (t.status||'').toLowerCase() !== 'closed')
+  const activeDeals = transactions.filter(t=> { const s = (t.current_state || t.status || '').toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
   const activeCount = activeDeals.length
-  // next closing deal
-  const withClosing = transactions.filter(t=> t.closing_date || t.closing)
+  // next closing deal (consider active deals)
+  const withClosing = activeDeals.filter(t=> t.closing_date || t.closing)
   const nextClosing = withClosing.map(t=>({ tx: t, date: new Date(t.closing_date || t.closing) })).sort((a,b)=>a.date.getTime()-b.date.getTime())[0]
-  // documents needed heuristic: tx with no binding or no purchase_price
-  const docsNeeded = transactions.filter(t=> !t.binding || (!((t as any).purchase_price) ) ).length
+  // documents needed heuristic: active tx with no binding or no purchase_price
+  const docsNeeded = activeDeals.filter(t=> !t.binding || (!((t as any).purchase_price) ) ).length
   const evaBrief = `Good afternoon, ${userName || 'there'}. You have ${activeCount} active deals. ${ nextClosing ? `${String(nextClosing.tx.address||'').replace(/\}/g,'')} closes in ${Math.max(0, Math.ceil((nextClosing.date.getTime()-Date.now())/(1000*60*60*24)))} days — ${ (nextClosing.tx.binding ? 'on track' : 'missing binding') }.` : 'No upcoming closings.' }
   `
 
@@ -163,7 +163,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
             >View All →</button>
           </div>
           <div className="divide-y divide-white/5">
-            {transactions.map(tx => {
+            {activeDeals.map(tx => {
               const state = tx.current_state || 'draft'
               const progress = PROGRESS_MAP[state] || 10
               const colorClass = STATE_COLORS[state] || 'bg-gray-400'
