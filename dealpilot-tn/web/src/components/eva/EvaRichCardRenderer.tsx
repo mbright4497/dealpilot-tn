@@ -73,6 +73,17 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
       </div>
     )
   }
+  if(t==='chips'){
+    const chips = payload.chips || []
+    return (
+      <div className="flex flex-wrap gap-2">
+        {chips.map((c:any, i:number)=>(
+          <button key={i} onClick={()=>{ if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:doAction',{ detail: c })) }} className="px-3 py-1 rounded bg-[#1e3a5f] text-cyan-300 hover:bg-cyan-500/10">{c.label || c}</button>
+        ))}
+      </div>
+    )
+  }
+
   if(t==='deal_detail'){
     const d = payload.data
     const daysToClose = d.closing ? Math.max(0, Math.ceil((new Date(d.closing).getTime()-Date.now())/(1000*60*60*24))) : null
