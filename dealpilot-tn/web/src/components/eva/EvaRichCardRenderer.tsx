@@ -13,15 +13,17 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
     return (<div className="bg-[#0f1c2e] border border-[#1e3a5f] p-3 rounded"><div className="font-semibold">Deadline Risk</div><div className="text-sm text-gray-300">{payload.note}</div></div>)
   }
   if(t==='transaction_card'){
-    const tx = payload.data || {}
-    // tolerate multiple API field names
-    const addr = tx.address || tx.property_address || tx.address_line || tx.propertyAddress || ''
-    const client = tx.client || tx.client_name || tx.buyer || tx.primary_contact || ''
-    const closingDate = tx.closing || tx.closing_date || tx.closingDate || tx.closing_at || null
+    // accept payload.data or payload itself (defensive)
+    const tx = (payload && (payload.data || payload)) || {}
+    // explicit mapping for API fields used by deals API
+    const addr = tx.property_address || tx.address || tx.address_line || tx.propertyAddress || tx.address_line_1 || ''
+    const client = tx.client_name || tx.client || tx.buyer || tx.primary_contact || tx.contact_name || ''
+    const closingDate = tx.closing_date || tx.closing || tx.closingDate || tx.closing_at || null
     const daysToClose = closingDate ? Math.max(0, Math.ceil((new Date(closingDate).getTime()-Date.now())/(1000*60*60*24))) : null
-    const state = tx.current_state || tx.state || tx.status || ''
+    const state = tx.phase || tx.current_state || tx.state || tx.status || ''
     const progress = state === 'closed' ? 100 : state === 'draft' ? 10 : state === 'inspection_period' ? 65 : 40
     const badge = tx.state_label || tx.status_label || tx.status || state || '—'
+    const id = tx.id || tx.deal_id || tx.tx_id || null
     return (
       <div className="bg-[#0f1c2e] border border-[#1e3a5f] p-4 rounded-lg shadow-sm">
         <div className="flex items-center justify-between">
@@ -38,9 +40,9 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
         <div className="mt-3 flex gap-2">
           <button onClick={()=>{
             // Ask Eva to show deal detail inline
-            addMessage({ id:`deal-detail-${tx.id}-${Date.now()}`, role:'eva', content: `Details for ${addr}`, payload: { type: 'deal_detail', data: tx } })
+            addMessage({ id:`deal-detail-${id}-${Date.now()}`, role:'eva', content: `Details for ${addr}`, payload: { type: 'deal_detail', data: tx } })
             // also emit an event so page-level listeners can open legacy detail if needed
-            if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:viewDeal', { detail: { id: tx.id } }))
+            if(typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('eva:viewDeal', { detail: { id } }))
           }} className="px-3 py-1 rounded bg-cyan-500 text-black">View Deal</button>
         </div>
       </div>
