@@ -727,9 +727,25 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   </div>
                 </div>
                 <ContractUpload dealId={String(transaction.id)} onSave={(data)=>{ setContractData(data); if((data as any)?.__remote){ const r=(data as any).__remote; setRemote(r); setMergedTx(prev=>({ ...prev, ...(r||{}) })); if(r.contacts) setLocalContacts(r.contacts) } }} onDelete={()=>setContractData(null)} />
+
+                {/* Compact Contract Summary Card (collapsible) */}
+                <div className="mt-4 p-3 bg-gray-900 rounded">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-400">Contract Summary</div>
+                      <div className="text-lg font-bold text-white">{contractData?.buyer || mergedTx.client || 'Buyer'} • {contractData?.property_address || mergedTx.address || 'Property'}</div>
+                      <div className="text-sm text-gray-400">Price: {contractData?.purchase_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(contractData.purchase_price) : (mergedTx as any).purchase_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format((mergedTx as any).purchase_price) : '—'} • Closing: {fmtDate(contractData?.closing_date || (mergedTx as any).closing_date || mergedTx.closing)}</div>
+                    </div>
+                    <div>
+                      <button onClick={()=>{ const el = document.getElementById('contract-full-details-'+transaction.id); if(!el){ const node = document.createElement('div'); node.id = 'contract-full-details-'+transaction.id; node.innerText = JSON.stringify(contractData || mergedTx, null, 2); node.className = 'mt-3 p-2 bg-gray-800 rounded text-xs text-gray-300 whitespace-pre-wrap'; document.getElementById('contract-summary-'+transaction.id)?.appendChild(node); } else { const existing = document.getElementById('contract-full-details-'+transaction.id); existing.remove(); } }} className="px-3 py-1 bg-gray-800 rounded text-sm">Show full details</button>
+                    </div>
+                  </div>
+                  <div id={`contract-summary-${transaction.id}`} />
+                </div>
+
               </div>
 
-              <div className="p-4 bg-gray-800 rounded mb-4">
+              <div className="p-4 bg-gray-800 rounded">
                 <h4 className="font-semibold mb-2">Documents</h4>
                 <div className="mb-2 text-sm text-gray-400">Drag & drop files anywhere to upload</div>
                 <div className="grid grid-cols-1 gap-3">
