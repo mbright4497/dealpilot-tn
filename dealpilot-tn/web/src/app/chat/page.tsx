@@ -1,5 +1,6 @@
 'use client'
 import React, {useState, useEffect} from 'react'
+import { speakText, stopSpeaking, isSpeaking } from '@/lib/eva-tts'
 import {useRouter} from 'next/navigation'
 
 import TCDashboard from '@/components/TCDashboard'
@@ -118,6 +119,7 @@ export default function ChatPage() {
   const [playbookProgressMap, setPlaybookProgressMap] = useState<Record<number,number>>({})
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
   const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [evaSpeaking, setEvaSpeaking] = useState(false)
   // addMessage is used by some EVA event handlers — provide a no-op fallback here (real addMessage exists in EvaProvider consumer contexts)
   const addMessage = (m:any)=>{ /* noop fallback to avoid runtime errors when handlers fire outside provider */ }
 
@@ -405,7 +407,7 @@ export default function ChatPage() {
                   </div>
                 </div>
                 <div className="mt-6 flex items-center gap-4">
-                  <button title="Voice chat coming soon" className="w-12 h-12 rounded-full bg-[#0f1724] border border-white/6 flex items-center justify-center text-gray-200" disabled>🎤</button>
+                  <button onClick={()=>{ if(evaSpeaking){ stopSpeaking(); setEvaSpeaking(false) } else { const ut = speakText(briefing||'', ()=>setEvaSpeaking(true), ()=>setEvaSpeaking(false)); if(!ut) addToast('TTS not available') } }} title={evaSpeaking? 'Stop briefing' : 'Play briefing'} className={`w-12 h-12 rounded-full flex items-center justify-center text-gray-200 ${evaSpeaking? 'bg-orange-500 animate-pulse' : 'bg-[#0f1724] border border-white/6'}`}>{evaSpeaking? '⏹️' : '▶️'}</button>
                   <form onSubmit={async (e)=>{ e.preventDefault(); const val = (e.target as any).elements.ask.value; if(!val) return; try{ const res = await fetch('/api/eva/chat',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ messages:[{role:'user', content: val}] }) }); if(res.ok){ const j=await res.json(); setBriefing(j.reply || j.message || j.summary || ''); addToast('Eva replied') } }catch(err){ addToast('Chat failed') } }} className="flex-1">
                     <input name="ask" placeholder="Ask Eva anything..." className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition" />
                   </form>
