@@ -172,43 +172,6 @@ export default function ChatPage() {
     }catch(e){ console.error('execute action error', e); alert('Failed to execute') }
   }
 
-  useEffect(() => {
-    fetch('/api/deal-state/all')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setTransactions(data
-            .filter((d: any) => d.address && String(d.address).trim() && String(d.address).trim() !== '}')
-            .map((d: any) => ({
-              id: d.id,
-              address: d.address || '',
-              client: d.client || '',
-              type: d.type || 'Buyer',
-              status: d.status === 'Closed' ? 'Closed' : d.status === 'draft' ? 'Active' : 'Pending',
-              binding: d.binding || '',
-              closing: d.closing || '',
-              contacts: [],
-              notes: '',
-              current_state: d.status || 'draft',
-              state_label: d.state_label || 'Draft',
-              binding_date: d.binding || null,
-              closing_date: d.closing || null,
-              inspection_end_date: d.inspection_end_date,
-              purchase_price: d.purchase_price,
-              earnest_money: d.earnest_money,
-              seller_names: d.seller_names,
-              buyer_names: d.buyer_names,
-              financing_contingency_date: d.financing_contingency_date,
-              special_stipulations: d.special_stipulations,
-              contract_type: d.contract_type,
-              timeline: d.timeline || [],
-              issues: d.issues || [],
-              documents: d.documents || [],
-            })))
-        }
-      })
-      .catch(err => console.error('Failed to load deal states:', err))
-  }, [])
 
   async function addTransaction(tx: any) {
     try {
