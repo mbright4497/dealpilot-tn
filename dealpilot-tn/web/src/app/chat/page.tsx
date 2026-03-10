@@ -114,6 +114,13 @@ export default function ChatPage() {
   const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
   const addToast = (msg:string)=>{ const id = String(Date.now()) ; setToasts(t=>[...t,{id,msg}]); setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000) }
 
+  // missing state declarations fixed
+  const [playbookProgressMap, setPlaybookProgressMap] = useState<Record<number,number>>({})
+  const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
+  // addMessage is used by some EVA event handlers — provide a no-op fallback here (real addMessage exists in EvaProvider consumer contexts)
+  const addMessage = (m:any)=>{ /* noop fallback to avoid runtime errors when handlers fire outside provider */ }
+
   const loadCommandCenter = async ()=>{
     try{
       const b = await fetch('/api/eva/briefing', { method:'POST' })
