@@ -14,18 +14,12 @@ export async function speakAPI(
       currentAudio.pause();
       currentAudio = null
     }
-    const res = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    })
-    if (!res.ok) throw new Error('TTS request failed')
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
+    // Stream via browser by pointing audio.src at GET endpoint so playback starts immediately
+    const url = '/api/tts?text=' + encodeURIComponent(text)
     const audio = new Audio(url)
     currentAudio = audio
     audio.onplay = () => { speakingState = true; if (onStart) onStart() }
-    audio.onended = () => { speakingState = false; currentAudio = null; URL.revokeObjectURL(url); if (onEnd) onEnd() }
+    audio.onended = () => { speakingState = false; currentAudio = null; if (onEnd) onEnd() }
     audio.onerror = () => { speakingState = false; currentAudio = null; if (onEnd) onEnd() }
     await audio.play()
   } catch (e) {
