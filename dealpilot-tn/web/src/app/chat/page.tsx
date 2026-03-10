@@ -515,7 +515,7 @@ export default function ChatPage() {
  >
  <input
  name="ask"
- placeholder="Ask Eva anything..."
+ placeholder="Ask Reva anything..."
  className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
  />
  </form>
