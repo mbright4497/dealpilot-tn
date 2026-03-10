@@ -7,8 +7,12 @@ export const runtime = 'nodejs'
 
 export async function GET(req: Request){
   try{
-    const supabase = createRouteHandlerClient({ cookies })
-    const { data: { user } } = await supabase.auth.getUser()
+    let supabase = null
+    let user = null
+    try{
+      supabase = createRouteHandlerClient({ cookies })
+      try{ const supRes = await supabase.auth.getUser(); user = supRes?.data?.user || null }catch(_){ user = null }
+    }catch(err){ console.warn('notifications auth init failed', err); return NextResponse.json({ error: 'Unauthorized' }, { status:401 }) }
     if(!user) return NextResponse.json({ error: 'Unauthorized' }, { status:401 })
 
     const { searchParams } = new URL(req.url)
