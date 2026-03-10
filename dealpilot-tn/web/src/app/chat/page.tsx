@@ -109,7 +109,24 @@ export default function ChatPage() {
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
 
-  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const b = await fetch('/api/eva/briefing', { method:'POST' }); if(b.ok){ const bj=await b.json(); if(mounted) setBriefing(bj.message||null) } const r = await fetch('/api/eva/actions'); if(r.ok){ const aj=await r.json(); if(mounted) setActions(aj.actions||[]) } const d = await fetch('/api/deal-state/all'); if(d.ok){ const dj=await d.json(); if(mounted) setTransactions(Array.isArray(dj)?dj:[]) } }catch(e){ console.warn('command center load',e) } finally{ if(mounted) setLoading(false) } })(); return ()=>{ mounted=false } },[])
+  const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
+  const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
+  const addToast = (msg:string)=>{ const id = String(Date.now()) ; setToasts(t=>[...t,{id,msg}]); setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000) }
+
+  const loadCommandCenter = async ()=>{
+    try{
+      const b = await fetch('/api/eva/briefing', { method:'POST' })
+      if(b.ok){ const bj=await b.json(); setBriefing(bj.message||null) }
+      const r = await fetch('/api/eva/actions')
+      if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
+      const d = await fetch('/api/deal-state/all')
+      if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj)?dj:[]) }
+      setLastUpdated(new Date())
+    }catch(e){ console.warn('command center load',e) }
+    setLoading(false)
+  }
+
+  useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
 
   // helper to execute action
   const executeAction = async (a:any)=>{
@@ -386,10 +403,10 @@ export default function ChatPage() {
                   <div>
                     <div className="text-sm text-gray-300">Eva Morning Briefing</div>
                     <div className="mt-2 text-white text-lg">{loading? 'Loading briefing...' : (briefing || 'No briefing available')}</div>
-                    <div className="text-xs text-gray-400 mt-2">Last updated: {new Date().toLocaleTimeString()}</div>
+                    <div className="text-xs text-gray-400 mt-2">Last updated: {lastUpdated ? lastUpdated.toLocaleString() : '—'}</div>
                   </div>
                   <div>
-                    <img src="/avatar-pilot.png" alt="Eva" className="w-16 h-16 rounded-full" />
+                    <img src="/avatar-pilot.png" alt="Eva" className="w-16 h-16 rounded-full animate-pulse-slow" />
                   </div>
                 </div>
               </div>
@@ -413,13 +430,14 @@ export default function ChatPage() {
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-3">Eva's Actions</h3>
                 <div className="flex gap-3 flex-wrap">
-                  {actions.map((a:any)=> (
-                    <div key={`${a.dealId}-${a.milestone_key||a.action}`} className="p-3 bg-[#0f1c2e] rounded border border-white/6 w-full md:w-1/3">
+                  {actions.map((a:any, idx:number)=> (
+                    <div key={`${a.dealId}-${a.milestone_key||a.action}`} className={`p-3 bg-[#0f1c2e] rounded border border-white/6 w-full md:w-1/3 transform transition-all duration-500 ${idx<3 ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-80'}`} style={{animation: `slideIn 400ms ${idx*80}ms ease both`}}>
                       <div className="font-semibold text-white">{a.action}</div>
                       <div className="text-sm text-gray-400">{a.address}</div>
                       <div className="text-xs text-gray-500 mt-2">{a.reason || ''}</div>
                       <div className="mt-3">
-                        <button onClick={()=>executeAction(a)} className="px-3 py-1 bg-orange-500 rounded">Do it</button>
+                        <button onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const j=await res.json(); // refresh actions
+                          const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} marked complete for ${a.address}`) } else { addToast('Failed to execute action') } }} className="px-3 py-1 bg-orange-500 rounded">Do it</button>
                       </div>
                     </div>
                   ))}
