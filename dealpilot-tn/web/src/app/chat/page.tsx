@@ -355,7 +355,10 @@ export default function ChatPage() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
-        {view === 'dashboard' && <EvaProvider><EvaMainView transactions={transactions} onViewDeal={openDeal} /></EvaProvider>}
+        {view === 'dashboard' && (()=>{
+          const filteredTransactions = transactions.filter(t=>{ const s = (t.current_state||t.status||'').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
+          return <EvaProvider><EvaMainView transactions={filteredTransactions} onViewDeal={openDeal} /></EvaProvider>
+        })()}
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
             <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} /></>)}

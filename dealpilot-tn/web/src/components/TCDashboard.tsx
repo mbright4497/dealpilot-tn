@@ -88,8 +88,14 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const nextClosing = withClosing.map(t=>({ tx: t, date: new Date(t.closing_date || t.closing) })).sort((a,b)=>a.date.getTime()-b.date.getTime())[0]
   // documents needed heuristic: active tx with no binding or no purchase_price
   const docsNeeded = activeDeals.filter(t=> !t.binding || (!((t as any).purchase_price) ) ).length
-  const evaBrief = `Good afternoon, ${userName || 'there'}. You have ${activeCount} active deals. ${ nextClosing ? `${String(nextClosing.tx.address||'').replace(/\}/g,'')} closes in ${Math.max(0, Math.ceil((nextClosing.date.getTime()-Date.now())/(1000*60*60*24)))} days — ${ (nextClosing.tx.binding ? 'on track' : 'missing binding') }.` : 'No upcoming closings.' }
-  `
+  // time-aware greeting for evaBrief (America/New_York)
+  const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false })
+  const hh = parseInt(formatter.format(new Date()), 10) || 12
+  let greeting = 'Good afternoon'
+  if(hh >= 5 && hh <= 11) greeting = 'Good morning'
+  else if(hh >= 18) greeting = 'Good evening'
+  else if(hh <= 4) greeting = 'Hey there'
+  const evaBrief = `${greeting}, ${userName || 'there'}. You have ${activeCount} active deals. ${ nextClosing ? `${String(nextClosing.tx.address||'').replace(/\}/g,'')} closes in ${Math.max(0, Math.ceil((nextClosing.date.getTime()-Date.now())/(1000*60*60*24)))} days — ${ (nextClosing.tx.binding ? 'on track' : 'missing binding') }.` : 'No upcoming closings.' }`
 
   return (
     <div className="space-y-6">
