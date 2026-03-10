@@ -324,6 +324,36 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     return () => { mounted = false }
   }, [transaction.id])
 
+  // playbook rules/progress for this deal (stepper)
+  const [playbookSteps, setPlaybookSteps] = React.useState<any[]>([])
+  React.useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }) })
+        if(!res.ok) return
+        const j = await res.json()
+        if(!mounted) return
+        const rows = (j.results && j.results[0] && j.results[0].gaps) ? j.results[0].gaps : []
+        // sort by implied urgency then by days_diff
+        rows.sort((a:any,b:any)=> (a.sort_order||0) - (b.sort_order||0))
+        setPlaybookSteps(rows)
+      }catch(e){ console.warn('playbook steps load failed', e) }
+    })()
+    return ()=>{ mounted=false }
+  },[transaction.id])
+
+  const markMilestoneComplete = async (milestone_key:string)=>{
+    try{
+      const res = await fetch('/api/eva/playbook-progress', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, milestone_key, completed_by: 'web-ui' }) })
+      if(!res.ok) throw new Error('failed')
+      const j = await res.json()
+      // refresh steps
+      const refresh = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }) })
+      if(refresh.ok){ const rj = await refresh.json(); const rows = (rj.results && rj.results[0] && rj.results[0].gaps) ? rj.results[0].gaps : []; setPlaybookSteps(rows) }
+    }catch(e){ console.error('mark milestone failed', e) }
+  }
+
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
       <div className="flex items-center justify-between mb-4">
@@ -646,6 +676,31 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                         <div className="text-sm font-medium">{d.label}</div>
                       </div>
                       <div className="text-xs text-gray-400">{isOverdue ? `${Math.abs(d.days_remaining)}d overdue` : isToday ? 'Today' : d.days_remaining != null ? `${d.days_remaining}d` : d.date}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Playbook stepper (Phase milestones) */}
+          {playbookSteps && playbookSteps.length>0 && (
+            <div className="bg-gray-800 p-4 rounded mb-4">
+              <h3 className="text-lg font-semibold mb-2">Playbook Progress</h3>
+              <div className="space-y-2">
+                {playbookSteps.map((s:any,i:number)=>{
+                  const status = s.status || 'unscheduled'
+                  const badge = status === 'completed' ? '✅' : status === 'overdue' ? '⚠️' : status === 'due_today' ? '🔔' : '•'
+                  return (
+                    <div key={s.milestone_key||i} className="p-2 bg-gray-700 rounded flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-semibold">{s.milestone_label} <span className="text-xs text-gray-400">({s.responsible_party||'—'})</span></div>
+                        <div className="text-xs text-gray-400">Due: {s.expected_date ? new Date(s.expected_date).toLocaleDateString() : 'Not set'}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm text-gray-200">{badge}</div>
+                        {s.status !== 'completed' && <button onClick={()=>markMilestoneComplete(s.milestone_key)} className="px-2 py-1 bg-orange-500 rounded text-sm">Mark complete</button>}
+                      </div>
                     </div>
                   )
                 })}
