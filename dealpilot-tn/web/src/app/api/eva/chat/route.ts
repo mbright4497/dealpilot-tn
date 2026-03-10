@@ -10,18 +10,34 @@ const BASE_PROMPT = `You are EVA — ClosingPilot's expert Tennessee Transaction
 
 export async function POST(req: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
-    // make auth optional: attempt to get user but do not block if missing
+    // initialize supabase auth but do not let any auth errors crash the handler
+    let supabase = null
     let user = null
     try{
-      const supRes = await supabase.auth.getUser()
-      user = supRes?.data?.user || null
-    }catch(e){ user = null }
-    // if no user, continue as anonymous (do not return 401)
-
+      supabase = createRouteHandlerClient({ cookies })
+      try{
+        const supRes = await supabase.auth.getUser()
+        user = supRes?.data?.user || null
+      }catch(_){ user = null }
+    }catch(err){
+      console.warn('supabase auth init failed, continuing anonymously', err)
+      supabase = null
+      user = null
+    }
 
     const body = await req.json().catch(() => ({}))
-    const { messages = [], dealId } = body as any
+    let { messages = [], dealId } = body as any
+
+    // Defensive: normalize incoming message roles to OpenAI-acceptable values
+    if(Array.isArray(messages)){
+      messages = messages.map((m:any)=>{
+        const rawRole = String(m.role || 'user')
+        const role = rawRole === 'eva' ? 'assistant' : (rawRole === 'assistant' || rawRole === 'system' ? rawRole : 'user')
+        return { role, content: String(m.content || '') }
+      })
+    } else {
+      messages = []
+    }
 
     // gather portfolio context
     let portfolioSummary = ''
