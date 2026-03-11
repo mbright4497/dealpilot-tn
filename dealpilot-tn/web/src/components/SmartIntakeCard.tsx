@@ -43,18 +43,17 @@ export default function SmartIntakeCard(){
 
   return (
     <div className="mt-4 bg-[#0f1724] border border-gray-800 rounded-lg p-4 max-h-[400px] overflow-y-auto">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 2h8l4 4v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#f97316"/><path d="M9 9h6v2H9V9zm0 4h6v2H9v-2z" fill="#fff"/></svg>
-          <h3 className="text-white font-semibold">Smart Document Intake</h3>
-          <span className="ml-2 inline-flex items-center text-xs px-2 py-0.5 rounded bg-gray-700 text-orange-400">AI Powered</span>
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h3 className="text-white font-semibold">New Deal</h3>
+          <div className="text-sm text-gray-400">Upload your signed Purchase &amp; Sale Agreement — Reva handles the rest.</div>
         </div>
       </div>
 
-      <div>
+      <div className="mt-3">
         <label className="inline-flex items-center gap-2">
-          <input type="file" accept="application/pdf" onChange={onFile} className="hidden" />
-          <button className="px-3 py-2 bg-orange-500 text-black rounded font-medium">Upload TN REALTORS PDF</button>
+          <input id="smart-intake-input" type="file" accept="application/pdf" onChange={onFile} className="hidden" />
+          <button className="px-3 py-2 bg-orange-500 text-black rounded font-medium">Upload Contract</button>
         </label>
       </div>
 
