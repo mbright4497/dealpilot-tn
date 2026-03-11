@@ -262,19 +262,9 @@ export default function ChatPage() {
     }
   }
 
+  const selectedTx = transactions.find(t => t.id === selectedTxId)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState<number>(0)
-
-  // Precompute dashboard active deals to avoid IIFE in JSX (fixes TSX parsing errors)
-  const dashboardActiveDeals = (()=>{
-    const activeDeals = transactions.filter(t=>{ const s = ((t as any).current_state || (t as any).state_label || t.status || '').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
-    activeDeals.sort((a:any,b:any)=>{
-      const ad = a.closing_date ? new Date(a.closing_date).getTime() : Infinity
-      const bd = b.closing_date ? new Date(b.closing_date).getTime() : Infinity
-      return ad - bd
-    })
-    return activeDeals
-  })()
 
   useEffect(()=>{
     let mounted = true
@@ -396,7 +386,15 @@ export default function ChatPage() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
-        {view === 'dashboard' && (
+        {view === 'dashboard' && (()=>{
+          // EVA-first hero + ticker layout
+          const activeDeals = transactions.filter(t=>{ const s = ((t as any).current_state || (t as any).state_label || t.status || '').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
+          activeDeals.sort((a:any,b:any)=>{
+            const ad = a.closing_date ? new Date(a.closing_date).getTime() : Infinity
+            const bd = b.closing_date ? new Date(b.closing_date).getTime() : Infinity
+            return ad - bd
+          })
+          return (
             <div className="min-h-[80vh] flex flex-col">
               {/* TOP HALF - Eva's Zone */}
 <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
@@ -575,7 +573,7 @@ export default function ChatPage() {
               <div className="h-44 bg-[#071224] rounded-lg p-4">
                 <div className="mb-2 text-sm text-gray-400">Deal Ticker</div>
                 <div className="flex gap-3 overflow-x-auto py-2">
-                  {dashboardActiveDeals.map((d:any)=>{
+                  {activeDeals.map((d:any)=>{
                     const days = d.closing_date ? Math.ceil((new Date(d.closing_date).getTime()-Date.now())/(1000*60*60*24)) : null
                     const daysClass = days===null ? 'text-amber-400' : (days<=3 ? 'text-red-400' : (days<=14? 'text-amber-300':'text-green-300'))
                     const progress = playbookProgressMap[d.id] ?? 0
@@ -599,7 +597,7 @@ export default function ChatPage() {
               </div>
             </div>
           )
-        )}
+        })()}
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
             <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} /></>)}
