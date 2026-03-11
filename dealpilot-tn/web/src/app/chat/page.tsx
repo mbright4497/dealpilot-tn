@@ -489,7 +489,7 @@ export default function ChatPage() {
  ? "bg-orange-500 animate-pulse"
  : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
  }
- title={evaSpeaking ? "Stop Eva" : "Play Eva briefing"}
+ title={evaSpeaking ? "Stop Reva" : "Play Reva briefing"}
  >
  {evaSpeaking ? "⏹" : "▶️"}
  </button>
@@ -499,14 +499,6 @@ export default function ChatPage() {
  e.preventDefault();
  const val = (e.target as any).elements.ask.value;
  if (!val) return;
- // intent detection for new-deal phrases
- const phrase = String(val || '').toLowerCase();
- const triggers = ['start a new transaction','start a new deal','new deal','new contract','add deal','add a deal','i have a new contract','start a new transaction','start new transaction','start transaction'];
- if (triggers.some(t=> phrase.includes(t))) {
-   // open upload file picker on the intake widget
-   try{ const el = document.getElementById('smart-intake-input') as HTMLInputElement | null; if(el){ el.click(); el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('pulse'); setTimeout(()=>el.classList.remove('pulse'),2000) } }catch(_){ }
-   return;
- }
  try {
  const res = await fetch("/api/eva/chat", {
  method: "POST",
@@ -528,20 +520,7 @@ export default function ChatPage() {
  <input
  name="ask"
  placeholder="Ask Reva anything..."
- onKeyDown={(e:any)=>{
-   if(e.key !== 'Enter') return;
-   e.preventDefault();
-   const val = e.target.value || '';
-   const phrase = String(val).toLowerCase();
-   const triggers = ['start a new transaction','start a new deal','new deal','new contract','add deal','add a deal','i have a new contract','start new transaction','start transaction'];
-   if (triggers.some(t=> phrase.includes(t))) {
-     try{ const el = document.getElementById('smart-intake-input') as HTMLInputElement | null; if(el){ el.click(); el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('pulse'); setTimeout(()=>el.classList.remove('pulse'),2000) } }catch(_){ }
-     return;
-   }
-   // otherwise trigger form submit
-   try{ e.currentTarget.form?.requestSubmit(); }catch(_){ }
- }}
- className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
+className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
  />
  </form>
 
@@ -605,8 +584,6 @@ export default function ChatPage() {
                     )
                   })}
                 </div>
-                <ContractWatch />
-                <SmartIntakeCard />
                 <div className="mt-3">
                   <div className="text-sm text-gray-300 mb-2">Reva's Actions</div>
                   <div className="flex gap-2">
