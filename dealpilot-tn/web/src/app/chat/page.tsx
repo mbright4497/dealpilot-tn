@@ -528,6 +528,19 @@ export default function ChatPage() {
  <input
  name="ask"
  placeholder="Ask Reva anything..."
+ onKeyDown={(e:any)=>{
+   if(e.key !== 'Enter') return;
+   e.preventDefault();
+   const val = e.target.value || '';
+   const phrase = String(val).toLowerCase();
+   const triggers = ['start a new transaction','start a new deal','new deal','new contract','add deal','add a deal','i have a new contract','start new transaction','start transaction'];
+   if (triggers.some(t=> phrase.includes(t))) {
+     try{ const el = document.getElementById('smart-intake-input') as HTMLInputElement | null; if(el){ el.click(); el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('pulse'); setTimeout(()=>el.classList.remove('pulse'),2000) } }catch(_){ }
+     return;
+   }
+   // otherwise trigger form submit
+   try{ e.currentTarget.form?.requestSubmit(); }catch(_){ }
+ }}
  className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
  />
  </form>
