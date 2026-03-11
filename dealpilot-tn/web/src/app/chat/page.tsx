@@ -22,6 +22,7 @@ import EvaMainView from '@/components/eva/EvaMainView'
 import { EvaProvider } from '@/components/eva/EvaProvider'
 import ClosingPilotLogo from '@/components/ClosingPilotLogo'
 import ContractWatch from '@/components/ContractWatch'
+import SmartIntakeCard from '@/components/SmartIntakeCard'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
