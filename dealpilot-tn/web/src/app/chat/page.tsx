@@ -114,6 +114,10 @@ export default function ChatPage() {
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [view, setView] = useState('dashboard')
 
+  // conversation state for dashboard chat
+  const [chatMode, setChatMode] = useState(false)
+  const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string}[]>([])
+
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
   const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
   const addToast = (msg:string)=>{ const id = String(Date.now()) ; setToasts(t=>[...t,{id,msg}]); setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000) }
@@ -447,21 +451,36 @@ export default function ChatPage() {
  )}
  </div>
 
- {/* Briefing bubble */}
- <div className="mt-6 max-w-3xl">
- <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
- <div
- className="text-base md:text-lg font-normal leading-relaxed text-white"
- dangerouslySetInnerHTML={{
- __html: (briefing || "No briefing available")
- .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
- .replace(/\n/g, "<br/>"),
- }}
- />
- <div className="text-sm text-gray-400 mt-3">
- Last updated: {lastUpdated ? lastUpdated.toLocaleString() : "—"}
- </div>
- </div>
+ {/* Briefing / Conversational area */}
+ <div className="mt-6 max-w-3xl w-full">
+   <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
+     {!chatMode && (
+       <div>
+         <div
+           className="text-base md:text-lg font-normal leading-relaxed text-white"
+           dangerouslySetInnerHTML={{
+             __html: (briefing || "No briefing available")
+               .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+               .replace(/\n/g, "<br/>"),
+           }}
+         />
+         <div className="text-sm text-gray-400 mt-3">Last updated: {lastUpdated ? lastUpdated.toLocaleString() : "—"}</div>
+       </div>
+     )}
+
+     {chatMode && (
+       <div className="text-base md:text-lg font-normal leading-relaxed text-white">
+         {chatMessages.length===0 && <div className="text-gray-400">No messages yet — say hello to Reva.</div>}
+         {chatMessages.map((m, idx) => (
+           <div key={idx} className={`mb-3 ${m.role==='user' ? 'text-right' : 'text-left'}`}>
+             <div className={`${m.role==='user' ? 'inline-block bg-[#0b1a2b] text-white px-3 py-2 rounded-lg' : 'inline-block bg-[#081827] text-white px-3 py-2 rounded-lg'}`}>
+               {m.content}
+             </div>
+           </div>
+         ))}
+       </div>
+     )}
+   </div>
  </div>
 
  {/* Controls: play/stop + input + refresh */}
@@ -507,7 +526,10 @@ export default function ChatPage() {
  });
  if (res.ok) {
  const j = await res.json();
- setBriefing(j.reply || j.message || j.summary || "");
+ const reply = j.reply || j.message || j.summary || '';
+ // switch to conversational mode and append messages
+ setChatMode(true)
+ setChatMessages(m=>[...m, { role: 'assistant', content: reply }])
  addToast("Reva replied");
  }
  } catch (err) {
@@ -529,6 +551,7 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
  try {
  stopSpeaking();
  setEvaSpeaking(false);
+ setChatMode(false);
  await loadCommandCenter();
  } catch (e) {
  console.error(e);
@@ -630,7 +653,7 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
 
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
-        <img src="/avatar-pilot.png" alt="Eva" className="w-10 h-10 rounded-full object-cover" />
+        <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
       </button>
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>
