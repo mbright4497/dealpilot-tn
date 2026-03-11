@@ -262,7 +262,6 @@ export default function ChatPage() {
     }
   }
 
-  const selectedTx = transactions.find(t => t.id === selectedTxId)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState<number>(0)
 
