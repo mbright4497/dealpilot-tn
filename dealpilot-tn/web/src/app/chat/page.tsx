@@ -153,6 +153,28 @@ export default function ChatPage() {
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
 
+  // unified send helper for dashboard chat
+  async function sendDashboardMessage(val:string){
+    if(!val) return
+    setChatMode(true)
+    setChatMessages(m=>[...m, { role: 'user', content: val }])
+    try{
+      // clear input field if present
+      const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
+      if(inp) inp.value = ''
+    }catch(_){ }
+    setChatLoading(true)
+    try{
+      // build full conversation payload from chatMessages + new user message
+      const history = [...chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content } )), { role: 'user', content: val }]
+      const res = await fetch('/api/eva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: history }) })
+      if(res.ok){ const j = await res.json(); const reply = j.reply || j.message || j.summary || '';
+        setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()) }])
+      }
+    }catch(e){ console.error(e); addToast('Chat failed') }
+    finally{ setChatLoading(false) }
+  }
+
   // inline upload handler used when Reva asks user to upload a contract
   async function handleInlineUpload(ev:any){
     const f = ev.target.files && ev.target.files[0]
@@ -536,6 +558,10 @@ export default function ChatPage() {
  <button
  onClick={async () => {
  try {
+ // If there's a message in the input, treat this as a send action
+ const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
+ const val = inp?.value?.trim()
+ if(val){ await sendDashboardMessage(val); return }
  if (evaSpeaking) {
  stopSpeaking();
  setEvaSpeaking(false);
