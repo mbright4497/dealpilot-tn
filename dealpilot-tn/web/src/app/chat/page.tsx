@@ -14,7 +14,7 @@ import { getDefaultStyle } from '@/lib/assistant-personality'
 import type { AssistantStyle } from '@/lib/assistant-personality'
 import VoiceSettings from '@/components/VoiceSettings'
 import { previewVoice } from '@/lib/voice-engine'
-import TransactionStepper from '@/components/TransactionStepper'
+
 import ContractViewer from '@/components/ContractViewer'
 import ContractIntake from '@/components/ContractIntake'
 import MobileSidebar from '@/components/MobileSidebar'
@@ -413,7 +413,7 @@ export default function ChatPage() {
  <ClosingPilotLogo size="lg" />
  <img
  src="/avatar-pilot.png"
- alt="Eva"
+ alt="Reva"
  className="w-56 h-56 rounded-full relative z-10 shadow-2xl"
  style={evaSpeaking ? { animation: "evaTalk 0.9s ease-in-out infinite" } : {}}
  />
@@ -499,6 +499,14 @@ export default function ChatPage() {
  e.preventDefault();
  const val = (e.target as any).elements.ask.value;
  if (!val) return;
+ // intent detection for new-deal phrases
+ const phrase = String(val || '').toLowerCase();
+ const triggers = ['start a new transaction','start a new deal','new deal','new contract','add deal','add a deal','i have a new contract','start a new transaction','start new transaction','start transaction'];
+ if (triggers.some(t=> phrase.includes(t))) {
+   // open upload file picker on the intake widget
+   try{ const el = document.getElementById('smart-intake-input') as HTMLInputElement | null; if(el){ el.click(); el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('pulse'); setTimeout(()=>el.classList.remove('pulse'),2000) } }catch(_){ }
+   return;
+ }
  try {
  const res = await fetch("/api/eva/chat", {
  method: "POST",
@@ -508,7 +516,7 @@ export default function ChatPage() {
  if (res.ok) {
  const j = await res.json();
  setBriefing(j.reply || j.message || j.summary || "");
- addToast("Eva replied");
+ addToast("Reva replied");
  }
  } catch (err) {
  console.error(err);
@@ -587,7 +595,7 @@ export default function ChatPage() {
                 <ContractWatch />
                 <SmartIntakeCard />
                 <div className="mt-3">
-                  <div className="text-sm text-gray-300 mb-2">Eva's Actions</div>
+                  <div className="text-sm text-gray-300 mb-2">Reva's Actions</div>
                   <div className="flex gap-2">
                     {actions.length===0 ? <div className="text-gray-400">All caught up! No pending actions.</div> : actions.map((a:any)=> (
                       <button key={`${a.dealId}-${a.milestone_key||a.action}`} onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} for ${a.address}`) } else addToast('Failed') }} className={`px-3 py-1 rounded-full text-sm ${a.urgency==='critical' ? 'bg-red-600 text-white' : a.urgency==='high' ? 'bg-amber-500 text-black' : 'bg-gray-700 text-white'}`}>{a.action} • {a.address}</button>
@@ -611,7 +619,7 @@ export default function ChatPage() {
           <DeadlineCalculator />
         </>)}         {view === 'tx-steps' && (<>
           <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
-          <div className="grid lg:grid-cols-2 gap-6"><TransactionStepper /><ContractViewer contract={{propertyAddress:'123 Maple St, Johnson City TN',buyers:'John Smith, Jane Smith',sellers:'Bob Johnson',purchasePrice:425000,earnestMoney:5000,closingDate:'2026-05-30',inspectionStart:'2026-03-01',inspectionEnd:'2026-03-10',financingDate:'2026-04-15',specialStipulations:'Seller to repair roof prior to closing.'}} /></div></>) }
+          <div className="grid lg:grid-cols-2 gap-6"><ContractViewer contract={{propertyAddress:'123 Maple St, Johnson City TN',buyers:'John Smith, Jane Smith',sellers:'Bob Johnson',purchasePrice:425000,earnestMoney:5000,closingDate:'2026-05-30',inspectionStart:'2026-03-01',inspectionEnd:'2026-03-10',financingDate:'2026-04-15',specialStipulations:'Seller to repair roof prior to closing.'}} /></div></>) }
         {view === 'personality' && <><PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} /><div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div></>}
               {view === 'add-transaction' && <ContractIntake onConfirm={async (data: any) => {
                 try{
