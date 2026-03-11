@@ -180,14 +180,17 @@ export default function ChatPage() {
     const f = ev.target.files && ev.target.files[0]
     if(!f) return
     try{
+      // show parsing state in chat
+      setChatMessages(m=>[...m, { role: 'assistant', content: 'Reva is reviewing your contract...' }])
       setChatLoading(true)
       const buf = await f.arrayBuffer()
       const b64 = Buffer.from(buf).toString('base64')
-      const res = await fetch('/api/contract-parse', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fileBase64: b64 }) })
+      const res = await fetch('/api/contract-parse', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ file: b64 }) })
+      if(!res.ok){ const err = await res.text(); throw new Error('Parse failed: '+err) }
       const j = await res.json()
       const parsedSummary = j
-      // append parsed summary as assistant message
-      setChatMessages(m=>[...m, { role:'assistant', content: parsedSummary.summary || 'Parsed contract', parsed: parsedSummary }])
+      // append parsed summary as assistant message with parsed payload
+      setChatMessages(m=>[...m, { role:'assistant', content: 'Parsed contract. Please review the summary below:', parsed: parsedSummary }])
     }catch(e){ console.error(e); addToast('Failed to parse file') }
     finally{ setChatLoading(false); ev.target.value = '' }
   }
@@ -529,17 +532,28 @@ export default function ChatPage() {
                    </div>
                  )}
                  {m.parsed && (
-                   <div className="mt-2 bg-[#071224] border border-gray-800 p-2 rounded">
-                     <div className="font-semibold text-white">{m.parsed.fields?.propertyAddress || 'Address not found'}</div>
-                     <div className="text-sm text-gray-300">Buyers: <span className="font-medium">{m.parsed.fields?.buyerNames || '—'}</span></div>
-                     <div className="mt-2">
+                   <div className="mt-2 bg-[#071224] border border-gray-800 p-3 rounded">
+                     <div className="grid grid-cols-2 gap-2 text-sm text-gray-300">
+                       <div className="col-span-2 font-semibold text-white">{m.parsed.fields?.propertyAddress || 'Address not found'}</div>
+                       <div>Buyer(s): <div className="font-medium text-white">{Array.isArray(m.parsed.fields?.buyerNames) ? m.parsed.fields.buyerNames.join(', ') : m.parsed.fields?.buyerNames || '—'}</div></div>
+                       <div>Seller(s): <div className="font-medium text-white">{Array.isArray(m.parsed.fields?.sellerNames) ? m.parsed.fields.sellerNames.join(', ') : m.parsed.fields?.sellerNames || '—'}</div></div>
+                       <div>Price: <div className="font-medium text-white">{m.parsed.fields?.purchasePrice ? `$${Number(m.parsed.fields.purchasePrice).toLocaleString()}` : '—'}</div></div>
+                       <div>Closing: <div className="font-medium text-white">{m.parsed.fields?.closingDate || '—'}</div></div>
+                       <div>Form: <div className="font-medium text-white">{m.parsed.fields?.formType || (m.parsed.fields?.contractType || '—')}</div></div>
+                       <div className="col-span-2">Issues: <div className="font-medium text-white">{Array.isArray(m.parsed.issues) ? String(m.parsed.issues.length) : (m.parsed.issues ? '1' : '0')}</div></div>
+                     </div>
+                     <div className="mt-3 flex gap-2">
                        <button onClick={async ()=>{
                          try{
                            const res = await fetch('/api/intake-apply', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields: m.parsed.fields, timeline: m.parsed.timeline }) })
                            const j = await res.json()
-                           if(res.ok && j.success){ setChatMessages(cm=>[...cm, { role:'assistant', content: 'Deal created! You can view it in your Transactions.' }]) }
+                           if(res.ok && j.success){ setChatMessages(cm=>[...cm, { role:'assistant', content: `Deal created! ${m.parsed.fields?.propertyAddress || 'Property'} is now in your pipeline.` }]) }
                          }catch(e){ console.error(e) }
-                       }} className="px-3 py-1 rounded bg-green-600 text-white">Create Deal</button>
+                       }} className="px-3 py-1 rounded bg-green-600 text-white">Confirm & Create Deal</button>
+                       <button onClick={()=>{
+                         // simple edit: open intake modal if available or append an editable message
+                         setChatMessages(cm=>[...cm, { role:'assistant', content: 'Edit details inline is not available yet — please adjust the fields on the Deal after creation.', parsed: m.parsed }])
+                       }} className="px-3 py-1 rounded bg-gray-700 text-white">Edit Details</button>
                      </div>
                    </div>
                  )}
