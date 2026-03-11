@@ -20,6 +20,7 @@ import ContractIntake from '@/components/ContractIntake'
 import MobileSidebar from '@/components/MobileSidebar'
 import EvaMainView from '@/components/eva/EvaMainView'
 import { EvaProvider } from '@/components/eva/EvaProvider'
+import ClosingPilotLogo from '@/components/ClosingPilotLogo'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -325,7 +326,7 @@ export default function ChatPage() {
       {/* Sidebar */}
       <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
         <div className="p-4 flex items-center gap-3">
-          <img src="/reva-jet-logo.png" alt="ClosingPilot TN" style={{height:32, width:'auto'}} className="rounded" />
+          <ClosingPilotLogo size="sm" />
           <div>
             <h2 className="text-white font-semibold text-sm leading-tight">ClosingPilot TN</h2>
             <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
@@ -407,7 +408,7 @@ export default function ChatPage() {
  }
  style={{ width: 220, height: 220 }}
  />
- <img src="/reva-jet-logo.png" alt="ClosingPilot TN" style={{maxWidth:200, marginBottom:8}} className="relative z-10" />
+ <ClosingPilotLogo size="lg" />
  <img
  src="/avatar-pilot.png"
  alt="Eva"
