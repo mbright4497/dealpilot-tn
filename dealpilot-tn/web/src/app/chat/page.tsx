@@ -583,6 +583,7 @@ export default function ChatPage() {
                     )
                   })}
                 </div>
+                <ContractWatch />
                 <div className="mt-3">
                   <div className="text-sm text-gray-300 mb-2">Eva's Actions</div>
                   <div className="flex gap-2">
