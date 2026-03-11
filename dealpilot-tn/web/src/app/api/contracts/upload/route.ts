@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 import { supabaseService } from "@/lib/supabase/server";
-import { requireUserId, supabaseUser } from "@/lib/supabase/user";
+import { requireUserId } from "@/lib/supabase/user";
+import { supabaseUser } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 

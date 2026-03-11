@@ -118,4 +118,9 @@ const UNDER_CONTRACT_FORMS: RFFormEntry[] = [
   { rfNumber: 'RF665', name: 'Amendment', phase: 'under_contract', category: 'addenda_amendments', required: false, side: 'both', version: '2026.01.01', fields: ['propertyAddress','buyerNames','sellerNames','amendmentTerms','dateSigned'] },
   { rfNumber: 'RF672', name: 'Amendment to Exclusive Right to Market for Lease or Property Management Agreement', phase: 'under_contract', category: 'addenda_amendments', required: false, side: 'seller', version: '2026.01.01', fields: ['ownerNames','propertyAddress','amendmentTerms','dateSigned'] },
   { rfNumber: 'RF679', name: 'COVID-19 Amendment/Addendum', phase: 'under_contract', category: 'addenda_amendments', required: false, side: 'both', version: '2026.01.01', fields: ['propertyAddress','buyerNames','sellerNames','covidTerms','dateSigned'] },
-];1
+];
+
+export const FORM_REGISTRY = {
+  consultation: CONSULTATION_FORMS,
+  under_contract: UNDER_CONTRACT_FORMS,
+}
