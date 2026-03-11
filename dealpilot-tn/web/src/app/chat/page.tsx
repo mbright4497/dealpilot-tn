@@ -701,7 +701,7 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
                   }
                 }catch(e:any){ console.error(e); alert('Error creating transaction: '+String(e)) }
               }} onCancel={() => setView('transactions')} />}
-        <input id=inline-upload type=file accept=application/pdf className=hidden onChange={(e)=>handleInlineUpload(e)} />
+        <input id="inline-upload" type="file" accept="application/pdf" className="hidden" onChange={(e)=>handleInlineUpload(e)} />
 </main>
 
       {/* Floating chat button */}
