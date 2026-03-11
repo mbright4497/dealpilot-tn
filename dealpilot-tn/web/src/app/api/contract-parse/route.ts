@@ -19,6 +19,7 @@ type ParsedPayload = {
     financingContingencyDate: string | null
     specialStipulations: string | null
     contractType: "buyer" | "seller" | "unknown"
+    formType: string | null
   }
   issues: {
     field: string
@@ -181,8 +182,8 @@ export async function POST(req: Request) {
 
     /* ---------------- SYSTEM PROMPT ---------------- */
     const systemPrompt = [
-      "You are EVA, a Tennessee real estate transaction coordinator assistant.",
-      "You extract structured data from Tennessee REALTORS RF401 Purchase & Sale Agreement contracts.",
+      "You are REVA, a Tennessee real estate transaction coordinator assistant.",
+      "You extract structured data from Tennessee REALTORS contracts. You can parse: RF401 (Purchase & Sale), RF403 (New Construction), RF404 (Lot/Land), RF651 (Counter Offer), RF653 (Amendment), RF621 (Addendum). Auto-detect the form type from the PDF header. For RF401/RF403/RF404 extract all fields. For RF651/RF653/RF621 extract only modified fields.",
       "",
       "CRITICAL BUYER/SELLER IDENTIFICATION RULES:",
       "In the RF401, Section 1 'Purchase and Sale' follows this EXACT pattern:",
@@ -213,7 +214,8 @@ export async function POST(req: Request) {
 
     /* ---------------- USER PROMPT ---------------- */
     const userPrompt = [
-      "Analyze this Tennessee RF401 Purchase and Sale Agreement.",
+      "Analyze this Tennessee REALTORS contract. First identify the form type, then extract fields.",
+
       "",
       "Here is the full extracted text of the contract (each line prefixed with line number):",
       "---",
