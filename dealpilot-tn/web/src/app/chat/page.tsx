@@ -325,7 +325,7 @@ export default function ChatPage() {
       {/* Sidebar */}
       <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
         <div className="p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">CP</div>
+          <img src="/reva-jet-logo.png" alt="ClosingPilot TN" style={{height:32, width:'auto'}} className="rounded" />
           <div>
             <h2 className="text-white font-semibold text-sm leading-tight">ClosingPilot TN</h2>
             <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
@@ -407,6 +407,7 @@ export default function ChatPage() {
  }
  style={{ width: 220, height: 220 }}
  />
+ <img src="/reva-jet-logo.png" alt="ClosingPilot TN" style={{maxWidth:200, marginBottom:8}} className="relative z-10" />
  <img
  src="/avatar-pilot.png"
  alt="Eva"
