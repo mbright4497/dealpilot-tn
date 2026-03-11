@@ -17,15 +17,17 @@ export function applyTone(style: AssistantStyle, message: string): string {
 }
 
 export function getGreeting(style: AssistantStyle, userName: string): string {
-  const hour = new Date().getHours()
-  // Define time ranges: before 12pm = morning, 12-5pm = afternoon, after 5pm = evening
-  const tod = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  // Use Eastern time for greetings
+  const easternNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const hour = easternNow.getHours()
+  // Define time ranges per spec
+  const tod = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : "It's getting late but let's catch up"
   switch(style){
     case 'joyful': return `${tod}, ${userName}! Let's make today great!` 
     case 'straight': return `${tod}, ${userName}. Here are your items.`
     case 'calm': return `${tod}, ${userName}. A calm update is ready.`
     case 'executive': return `${tod}, ${userName}. Strategic briefing:`
-    case 'friendly-tn': default: return `${tod}, ${userName}! Mornin' — I've got your list.`
+    case 'friendly-tn': default: return `${tod}, ${userName}! I've got your list.`
   }
 }
 

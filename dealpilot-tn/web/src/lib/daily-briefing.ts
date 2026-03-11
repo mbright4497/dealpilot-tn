@@ -44,8 +44,13 @@ export function generateDailyBrief(userName: string, transactions: Transaction[]
 
   const recommendedAction = criticalDeadlines.length>0 ? `Call contacts for deal ${criticalDeadlines[0].transactionId} about ${criticalDeadlines[0].type}` : (riskAlerts.length>0? `Investigate: ${riskAlerts[0]}` : 'No immediate action')
 
+  // Determine greeting based on Eastern time
+  const easternNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+  const hour = easternNow.getHours()
+  const greeting = hour < 12 ? `Good morning, ${userName}` : hour < 17 ? `Good afternoon, ${userName}` : hour < 21 ? `Good evening, ${userName}` : `It's getting late but let's catch up, ${userName}`
+
   return {
-    greeting: `Good morning, ${userName}`,
+    greeting,
     activeDeals,
     criticalDeadlines,
     pendingConfirmations,

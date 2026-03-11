@@ -68,7 +68,11 @@ export async function POST(req: Request){
     const chips = topGaps.slice(0,3).map((g:any)=>{ const when = g.status==='overdue' ? `${Math.abs(g.days_diff)}d overdue` : g.status==='due_today' ? 'due today' : g.days_diff!=null? `${g.days_diff}d` : ''; return `Follow up: ${g.milestone_label} — ${g.address || ''} (${when})` })
 
     // generate AI brief
-    const system = BASE_PROMPT
+    const easternNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }))
+    const easternStr = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })
+    const timeGuidance = `The current time is ${easternStr}. Use appropriate greeting - Good morning (before noon), Good afternoon (noon-5pm), Good evening (5pm-9pm), or It's getting late but let's catch up (after 9pm). Never say Good morning if it's afternoon or evening.`
+    const system = `${BASE_PROMPT} ${timeGuidance}`
+
     const userContent = `Brief me on the top items right now. Use the following gaps (address | client | milestone | expected_date | status | priority):\n${topGaps.map((g:any)=> `${g.address || '—'} | ${g.client || '—'} | ${g.milestone_label} | ${g.expected_date || 'TBD'} | ${g.status} | ${g.priority || 'normal'}`).join('\n')}`
 
     if(!process.env.OPENAI_API_KEY) return NextResponse.json({ message: 'OpenAI API key not configured.' })
