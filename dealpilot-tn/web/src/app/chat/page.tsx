@@ -500,12 +500,12 @@ export default function ChatPage() {
  {/* Briefing / Conversational area */}
  <div className="mt-6 max-w-3xl w-full">
    <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
-     {!chatMode && (
+     {(chatMessages.length === 0) && (
        <div>
          <div
            className="text-base md:text-lg font-normal leading-relaxed text-white"
            dangerouslySetInnerHTML={{
-             __html: (briefing || "No briefing available")
+             __html: (loading ? "Reva is getting ready..." : (briefing || "No briefing available"))
                .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
                .replace(/\n/g, "<br/>"),
            }}
@@ -514,7 +514,7 @@ export default function ChatPage() {
        </div>
      )}
 
-     {chatMode && (
+     {(chatMessages.length > 0) && (
        <div className="text-base md:text-lg font-normal leading-relaxed text-white">
          {chatMessages.length===0 && <div className="text-gray-400">No messages yet — say hello to Reva.</div>}
          <div ref={chatRef} className="max-h-[220px] overflow-y-auto">
