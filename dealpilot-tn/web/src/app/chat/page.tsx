@@ -23,6 +23,7 @@ import { EvaProvider } from '@/components/eva/EvaProvider'
 import ClosingPilotLogo from '@/components/ClosingPilotLogo'
 import ContractWatch from '@/components/ContractWatch'
 import SmartIntakeCard from '@/components/SmartIntakeCard'
+import RookWizard from '@/components/RookWizard'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -113,6 +114,7 @@ export default function ChatPage() {
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [view, setView] = useState('dashboard')
+  const [rookWizardOpen, setRookWizardOpen] = useState(false)
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
@@ -682,6 +684,24 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
  `}</style>
 </div>
 
+              <div className="mt-4 rounded-2xl border border-white/10 bg-[#071224] p-5 shadow-lg">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-gray-400">RookWizard</p>
+                    <p className="text-lg font-semibold text-white">RF401 Buyer Wizard</p>
+                    <p className="text-sm text-gray-400">{selectedTx ? selectedTx.address : 'Select a transaction to connect'}</p>
+                    {selectedTx && <p className="text-xs text-gray-500">Client: {selectedTx.client}</p>}
+                  </div>
+                  <button
+                    onClick={() => selectedTxId && setRookWizardOpen(true)}
+                    disabled={!selectedTxId}
+                    className="rounded-full border border-orange-500 bg-orange-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black transition disabled:opacity-50 disabled:text-white/40"
+                  >
+                    {selectedTxId ? 'Open Wizard' : 'Select a deal first'}
+                  </button>
+                </div>
+                <div className="mt-3 text-xs text-gray-400">Connected to {selectedTxId ? `transaction ${selectedTxId}` : 'no deal selected'}. Export disabled until completion.</div>
+              </div>
               {/* BOTTOM HALF - Deal ticker + action pills */}
               <div className="h-44 bg-[#071224] rounded-lg p-4">
                 <div className="mb-2 text-sm text-gray-400">Deal Ticker</div>
@@ -744,6 +764,9 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
         <input id="inline-upload" type="file" accept="application/pdf" className="hidden" onChange={(e)=>handleInlineUpload(e)} />
 </main>
 
+      {rookWizardOpen && selectedTxId && (
+        <RookWizard transactionId={String(selectedTxId)} onClose={() => setRookWizardOpen(false)} />
+      )}
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
         <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
