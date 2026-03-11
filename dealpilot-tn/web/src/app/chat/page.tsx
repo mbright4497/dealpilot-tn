@@ -116,11 +116,18 @@ export default function ChatPage() {
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
-  const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string}[]>([])
+  const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string, attachments?:any, showUpload?:boolean, parsed?:any}[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatRef = React.useRef<HTMLDivElement|null>(null)
 
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
   const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
   const addToast = (msg:string)=>{ const id = String(Date.now()) ; setToasts(t=>[...t,{id,msg}]); setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000) }
+
+  // scroll chat to bottom when messages change
+  useEffect(()=>{
+    try{ if(chatRef.current){ chatRef.current.scrollTop = chatRef.current.scrollHeight } }catch(_){ }
+  },[chatMessages, chatLoading])
 
   // missing state declarations fixed
   const [playbookProgressMap, setPlaybookProgressMap] = useState<Record<number,number>>({})
@@ -145,6 +152,23 @@ export default function ChatPage() {
   }
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
+
+  // inline upload handler used when Reva asks user to upload a contract
+  async function handleInlineUpload(ev:any){
+    const f = ev.target.files && ev.target.files[0]
+    if(!f) return
+    try{
+      setChatLoading(true)
+      const buf = await f.arrayBuffer()
+      const b64 = Buffer.from(buf).toString('base64')
+      const res = await fetch('/api/contract-parse', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fileBase64: b64 }) })
+      const j = await res.json()
+      const parsedSummary = j
+      // append parsed summary as assistant message
+      setChatMessages(m=>[...m, { role:'assistant', content: parsedSummary.summary || 'Parsed contract', parsed: parsedSummary }])
+    }catch(e){ console.error(e); addToast('Failed to parse file') }
+    finally{ setChatLoading(false); ev.target.value = '' }
+  }
 
   // compute playbook completion percent for active deals
   useEffect(()=>{
@@ -471,13 +495,37 @@ export default function ChatPage() {
      {chatMode && (
        <div className="text-base md:text-lg font-normal leading-relaxed text-white">
          {chatMessages.length===0 && <div className="text-gray-400">No messages yet — say hello to Reva.</div>}
-         {chatMessages.map((m, idx) => (
-           <div key={idx} className={`mb-3 ${m.role==='user' ? 'text-right' : 'text-left'}`}>
-             <div className={`${m.role==='user' ? 'inline-block bg-[#0b1a2b] text-white px-3 py-2 rounded-lg' : 'inline-block bg-[#081827] text-white px-3 py-2 rounded-lg'}`}>
-               {m.content}
+         <div ref={chatRef} className="max-h-[220px] overflow-y-auto">
+           {chatMessages.map((m, idx) => (
+             <div key={idx} className={`mb-3 flex ${m.role==='user' ? 'justify-end' : 'justify-start'}`}>
+               <div className="flex flex-col items-start">
+                 <div className={`text-xs text-gray-400 mb-1 ${m.role==='user' ? 'text-right' : 'text-left'}`}>{m.role==='user' ? 'You' : 'Reva'}</div>
+                 <div className={`${m.role==='user' ? 'bg-[#0b1a2b] text-white' : 'bg-[#081827] text-white'} px-3 py-2 rounded-lg max-w-[80%]`}>{m.content}</div>
+                 {m.showUpload && (
+                   <div className="mt-2">
+                     <button onClick={()=>{ const el = document.getElementById('inline-upload') as HTMLInputElement|null; if(el) el.click() }} className="mt-2 px-3 py-1 rounded bg-orange-500 text-black">Upload Contract PDF</button>
+                   </div>
+                 )}
+                 {m.parsed && (
+                   <div className="mt-2 bg-[#071224] border border-gray-800 p-2 rounded">
+                     <div className="font-semibold text-white">{m.parsed.fields?.propertyAddress || 'Address not found'}</div>
+                     <div className="text-sm text-gray-300">Buyers: <span className="font-medium">{m.parsed.fields?.buyerNames || '—'}</span></div>
+                     <div className="mt-2">
+                       <button onClick={async ()=>{
+                         try{
+                           const res = await fetch('/api/intake-apply', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields: m.parsed.fields, timeline: m.parsed.timeline }) })
+                           const j = await res.json()
+                           if(res.ok && j.success){ setChatMessages(cm=>[...cm, { role:'assistant', content: 'Deal created! You can view it in your Transactions.' }]) }
+                         }catch(e){ console.error(e) }
+                       }} className="px-3 py-1 rounded bg-green-600 text-white">Create Deal</button>
+                     </div>
+                   </div>
+                 )}
+               </div>
              </div>
-           </div>
-         ))}
+           ))}
+           {chatLoading && <div className="text-gray-400">Reva is thinking...</div>}
+         </div>
        </div>
      )}
    </div>
@@ -518,24 +566,28 @@ export default function ChatPage() {
  e.preventDefault();
  const val = (e.target as any).elements.ask.value;
  if (!val) return;
+ // append user message, clear input, switch to chat mode
+ setChatMode(true)
+ setChatMessages(m=>[...m, { role: 'user', content: val }])
+ try { (e.target as any).elements.ask.value = '' }catch(_){ }
+ setChatLoading(true)
  try {
+ const payload = { messages: chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content })).concat([{ role: 'user', content: val }]) }
  const res = await fetch("/api/eva/chat", {
  method: "POST",
  headers: { "Content-Type": "application/json" },
- body: JSON.stringify({ messages: [{ role: "user", content: val }] }),
+ body: JSON.stringify(payload),
  });
  if (res.ok) {
  const j = await res.json();
  const reply = j.reply || j.message || j.summary || '';
- // switch to conversational mode and append messages
- setChatMode(true)
- setChatMessages(m=>[...m, { role: 'assistant', content: reply }])
+ setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()) }])
  addToast("Reva replied");
  }
  } catch (err) {
  console.error(err);
  addToast("Chat failed");
- }
+ } finally { setChatLoading(false) }
  }}
  className="flex-1"
  >
@@ -649,7 +701,8 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
                   }
                 }catch(e:any){ console.error(e); alert('Error creating transaction: '+String(e)) }
               }} onCancel={() => setView('transactions')} />}
-      </main>
+        <input id=inline-upload type=file accept=application/pdf className=hidden onChange={(e)=>handleInlineUpload(e)} />
+</main>
 
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
