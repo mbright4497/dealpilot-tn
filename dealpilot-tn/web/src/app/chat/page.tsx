@@ -399,12 +399,6 @@ export default function ChatPage() {
               {/* TOP HALF - Eva's Zone */}
 <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
  {/* Avatar + glow + talking animation */}
- <div className="flex flex-col items-center gap-4 mb-2">
- <img
- src="/reva-jet-logo.png"
- alt="ClosingPilot Reva"
- className="h-10 md:h-12 w-auto drop-shadow-lg"
- />
  <div className="relative flex flex-col items-center">
  <div
  className={
@@ -415,7 +409,7 @@ export default function ChatPage() {
  />
  <img
  src="/avatar-pilot.png"
- alt="Reva"
+ alt="Eva"
  className="w-56 h-56 rounded-full relative z-10 shadow-2xl"
  style={evaSpeaking ? { animation: "evaTalk 0.9s ease-in-out infinite" } : {}}
  />
@@ -632,7 +626,7 @@ export default function ChatPage() {
 
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
-        <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
+        <img src="/avatar-pilot.png" alt="Eva" className="w-10 h-10 rounded-full object-cover" />
       </button>
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>
