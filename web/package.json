@@ -1,8 +1,0 @@
-{
-  "name": "dealpilot-web-wrapper",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "build": "cd ../dealpilot-tn && npm run build"
-  }
-}
