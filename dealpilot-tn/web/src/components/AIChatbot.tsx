@@ -11,6 +11,35 @@ export default function AIChatbot({ onClose, style = 'friendly-tn', voiceEnabled
   const [minimized, setMinimized] = useState(false)
   const [speaking, setSpeaking] = useState(false)
 
+    const [recording, setRecording] = useState(false)
+  const [speechSupported, setSpeechSupported] = useState(false)
+  let recog: any = null
+  useEffect(()=>{
+    const R = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if(R) setSpeechSupported(true)
+  },[])
+
+  function startRecognition(){
+    const R = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if(!R) return
+    recog = new R()
+    recog.lang = 'en-US'
+    recog.interimResults = false
+    recog.maxAlternatives = 1
+    recog.onstart = ()=> setRecording(true)
+    recog.onend = ()=> setRecording(false)
+    let timeout: any = null
+    recog.onresult = (ev:any)=>{
+      const t = ev.results[ev.results.length-1][0].transcript
+      setInput(prev => (prev? prev + ' ' : '') + t)
+      // auto-send after small pause
+      if(timeout) clearTimeout(timeout)
+      timeout = setTimeout(()=>{ send((input? input + ' ' : '') + t) }, 2000)
+    }
+    recog.onerror = (e:any)=>{ console.error('speech error', e); setRecording(false) }
+    recog.start()
+  }
+
   useEffect(()=>{ if(!voiceOn && checkSpeaking()) stopSpeaking() },[voiceOn])
 
   useEffect(()=>{ try{ const raw = localStorage.getItem('reva_conversation'); if(raw) setMessages(JSON.parse(raw)) }catch(e){} },[])
@@ -102,7 +131,12 @@ export default function AIChatbot({ onClose, style = 'friendly-tn', voiceEnabled
           </div>
 
           <div className="mt-3">
-            <div className="p-2 bg-white border rounded flex gap-2">
+            <div className="p-2 bg-white border rounded flex gap-2 items-center">
+              {speechSupported && (
+                <button onClick={()=>{ if(recording){ /* stop by reloading page or rely on recognition end */ } else startRecognition() }} title={recording? 'Recording...' : 'Record voice input'} className={`p-2 rounded ${recording? 'bg-red-500 text-white' : 'bg-gray-100'}`}>
+                  {recording? '●' : '🎤'}
+                </button>
+              )}
               <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter' && send()} className="border-none p-2 flex-1 rounded text-gray-900 placeholder-gray-400" placeholder="Type a message..." />
               <button onClick={()=>send()} className="bg-orange-500 text-white p-2 rounded hover:bg-orange-600">Send</button>
             </div>
