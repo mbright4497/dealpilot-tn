@@ -811,7 +811,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                     if(res.ok){
                       const j = await res.json();
                       // refresh docs
-                      const refresh = await fetch('/api/deal_documents/' + transaction.id);
+                      const refresh = await fetch('/api/documents/' + transaction.id);
                       if(refresh.ok){ const rj = await refresh.json(); setDocs(rj || []); }
                     } else {
                       console.error('Upload failed', await res.text())
