@@ -257,12 +257,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   async function addContact(){
     if(!newContact.name||!newContact.role) return
-    const updated = [...localContacts, {...newContact}]
-    setLocalContacts(updated)
-    if(onUpdateContacts) onUpdateContacts(transaction.id, updated)
+    const candidate = { ...newContact }
+    try{
+      const res = await fetch('/api/deal-parties/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, contacts: [candidate] }) })
+      if(res.ok){ const j = await res.json(); const saved = j.contacts || []; const updated = [...localContacts, ...saved.map((c:any)=>({ role: candidate.role, name: c.name, company: c.company, phone: c.phone, email: c.email }))]; setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated) }
+    }catch(e){ console.error('save contact failed', e); const updated = [...localContacts, {...candidate}]; setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated) }
     setNewContact({role:'',name:'',company:'',phone:'',email:''})
     setShowAddContact(false)
-    try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'add_party', resource: 'deal_parties', resource_id: transaction.id, details: { party: updated[updated.length-1] } }) }) }catch(e){ console.error('audit failed', e) }
+    try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'add_party', resource: 'deal_parties', resource_id: transaction.id, details: { party: candidate } }) }) }catch(e){ console.error('audit failed', e) }
   }
   async function removeContact(idx:number){ const updated = localContacts.filter((_,i)=>i!==idx); setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated); try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'remove_party', resource: 'deal_parties', resource_id: transaction.id, details: { removed_index: idx } }) }) }catch(e){ console.error('audit failed', e) } }
 
@@ -521,8 +523,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 {!editing ? (
                   <div className="flex gap-2 items-center">
                     <button onClick={()=>{ setEditing(true); setEditStatus(mergedTx.status||''); setEditBinding((mergedTx as any).binding||''); setEditClosing((mergedTx as any).closing_date || (mergedTx as any).closing || ''); setEditValue((mergedTx as any).purchase_price || (mergedTx as any).value || undefined) }} className="px-3 py-1 bg-gray-700 rounded text-sm">Edit deal</button>
-                      <button onClick={async ()=>{ if(!window.confirm('Delete this transaction? This cannot be undone.')) return; try{ const id = transaction?.id || (mergedTx && (mergedTx as any).id); const res = await fetch('/api/transactions/'+id, { method: 'DELETE' }); if(!res.ok){ const j=await res.json(); alert('Delete failed: '+(j.error||res.statusText)); return } // navigate back to chat
-                      window.location.href = '/chat'; }catch(e){ console.error(e); alert('Delete failed') } }} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete Transaction</button>
+                      <button onClick={async ()=>{ if(!window.confirm('Delete this transaction? This cannot be undone.')) return; try{ const id = transaction?.id || (mergedTx && (mergedTx as any).id); const res = await fetch('/api/transactions/'+id, { method: 'DELETE' }); if(!res.ok){ const j=await res.json(); alert('Delete failed: '+(j.error||res.statusText)); return } // navigate back to transactions
+                      window.location.href = '/transactions'; }catch(e){ console.error(e); alert('Delete failed') } }} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete Transaction</button>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -960,7 +962,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                           <div className="font-semibold">{it.title}</div>
                           <div className="text-xs text-gray-400">{dl ? fmtDate(dl.date) : 'Not set'}</div>
                         </div>
-                        <input type="checkbox" checked={it.status==='done'} onChange={async ()=>{ try{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]); await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'checklist_toggle', resource: 'deal_checklist', resource_id: transaction.id, details: { key: it.key, new_status: it.status } }) }) }catch(e){ console.error('audit failed', e) } }} />
+                        <input type="checkbox" checked={it.status==='done'} onChange={async ()=>{ try{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]); await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, key: it.key, status: it.status }) }); await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'checklist_toggle', resource: 'deal_checklist', resource_id: transaction.id, details: { key: it.key, new_status: it.status } }) }) }catch(e){ console.error('audit failed', e) } }} />
                       </div>
                     )
                   })}
