@@ -128,8 +128,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   },[transaction.id])
 
   // helpers for dates and formatting
-  const fmtDate = (d?:string|Date|null)=>{ if(!d) return '—'; try{ if(typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)){ const [y,m,day] = d.split('-'); const dt = new Date(Number(y), Number(m)-1, Number(day)); return dt.toLocaleDateString() } const dt = typeof d === 'string'? new Date(d) : d as Date; return isNaN((dt as Date).getTime())? '—' : (dt as Date).toLocaleDateString() }catch(e){ return '—' } }
-  const daysUntil = (d?:string|Date|null)=>{ if(!d) return null; const t = new Date(d).getTime(); if(isNaN(t)) return null; return Math.ceil((t-Date.now())/(1000*60*60*24)) }
+  const fmtDate = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return 'Not set'; try{ const dt = typeof d==='string'? new Date(d): d; return isNaN(dt.getTime())? 'Not set' : dt.toLocaleDateString() }catch(e){ return 'Not set' } }
+  const daysUntil = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return null; const t = new Date(d).getTime(); if(isNaN(t)) return null; return Math.ceil((t-Date.now())/(1000*60*60*24)) }
 
   function genDeadlinesFromRemote(){
     const b = mergedTx.binding ? new Date(mergedTx.binding) : null
@@ -403,7 +403,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <div>
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
+<<<<<<< HEAD
             <h2 className="text-2xl font-bold mt-1">{String(mergedTx.address || '').replace(/\}/g, '')}</h2>
+=======
+            <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
+>>>>>>> 104d7c06 (fix(tx): show closing date and days remaining; display 'Not set' when missing)
             <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
           </div>
           <div className="text-sm text-gray-300 font-semibold">Client: {String(mergedTx.client || '').replace(/\}/g, '')} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
@@ -490,7 +494,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
                 <div className="text-sm text-gray-300">Days to Close</div>
+<<<<<<< HEAD
                 <div className="text-xl font-bold text-white">{(() => { const d = (mergedTx as any).closing_date || mergedTx.closing; const days = daysUntil(d); if(days===null) return '—'; if(days < 0) return (<span className="text-red-400">OVERDUE — {Math.abs(days)} days past closing</span>); return `${days} days`; })()}</div>
+=======
+                <div className="text-xl font-bold text-white">{(() => { const d = (mergedTx as any).closing_date || mergedTx.closing; const days = daysUntil(d); if(days===null) return 'Not set'; if(days < 0) return `Closed ${Math.abs(days)} days ago`; return `${days} days`; })()}</div>
+>>>>>>> 104d7c06 (fix(tx): show closing date and days remaining; display 'Not set' when missing)
               </div>
               <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
                 <div className="text-sm text-gray-300">Documents</div>
@@ -944,10 +952,27 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               </div>
 
               <div className="mb-4">
-                {/* replaced contacts with DealPartiesPanel */}
-                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-                {/* @ts-ignore */}
-                <DealPartiesPanel transactionId={transaction.id} />
+                {/* Deal parties: prefer committed transaction fields (buyer_names/seller_names) when present */}
+                {((mergedTx as any).buyer_names || (mergedTx as any).seller_names) ? (
+                  <div className="grid grid-cols-1 gap-2">
+                    {((mergedTx as any).buyer_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                      <div key={`buyer-${i}`} className="p-2 bg-gray-800 rounded">
+                        <div className="font-semibold text-white">{name}</div>
+                        <div className="text-xs text-gray-400">Buyer</div>
+                      </div>
+                    ))}
+                    {((mergedTx as any).seller_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                      <div key={`seller-${i}`} className="p-2 bg-gray-800 rounded">
+                        <div className="font-semibold text-white">{name}</div>
+                        <div className="text-xs text-gray-400">Seller</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                  // @ts-ignore
+                  <DealPartiesPanel transactionId={transaction.id} />
+                )}
               </div>
 
               <div className="p-4 bg-gray-800 rounded">
