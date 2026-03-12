@@ -41,6 +41,11 @@ export default function RookWizard({ transactionId, onClose }: Props) {
   const [completeSummary, setCompleteSummary] = useState<{ missing_fields: string[]; next_actions: string } | null>(null)
   const [isComplete, setIsComplete] = useState(false)
 
+  // Deal selector states
+  const [showDealSelector, setShowDealSelector] = useState(false)
+  const [availableDeals, setAvailableDeals] = useState<any[]>([])
+  const [selectedDeal, setSelectedDeal] = useState<any|null>(null)
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -175,6 +180,31 @@ export default function RookWizard({ transactionId, onClose }: Props) {
 
   const allowComplete = status === sectionProgress.section_3_6.status
 
+  // Deal selector handlers
+  async function openDealSelector(){
+    setShowDealSelector(true)
+    try{
+      const r = await fetch('/api/transactions')
+      if(!r.ok) return
+      const j = await r.json()
+      setAvailableDeals(Array.isArray(j) ? j : (j.result || []))
+    }catch(e){ console.error('failed to load deals', e) }
+  }
+
+  function connectDealAndPopulate(deal:any){
+    // store selection for this wizard
+    try{ localStorage.setItem('rookwizard_selected_deal', JSON.stringify(deal)) }catch(e){}
+    setSelectedDeal(deal)
+    // prefill section_1 fields (property address, buyer names)
+    const override:any = {}
+    if(deal.address) override.property_address = deal.address
+    if(deal.buyer_names) override.buyer_names = Array.isArray(deal.buyer_names) ? deal.buyer_names : String(deal.buyer_names).split(',').map((s:string)=>s.trim())
+    setSectionValues(prev => ({ ...prev, section_1: { ...(prev.section_1 || {}), ...override } }))
+    // save this section immediately
+    handleSaveSection('section_1', { ...(sectionValues.section_1 || {}), ...override })
+    setShowDealSelector(false)
+  }
+
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-[#030712] shadow-2xl">
@@ -183,10 +213,12 @@ export default function RookWizard({ transactionId, onClose }: Props) {
             <h2 className="text-lg font-semibold text-white">RookWizard ({transactionId})</h2>
             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Step {step} · {status}</p>
           </div>
-          <button onClick={onClose} className="text-sm font-medium text-gray-300 hover:text-white">
-            Close
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={openDealSelector} className="text-sm px-3 py-1 bg-gray-800 text-gray-200 rounded hover:bg-gray-700">Select a Deal</button>
+            <button onClick={onClose} className="text-sm font-medium text-gray-300 hover:text-white">Close</button>
+          </div>
         </div>
+
         <div className="px-6 py-5">
           <div className="mb-4 grid gap-2 sm:grid-cols-2">
             {sectionOrder.map((section) => (
@@ -202,6 +234,30 @@ export default function RookWizard({ transactionId, onClose }: Props) {
               </button>
             ))}
           </div>
+
+          {showDealSelector && (
+            <div className="mb-4 p-4 rounded bg-[#07101a] border border-white/10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-sm text-gray-300">Select a deal to connect to RookWizard</div>
+                <button onClick={()=>setShowDealSelector(false)} className="text-xs text-gray-400">Close</button>
+              </div>
+              <div className="space-y-2 max-h-60 overflow-auto">
+                {availableDeals.length===0 && <div className="text-sm text-gray-500">No active deals found</div>}
+                {availableDeals.map((d:any)=> (
+                  <div key={d.id} className="p-2 rounded hover:bg-gray-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-white">{d.address}</div>
+                      <div className="text-xs text-gray-400">{d.client} • {d.status}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={()=>connectDealAndPopulate(d)} className="px-3 py-1 bg-emerald-500 text-black rounded">Select</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="rounded-2xl border border-white/10 bg-[#0c1726] p-6 text-sm text-gray-300">Loading wizard data...</div>
           ) : (
@@ -219,9 +275,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
                       >
                         <option value="">Select an option</option>
                         {field.enumOptions?.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
+                          <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>
                     ) : (
@@ -244,26 +298,8 @@ export default function RookWizard({ transactionId, onClose }: Props) {
                 >
                   {saving ? 'Saving…' : 'Save & Continue'}
                 </button>
-                <button
-                  onClick={handleMarkUnknown}
-                  disabled={saving}
-                  className="rounded-full border border-white/20 px-5 py-2 text-sm text-white hover:border-white/50 disabled:opacity-60"
-                >
-                  Mark as Unknown
-                </button>
-                <button
-                  onClick={handleComplete}
-                  disabled={!allowComplete || saving}
-                  className="rounded-full border border-cyan-400 px-5 py-2 text-sm text-cyan-200 hover:border-cyan-200 disabled:opacity-50"
-                >
-                  {saving && allowComplete ? 'Completing…' : 'Finalize & Export'}
-                </button>
-                <button
-                  className="rounded-full border border-white/20 px-5 py-2 text-sm text-white/40"
-                  disabled={!isComplete}
-                >
-                  Export
-                </button>
+                <button onClick={handleMarkUnknown} disabled={saving} className="rounded-full border border-white/20 px-5 py-2 text-sm text-white hover:border-white/50 disabled:opacity-60">Mark as Unknown</button>
+                <button onClick={handleComplete} disabled={!allowComplete || saving} className="rounded-full border border-cyan-400 px-5 py-2 text-sm text-cyan-200 hover:border-cyan-200 disabled:opacity-50">{saving && allowComplete ? 'Completing…' : 'Finalize & Export'}</button>
               </div>
               {completeSummary && (
                 <div className="mt-6 rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-gray-200">
