@@ -163,6 +163,21 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     return 'Closed'
   }
 
+  // Deal state phases (user-facing)
+  const PHASE_ORDER = ['Draft','Under Contract','Due Diligence','Post-Inspection','Closing Prep','Closed']
+  const INTERNAL_MAP: Record<string,string> = { Draft:'draft', 'Under Contract':'binding', 'Due Diligence':'inspection_period', 'Post-Inspection':'post_inspection', 'Closing Prep':'post_inspection', 'Closed':'closed' }
+
+  const transitionPhase = async (toPhase:string) => {
+    try{
+      const res = await fetch('/api/deal-state/transition', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, to_phase: toPhase, triggered_by: 'web' }) })
+      if(!res.ok){ const j = await res.json().catch(()=>({})); throw new Error(j.error || 'transition failed') }
+      // refresh remote deal-state
+      const r = await fetch(`/api/deal-state/${transaction.id}`)
+      if(r.ok){ const j = await r.json(); setRemote(j); setMergedTx(prev=>({ ...prev, ...(j||{}) })) }
+    }catch(e){ alert('Transition failed: '+String(e)) }
+  }
+
+
   // timeline events: prefer remote.timeline else build from docs/deadlines
   const timelineEvents:TimelineEvent[] = React.useMemo(()=>{
     const remoteEvents:TimelineEvent[] = (remote && remote.timeline) ? remote.timeline.map((e:any)=>({ id: e.id||String(e.ts||Math.random()), title: e.title||e.name||e.event, date: e.date, ts: e.ts, type: e.type, note: e.note })) : []
