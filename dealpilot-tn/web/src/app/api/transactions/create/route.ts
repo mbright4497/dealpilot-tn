@@ -1,62 +1,33 @@
-export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
 
-export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-export async function POST(req: Request) {
-  try {
-    const supabase = createRouteHandlerClient({ cookies })
+export async function POST(req: Request){
+  try{
+    const supabase = createServerSupabaseClient({ req, res: undefined as any })
     const { data: { user } } = await supabase.auth.getUser()
+    if(!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    const body = await req.json()
+    const { address, client_name, purchase_price, closing_date, deal_type } = body
+    if(!address || !client_name) return NextResponse.json({ error: 'address and client_name required' }, { status: 400 })
 
-    const body = await req.json().catch(() => ({})) as any
-    const parsed = body || {}
-    const fields = parsed.fields || {}
-
-    // map fields
-    const contractType = (fields.contractType || '').toLowerCase()
-    const buyerNames = Array.isArray(fields.buyerNames) ? fields.buyerNames.join(', ') : (fields.buyerNames || '')
-    const sellerNames = Array.isArray(fields.sellerNames) ? fields.sellerNames.join(', ') : (fields.sellerNames || '')
-
-    const txInsert: any = {
-      user_id: user?.id || null,
-      property_address: fields.propertyAddress || '',
-      client_name: contractType === 'buyer' ? buyerNames : sellerNames || buyerNames || '',
-      client_type: contractType || 'unknown',
+    const insert = {
+      property_address: address,
+      client_name: client_name,
+      purchase_price: purchase_price || null,
+      closing_date: closing_date || null,
+      deal_type: deal_type || null,
       status: 'active',
-      closing_date: fields.closingDate || null,
-      purchase_price: fields.purchasePrice ?? null,
-      earnest_money: fields.earnestMoney ?? null,
-      binding_date: fields.bindingDate || null,
-      inspection_end_date: fields.inspectionEndDate || null,
-      financing_contingency_date: fields.financingContingencyDate || null,
-      special_stipulations: fields.specialStipulations || null,
-      buyer_names: buyerNames,
-      seller_names: sellerNames,
+      user_id: user.id,
+      created_at: new Date().toISOString()
     }
 
-    const { data: txData, error: txError } = await supabase.from('transactions').insert(txInsert).select().single()
-    if (txError) return NextResponse.json({ error: txError.message }, { status: 500 })
-
-    const txId = txData?.id
-
-    // insert timeline events into deal_events
-    const timeline = parsed.timeline || []
-    if (Array.isArray(timeline) && timeline.length > 0) {
-      const events = timeline.map((t: any) => ({ transaction_id: txId, label: t.label || t.name || 'Event', date: t.date || null, status: t.status || 'pending' }))
-      await supabase.from('deal_events').insert(events)
-    }
-
-    // insert deal_deadlines for inspection end, financing contingency, closing
-    const deadlines: any[] = []
-    if (fields.inspectionEndDate) deadlines.push({ transaction_id: txId, label: 'Inspection End', due_date: fields.inspectionEndDate, status: 'pending' })
-    if (fields.financingContingencyDate) deadlines.push({ transaction_id: txId, label: 'Financing Contingency', due_date: fields.financingContingencyDate, status: 'pending' })
-    if (fields.closingDate) deadlines.push({ transaction_id: txId, label: 'Closing Date', due_date: fields.closingDate, status: 'pending' })
-    if (deadlines.length > 0) await supabase.from('deal_deadlines').insert(deadlines)
-
-    return NextResponse.json({ id: txId })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || String(err) }, { status: 500 })
+    const { data, error } = await supabase.from('transactions').insert(insert).select('id').single()
+    if(error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const id = data.id
+    return NextResponse.json({ ok: true, id, url: `/deal/${id}` })
+  }catch(e:any){
+    return NextResponse.json({ error: String(e?.message||e) }, { status: 500 })
   }
 }
