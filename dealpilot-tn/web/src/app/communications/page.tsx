@@ -144,9 +144,9 @@ export default function CommunicationsPage(){
             {!loading && history.length===0 && !selected && (
               <div className="text-center py-10">
                 <div className="text-lg font-semibold text-white mb-2">No conversations yet</div>
-                <div className="text-sm text-gray-400 mb-4">Connect your GHL account in Settings to sync contacts, or ask Eva to draft a message.</div>
+                <div className="text-sm text-gray-400 mb-4">Connect your GHL account in Settings to sync contacts, or ask Reva to draft a message.</div>
                 <div className="flex justify-center">
-                  <button onClick={()=>{ const router = useRouter(); router.push('/chat'); setTimeout(()=>{ if(typeof window !== 'undefined') localStorage.setItem('eva_prefill','Draft a message to introduce myself and ask about missing documents') },300) }} className="px-4 py-2 bg-orange-500 rounded">Ask Eva to draft a message</button>
+                  <button onClick={()=>{ const router = useRouter(); router.push('/chat'); setTimeout(()=>{ if(typeof window !== 'undefined') localStorage.setItem('reva_prefill','Draft a message to introduce myself and ask about missing documents') },300) }} className="px-4 py-2 bg-orange-500 rounded">Ask Reva to draft a message</button>
                 </div>
               </div>
             )}
