@@ -29,7 +29,7 @@ export default function AIChatbot({ onClose, style, voiceEnabled }: any){
     setMessages(prev=>[...prev, {role:'user', content: userText}])
 
     const { transactions, dealState, deadlines } = await fetchDealData()
-    const systemPrompt = `You are Eva, an AI assistant for a real estate transaction coordinator. You have access to the user's live deal data. Reference deals by address. Give specific deadline dates and party names. Here are the user's active deals: ${JSON.stringify(transactions)}. Here is deal state: ${JSON.stringify(dealState)}. Here are upcoming deadlines: ${JSON.stringify(deadlines)}`
+    const systemPrompt = `You are Reva, an AI assistant for a real estate transaction coordinator. You have access to the user's live deal data. Reference deals by address. Give specific deadline dates and party names. Here are the user's active deals: ${JSON.stringify(transactions)}. Here is deal state: ${JSON.stringify(dealState)}. Here are upcoming deadlines: ${JSON.stringify(deadlines)}`
 
     try{
       const res = await fetch('/api/ai', {
@@ -52,7 +52,7 @@ export default function AIChatbot({ onClose, style, voiceEnabled }: any){
   async function quickAction(q: string){
     setLoading(true)
     const { transactions, dealState, deadlines } = await fetchDealData()
-    const systemPrompt = `You are Eva, an AI assistant for a real estate transaction coordinator. You have access to the user's live deal data. Reference deals by address. Give specific deadline dates and party names. Here are the user's active deals: ${JSON.stringify(transactions)}. Here is deal state: ${JSON.stringify(dealState)}. Here are upcoming deadlines: ${JSON.stringify(deadlines)}`
+    const systemPrompt = `You are Reva, an AI assistant for a real estate transaction coordinator. You have access to the user's live deal data. Reference deals by address. Give specific deadline dates and party names. Here are the user's active deals: ${JSON.stringify(transactions)}. Here is deal state: ${JSON.stringify(dealState)}. Here are upcoming deadlines: ${JSON.stringify(deadlines)}`
     try{
       const res = await fetch('/api/ai', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: q }] }) })
       const j = await res.json()
@@ -67,9 +67,9 @@ export default function AIChatbot({ onClose, style, voiceEnabled }: any){
       <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <img src="/avatar-pilot.png" alt="Eva" className="w-9 h-9 rounded-full" />
+            <img src="/avatar-pilot.png" alt="Reva" className="w-9 h-9 rounded-full" />
             <div>
-              <div className="text-white font-semibold">Eva</div>
+              <div className="text-white font-semibold">Reva</div>
               <div className="text-gray-400 text-xs">AI Assistant — connected to live deals</div>
             </div>
           </div>
@@ -84,7 +84,7 @@ export default function AIChatbot({ onClose, style, voiceEnabled }: any){
           ))}
         </div>
         <form onSubmit={handleSubmit} className="flex gap-2">
-          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Eva about a deal..." className="flex-1 bg-white/5 rounded px-3 py-2 text-white" />
+          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Reva about a deal..." className="flex-1 bg-white/5 rounded px-3 py-2 text-white" />
           <button type="submit" disabled={loading} className="px-3 py-2 bg-emerald-500 rounded text-white">{loading?'...':'Send'}</button>
         </form>
       </div>
