@@ -40,6 +40,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const [notifPrefs, setNotifPrefs] = React.useState<any>(null);
   const [userName, setUserName] = React.useState<string>(userNameProp || '')
   const [followUps, setFollowUps] = React.useState<number>(0)
+  const [pendingParsed, setPendingParsed] = React.useState<any|null>(null)
 
   React.useEffect(()=>{
     if (userNameProp) return
@@ -76,6 +77,14 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   React.useEffect(()=>{ let mounted = true; (async ()=>{ try{ fetch("/api/portfolio-brief").then(res=>res.json()).then(data=>{ if(!mounted) return; setPortfolioBrief(data.summary) }).catch(()=>{}); fetch("/api/portfolio-alerts").then(res=>res.json()).then(data=>{ if(!mounted) return; setAlerts(data.alerts ?? []) }).catch(()=>{}); // fetch notification preferences
     fetch('/api/notification-preferences').then(r=>r.json()).then(d=>{ if(!mounted) return; setNotifPrefs(d.prefs) }).catch(()=>{});
   }catch(e){} })(); return ()=>{ mounted=false } },[])
+
+  // load pending parsed deal from localStorage (ContractIntake persistence)
+  React.useEffect(()=>{
+    try{
+      const raw = localStorage.getItem('pending_parsed_deal')
+      if(raw){ setPendingParsed(JSON.parse(raw)) }
+    }catch(e){}
+  },[])
   const upcomingDeadlines: any[] = portfolioDeadlines ? [
     ...( (portfolioDeadlines.next_7_days && portfolioDeadlines.next_7_days.length > 0) ? portfolioDeadlines.next_7_days : (portfolioDeadlines.all_deadlines || []).filter((d: any) => d.status === 'upcoming' || d.status === 'overdue' || d.status === 'today') ).slice(0, 6)
   ] : []
@@ -260,6 +269,47 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           </div>
           </div>
           {/* Quick Actions */}
+          {pendingParsed && (
+            <div className=" bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 mb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-semibold text-white">Pending Parsed Deal</h3>
+                  <div className="text-sm text-gray-400">Found by Reva — confirm and create the transaction or discard.</div>
+                </div>
+                <div className="text-sm text-gray-400">{pendingParsed?.fields?.propertyAddress}</div>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <div className="text-sm text-white">Price: {pendingParsed?.fields?.purchasePrice ?? '—'}</div>
+                <div className="text-sm text-white">Closing: {pendingParsed?.fields?.closingDate ?? '—'}</div>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={async ()=>{
+                    try{
+                      const payload = { fields: {
+                        propertyAddress: pendingParsed.fields.propertyAddress || '',
+                        contractType: pendingParsed.fields.contractType || 'unknown',
+                        clientName: (pendingParsed.fields.buyerNames && pendingParsed.fields.buyerNames.length>0) ? pendingParsed.fields.buyerNames.join(', ') : (pendingParsed.fields.sellerNames||[]).join(', '),
+                        bindingDate: pendingParsed.fields.bindingDate || null,
+                        closingDate: pendingParsed.fields.closingDate || null,
+                        purchasePrice: pendingParsed.fields.purchasePrice || null,
+                        earnestMoney: pendingParsed.fields.earnestMoney || null,
+                        timeline: pendingParsed.timeline || []
+                      }}
+                      const res = await fetch('/api/transactions/create',{ method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+                      const j = await res.json()
+                      if(!res.ok || j.error){ alert('Failed to create transaction: '+(j.error||res.statusText)); return }
+                      // created — clear pending
+                      localStorage.removeItem('pending_parsed_deal')
+                      setPendingParsed(null)
+                      // refresh page
+                      window.location.reload()
+                    }catch(e){ console.error(e); alert('Failed to create parsed transaction') }
+                  }} className="px-4 py-2 bg-emerald-500 text-white rounded">Confirm & Create Deal</button>
+                  <button onClick={()=>{ localStorage.removeItem('pending_parsed_deal'); setPendingParsed(null) }} className="px-4 py-2 bg-white/5 text-gray-200 rounded">Discard</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className=" bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5">
             <h3 className="font-semibold text-white mb-4">Quick Actions</h3>
             <div className="space-y-2">
