@@ -54,8 +54,9 @@ export async function POST(request: Request, { params }: { params: { transaction
 
       if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
-      const { data: publicData } = supabase.storage.from('deal-documents').getPublicUrl(storagePath)
-      const publicUrl = publicData.publicUrl
+      // create short-lived signed url
+      let signedUrl: string | null = null
+      try{ const { data: signed } = await supabase.storage.from('deal-documents').createSignedUrl(storagePath, 60); signedUrl = signed?.signedUrl || null }catch(e){}
 
       const { data: userData } = await supabase.auth.getUser()
       const user = userData?.user || null
@@ -66,13 +67,9 @@ export async function POST(request: Request, { params }: { params: { transaction
           id: id,
           deal_id: null,
           transaction_id: transactionId,
-          user_id: user?.id || null,
-          name: filename,
-          type: file.type,
-          url: publicUrl,
-          metadata: {},
-          rf_number: null,
-          category: 'other',
+          uploaded_by: user?.id || null,
+          filename: filename,
+          file_type: file.type,
           storage_path: storagePath,
           status_label: 'uploaded',
           extracted_data: {},

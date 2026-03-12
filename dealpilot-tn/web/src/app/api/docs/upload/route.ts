@@ -37,27 +37,31 @@ export async function POST(req: Request) {
     const { error: uploadErr } = await supabase.storage.from(bucketName).upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
     if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 })
 
-    // build public url
-    const { data: publicData } = supabase.storage.from(bucketName).getPublicUrl(storagePath)
-    const publicUrl = publicData?.publicUrl || null
+    // create a signed URL (private bucket) for immediate download preview (short-lived)
+    let signedUrl: string | null = null
+    try{
+      const { data: signed } = await supabase.storage.from(bucketName).createSignedUrl(storagePath, 60)
+      signedUrl = signed?.signedUrl || null
+    }catch(e){ /* ignore signed url failures */ }
 
     // classification key
     const classification = form.get('classification') as string | null
 
-    // insert into deal_documents
-    const { data, error } = await supabase.from('deal_documents').insert([{
+    // insert into canonical documents table
+    const { data, error } = await supabase.from('documents').insert([{
       deal_id: transaction_id ? Number(transaction_id) : null,
-      doc_key: classification || null,
-      file_name: filename,
-      file_url: publicUrl,
-      status: 'uploaded',
-      uploaded_at: new Date().toISOString(),
+      transaction_id: transaction_id ? Number(transaction_id) : null,
+      filename: filename,
+      file_type: file.type || null,
       storage_path: storagePath,
-      user_id: user?.id || null,
+      uploaded_at: new Date().toISOString(),
+      uploaded_by: user?.id || null,
+      status_label: 'uploaded',
+      rf_number: classification || null,
     }]).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    return NextResponse.json({ document: data })
+    return NextResponse.json({ document: data, signed_url: signedUrl })
   } catch (e:any) {
     return NextResponse.json({ error: e.message || String(e) }, { status: 500 })
   }
