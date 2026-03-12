@@ -103,7 +103,19 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                 <td className="p-3"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${l.current_state === 'closed' ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30' : l.current_state === 'draft' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : l.current_state === 'inspection_period' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : l.current_state === 'post_inspection' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'}`}>{(l as any).state_label || '—'}</span></td>
                 
                 <td className="p-3 text-gray-400">{l.binding ? formatDate(l.binding) : '—'}</td>
-                <td className="p-3 text-gray-400">{l.closing ? formatDate(l.closing) : '—'}</td>
+                <td className="p-3 text-gray-400">{
+                  l.closing ? (
+                    (() => {
+                      try{
+                        const dateStr = l.closing
+                        const [y,m,day] = String(dateStr).split('-')
+                        const dt = new Date(Number(y), Number(m)-1, Number(day))
+                        const days = Math.ceil((dt.getTime() - Date.now())/(1000*60*60*24))
+                        return `${formatDate(String(dateStr))} · ${days >= 0 ? `${days} days to close` : `${Math.abs(days)}d overdue`}`
+                      }catch(e){ return formatDate(String(l.closing)) }
+                    })()
+                  ) : 'No closing date set'
+                }</td>
                 <td className="p-3">
                   <div className="flex items-center gap-3">
                     {/* Comms badge: shows last comm date and flags overdue (>=3 days) */}
@@ -137,7 +149,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                         <p>Client: <span className="font-medium text-white">{String(l.client || '').replace(/\}/g, '')}</span></p>
                         <p>Type: <span className="font-medium text-white">{l.type}</span></p>
                         <p>Binding: <span className="font-medium text-white">{l.binding ? formatDate(l.binding) : '—'}</span></p>
-                        <p>Closing: <span className="font-medium text-white">{l.closing ? formatDate(l.closing) : '—'}</span></p>
+                        <p>Closing: <span className="font-medium text-white">{l.closing ? `${formatDate(l.closing)} · ${(() => { try{ const [y,m,day]=String(l.closing).split('-'); const dt=new Date(Number(y),Number(m)-1,Number(day)); const days = Math.ceil((dt.getTime()-Date.now())/(1000*60*60*24)); return days>=0?`${days} days to close`:`${Math.abs(days)}d overdue`; }catch(e){return formatDate(String(l.closing))}})()}` : 'No closing date set'}</span></p>
                       </div>
                       <button onClick={()=>onViewChecklist(l.id)} className="mt-3 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors">Open Transaction Checklist</button>
                     </div>
