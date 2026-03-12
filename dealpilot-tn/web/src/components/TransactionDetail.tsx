@@ -330,7 +330,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
+        const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
         if(!res.ok) return
         const j = await res.json()
         if(!mounted) return
@@ -345,11 +345,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   const markMilestoneComplete = async (milestone_key:string)=>{
     try{
-      const res = await fetch('/api/eva/playbook-progress', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, milestone_key, completed_by: 'web-ui' }) })
+      const res = await fetch('/api/reva/playbook-progress', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, milestone_key, completed_by: 'web-ui' }) })
       if(!res.ok) throw new Error('failed')
       const j = await res.json()
       // refresh steps
-      const refresh = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
+      const refresh = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
       if(refresh.ok){ const rj = await refresh.json(); const rows = (rj.results && rj.results[0] && rj.results[0].gaps) ? rj.results[0].gaps : []; setPlaybookSteps(rows) }
     }catch(e){ console.error('mark milestone failed', e) }
   }
@@ -410,7 +410,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
       {/* EVA HERO (top) - small iterative addition */}
       <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6">
-        <div className="mb-2 text-sm text-gray-300">Eva — Deal Assistant</div>
+        <div className="mb-2 text-sm text-gray-300">Reva — Deal Assistant</div>
         <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
           {chatMessages.map((m,i)=>(
             <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
@@ -419,7 +419,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           ))}
         </div>
         <div className="flex gap-2 items-center">
-          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Eva about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" />
+          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Reva about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" />
           <button onClick={async ()=>{ if(!input) return; await sendAIMessage(input); setInput('') }} className="px-4 py-2 bg-orange-500 rounded">Ask</button>
         </div>
         <div className="mt-3 flex gap-2">
@@ -430,7 +430,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               let mounted = true
               ;(async ()=>{
                 try{
-                  const res = await fetch('/api/eva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
+                  const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
                   if(!res.ok) return
                   const j = await res.json()
                   if(!mounted) return
