@@ -64,6 +64,22 @@ export default function AIChatbot({ onClose, style = 'friendly-tn', voiceEnabled
     }catch(e:any){ console.error(e); setMessages(m=>[...m, { role:'assistant', content: 'Error creating transaction.' }]) }
   }
 
+  // helper: if AI indicates intent to create a transaction, call creation path automatically
+  async function maybeAutoCreate(j:any){
+    try{
+      // Recognize explicit intent flags from the AI backend
+      if(j.intent === 'create_transaction' || j.createTransaction === true){
+        const ef = j.extractedFields || j.extracted || {}
+        if(ef && Object.keys(ef).length > 0){
+          await createTransactionFromExtracted(ef)
+          return true
+        }
+      }
+      // fallback: if extractedFields exist and user has not confirmed after a short delay, offer create prompt (handled in UI already)
+      return false
+    }catch(e){ return false }
+  }
+
   async function send(text?:string){
     const msg = text || input
     if(!msg) return
@@ -75,6 +91,15 @@ export default function AIChatbot({ onClose, style = 'friendly-tn', voiceEnabled
       const j = await res.json()
       const reply = j.reply || j.message || 'Sorry, no response.'
       const toned = applyTone(style as AssistantStyle, reply)
+
+      // if AI explicitly signals creation intent, try auto-create first
+      const auto = await maybeAutoCreate(j)
+      if(auto) {
+        // AI already created a transaction or we triggered creation—append a confirmation message
+        setMessages(m=>[...m, { role: 'assistant', content: toned }])
+        playTTS(reply)
+        return
+      }
 
       // if extractedFields returned, attach extracted + summary
       if(j.extractedFields && Object.keys(j.extractedFields).length > 0){
