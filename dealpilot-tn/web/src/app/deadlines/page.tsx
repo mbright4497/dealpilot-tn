@@ -3,7 +3,7 @@ import React, {useEffect, useState} from 'react'
 
 export default function DeadlinesPage(){
   const [items,setItems] = useState<any[]|null>(null)
-  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch('/api/deadlines'); if(!mounted) return; if(res.ok){ const j = await res.json(); setItems(j.deadlines || j || []) } }catch(e){ if(mounted) setItems([]) } })(); return ()=>{ mounted=false } },[])
+  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch('/api/deadlines'); if(!mounted) return; if(res.ok){ const j = await res.json(); setItems(j.deadlines || j || []) } else { setItems([]) } }catch(e){ if(mounted) setItems([]) } })(); return ()=>{ mounted=false } },[])
   if(items===null) return <div className="p-6">Loading...</div>
   if(items.length===0) return <div className="p-6">No upcoming deadlines</div>
   return (<div className="p-6">
