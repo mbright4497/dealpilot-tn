@@ -517,7 +517,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 {!editing ? (
                   <div className="flex gap-2 items-center">
                     <button onClick={()=>{ setEditing(true); setEditStatus(mergedTx.status||''); setEditBinding((mergedTx as any).binding||''); setEditClosing((mergedTx as any).closing_date || (mergedTx as any).closing || ''); setEditValue((mergedTx as any).purchase_price || (mergedTx as any).value || undefined) }} className="px-3 py-1 bg-gray-700 rounded text-sm">Edit deal</button>
-                      <button onClick={async ()=>{ if(!confirm('Delete this transaction? This cannot be undone.')) return; try{ const res = await fetch('/api/transactions/'+transaction.id, { method: 'DELETE' }); if(!res.ok){ const j=await res.json(); alert('Delete failed: '+(j.error||res.statusText)); return } alert('Deleted'); onBack(); }catch(e){ console.error(e); alert('Delete failed') } }} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete Transaction</button>
+                      <button onClick={async ()=>{ if(!window.confirm('Delete this transaction? This cannot be undone.')) return; try{ const id = transaction?.id || (mergedTx && (mergedTx as any).id); const res = await fetch('/api/transactions/'+id, { method: 'DELETE' }); if(!res.ok){ const j=await res.json(); alert('Delete failed: '+(j.error||res.statusText)); return } // navigate back to chat
+                      window.location.href = '/chat'; }catch(e){ console.error(e); alert('Delete failed') } }} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete Transaction</button>
                   </div>
                 ) : (
                   <div className="space-y-2">
