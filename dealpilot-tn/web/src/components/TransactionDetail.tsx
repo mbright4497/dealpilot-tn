@@ -410,7 +410,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
       {/* EVA HERO (top) - small iterative addition */}
       <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6">
-        <div className="mb-2 text-sm text-gray-300">Reva — Deal Assistant</div>
+        <div className="mb-2 text-sm text-gray-300 flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" /><span>Reva — Deal Assistant</span></div>
         <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
           {chatMessages.map((m,i)=>(
             <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
@@ -484,7 +484,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
                 <div className="text-sm text-gray-300">Days to Close</div>
-                <div className="text-xl font-bold text-white">{(() => { const d = (mergedTx as any).closing_date || mergedTx.closing; const days = daysUntil(d); return days===null? '—' : (days+' days') })()}</div>
+                <div className="text-xl font-bold text-white">{(() => { const d = (mergedTx as any).closing_date || mergedTx.closing; const days = daysUntil(d); if(days===null) return '—'; if(days < 0) return (<span className="text-red-400">OVERDUE — {Math.abs(days)} days past closing</span>); return `${days} days`; })()}</div>
               </div>
               <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
                 <div className="text-sm text-gray-300">Documents</div>
