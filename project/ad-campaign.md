@@ -1,34 +1,42 @@
-Facebook Ad Campaign — New Construction (Ganzak-style)
+Ad Campaign — Facebook Test (3 Variations)
 
-Overview
-- Objective: Lead generation for new construction buyers in Tri-Cities, TN
-- Budget: $20/day split across 3 ad variations (A/B/C)
-- Target: Age 25–45, 50-mile radius of Johnson City, interests in home buying, new construction, Zillow, mortgage
+Objective
+- Validate demand for iHome Team AI assistant for new construction in Tri-Cities, TN. Test 3 creative hooks to determine top-performing message.
 
-Ad Variation A — "New construction from $250K"
-- Headline: New construction from $250K
-- Primary text (<=125 chars): Looking for brand-new homes near Johnson City? Ask our 24/7 AI — instant answers on builders, lots, and incentives.
+Targeting
+- Age: 25-45
+- Radius: 50 miles of Johnson City, TN
+- Interests: Home buying, Zillow, Realtor.com, New construction, First-time buyer, Mortgage, Home improvement
+- Placement: Facebook Feed & Stories (Meta Lead Form)
+
+Budget
+- $20/day total, split evenly across 3 variations (~$6/day each) for initial 7-day test
+
+Variation A — Hook: Price
+- Headline: New Builds from $250K — Instant Answers
+- Primary Text (<=125 chars): Looking for new construction under $250K? Ask our AI assistant and get instant matches + builder intel. Free guide.
 - CTA: Learn More
-- Audience: 25–45, 50mi Johnson City, interests: new homes, builders, Zillow
+- Creative Brief: Image of modern new home exterior with price overlay “From $250K”. Keep bright, local scenery, family-friendly. Optional 15s video pan of a model home.
 
-Ad Variation B — "Stop scrolling Zillow"
-- Headline: Stop scrolling Zillow — find a new build fast
-- Primary text: Tired of outdated listings? Get a custom list of new construction homes in 60 seconds via our AI assistant.
-- CTA: Get Started
-- Audience: Same as above + engaged shoppers, recent home searchers
+Variation B — Hook: Speed / Convenience
+- Headline: Find Your Perfect New Build in 60s
+- Primary Text (<=125 chars): Stop scrolling Zillow. Tell Reva what you want and get new construction matches fast — free New Construction Guide.
+- CTA: Learn More
+- Creative Brief: Short motion graphic showing an agent texting and getting results; emphasize speed (60s). Use local map pin on Johnson City.
 
-Ad Variation C — "First-time buyer?"
-- Headline: First-time buyer? New construction = peace of mind
-- Primary text: Zero repairs, warranties, and new-community incentives. Chat with our AI to find builder-backed homes now.
-- CTA: Download Guide
-- Audience: 25–35, first-time buyer interest, mortgage calculators, local FB groups
+Variation C — Hook: First-time Buyer
+- Headline: First-Time Buyer? New Homes = Less Risk
+- Primary Text (<=125 chars): New construction means warranties and no surprise repairs. Chat with our AI for tailored new-build options and a free guide.
+- CTA: Get Offer
+- Creative Brief: Warm lifestyle image of first-time buyers receiving keys; overlay: “Zero repairs. Warranties.”
 
-Ad Setup Notes
-- Use lead form or landing page (landing page preferred for higher quality leads)
-- Use UTM params to tag ad variation (utm_campaign=nc_fb_test, utm_content=adA/B/C)
-- Tag leads in GHL by ad variation using hidden field or webhook
-- Creative: Photo carousel of new builds + short 10–15s video (if available)
+Creative Notes
+- Keep branding simple: iHome Team logo, warm orange accent, local reference “Tri-Cities, TN” in copy.
+- Use clear CTA button and lead form asking name, phone, email, preferred area, budget.
 
-Success Metrics
-- Test for 7–10 days, pause underperforming ad(s) after 48–72 hours
-- Aim for CPL <$50; scale winners to $40/day after validation
+Tracking
+- Tag each lead by ad variation (A/B/C) in form integration to GHL
+- UTM params: utm_source=facebook&utm_campaign=new-builds&utm_content=variationA/B/C
+
+Deliverable
+- Use Meta lead form connected to GHL funnel. Monitor CPL and engagement; pause low performers after 48–72 hours.

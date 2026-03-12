@@ -1,41 +1,36 @@
-Landing Page Structure — New Construction Lead Funnel
+Landing Page Copy — New Construction Lead (GHL)
 
-Goal: Capture leads and deliver the "Free New Construction Guide — Tri-Cities"
+Headline
+- Find Your New Construction Home in the Tri-Cities — Fast
 
-1) Hero
-- Headline: Find Your New Construction Home in the Tri-Cities — Fast
-- Subhead: Instant answers on builders, lots, pricing, and incentives from our 24/7 AI assistant
-- CTA: Get the Free Guide (button leading to form)
+Subhead
+- Instant answers from our AI assistant + Free New Construction Guide for Tri-Cities, TN
 
-2) 3 Bullet Value Props
-- Instant AI answers on local builders and lot availability
-- Zero worries: warranties, inspections, and move-in timelines explained
-- Free guide + personalized shortlist delivered to your inbox
+3 Value Props
+- Local builder expertise: We know every builder, community, and price band across Johnson City, Kingsport & Bristol.
+- Save time: Get curated new-build matches in under a minute — no endless searching.
+- Peace of mind: New homes include builder warranties and inspections — we’ll walk you through the process.
 
-3) Lead Form (above-the-fold)
-- Fields: Name, Email, Phone (optional), ZIP (optional), hidden field: ad_variation
-- Offer: Free New Construction Guide + 1-click AI chat intro
+Form & CTA
+- Lead magnet: Free New Construction Guide for Tri-Cities TN
+- Form fields: First name, Last name, Phone, Email, Preferred area (dropdown), Budget
+- Primary CTA button: Get My Free Guide → (submits form and fires GHL workflow)
 
-4) Social Proof / Local Examples
-- Short testimonials from recent buyers (2–3) and badges (Keller Williams, local builder logos)
+Above-the-fold hero copy
+- Headline (short): New construction homes near you
+- Subtext: Tell Reva what you need — price, beds, neighborhood — and get instant new-build matches + a free guide.
 
-5) How It Works (3-step)
-- 1: Submit your info
-- 2: Instant guide + AI chat intro within 5 minutes
-- 3: Agent follow-up to schedule tours
-
-6) FAQ (short)
-- Builder warranty questions, timelines, costs, financing help
-
-7) CTA / Footer
-- Repeat primary CTA and privacy note
+Body bullets (trust)
+- Local experts with builder relationships
+- 24/7 AI assistant to answer quick questions
+- Step-by-step buying guide for new construction
 
 Thank You Page
-- Message: Guide sent — check your email
-- Secondary CTA: Start chat with AI now (button that triggers GHL AI chat or opens the messenger)
-- Trigger: Add tag with ad_variation and source=facebook_test
+- Headline: Thanks — your New Construction Guide is on its way!
+- Body: Check your email and texts for the guide and a quick intro from Reva. If you don’t see it, check spam. Want a quicker answer? Reply to the text we sent.
+- Next Step CTA: Schedule a 15-min consult (button) — optional calendar link
 
-GHL Integration Notes
-- Use form mapping to capture hidden ad_variation field
-- Trigger workflow: send instant SMS + email with guide -> 5-min AI intro -> 24hr follow-up -> 3-day check-in
-- Tag leads by ad_variation for later segmentation and creative optimization
+Copy notes for GHL
+- Use concise hero + lead magnet pull. Keep primary CTA above fold and repeat after bullets.
+- Insert guide download link placeholder: {{guide_link}} — GHL email/SMS should replace with file URL.
+- Ensure form triggers tagging by ad variation and stores utm params.
