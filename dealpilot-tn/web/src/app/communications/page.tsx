@@ -21,7 +21,18 @@ export default function CommunicationsPage(){
   const [loading,setLoading]=useState(false)
   const router = useRouter()
 
-  useEffect(()=>{ fetch('/api/communications/contacts?deal_id=all').then(r=>r.json()).then(j=>{ if(j.ok) setContacts(j.contacts||[]) }).catch(()=>setContacts([])) },[])
+  useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const ghl = await fetch('/api/ghl/contacts')
+        const j = await ghl.json()
+        if(ghl.ok && j.ok){ if(!mounted) return; setContacts(j.contacts||[]); return }
+      }catch(e){ /* ignore */ }
+      try{ const r = await fetch('/api/communications/contacts?deal_id=all'); const j = await r.json(); if(r.ok && j.ok){ if(!mounted) return; setContacts(j.contacts||[]) } }catch(e){ if(mounted) setContacts([]) }
+    })()
+    return ()=>{ mounted = false }
+  },[])
 
   const openComposeModal = (channel: 'sms'|'email' = 'sms') => {
     setComposeChannel(channel)
@@ -81,6 +92,13 @@ export default function CommunicationsPage(){
         message: composeBody.trim(),
         subject: composeChannel === 'email' ? composeSubject : undefined,
       }
+      // try GHL first
+      try{
+        const ghlRes = await fetch('/api/ghl/send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+        const ghlJson = await ghlRes.json()
+        if(ghlRes.ok && ghlJson.ok){ setComposeStatus(`Queued via GHL (${ghlJson.status})`); setComposeBody(''); if(composeChannel==='email') setComposeSubject(''); await loadHistory(selected); return }
+      }catch(e){ /* ignore and fallback */ }
+      // fallback to legacy communications API
       const res = await fetch('/api/communications/send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
       const json = await res.json()
       if(!res.ok || !json.ok){
