@@ -1,29 +1,20 @@
-export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
 
-export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-export async function PATCH(req: Request, { params }: any){
+export async function DELETE(req: Request, { params }: { params: { id: string } }){
   try{
-    const id = params.id
-    const supabase = createRouteHandlerClient({ cookies })
-    const body = await req.json().catch(()=>({})) as any
-    const fields = body.fields || {}
+    const supabase = createServerSupabaseClient({ req, res: undefined as any })
+    const { data: { user } } = await supabase.auth.getUser()
+    if(!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    const id = Number(params.id)
+    if(!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
-    const { data: existing } = await supabase.from('transactions').select('*').eq('id', id).single()
-    if(!existing) return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
-
-    const update: any = {}
-    for(const k of Object.keys(fields)){
-      update[k] = fields[k]
-    }
-
-    const { data, error } = await supabase.from('transactions').update(update).eq('id', id).select().single()
+    const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id)
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data)
-  }catch(err:any){
-    return NextResponse.json({ error: err.message||String(err) }, { status: 500 })
+    return NextResponse.json({ ok: true })
+  }catch(e:any){
+    return NextResponse.json({ error: String(e?.message||e) }, { status: 500 })
   }
 }
