@@ -223,6 +223,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   },[transaction.id])
 
   const [showIntake, setShowIntake] = useState(false)
+  const [extractionPreview, setExtractionPreview] = useState<any|null>(null)
   // file inputs helper (kept from previous implementation)
   const fileInputsRef = useRef<Record<string,HTMLInputElement|null>>({} as any)
   const ensureInput = (cat:string)=>{
@@ -812,7 +813,19 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                       const j = await res.json();
                       // refresh docs
                       const refresh = await fetch('/api/documents/' + transaction.id);
-                      if(refresh.ok){ const rj = await refresh.json(); setDocs(rj || []); }
+                      if(refresh.ok){ const rj = await refresh.json(); setDocs(rj || []) }
+
+                      // if the uploaded doc looks like a Purchase & Sale (classification present), run AI extraction
+                      try{
+                        const docId = j?.document?.id || j?.id || null
+                        const rf = j?.document?.rf_number || j?.rf_number || null
+                        const category = j?.document?.category || j?.category || null
+                        const looksLikePS = (rf && String(rf).toLowerCase().includes('rf401')) || String(category||'').toLowerCase().includes('purchase')
+                        if(docId && looksLikePS){
+                          const exRes = await fetch('/api/ai/docs/extract', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ document_id: docId }) })
+                          if(exRes.ok){ const exJson = await exRes.json(); setExtractionPreview(exJson.extraction || exJson) }
+                        }
+                      }catch(e){ console.warn('extraction failed', e) }
                     } else {
                       console.error('Upload failed', await res.text())
                       alert('Upload failed')
