@@ -8,6 +8,7 @@ export default function DeadlinesPage(){
   if(items.length===0) return <div className="p-6">No upcoming deadlines</div>
   return (<div className="p-6">
     <h1 className="text-2xl font-bold mb-4">Deadlines</h1>
+    <div className="mt-2"><a href="/chat" className="text-sm text-gray-400 hover:text-white">← Back to Dashboard</a></div>
     <div className="space-y-3">
       {items.map((d:any,i:number)=>{
         const days = d.days_remaining ?? Math.ceil((new Date(d.date).getTime()-Date.now())/(1000*60*60*24))
