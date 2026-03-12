@@ -225,6 +225,10 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
                 className="text-sm text-orange-500 hover:text-orange-600 font-medium"
               >View All →</button>
             </div>
+            <div className="p-4">
+            <div className="mb-4">
+              <import-placeholder />
+            </div>
             <div className="divide-y divide-white/5">
               {upcomingDeadlines.length === 0 && (
                 <div className="p-4 text-sm text-cyan-300/70 text-center">
@@ -253,6 +257,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
                 )
               })}
             </div>
+          </div>
           </div>
           {/* Quick Actions */}
           <div className=" bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5">
