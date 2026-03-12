@@ -17,8 +17,8 @@ export async function POST(req: Request) {
     const originalName = file.name || `${uuidv4()}.pdf`
     const filename = originalName
     const ext = (filename.split('.').pop() || 'pdf')
-    const bucketName = 'documents'
-    const storagePath = `documents/docs/${transaction_id || 'unlinked'}/${uuidv4()}.${ext}`
+    const bucketName = 'deal-documents'
+    const storagePath = `deal-${transaction_id || 'unlinked'}/${uuidv4()}.${ext}`
 
     const supabase = createRouteHandlerClient({ cookies })
     const { data: { user } } = await supabase.auth.getUser()

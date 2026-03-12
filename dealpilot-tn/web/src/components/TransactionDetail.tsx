@@ -403,14 +403,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <div>
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
-<<<<<<< HEAD
-            <h2 className="text-2xl font-bold mt-1">{String(mergedTx.address || '').replace(/\}/g, '')}</h2>
-=======
             <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
->>>>>>> 104d7c06 (fix(tx): show closing date and days remaining; display 'Not set' when missing)
             <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
           </div>
-          <div className="text-sm text-gray-300 font-semibold">Client: {String(mergedTx.client || '').replace(/\}/g, '')} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
+          <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client || '—'} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
         <div className="text-right text-sm text-gray-300">
           <div>Binding: <span className="font-semibold">{fmtDate(mergedTx.binding)}</span></div>
@@ -494,11 +490,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
                 <div className="text-sm text-gray-300">Days to Close</div>
-<<<<<<< HEAD
-                <div className="text-xl font-bold text-white">{(() => { const d = (mergedTx as any).closing_date || mergedTx.closing; const days = daysUntil(d); if(days===null) return '—'; if(days < 0) return (<span className="text-red-400">OVERDUE — {Math.abs(days)} days past closing</span>); return `${days} days`; })()}</div>
-=======
                 <div className="text-xl font-bold text-white">{(() => { const d = (mergedTx as any).closing_date || mergedTx.closing; const days = daysUntil(d); if(days===null) return 'Not set'; if(days < 0) return `Closed ${Math.abs(days)} days ago`; return `${days} days`; })()}</div>
->>>>>>> 104d7c06 (fix(tx): show closing date and days remaining; display 'Not set' when missing)
               </div>
               <div className="p-3 rounded" style={{background: '#0d1b2a'}}>
                 <div className="text-sm text-gray-300">Documents</div>

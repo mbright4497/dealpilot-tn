@@ -43,18 +43,18 @@ export async function POST(request: Request, { params }: { params: { transaction
       const filename = file.name || `${uuidv4()}.pdf`
       const ext = filename.split('.').pop() || 'pdf'
       const id = uuidv4()
-      const storagePath = `documents/${transactionId}/${id}.${ext}`
+      const storagePath = `deal-${transactionId}/${id}.${ext}`
 
       const arrayBuffer = await file.arrayBuffer()
       const buffer = new Uint8Array(arrayBuffer)
 
       const { error: uploadError } = await supabase.storage
-        .from('documents')
+        .from('deal-documents')
         .upload(storagePath, buffer, { contentType: file.type, upsert: false })
 
       if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
-      const { data: publicData } = supabase.storage.from('documents').getPublicUrl(storagePath)
+      const { data: publicData } = supabase.storage.from('deal-documents').getPublicUrl(storagePath)
       const publicUrl = publicData.publicUrl
 
       const { data: userData } = await supabase.auth.getUser()
@@ -92,16 +92,16 @@ export async function POST(request: Request, { params }: { params: { transaction
       const { base64, filename } = body as any
       const id = uuidv4()
       const ext = filename.split('.').pop() || 'pdf'
-      const storagePath = `documents/${transactionId}/${id}.${ext}`
+      const storagePath = `deal-${transactionId}/${id}.${ext}`
       const buffer = Buffer.from(base64, 'base64')
 
       const { error: uploadError } = await supabase.storage
-        .from('documents')
+        .from('deal-documents')
         .upload(storagePath, buffer, { contentType: body.contentType || 'application/pdf', upsert: false })
 
       if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
-      const { data: publicData } = supabase.storage.from('documents').getPublicUrl(storagePath)
+      const { data: publicData } = supabase.storage.from('deal-documents').getPublicUrl(storagePath)
       const publicUrl = publicData.publicUrl
 
       const { data: userData } = await supabase.auth.getUser()
