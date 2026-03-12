@@ -115,6 +115,8 @@ export default function ChatPage() {
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [view, setView] = useState('dashboard')
   const [rookWizardOpen, setRookWizardOpen] = useState(false)
+  const [showRookPicker, setShowRookPicker] = useState(false)
+  const [availableDealsForPicker, setAvailableDealsForPicker] = useState<any[]>([])
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
@@ -693,14 +695,40 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
                     {selectedTx && <p className="text-xs text-gray-500">Client: {selectedTx.client}</p>}
                   </div>
                   <button
-                    onClick={() => selectedTxId && setRookWizardOpen(true)}
-                    disabled={!selectedTxId}
+                    onClick={async () => { if (selectedTxId) { setRookWizardOpen(true); return } setShowRookPicker(true); try{ const r = await fetch('/api/transactions'); if(r.ok){ const j = await r.json(); setAvailableDealsForPicker(Array.isArray(j)? j : (j.result||[])) } }catch(e){ console.error('failed to load transactions for picker', e) } } }
+                    disabled={false}
                     className="rounded-full border border-orange-500 bg-orange-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black transition disabled:opacity-50 disabled:text-white/40"
                   >
                     {selectedTxId ? 'Open Wizard' : 'Select a deal first'}
                   </button>
                 </div>
                 <div className="mt-3 text-xs text-gray-400">Connected to {selectedTxId ? `transaction ${selectedTxId}` : 'no deal selected'}. Export disabled until completion.</div>
+
+              {/* Deal picker modal */}
+              {showRookPicker && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                  <div className="w-full max-w-2xl bg-[#071224] p-4 rounded-xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-white font-semibold">Select a Deal</div>
+                      <button onClick={()=>setShowRookPicker(false)} className="text-sm text-gray-400">Close</button>
+                    </div>
+                    <div className="space-y-2 max-h-80 overflow-auto">
+                      {availableDealsForPicker.length===0 && <div className="text-gray-400">No active deals</div>}
+                      {availableDealsForPicker.map((d:any)=> (
+                        <div key={d.id} className="p-2 rounded hover:bg-gray-800 flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-white">{d.address}</div>
+                            <div className="text-xs text-gray-400">{d.client} • {d.status}</div>
+                          </div>
+                          <div>
+                            <button onClick={()=>{ setSelectedTxId(d.id); setShowRookPicker(false); setRookWizardOpen(true); }} className="px-3 py-1 bg-emerald-500 text-black rounded">Select</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               </div>
               {/* BOTTOM HALF - Deal ticker + action pills */}
               <div className="h-44 bg-[#071224] rounded-lg p-4">
