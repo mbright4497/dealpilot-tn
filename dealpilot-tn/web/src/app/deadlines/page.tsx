@@ -4,13 +4,16 @@ import React, {useEffect, useState} from 'react'
 export default function DeadlinesPage(){
   const [items,setItems] = useState<any[]|null>(null)
   useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch('/api/deadlines'); if(!mounted) return; if(res.ok){ const j = await res.json(); setItems(j.deadlines || j || []) } else { setItems([]) } }catch(e){ if(mounted) setItems([]) } })(); return ()=>{ mounted=false } },[])
-  if(items===null) return <div className="p-6">Loading...</div>
-  if(items.length===0) return <div className="p-6">No upcoming deadlines</div>
-  return (<div className="p-6">
-    <h1 className="text-2xl font-bold mb-4">Deadlines</h1>
-    <div className="mt-2"><a href="/chat" className="text-sm text-gray-400 hover:text-white">← Back to Dashboard</a></div>
-    <div className="space-y-3">
-      {items.map((d:any,i:number)=>{
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Deadlines</h1>
+      <div className="mt-2"><a href="/chat" className="text-sm text-gray-400 hover:text-white">← Back to Dashboard</a></div>
+      <div className="mt-4">
+        {items===null && <div className="p-4">Loading...</div>}
+        {items!==null && items.length===0 && <div className="p-4">No upcoming deadlines</div>}
+        {items && items.length>0 && (
+          <div className="space-y-3">
+            {items.map((d:any,i:number)=>{
         const days = d.days_remaining ?? Math.ceil((new Date(d.date).getTime()-Date.now())/(1000*60*60*24))
         const overdue = days < 0
         const today = days === 0
@@ -28,6 +31,10 @@ export default function DeadlinesPage(){
           </div>
         )
       })}
+          </div>
+        )}
+      </div>
     </div>
-  </div>)
+  )
 }
+
