@@ -10,6 +10,7 @@ const deals_1 = __importDefault(require("./api/deals"));
 const offers_1 = __importDefault(require("./api/offers"));
 const voice_1 = __importDefault(require("./api/voice"));
 const webhook_1 = __importDefault(require("./api/webhook"));
+const communications_1 = __importDefault(require("./api/communications"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(body_parser_1.default.json());
@@ -17,6 +18,7 @@ app.get('/health', (req, res) => res.json({ ok: true, time: new Date().toISOStri
 app.use('/api/deals', deals_1.default);
 app.use('/api/offers', offers_1.default);
 app.use('/api/voice', voice_1.default);
+app.use('/api/communications', communications_1.default);
 app.use('/whatsapp', webhook_1.default);
 // error handler
 app.use((err, req, res, next) => {

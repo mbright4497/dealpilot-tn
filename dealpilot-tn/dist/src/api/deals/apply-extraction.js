@@ -24,17 +24,37 @@ router.post('/apply-extraction', async (req, res) => {
             return res.status(400).json({ error: 'extracted data or pdfUrl required' });
         // map extraction to transaction fields
         const txUpdates = (0, extraction_mapping_1.mapExtractionToTransaction)(data);
-        await supabase_1.supabaseAdmin.from('transactions').upsert({ deal_id: dealId, ...txUpdates }, { onConflict: 'deal_id' });
-        // upsert contacts
-        if (data.contacts && Array.isArray(data.contacts)) {
-            for (const c of data.contacts) {
-                const contactPayload = { deal_id: dealId, name: c.name, email: c.email, phone: c.phone, role: c.role };
-                await supabase_1.supabaseAdmin.from('deal_contacts').upsert(contactPayload, { onConflict: ['deal_id', 'role'] });
+        // ensure we persist contacts into transactions.contacts jsonb and into deal_contacts table
+        const contactsToUpsert = txUpdates.contacts && Array.isArray(txUpdates.contacts) ? txUpdates.contacts : (data.contacts && Array.isArray(data.contacts) ? data.contacts : []);
+        // update transaction row by integer id (transactions.id is int4 in this schema)
+        try {
+            await supabase_1.supabaseAdmin.from('transactions').update(txUpdates).eq('id', Number(dealId));
+        }
+        catch (_e) {
+            // fallback: upsert by deal_id if numeric id update fails
+            try {
+                await supabase_1.supabaseAdmin.from('transactions').upsert({ deal_id: dealId, ...txUpdates }, { onConflict: 'deal_id' });
             }
+            catch (__e) { }
+        }
+        // persist contacts both as normalized rows and as jsonb in transactions
+        if (Array.isArray(contactsToUpsert) && contactsToUpsert.length) {
+            for (const c of contactsToUpsert) {
+                const contactPayload = { deal_id: dealId, name: c.name, email: c.email || null, phone: c.phone || null, role: c.role || null };
+                try {
+                    await supabase_1.supabaseAdmin.from('deal_contacts').upsert(contactPayload, { onConflict: ['deal_id', 'role'] });
+                }
+                catch (_e) { }
+            }
+            // also update transactions.contacts jsonb column for quick reads
+            try {
+                await supabase_1.supabaseAdmin.from('transactions').update({ contacts: contactsToUpsert }).eq('id', Number(dealId));
+            }
+            catch (_e) { }
         }
         // compute deadlines using timeline engine helper
-        // expect txUpdates to include contract_date or binding_date
-        const bindingDate = txUpdates.contract_date || txUpdates.binding_date || txUpdates.contractDate;
+        // expect txUpdates to include binding or contract_date
+        const bindingDate = txUpdates.binding || txUpdates.contract_date || txUpdates.binding_date || txUpdates.contractDate;
         if (bindingDate) {
             const deadlines = (0, timeline_engine_1.generateDeadlinesForDeal)(dealId, bindingDate, { inspection_days: txUpdates.inspection_days, financingType: txUpdates.financingType });
             if (deadlines && deadlines.length) {

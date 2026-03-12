@@ -1,16 +1,14 @@
-Headline: Quick Tip: Find the best new-build deals in the Tri-Cities
+# Afternoon FB/IG Post (Tri-Cities)
+*Timestamp: 2026-03-11 12:40 EDT*
 
-Body (<=125 chars): New to buying? New construction means warranties & lower maintenance — see top value neighborhoods near Johnson City. 
+**Headline:** "Spring inventory is building—but now’s the time to lock your new construction deal."
 
-Supporting bullets:
-- Low-maintenance homes with builder warranties
-- Move-in ready options under $400K (we'll find them)
-- Local market moving fast — act before price changes
+**Primary Text Variation A (≤125 chars):** "Median price just hit $449K—let AI show you all the new builds under $400K before the next jump."
 
-CTA: Tap to get the free New Construction Guide + instant AI answers
+**Primary Text Variation B (≤125 chars):** "New listings are popping, but only AI-backed tours keep you in the front of line for spec homes."
 
-Image suggestions:
-- Carousel: 1) Exterior of a modern new-build (neutral siding/covered porch) 2) Bright open kitchen interior 3) Map pin showing Johnson City/Kingsport/Bristol
-- Text overlay on first image: "New Construction Guide — Tri-Cities"
+**Image Caption:** "AI + human intel on fresh Tri-Cities new builds—see today’s hottest pricing before it’s gone."
 
-Notes: Different angle than morning post — focuses on buyer tips and market urgency. Use 4:5 aspect ratio for FB/IG, keep headline readable at thumbnail size.
+**CTA:** "Tap to text the AI assistant for same-day tours and incentives." 
+
+**Recommended Post Time:** 4:00 PM ET (prime afternoon scroll window).
