@@ -126,12 +126,12 @@ function Stepper({ step }: { step: StepId }) {
   );
 }
 
-function EvaHeader({ title, subtitle, onCancel }: { title: string; subtitle: string; onCancel: () => void }) {
+function RevaHeader({ title, subtitle, onCancel }: { title: string; subtitle: string; onCancel: () => void }) {
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-orange-500 text-black font-bold flex items-center justify-center">
-          E
+          R
         </div>
         <div>
           <div className="text-white font-semibold">{title}</div>
@@ -298,10 +298,11 @@ export default function ContractIntake({ onConfirm, onCancel }: Props) {
       }
 
       setParsed(data);
+      try{ localStorage.setItem('pending_parsed_deal', JSON.stringify(data)) }catch(e){}
       setUploadProgress(100);
       setStep(2);
     } catch (e: any) {
-      setParseError(e?.message || "Eva couldn't parse this contract.");
+      setParseError(e?.message || "Reva couldn't parse this contract.");
     } finally {
       setParsing(false);
     }
@@ -342,12 +343,14 @@ export default function ContractIntake({ onConfirm, onCancel }: Props) {
 
     next.fields = fields;
     setParsed(next);
+    try{ localStorage.setItem('pending_parsed_deal', JSON.stringify(next)) }catch(e){}
   }
 
   function updateTimeline(idx: number, patch: Partial<ParsedResponse["timeline"][number]>) {
     if (!parsed) return;
     const next = { ...parsed, timeline: parsed.timeline.map((t, i) => (i === idx ? { ...t, ...patch } : t)) };
     setParsed(next);
+    try{ localStorage.setItem('pending_parsed_deal', JSON.stringify(next)) }catch(e){}
   }
 
   function addTimelineEvent() {
@@ -366,7 +369,7 @@ export default function ContractIntake({ onConfirm, onCancel }: Props) {
     setParsed({ ...parsed, timeline: parsed.timeline.filter((_, i) => i !== idx) });
   }
 
-  const evaSubtitle = useMemo(() => {
+  const revaSubtitle = useMemo(() => {
     if (step === 1) return "Upload your RF401 PDF. I’ll read it and build the transaction draft.";
     if (step === 2) return "I found the following details in your contract. Review and edit anything that looks off.";
     if (step === 3) return "Here’s your timeline. Adjust labels/dates as needed before creating the transaction.";
@@ -376,9 +379,9 @@ export default function ContractIntake({ onConfirm, onCancel }: Props) {
   return (
     <div className="bg-[#1a1a2e] text-white border border-white/10 rounded-2xl p-6">
       <div className="flex flex-col gap-4">
-        <EvaHeader
+        <RevaHeader
           title="AI Transaction Intake"
-          subtitle={evaSubtitle}
+          subtitle={revaSubtitle}
           onCancel={() => {
             resetAll();
             onCancel();
@@ -890,6 +893,8 @@ export default function ContractIntake({ onConfirm, onCancel }: Props) {
                 <button
                   type="button"
                   onClick={() => {
+                    // persist was stored earlier; call parent and clear pending parsed
+                    try{ localStorage.removeItem('pending_parsed_deal') }catch(e){}
                     onConfirm(parsed);
                     resetAll();
                   }}
