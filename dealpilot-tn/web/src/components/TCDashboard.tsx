@@ -131,7 +131,12 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
           {nextClosing ? (
             <>
               <p className="text-3xl font-bold text-white">{String(nextClosing.tx.address||'').replace(/\}/g,'')}</p>
-              <p className="text-sm text-cyan-300/70 mt-1">{Math.max(0, Math.ceil((nextClosing.date.getTime()-Date.now())/(1000*60*60*24)))} days</p>
+              {(() => {
+                const days = Math.ceil((nextClosing.date.getTime()-Date.now())/(1000*60*60*24))
+                if (isNaN(days)) return <p className="text-sm text-cyan-300/70 mt-1">TBD</p>
+                if (days < 0) return <p className="text-sm text-red-400 mt-1">OVERDUE — {Math.abs(days)} days past closing</p>
+                return <p className="text-sm text-cyan-300/70 mt-1">{days} days</p>
+              })()}
             </>
           ) : (
             <p className="text-3xl font-bold text-white">—</p>
