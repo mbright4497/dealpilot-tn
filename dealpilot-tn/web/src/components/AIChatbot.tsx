@@ -137,7 +137,9 @@ export default function AIChatbot({ onClose, style = 'friendly-tn', voiceEnabled
                   {recording? '●' : '🎤'}
                 </button>
               )}
-              <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter' && send()} className="border-none p-2 flex-1 rounded text-gray-900 placeholder-gray-400" placeholder="Type a message..." />
+              <input id="reva-file-input" type="file" accept="application/pdf,image/*" className="hidden" onChange={async (e)=>{ const f = e.target.files&&e.target.files[0]; if(!f) return; const fd = new FormData(); fd.append('file', f); try{ const r = await fetch('/api/intake-apply', { method:'POST', body: fd }); if(r.ok) alert('Uploaded'); else alert('Upload failed') }catch(e){ alert('Upload failed') } }} />
+              <button onClick={()=>{ const inp = document.getElementById('reva-file-input') as HTMLInputElement; if(inp) inp.click() }} className="p-2 rounded bg-gray-100">📎</button>
+              <textarea value={input} onChange={e=>setInput(e.target.value)} rows={2} className="border-none p-2 flex-1 rounded text-gray-900 placeholder-gray-400" placeholder="Type a message..." />
               <button onClick={()=>send()} className="bg-orange-500 text-white p-2 rounded hover:bg-orange-600">Send</button>
             </div>
           </div>
