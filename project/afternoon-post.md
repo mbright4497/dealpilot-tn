@@ -1,14 +1,21 @@
-# Afternoon FB/IG Post (Tri-Cities)
-*Timestamp: 2026-03-11 12:40 EDT*
+Headline: "Found your future home — faster."
 
-**Headline:** "Spring inventory is building—but now’s the time to lock your new construction deal."
+Primary text (<=125 chars): Stop scrolling — get instant answers about new builds near you. Free guide + instant AI help.
 
-**Primary Text Variation A (≤125 chars):** "Median price just hit $449K—let AI show you all the new builds under $400K before the next jump."
+Body copy (Facebook / Instagram):
+Thinking about new construction in the Tri-Cities? Don't wait for callbacks. Our AI assistant knows which builders have move-in ready homes, current incentives, and estimated timelines — so you can compare options in minutes, not days. Grab the free New Construction Guide and get a 1‑min AI walkthrough.
 
-**Primary Text Variation B (≤125 chars):** "New listings are popping, but only AI-backed tours keep you in the front of line for spec homes."
+CTA: "Get the Guide & Quick Tour"
 
-**Image Caption:** "AI + human intel on fresh Tri-Cities new builds—see today’s hottest pricing before it’s gone."
+Suggested image/visual: Carousel: 1) Exterior of a popular spec home, 2) interior open-plan kitchen, 3) screenshot of AI chat answering a builder question. Use local landmarks subtly in background (e.g., Johnson City skyline) to increase relevance.
 
-**CTA:** "Tap to text the AI assistant for same-day tours and incentives." 
+Hashtags: #TriCitiesTN #NewConstruction #JohnsonCity #Kingsport #BristolTN #HomeBuilding #MoveInReady #RealEstate
 
-**Recommended Post Time:** 4:00 PM ET (prime afternoon scroll window).
+Stories variant (short, 2 lines):
+New construction answers in 60 seconds. Swipe up for the free guide + AI tour.
+
+Notes:
+- Tone: helpful, local, actionable. Different angle from morning post — focuses on speed and AI assistant as decision shortcut rather than price or financing.
+- Workhorse: when pushing live, use dynamic image text overlays with price starting points per ad set (requires MLS/builder confirmation). Tag ad creative by neighborhood for performance tracking.
+
+Generated: SUBAGENT — ready to paste into FB/IG composer. Replace price overlays after MLS pull.

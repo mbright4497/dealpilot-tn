@@ -11,6 +11,18 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const id = Number(params.id)
     if(!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
+    // Audit: record who deleted what and when
+    try{
+      await supabase.from('audit_logs').insert({
+        user_id: user.id,
+        action: 'delete_transaction',
+        resource: 'transactions',
+        resource_id: id,
+        details: JSON.stringify({ ip: req.headers.get('x-forwarded-for') || null }),
+        created_at: new Date().toISOString()
+      })
+    }catch(ae){ console.error('Audit insert failed', ae) }
+
     const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user.id)
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true })

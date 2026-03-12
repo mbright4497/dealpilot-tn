@@ -169,6 +169,48 @@ export async function POST(req: Request) {
       }
     }
 
+    // If user explicitly asked to start a new deal/transaction, create one
+    try {
+      const lastUser = [...messages].reverse().find((m: any) => m.role === 'user')
+      const userAskedNewDeal = lastUser && /\b(start|create|new)\b[\s\S]{0,40}\b(deal|transaction)\b/i.test(lastUser.content || '')
+      if (userAskedNewDeal) {
+        // Build minimal deal record from extracted fields when available
+        const dealPayload: any = {
+          status: 'draft',
+          property_address: (extractedFields && (extractedFields.address || extractedFields.property_address || extractedFields.property)) || null,
+          sale_price: (extractedFields && (extractedFields.purchase_price || extractedFields.price)) || null,
+          closing_date: (extractedFields && (extractedFields.closing_date || extractedFields.closing)) || null,
+          parties: JSON.stringify({ client: (extractedFields && (extractedFields.client_name || extractedFields.client)) || null }),
+          created_at: new Date().toISOString()
+        }
+        try {
+          const { data: newDeal, error: dealErr } = await supabase
+            .from('deals')
+            .insert(dealPayload)
+            .select('*')
+            .limit(1)
+            .single()
+          if (dealErr) {
+            console.error('Deal create error:', dealErr)
+          } else if (newDeal && newDeal.id) {
+            quickActions.unshift('Open deal')
+            // Include creation flag in response so front-end can auto-create if desired
+            return NextResponse.json({
+              reply,
+              extractedFields,
+              formSuggestion,
+              quickActions,
+              intent: 'create_transaction',
+              createTransaction: true,
+              createdDeal: { id: newDeal.id, url: `/deals/${newDeal.id}` }
+            })
+          }
+        } catch (createErr) {
+          console.error('Deal insert exception:', createErr)
+        }
+      }
+    } catch (e) { /* ignore */ }
+
     // Save to Supabase if we have a dealId
     if (extractedFields && dealId && formId) {
       try {
