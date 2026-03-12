@@ -32,7 +32,7 @@ export default function AIChatbot({ onClose, style, voiceEnabled }: any){
     const systemPrompt = `You are Eva, an AI assistant for a real estate transaction coordinator. You have access to the user's live deal data. Reference deals by address. Give specific deadline dates and party names. Here are the user's active deals: ${JSON.stringify(transactions)}. Here is deal state: ${JSON.stringify(dealState)}. Here are upcoming deadlines: ${JSON.stringify(deadlines)}`
 
     try{
-      const res = await fetch('/api/assistant/chat', {
+      const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }] })
@@ -54,9 +54,7 @@ export default function AIChatbot({ onClose, style, voiceEnabled }: any){
     const { transactions, dealState, deadlines } = await fetchDealData()
     const systemPrompt = `You are Eva, an AI assistant for a real estate transaction coordinator. You have access to the user's live deal data. Reference deals by address. Give specific deadline dates and party names. Here are the user's active deals: ${JSON.stringify(transactions)}. Here is deal state: ${JSON.stringify(dealState)}. Here are upcoming deadlines: ${JSON.stringify(deadlines)}`
     try{
-      const res = await fetch('/api/assistant/chat', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: q }] })
-      })
+      const res = await fetch('/api/ai', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: q }] }) })
       const j = await res.json()
       const reply = j?.reply || j?.choices?.[0]?.message?.content || j?.content || 'No response'
       setMessages(prev=>[...prev, {role:'user', content: q}, {role:'assistant', content: reply}])
