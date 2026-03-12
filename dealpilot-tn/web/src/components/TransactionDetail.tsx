@@ -68,6 +68,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         return
       }
       const uploaded = await res.json()
+      // audit upload
+      try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'upload_document', resource:'documents', resource_id: transaction.id, details: { filename: uploaded?.name || file.name, document_id: uploaded?.id } }) }) }catch(e){ console.error('audit failed', e) }
+
       // attempt classification
       try{
         const clf = await fetch('/api/documents/classify', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ filename: uploaded?.name || file.name, text_preview: '' }) })
@@ -252,15 +255,16 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     }
   }
 
-  function addContact(){
+  async function addContact(){
     if(!newContact.name||!newContact.role) return
     const updated = [...localContacts, {...newContact}]
     setLocalContacts(updated)
     if(onUpdateContacts) onUpdateContacts(transaction.id, updated)
     setNewContact({role:'',name:'',company:'',phone:'',email:''})
     setShowAddContact(false)
+    try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'add_party', resource: 'deal_parties', resource_id: transaction.id, details: { party: updated[updated.length-1] } }) }) }catch(e){ console.error('audit failed', e) }
   }
-  function removeContact(idx:number){ const updated = localContacts.filter((_,i)=>i!==idx); setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated) }
+  async function removeContact(idx:number){ const updated = localContacts.filter((_,i)=>i!==idx); setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated); try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'remove_party', resource: 'deal_parties', resource_id: transaction.id, details: { removed_index: idx } }) }) }catch(e){ console.error('audit failed', e) } }
 
   // split timeline into past / upcoming
   const now = Date.now()
@@ -924,6 +928,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                           .from(storageBucket)
                           .list(`deal-${transaction.id}`)
                         setDocs(data || [])
+                        try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'delete_document', resource:'documents', resource_id: transaction.id, details: { filename: d.name, filePath } }) }) }catch(e){ console.error('audit failed', e) }
                       }catch(e){ console.error(e) }
                     }
                     return (
@@ -955,7 +960,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                           <div className="font-semibold">{it.title}</div>
                           <div className="text-xs text-gray-400">{dl ? fmtDate(dl.date) : 'Not set'}</div>
                         </div>
-                        <input type="checkbox" checked={it.status==='done'} onChange={()=>{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]) }} />
+                        <input type="checkbox" checked={it.status==='done'} onChange={async ()=>{ try{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]); await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'checklist_toggle', resource: 'deal_checklist', resource_id: transaction.id, details: { key: it.key, new_status: it.status } }) }) }catch(e){ console.error('audit failed', e) } }} />
                       </div>
                     )
                   })}
