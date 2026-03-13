@@ -872,15 +872,15 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="text-sm text-gray-300">Recent AI Interpretations</div>
             <div className="text-xs text-gray-500">Last 5</div>
           </div>
-          {recentAiInterpretations.length===0 ? (
+          {recentAiInterpretations?.length===0 ? (
             <div className="text-sm text-gray-400">No recent AI classifications.</div>
           ) : (
             <div className="space-y-2">
-              {recentAiInterpretations.map((r:any,i:number)=> (
+              {recentAiInterpretations?.map((r:any,i:number)=> (
                 <div key={r.id || i} className="p-2 bg-[#0d1624] rounded">
                   <div className="text-xs text-gray-400">{fmtDate(r.created_at)} • {r.recipient || ''}</div>
                   <div className="mt-1 text-sm text-white">{r.message}</div>
-                  <div className="mt-1 text-xs text-amber-300">AI: {(r.metadata && r.metadata.ai && (r.metadata.ai.milestone || JSON.stringify(r.metadata.ai))) || '—'}</div>
+                  <div className="mt-1 text-xs text-amber-300">AI: {(r.metadata?.ai?.milestone || JSON.stringify(r.metadata?.ai)) || '—'}</div>
                 </div>
               ))}
             </div>
