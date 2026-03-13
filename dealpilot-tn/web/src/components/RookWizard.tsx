@@ -237,6 +237,11 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           <div>
             <h2 className="text-lg font-semibold text-white">RookWizard ({transactionId})</h2>
             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Step {step} · {status}</p>
+            {selectedDeal ? (
+              <div className="mt-1 text-sm text-emerald-300">Connected to: <span className="font-semibold text-white">{selectedDeal.address || selectedDeal.address_line || `Deal ${selectedDeal.id}`}</span></div>
+            ) : (
+              <div className="mt-1 text-sm text-gray-400">Select a deal to connect to RookWizard</div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button onClick={openDealSelector} className="text-sm px-3 py-1 bg-gray-800 text-gray-200 rounded hover:bg-gray-700">Select a Deal</button>
@@ -324,7 +329,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
                   {saving ? 'Saving…' : 'Save & Continue'}
                 </button>
                 <button onClick={handleMarkUnknown} disabled={saving} className="rounded-full border border-white/20 px-5 py-2 text-sm text-white hover:border-white/50 disabled:opacity-60">Mark as Unknown</button>
-                <button onClick={handleComplete} disabled={!allowComplete || saving} className="rounded-full border border-cyan-400 px-5 py-2 text-sm text-cyan-200 hover:border-cyan-200 disabled:opacity-50">{saving && allowComplete ? 'Completing…' : 'Finalize & Export'}</button>
+                <button onClick={handleComplete} disabled={!(allowComplete || selectedDeal) || saving} className="rounded-full border border-cyan-400 px-5 py-2 text-sm text-cyan-200 hover:border-cyan-200 disabled:opacity-50">{saving && (allowComplete || selectedDeal) ? 'Completing…' : 'Finalize & Export'}</button>
               </div>
               {completeSummary && (
                 <div className="mt-6 rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-gray-200">
