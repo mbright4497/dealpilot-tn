@@ -117,6 +117,19 @@ export default function ChatPage() {
   const [rookWizardOpen, setRookWizardOpen] = useState(false)
   const [showRookPicker, setShowRookPicker] = useState(false)
   const [availableDealsForPicker, setAvailableDealsForPicker] = useState<any[]>([])
+  const [dealTickerEvents, setDealTickerEvents] = useState<any[]>([])
+
+  // load existing ticker events and subscribe to updates from document classifier
+  useEffect(()=>{
+    try{
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null
+      const arr = raw ? JSON.parse(raw) : []
+      if(Array.isArray(arr)) setDealTickerEvents(arr.slice(0,50))
+    }catch(e){}
+    const handler = (e:any)=>{ try{ const detail = e?.detail; if(detail){ setDealTickerEvents(prev=>[detail, ...prev].slice(0,50)) } }catch(_){ } }
+    window.addEventListener('deal:ticker', handler as EventListener)
+    return ()=>{ window.removeEventListener('deal:ticker', handler as EventListener) }
+  },[])
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
@@ -756,6 +769,14 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
                       </div>
                     )
                   })}
+
+                  {/* Ticker events (document uploads, RF601, deadlines) */}
+                  {dealTickerEvents.map((e:any,i:number)=> (
+                    <div key={`evt-${i}`} className="min-w-[220px] p-3 bg-[#0d1624] rounded border border-white/6">
+                      <div className="font-semibold text-white">{e.icon || '🔔'} {e.message}</div>
+                      <div className="text-xs text-gray-400">Deal #{e.dealId} • {new Date(e.ts).toLocaleTimeString()}</div>
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-3">
                   <div className="text-sm text-gray-300 mb-2">Reva's Actions</div>
