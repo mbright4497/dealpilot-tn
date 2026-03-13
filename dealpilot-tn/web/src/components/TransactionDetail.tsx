@@ -147,7 +147,12 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 const oldDate = cj.previous_inspection_date || cj.old_date || null
                 const msg = newDate ? `RF601 Amendment detected — Inspection deadline changed from ${oldDate||'unknown'} to ${newDate}` : `RF601 Amendment detected — review amendment.`
                 const ev = { ts: now, dealId: transaction.id, message: msg, icon: '📝' }
-                try{ const key = 'deal_ticker_events'; const raw = localStorage.getItem(key); const arr = raw ? JSON.parse(raw) : []; arr.unshift(ev); localStorage.setItem(key, JSON.stringify(arr.slice(0,100))); window.dispatchEvent(new CustomEvent('deal:ticker', { detail: ev })) }catch(e){/* ignore */}
+                try{
+                  // persist to server-backed ticker
+                  await fetch('/api/deal-ticker/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, event_type: 'rf601', message: msg, metadata: { detected: 'rf601', uploaded_id: uploaded?.id } }) })
+                  // also bump client UI via event
+                  window.dispatchEvent(new CustomEvent('deal:ticker', { detail: ev }))
+                }catch(e){ console.warn('ticker add failed', e) }
               }
             }catch(e){ console.warn('ticker push failed', e) }
           }
