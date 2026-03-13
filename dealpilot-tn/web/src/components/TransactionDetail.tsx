@@ -9,7 +9,6 @@ import DocumentComplianceBar from './DocumentComplianceBar'
 import EditTransactionModal from './EditTransactionModal'
 import DealPartiesPanel from './DealPartiesPanel/DealPartiesPanel'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
-import RecentAiInterpretations from "@/components/RecentAiInterpretations"
 
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
@@ -496,10 +495,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   // deal deadlines state (Phase 11)
   const [dealDeadlines, setDealDeadlines] = React.useState<any[]>([])
-  const [recentAiInterpretations, setRecentAiInterpretations] = React.useState<any[]>([])
   React.useEffect(() => {
     let mounted = true
-    ;(async () => {
+    async function loadDeadlines(){
       try{
         const res = await fetch(`/api/deal-deadlines/${transaction.id}`)
         if(!mounted) return
@@ -508,18 +506,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           setDealDeadlines(j.deadlines || j.all_deadlines || [])
         }
       }catch(e){ }
-    })()
-
-    // load recent AI interpretations for communications panel
-    ;(async ()=>{
-      try{
-        const r = await fetch('/api/deal-activity-log/recent', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, limit: 5 }) })
-        if(!r.ok) return
-        const j = await r.json()
-        if(mounted && j && j.results) setRecentAiInterpretations(j.results || [])
-      }catch(e){ }
-    })()
-
+    }
+    loadDeadlines()
     return () => { mounted = false }
   }, [transaction.id])
 
