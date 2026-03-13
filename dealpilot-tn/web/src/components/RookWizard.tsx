@@ -270,6 +270,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </div>
 
         <div className="px-6 py-5">
+          <div className="border border-orange-400 bg-orange-50 p-4 rounded-lg mb-4"><h3 className="text-lg font-bold text-orange-700">Professional Compliance Guide</h3><p className="text-sm text-orange-600">Follow this path to ensure all Tennessee real estate requirements are met without error.</p></div>
           <div className="mb-4 grid gap-2 sm:grid-cols-2">
             {sectionOrder.map((section) => (
               <button
