@@ -4,3 +4,4 @@
 /.next
 /dist
 .DS_Store
+.env.local
