@@ -38,6 +38,30 @@ export default function DashboardV2() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [pipelineCounts, setPipelineCounts] = React.useState({ green: 0, yellow: 0, red: 0 });
+
+  // compute pipeline health counts for dashboard mini-cards
+  React.useEffect(()=>{
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/transactions')
+        if(!mounted) return
+        if(!res.ok) return
+        const txs = await res.json()
+        // dynamic import to avoid SSR issues
+        // @ts-ignore
+        const { computeDealHealth } = await import('@/lib/deal-health')
+        const counts = { green:0, yellow:0, red:0 }
+        for(const t of (Array.isArray(txs)? txs : txs.results || [])){
+          try{ const h = computeDealHealth(t); counts[h.color] = (counts[h.color]||0)+1 }catch(e){}
+        }
+        if(mounted) setPipelineCounts(counts)
+      }catch(e){ }
+    })()
+    return ()=>{ mounted=false }
+  },[])
+
   const load = React.useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -117,6 +141,20 @@ export default function DashboardV2() {
                 Portfolio: {riskLabel(data.riskLevel)}
               </span>
             )}
+
+            {/* Pipeline mini cards */}
+            <div className="ml-3 inline-flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-emerald-500" /> <div className="text-gray-200">{pipelineCounts.green}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-amber-500" /> <div className="text-gray-200">{pipelineCounts.yellow}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full bg-rose-500" /> <div className="text-gray-200">{pipelineCounts.red}</div>
+              </div>
+            </div>
+
           </div>
         </div>
 

@@ -6,6 +6,7 @@ function formatDate(d: string): string {
   return new Date(Number(y), Number(m) - 1, Number(day)).toLocaleDateString()
 }
 import ContractIntake from './ContractIntake'
+import { computeDealHealth } from '@/lib/deal-health'
 interface Transaction {
   id: number
   address: string
@@ -90,13 +91,28 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           const activeCount = transactions.filter(t=> (t.status||'').toLowerCase() !== 'closed').length
           const needs = transactions.find(t => !t.binding || t.binding === '' )
           const highlight = needs ? `${String(needs.address||'').replace(/\}/g,'') } needs attention — missing binding` : (transactions[0] ? `${String(transactions[0].address||'').replace(/\}/g,'')} is on track` : 'No active deals')
-          return (
-            <div className="flex items-center justify-between gap-4">
-              <div className="text-sm text-gray-300">You have <span className="font-semibold text-white">{activeCount}</span> active deals.</div>
-              <div className="text-sm text-gray-300">{highlight}</div>
-              <div />
-            </div>
-          )
+
+          // pipeline health summary
+          try{
+            const counts = { green:0, yellow:0, red:0 }
+            for(const t of transactions){ try{ const h = computeDealHealth(t); counts[h.color] = (counts[h.color]||0)+1 }catch(e){} }
+            const summary = `${counts.green} Green, ${counts.yellow} Yellow, ${counts.red} Red`
+            return (
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-sm text-gray-300">You have <span className="font-semibold text-white">{activeCount}</span> active deals.</div>
+                <div className="text-sm text-gray-300">{highlight}</div>
+                <div className="text-sm text-gray-200 font-semibold">{summary}</div>
+              </div>
+            )
+          }catch(e){
+            return (
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-sm text-gray-300">You have <span className="font-semibold text-white">{activeCount}</span> active deals.</div>
+                <div className="text-sm text-gray-300">{highlight}</div>
+                <div />
+              </div>
+            )
+          }
         })()}
       </div>
 
@@ -151,9 +167,17 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
                   <svg className="w-12 h-12" viewBox="0 0 36 36">
                     <path className="text-gray-800" d="M18 2a16 16 0 1 0 16 16A16 16 0 0 0 18 2" fill="#0f1724"/>
                     <path className="text-orange-400" d="M18 2a16 16 0 1 0 16 16A16 16 0 0 0 18 2" stroke="#0f1724" stroke-width="0" fill="none"/>
-                    <circle cx="18" cy="18" r="10" fill="transparent" stroke="#111827" stroke-width="4"/>
-                    <circle cx="18" cy="18" r="10" fill="transparent" stroke="#F97316" stroke-width="4" stroke-dasharray={`${percent} 100`} stroke-dashoffset="25" stroke-linecap="round"/>
-                    <text x="18" y="20" fill="#fff" font-size="8" text-anchor="middle" className="font-mono">{percent}%</text>
+                    <circle cx="18" cy="18" r="10" fill="transparent" stroke="#111827" strokeWidth={4} />
+                    {(() => {
+                      try{
+                        const h = computeDealHealth(tx)
+                        const col = h.color === 'green' ? '#16A34A' : h.color === 'yellow' ? '#F59E0B' : '#EF4444'
+                        return <circle cx="18" cy="18" r="10" fill="transparent" stroke={col} strokeWidth={4} strokeDasharray={`${percent} 100`} strokeDashoffset={25} strokeLinecap="round" />
+                      }catch(e){
+                        return <circle cx="18" cy="18" r="10" fill="transparent" stroke="#F97316" strokeWidth={4} strokeDasharray={`${percent} 100`} strokeDashoffset={25} strokeLinecap="round" />
+                      }
+                    })()}
+                    <text x="18" y="20" fill="#fff" fontSize={8} textAnchor="middle" className="font-mono">{percent}%</text>
                   </svg>
                   <div className="text-sm text-gray-300">
                     <div>Days to close</div>
