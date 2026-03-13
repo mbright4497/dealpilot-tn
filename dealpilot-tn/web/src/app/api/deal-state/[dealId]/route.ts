@@ -115,10 +115,8 @@ export async function GET(
       .single()
 
     if (txErr || !tx) {
-      return NextResponse.json(
-        { error: 'Deal state not found', details: error?.message },
-        { status: 404 }
-      )
+      // If no transaction/deal_state row, return empty JSON to avoid client JSON parsing errors
+      return NextResponse.json({}, { status: 200 })
     }
 
     const bindingDate = (tx as any).binding || null

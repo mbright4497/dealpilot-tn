@@ -1,7 +1,7 @@
-# Market Intel — Tri-Cities, TN (placeholder)
+# Market Intel — Tri-Cities, TN (NEEDS-LIVE-LOOKUP)
 
 ## Overview
-A quick market snapshot for new construction in the Tri-Cities (Johnson City / Kingsport / Bristol). NOTE: automated web search failed; live data pull required. Replace placeholders below with real MLS / builder / county records data.
+Quick snapshot for new construction in the Tri-Cities (Johnson City / Kingsport / Bristol). This document is intentionally left with placeholders because no single API currently provides the builder + MLS data bundle we need; please run live MLS/builder exports to fill in the fields below.
 
 ## Median Prices
 - Median sales price (new construction): [PLACEHOLDER]
@@ -16,15 +16,15 @@ A quick market snapshot for new construction in the Tri-Cities (Johnson City / K
 - DOM trend vs. last 90 days: [PLACEHOLDER]
 
 ## Source links / notes
-- MLS search link: [PLACEHOLDER]
-- Builder sales pages: [PLACEHOLDER]
+- MLS search link / export: [PLACEHOLDER]
+- Builder sales pages / community updates: [PLACEHOLDER]
 - County recorder / permits: [PLACEHOLDER]
-- Other sources: [PLACEHOLDER]
+- Other sources (news, incentive releases): [PLACEHOLDER]
 
 ## Action required
-- Run live web search / MLS export for Tri-Cities new construction
-- Populate the fields above with verified numbers and source links
-- Re-run in 7 days for trend tracking
+- Pull live MLS or builder data for Tri-Cities new construction; CMS/API feed missing data today
+- Replace placeholders with verified numbers, trends, and source URLs
+- Re-run in 7 days for trend tracking and note any new incentives
 
 ---
-Generated: SUBAGENT — create real data pull to replace placeholders.
+Generated: SUBAGENT — live lookup needed to finish.

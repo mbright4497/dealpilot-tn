@@ -1,26 +1,40 @@
-# Follow-ups — Priority Actions (today)
+# Follow-ups — Tri-Cities New Construction (template)
 
-Status template (short):
+**Status template:**
 - DONE: [items completed today]
 - NEXT: [next actions / owners]
 - BLOCKED: [issues preventing progress]
 
-## Today's priority action list
-1) Call top leads (PLACEHOLDER)
-   - Description: Call and qualify top leads from yesterday's capture. Script: confirm budget, timeline, desired location, interest in new construction.
-   - How to populate: After running a live lead pull from GHL or MLS lead list, replace (PLACEHOLDER) with the top 10 lead names, phone numbers, and assigned agent.
+## 1) Phone follow-up queue (placeholder)
+**Leads:** [Insert top 8–10 leads from GHL / FB forms; include name, phone, preferred contact window]
+**Call script:**
+- Intro: "Hey [Name], it’s [Agent] with iHome Team. Caught you while you were checking out new construction near [City]."
+- Qualify: "Quick question — what price range and timeline are you aiming for?" + "Are warranties/move-in ready moves important?"
+- Close: "I can share a tailored shortlist and our free New Construction Guide in 5 minutes. Want me to text/email it now?"
+- Notes: Capture budget, timeline, builder preference, and any objections.
 
-2) Promote new listings (PLACEHOLDER)
-   - Description: Share new construction listings across social channels, boost top-performing posts, and tag builder contacts.
-   - How to populate: Pull today's newly active listings (MLS or builder feed), add listing IDs, image links, and target ad variation.
+## 2) Email follow-up template (placeholder)
+**Subject:** "Your Tri-Cities new build shortlist + guide"
+**Body:**
+Hi [Name],
 
-3) Monitor price changes (PLACEHOLDER)
-   - Description: Watch for list price reductions or builder incentives on tracked communities; update pricing sheet and notify agent.
-   - How to populate: Run a nightly listing sync or MLS export; flag listings with price changes and add to this section with date/time.
+Thanks for asking about new construction in the Tri-Cities. I pulled together a short list of Johnson City / Kingsport / Bristol communities that match your [budget/timeline/preferences].
 
-## Notes / Instructions
-- Use GHL export or MLS CSV to replace placeholders with live lead/listing data.
-- After populating, update the Status template at top and save a new version with date suffix if desired (e.g., follow-ups-2026-03-12.md).
+Inside the attached guide you’ll find builder contact info, incentives, and timelines we track daily. I can also send live floorplan links — just reply with what matters most (schools, amenities, move-in date).
+
+Want me to schedule a 5-minute AI walk-through so the assistant answers your questions instantly?
+
+Best,
+[Agent Name] | iHome Team Keller Williams
+Phone: [office phone] | Text: [cell] | Email: [agent email]
+
+## 3) Task placeholders
+- Update CRM tags: [REPLACE WITH TAG SYNC PROCESS]
+- Next checks: call-back reminders, builder incentive updates, social repost plan.
+
+## Notes
+- Replace placeholders with live lead data pulled from GHL exports / MLS lists before sending.
+- Keep a running log (date/time) for follow-ups to update this doc and notify assigned agents.
 
 ---
-Generated: SUBAGENT — placeholders need live data pull to complete.
+Generated: SUBAGENT — fill placeholders with live lead info before outreach.

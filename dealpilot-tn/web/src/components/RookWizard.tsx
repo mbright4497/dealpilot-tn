@@ -54,18 +54,21 @@ export default function RookWizard({ transactionId, onClose }: Props) {
       setLoading(true)
       try {
         const res = await fetch(`/api/rookwizard/${transactionId}/start`, { method: 'POST' })
-        const payload = await res.json()
+        let payload: any = null
+        try { payload = await res.json() } catch(e){ payload = null }
         if (!res.ok) {
-          throw new Error(payload?.error || 'Failed to load wizard')
+          const msg = (payload && payload.error) ? payload.error : `rookwizard start failed: ${res.status}`
+          throw new Error(msg)
         }
         if (cancelled) return
-        setStep(payload.step)
-        setStatus(payload.status)
+        setStep(payload.step || 1)
+        setStatus(payload.status || 'initialized')
+        const wizardData = (payload && payload.wizard_data) ? payload.wizard_data : buildDefaultWizardData()
         setSectionValues({
-          section_1: payload.wizard_data.section_1 || buildDefaultWizardData().section_1,
-          section_2: payload.wizard_data.section_2 || buildDefaultWizardData().section_2,
-          section_2d: payload.wizard_data.section_2d || buildDefaultWizardData().section_2d,
-          section_3_6: payload.wizard_data.section_3_6 || buildDefaultWizardData().section_3_6,
+          section_1: wizardData.section_1 || buildDefaultWizardData().section_1,
+          section_2: wizardData.section_2 || buildDefaultWizardData().section_2,
+          section_2d: wizardData.section_2d || buildDefaultWizardData().section_2d,
+          section_3_6: wizardData.section_3_6 || buildDefaultWizardData().section_3_6,
         })
 
         // attempt to fetch deal info for connected state
@@ -91,7 +94,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         }catch(e){ /* ignore */ }
 
       } catch (err: any) {
-        if (!cancelled) setError(err.message)
+        if (!cancelled) setError(err.message || 'Failed to load wizard')
       } finally {
         if (!cancelled) setLoading(false)
       }
