@@ -656,7 +656,21 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
           {chatMessages.map((m,i)=>(
             <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
-              <div className={`inline-block p-2 rounded ${m.from==='assistant' ? 'bg-gray-700 text-gray-100' : 'bg-orange-500 text-black'}`}>{String(m.text||'').replace(/\}/g,'')}</div>
+              <div className="flex items-center gap-2">
+                <div className={`inline-block p-2 rounded ${m.from==='assistant' ? 'bg-gray-700 text-gray-100' : 'bg-orange-500 text-black'}`}>{String(m.text||'').replace(/\}/g,'')}</div>
+                {m.from==='assistant' && (()=>{
+                  try{
+                    const intent = parseRevaIntent(m.text || '')
+                    const hasDoc = intent && intent.type === 'VIEW_DOC' && intent.documentId
+                    return (
+                      <div className="flex items-center gap-1">
+                        <button onClick={()=>{ try{ const t = new SpeechSynthesisUtterance(String(m.text||'')); window.speechSynthesis.cancel(); window.speechSynthesis.speak(t); }catch(e){ console.error(e) } }} className="p-1 rounded bg-gray-800 text-white text-xs">🔊</button>
+                        {hasDoc ? <button onClick={()=>{ try{ window.open(`/api/documents/${intent.documentId}/signed-url`, '_blank') }catch(e){ console.error(e) } }} className="p-1 rounded bg-gray-800 text-white text-xs">⬇️</button> : null}
+                      </div>
+                    )
+                  }catch(e){ return null }
+                })()}
+              </div>
             </div>
           ))}
         </div>
@@ -1364,7 +1378,21 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <div className="h-64 overflow-auto p-2 bg-gray-800 rounded mb-3">
           {chatMessages.map((m,i)=> (
             <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
-              <div className={`inline-block p-2 rounded ${m.from==='assistant' ? 'bg-gray-700 text-gray-100' : 'bg-orange-500 text-black'}`}>{String(m.text||'')}</div>
+              <div className="flex items-center gap-2">
+                <div className={`inline-block p-2 rounded ${m.from==='assistant' ? 'bg-gray-700 text-gray-100' : 'bg-orange-500 text-black'}`}>{String(m.text||'')}</div>
+                {m.from==='assistant' && (()=>{
+                  try{
+                    const intent = parseRevaIntent(m.text || '')
+                    const hasDoc = intent && intent.type === 'VIEW_DOC' && intent.documentId
+                    return (
+                      <div className="flex items-center gap-1">
+                        <button onClick={()=>{ try{ const t = new SpeechSynthesisUtterance(String(m.text||'')); window.speechSynthesis.cancel(); window.speechSynthesis.speak(t); }catch(e){ console.error(e) } }} className="p-1 rounded bg-gray-800 text-white text-xs">🔊</button>
+                        {hasDoc ? <button onClick={()=>{ try{ window.open(`/api/documents/${intent.documentId}/signed-url`, '_blank') }catch(e){ console.error(e) } }} className="p-1 rounded bg-gray-800 text-white text-xs">⬇️</button> : null}
+                      </div>
+                    )
+                  }catch(e){ return null }
+                })()}
+              </div>
             </div>
           ))}
         </div>
