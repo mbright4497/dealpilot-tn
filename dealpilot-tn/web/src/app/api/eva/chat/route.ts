@@ -107,6 +107,13 @@ export async function POST(req: Request) {
       ...messages
     ]
 
+    // simple intent detection for opening the RF401 wizard
+    const lastUser = (messages && messages.length>0) ? messages[messages.length-1].content : ''
+    const wizardPattern = /wizard|rf401|start.*contract|fill.*contract|purchase.*sale.*agreement/i
+    if(wizardPattern.test(String(lastUser || '')) && dealId){
+      return NextResponse.json({ reply: "I'll open the RF401 Purchase & Sale Wizard for you now. Click the button below to start filling in the contract details.", action: { type: 'open_wizard', dealId } })
+    }
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: openaiMessages,

@@ -596,6 +596,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <button onClick={()=>openDraft('lender')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Lender Status Update</button>
         <button onClick={()=>openDraft('title')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Title Update</button>
         <button onClick={()=>openDraft('closing')} className="px-3 py-2 rounded bg-rose-600 text-white">Send Closing Reminder to All Parties</button>
+        <button onClick={()=>{ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: transaction.id } })); }} className="px-4 py-2 rounded bg-orange-500 text-black font-semibold">RF401 Wizard</button>
       </div>
 
       {/* Mobile: floating Ask Reva button */}

@@ -205,9 +205,11 @@ export default function ChatPage() {
     try{
       // build full conversation payload from chatMessages + new user message
       const history = [...chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content } )), { role: 'user', content: val }]
-      const res = await fetch('/api/eva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: history }) })
+      const res = await fetch('/api/eva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: history, dealId: selectedTxId }) })
       if(res.ok){ const j = await res.json(); const reply = j.reply || j.message || j.summary || '';
         setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()) }])
+        // handle actionable response to open wizard
+        if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
       }
     }catch(e){ console.error(e); addToast('Chat failed') }
     finally{ setChatLoading(false) }
@@ -639,6 +641,9 @@ export default function ChatPage() {
  {evaSpeaking ? "⏹" : "▶️"}
  </button>
 
+ <div className="ml-3">
+   <button onClick={()=>{ if(selectedTxId){ setRookWizardOpen(true) } else setShowRookPicker(true) }} className="px-3 py-2 bg-orange-500 rounded text-black font-semibold">Open RF401 Wizard</button>
+ </div>
  <form
  onSubmit={async (e) => {
  e.preventDefault();
