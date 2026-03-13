@@ -347,6 +347,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
                   ) : (
                     <div className="mt-3 text-xs text-emerald-200">No missing fields. Ready for export.</div>
                   )}
+                  <div className="mt-4">
+                    <a href={`/api/rookwizard/${transactionId}/export`} className="px-4 py-2 bg-cyan-400 text-black rounded font-semibold">Download TN Compliance Summary</a>
+                  </div>
                 </div>
               )}
             </div>
