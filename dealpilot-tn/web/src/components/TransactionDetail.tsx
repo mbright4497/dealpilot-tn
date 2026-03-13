@@ -9,6 +9,8 @@ import DocumentComplianceBar from './DocumentComplianceBar'
 import EditTransactionModal from './EditTransactionModal'
 import DealPartiesPanel from './DealPartiesPanel/DealPartiesPanel'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
+import RecentAiInterpretations from "@/components/RecentAiInterpretations"
+
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
@@ -872,20 +874,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="text-sm text-gray-300">Recent AI Interpretations</div>
             <div className="text-xs text-gray-500">Last 5</div>
           </div>
-          {Array.isArray(recentAiInterpretations) && recentAiInterpretations.length > 0 ? (
-            <div className="space-y-2">
-              {recentAiInterpretations.map((r:any,i:number)=> {
-                const ts = new Date(r.created_at || Date.now()).toLocaleString()
-                return (
-                  <div key={r.id || i} className="p-2 bg-[#0d1624] rounded">
-                    <div className="text-xs text-gray-400">{ts} • {String(r.recipient || '')}</div>
-                    <div className="mt-1 text-sm text-white">{String(r.message || '')}</div>
-                    <div className="mt-1 text-xs text-amber-300"><pre className="whitespace-pre-wrap">{JSON.stringify(r.metadata?.ai || r.metadata || {}, null, 2)}</pre></div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : null}
+          <RecentAiInterpretations data={recentAiInterpretations} />
         </div>
       )}
 
