@@ -29,6 +29,23 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
   const [rfWarnings, setRfWarnings] = useState<string[]>([])
 
+  // communication / draft state (fix: ensure variables referenced by Quick Actions exist)
+  const [draftOpen, setDraftOpen] = useState(false)
+  const [draftTo, setDraftTo] = useState<string>('')
+  const [draftSubject, setDraftSubject] = useState<string>('')
+  const [draftBody, setDraftBody] = useState<string>('')
+  const [draftContactId, setDraftContactId] = useState<number|undefined>(undefined)
+
+  // helper to add a message to the Reva chat stream
+  function addMessage(msg: {id?:string, role?:string, content?:string, from?:string, text?:string}){
+    // normalize to expected shape
+    const normalized = { from: msg.from || msg.role || (msg.role==='assistant'?'assistant':'user'), text: msg.text || msg.content || '' }
+    setChatMessages(m=>[...m, normalized])
+  }
+
+  // storage bucket name used for signed URLs
+  const storageBucket = 'contracts'
+
   // documents via documents API (db + storage)
   const supabase = createBrowserClient()
   const [docs,setDocs]=useState<any[]>([])
