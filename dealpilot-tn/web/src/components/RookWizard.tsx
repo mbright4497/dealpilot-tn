@@ -71,10 +71,27 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           section_3_6: wizardData.section_3_6 || buildDefaultWizardData().section_3_6,
         })
 
-        // attempt to fetch deal info for connected state
+        // attempt to fetch deal info for connected state (deal-state + transactions)
         try{
           const dealRes = await fetch(`/api/deal-state/${transactionId}`)
           if(dealRes.ok){ const deal = await dealRes.json(); setSelectedDeal(deal) }
+        }catch(e){ /* ignore */ }
+
+        // also fetch canonical transactions row to prefill specific fields
+        try{
+          const txRes = await fetch(`/api/transactions/${transactionId}`)
+          if(txRes.ok){ const tx = await txRes.json(); if(tx){
+            const override:any = {}
+            if(tx.property_address) override.property_address = tx.property_address
+            if(tx.buyer_name) override.buyer_legal_name = tx.buyer_name
+            if(tx.seller_name) override.seller_legal_name = tx.seller_name
+            // other mapping fallbacks
+            if(tx.client) override.buyer_legal_name = override.buyer_legal_name || tx.client
+            if(Object.keys(override).length>0){ setSectionValues(prev => ({ ...prev, section_1: { ...(prev.section_1||{}), ...override } }));
+              // save immediately so the server wizard row is aware
+              await handleSaveSection('section_1', { ...(sectionValues.section_1 || {}), ...override })
+            }
+          } }
         }catch(e){ /* ignore */ }
 
         // read local contract extraction if present

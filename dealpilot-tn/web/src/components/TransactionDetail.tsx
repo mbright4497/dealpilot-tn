@@ -616,7 +616,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <div className="mt-3 flex gap-2">
           {/* Dynamic actions driven by playbook gaps */}
           {(()=>{
-            const [gapActions, setGapActions] = React.useState<any[]|null>(null)
+            const [gapActions, setGapActions] = React.useState<any[]>([])
             React.useEffect(()=>{
               let mounted = true
               ;(async ()=>{
