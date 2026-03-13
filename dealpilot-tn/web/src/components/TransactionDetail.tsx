@@ -1,5 +1,6 @@
 'use client'
 import React, {useState, useEffect, useRef} from 'react'
+import { parseRevaIntent } from '@/lib/revaIntentParser'
 import { useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
