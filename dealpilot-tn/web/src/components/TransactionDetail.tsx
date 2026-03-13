@@ -360,6 +360,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   const [showIntake, setShowIntake] = useState(false)
   const [extractionPreview, setExtractionPreview] = useState<any|null>(null)
+  const [mobileRevaOpen, setMobileRevaOpen] = useState(false)
   // file inputs helper (kept from previous implementation)
   const fileInputsRef = useRef<Record<string,HTMLInputElement|null>>({} as any)
   const ensureInput = (cat:string)=>{
@@ -558,10 +559,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <button onClick={()=>openDraft('closing')} className="px-3 py-2 rounded bg-rose-600 text-white">Send Closing Reminder to All Parties</button>
       </div>
 
+      {/* Mobile: floating Ask Reva button */}
+      <button onClick={()=>setMobileRevaOpen(true)} className="md:hidden fixed bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-orange-500 text-black flex items-center justify-center shadow-lg">💬</button>
+
+
 
 
       {/* EVA HERO (top) - small iterative addition */}
-      <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6">
+      <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6 hidden md:block">
         <div className="mb-2 text-sm text-gray-300 flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" /><span>Reva — Deal Assistant</span></div>
         <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
           {chatMessages.map((m,i)=>(
@@ -1261,6 +1266,30 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   )}
 
   <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+transaction.id); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
+
+  {/* Mobile Reva Drawer */}
+  {mobileRevaOpen && (
+    <div className="fixed inset-0 z-50 flex items-end md:hidden">
+      <div className="absolute inset-0 bg-black bg-opacity-40" onClick={()=>setMobileRevaOpen(false)} />
+      <div className="relative w-full bg-[#061021] rounded-t-2xl p-4 max-h-[80vh] overflow-auto">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full" /><div className="text-white font-semibold">Reva — Deal Assistant</div></div>
+          <button onClick={()=>setMobileRevaOpen(false)} className="text-sm text-gray-300">Close</button>
+        </div>
+        <div className="h-64 overflow-auto p-2 bg-gray-800 rounded mb-3">
+          {chatMessages.map((m,i)=> (
+            <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
+              <div className={`inline-block p-2 rounded ${m.from==='assistant' ? 'bg-gray-700 text-gray-100' : 'bg-orange-500 text-black'}`}>{String(m.text||'')}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 items-center">
+          <input name="ask-mobile" placeholder="Ask Reva about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" onKeyDown={async (e:any)=>{ if(e.key==='Enter'){ const val = e.target.value; if(val){ await sendAIMessage(val); e.target.value=''; } } }} />
+          <button onClick={async ()=>{ const inp = document.querySelector('input[name="ask-mobile"]') as HTMLInputElement|null; const val = inp?.value?.trim(); if(val){ await sendAIMessage(val); if(inp) inp.value=''; } }} className="px-4 py-2 bg-orange-500 rounded">Ask</button>
+        </div>
+      </div>
+    </div>
+  )}
 
       {showIntake && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
