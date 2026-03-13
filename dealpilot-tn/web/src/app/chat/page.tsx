@@ -121,14 +121,25 @@ export default function ChatPage() {
 
   // load existing ticker events and subscribe to updates from document classifier
   useEffect(()=>{
-    try{
-      const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null
-      const arr = raw ? JSON.parse(raw) : []
-      if(Array.isArray(arr)) setDealTickerEvents(arr.slice(0,50))
-    }catch(e){}
+    // load from server-backed ticker
+    let mounted = true
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/deal-ticker')
+        if(!res.ok) throw new Error('fetch failed')
+        const j = await res.json()
+        if(!mounted) return
+        const events = j.events || []
+        setDealTickerEvents(events)
+      }catch(e){
+        // fallback: try reading localStorage
+        try{ const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null; const arr = raw ? JSON.parse(raw) : []; if(Array.isArray(arr)) setDealTickerEvents(arr.slice(0,50)) }catch(_){}
+      }
+    })()
+
     const handler = (e:any)=>{ try{ const detail = e?.detail; if(detail){ setDealTickerEvents(prev=>[detail, ...prev].slice(0,50)) } }catch(_){ } }
     window.addEventListener('deal:ticker', handler as EventListener)
-    return ()=>{ window.removeEventListener('deal:ticker', handler as EventListener) }
+    return ()=>{ window.removeEventListener('deal:ticker', handler as EventListener); mounted = false }
   },[])
 
   // conversation state for dashboard chat

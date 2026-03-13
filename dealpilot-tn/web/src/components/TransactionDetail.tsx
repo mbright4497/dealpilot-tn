@@ -164,11 +164,24 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   }
                 }catch(e){ console.warn('ticker add failed', e) }
 
-                // auto-check RF601 checklist item when classification detected
+                // auto-check RF601 checklist item when classification detected (persist to DB)
                 try{
                   const idxRf = checklist.findIndex((it:any)=> String((it.key||'')).toLowerCase() === 'rf601')
-                  if(idxRf !== -1){ checklist[idxRf].status = 'done'; setChecklist([...checklist]) }
+                  if(idxRf !== -1){
+                    checklist[idxRf].status = 'done';
+                    setChecklist([...checklist])
+                    // persist change to server-side checklist
+                    try{ await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, key: 'rf601', status: 'done' }) }) }catch(e){ console.warn('persist checklist failed', e) }
+                  }
                 }catch(e){ /* ignore */ }
+
+                // if classification includes a new binding/agreement date, persist it to transaction
+                try{
+                  const newBinding = (cj.extracted && (cj.extracted.binding_date || cj.extracted.binding)) || cj.new_binding || null
+                  if(newBinding){
+                    try{ await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields: { binding: newBinding } }) }) }catch(e){ console.warn('persist binding failed', e) }
+                  }
+                }catch(e){ }
               }
             }catch(e){ console.warn('ticker push failed', e) }
           }
@@ -615,7 +628,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   const gaps = j.results && j.results[0] ? j.results[0].gaps || [] : []
                   const actions = (gaps || []).slice(0,4).map((g:any)=> ({ key: g.milestone_key, label: `${g.milestone_label} — ${g.status === 'overdue' ? `${Math.abs(g.days_diff)}d overdue` : g.status === 'due_today' ? 'due today' : g.days_diff!=null? `${g.days_diff}d` : ''}`, gap: g }))
                   setGapActions(actions)
-                }catch(e){ console.warn('playbook gaps error', e) }
+                }catch(e){ console.warn('playbook gaps error', e); if(mounted) setGapActions([]) }
               })()
               return ()=>{ mounted = false }
             },[transaction.id])
