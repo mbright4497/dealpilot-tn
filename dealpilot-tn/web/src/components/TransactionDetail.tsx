@@ -1,5 +1,32 @@
 'use client'
 import React, {useState, useEffect, useRef} from 'react'
+
+// Intent handler for Reva
+function handleRevaIntent(intent: any, setMode: any, setActiveDocument: any) {
+  if (!intent) return;
+  if (intent.type === 'VIEW_DOC' && intent.documentId) {
+    setMode('pdf');
+    setActiveDocument(intent.documentId);
+  }
+}
+
+
+async function handleDeleteTransaction(urlTransactionId: string) {
+  if (!urlTransactionId) return;
+  await fetch('/api/transactions/' + urlTransactionId, { method: 'DELETE' });
+  window.location.href = '/transactions';
+}
+
+async function handleUpdateTransaction(urlTransactionId: string, data: any) {
+  if (!urlTransactionId) return;
+  await fetch('/api/transactions/' + urlTransactionId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  window.location.reload();
+}
+
 import { parseRevaIntent } from '@/lib/revaIntentParser'
 import { useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase-browser'
