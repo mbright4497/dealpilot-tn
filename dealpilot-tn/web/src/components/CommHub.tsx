@@ -84,7 +84,7 @@ export default function CommHub({ dealId }:{ dealId: string }){
   }
 
   return (
-    <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg flex gap-4">
+    <div className="p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg flex flex-col md:flex-row gap-4">
       <div className="w-64">
         <h4 className="text-sm font-semibold text-white mb-2">Contacts</h4>
         {Object.keys(contactsGrouped).length === 0 && <div className="text-xs text-gray-400">No contacts</div>}

@@ -20,7 +20,7 @@ export default function DeadlinesPage(){
         const warn = !overdue && !today && days <=3
         const color = overdue ? 'text-red-500' : warn ? 'text-amber-400' : 'text-green-400'
         return (
-          <div key={i} className="p-3 rounded bg-[#081224] flex items-center justify-between">
+          <div key={i} className="p-3 rounded bg-[#081224] flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
             <div>
               <div className="font-semibold text-white">{d.label}</div>
               <div className="text-sm text-gray-400">{d.address}</div>

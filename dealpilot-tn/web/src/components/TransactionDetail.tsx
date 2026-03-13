@@ -470,7 +470,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
         <div>
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
