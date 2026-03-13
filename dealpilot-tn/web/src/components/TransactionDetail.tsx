@@ -182,9 +182,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
                 // if classification includes a new binding/agreement date, persist it to transaction
                 try{
-                  const newBinding = (cj.extracted && (cj.extracted.binding_date || cj.extracted.binding)) || cj.new_binding || null
+                  const newBinding = (transaction && ((transaction as any).binding_date || (transaction as any).binding)) || (cj.extracted && (cj.extracted.binding_date || cj.extracted.binding)) || cj.new_binding || null
                   if(newBinding){
-                    try{ await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields: { binding: newBinding } }) }) }catch(e){ console.warn('persist binding failed', e) }
+                    try{ await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields: { binding: newBinding, binding_date: newBinding } }) }) }catch(e){ console.warn('persist binding failed', e) }
                   }
                 }catch(e){ }
               }
@@ -422,11 +422,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     const user = { role:'user', content: text }
     setChatMessages(m=>[...m, {from:'user', text}])
     try{
-      const ctx = { id: mergedTx.id, address: mergedTx.address, client: mergedTx.client, type: mergedTx.type, status: mergedTx.status, binding: mergedTx.binding, closing: (mergedTx as any).closing_date || mergedTx.closing, contacts: (localContacts||[]).map(c=>({role:c.role,name:c.name})), notes: mergedTx.notes }
-      const res = await fetch('/api/ai/chat', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages:[user], style:'friendly-tn', transaction: ctx }) })
+      const ctx = { id: mergedTx.id, address: mergedTx.address, client: mergedTx.client, type: mergedTx.type, status: mergedTx.status, binding: mergedTx.binding_date || mergedTx.binding, closing: (mergedTx as any).closing_date || mergedTx.closing, contacts: (localContacts||[]).map(c=>({role:c.role,name:c.name})), notes: mergedTx.notes }
+      const res = await fetch('/api/eva/chat', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages:[user], style:'friendly-tn', dealId: mergedTx.id }) })
       const j = await res.json()
       const reply = j.reply || j.message || j.choices?.[0]?.message?.content || 'Sorry, no response.'
       setChatMessages(m=>[...m, {from:'assistant', text: reply}])
+      // if the assistant returned an actionable open_wizard command, dispatch event to open
+      try{ if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: j.action.dealId } })); } }catch(e){}
     }catch(e:any){
       setChatMessages(m=>[...m, {from:'assistant', text: 'Error contacting AI: '+String(e)}])
     }
@@ -540,7 +542,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   // Inline edit states
   const [editing, setEditing] = useState(false)
   const [editStatus, setEditStatus] = useState<string>(mergedTx.status || '')
-  const [editBinding, setEditBinding] = useState<string|undefined>((mergedTx as any).binding || '')
+  const [editBinding, setEditBinding] = useState<string|undefined>((mergedTx as any).binding_date || (mergedTx as any).binding || '')
   const [editClosing, setEditClosing] = useState<string|undefined>((mergedTx as any).closing_date || (mergedTx as any).closing || '')
   const [editValue, setEditValue] = useState<number|undefined>((mergedTx as any).purchase_price || (mergedTx as any).value || undefined)
 
@@ -586,7 +588,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client || '—'} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
         <div className="text-right text-sm text-gray-300">
-          <div>Binding: <span className="font-semibold">{fmtDate(mergedTx.binding)}</span></div>
+          <div>Binding: <span className="font-semibold">{fmtDate((mergedTx as any).binding_date || mergedTx.binding)}</span></div>
           <div>Closing: <span className="font-semibold">{fmtDate((mergedTx as any).closing_date || mergedTx.closing)}</span></div>
         </div>
       </div>

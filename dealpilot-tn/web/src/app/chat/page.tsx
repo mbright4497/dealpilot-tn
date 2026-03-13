@@ -401,12 +401,17 @@ export default function ChatPage() {
     window.addEventListener('eva:viewParties', onViewParties)
     window.addEventListener('eva:editDeal', onEditDeal)
     window.addEventListener('eva:doAction', onDoAction)
+
+    const onRookOpen = (e:any) => { try{ const id = e?.detail?.transactionId; if(id){ setSelectedTxId(Number(id)); setRookWizardOpen(true) } }catch(_){ } }
+    window.addEventListener('rookwizard:open', onRookOpen)
+
     return ()=>{
       window.removeEventListener('eva:viewDeal', onViewDeal)
       window.removeEventListener('eva:uploadDocument', onUpload)
       window.removeEventListener('eva:viewParties', onViewParties)
       window.removeEventListener('eva:editDeal', onEditDeal)
       window.removeEventListener('eva:doAction', onDoAction)
+      window.removeEventListener('rookwizard:open', onRookOpen)
     }
   }, [transactions])
 
