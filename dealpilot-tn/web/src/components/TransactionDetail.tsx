@@ -525,7 +525,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [playbookSteps, setPlaybookSteps] = React.useState<any[]>([])
   React.useEffect(()=>{
     let mounted = true
-    ;(async ()=>{
+    async function loadPlaybook(){
       try{
         const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
         if(!res.ok) return
@@ -536,7 +536,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         rows.sort((a:any,b:any)=> (a.sort_order||0) - (b.sort_order||0))
         setPlaybookSteps(rows)
       }catch(e){ console.warn('playbook steps load failed', e) }
-    })()
+    }
+    loadPlaybook()
     return ()=>{ mounted=false }
   },[transaction.id])
 
@@ -550,6 +551,56 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       if(refresh.ok){ const rj = await refresh.json(); const rows = (rj.results && rj.results[0] && rj.results[0].gaps) ? rj.results[0].gaps : []; setPlaybookSteps(rows) }
     }catch(e){ console.error('mark milestone failed', e) }
   }
+
+  // Inline edit states
+  const [editing, setEditing] = useState(false)
+  const [editStatus, setEditStatus] = useState<string>(mergedTx.status || '')
+  const [editBinding, setEditBinding] = useState<string|undefined>((mergedTx as any).binding_date || (mergedTx as any).binding || '')
+  const [editClosing, setEditClosing] = useState<string|undefined>((mergedTx as any).closing_date || (mergedTx as any).closing || '')
+  const [editValue, setEditValue] = useState<number|undefined>((mergedTx as any).purchase_price || (mergedTx as any).value || undefined)
+
+  // notes
+  const [notes, setNotes] = useState<any[]>([])
+  const [noteText, setNoteText] = useState('')
+  React.useEffect(()=>{
+    let mounted = true
+    async function loadNotes(){
+      try{
+        const res = await fetch(`/api/deal-notes?dealId=${transaction.id}`)
+        if(!mounted) return
+        if(res.ok){ const j = await res.json(); setNotes(j.notes || []) }
+      }catch(e){ }
+    }
+    loadNotes()
+    return ()=>{ mounted=false }
+  },[transaction.id])
+
+  const saveInlineEdits = async ()=>{
+    try{
+      const payload:any = { fields: {} }
+      payload.fields.status = editStatus
+      if(editBinding) payload.fields.binding = editBinding
+      if(editClosing) payload.fields.closing = editClosing
+      if(editValue != null) payload.fields.purchase_price = editValue
+      const res = await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      if(!res.ok){ console.error('update failed'); return }
+      const j = await res.json()
+      // refresh remote
+      const r = await fetch(`/api/deal-state/${transaction.id}`)
+      if(r.ok){ const rd = await r.json(); setRemote(rd); setMergedTx({...mergedTx, ...(rd||{})}) }
+      setEditing(false)
+    }catch(e){ console.error('save edits failed', e) }
+  }
+
+  const addNote = async ()=>{
+    if(!noteText) return
+    try{
+      const res = await fetch('/api/deal-notes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, author: 'web', content: noteText }) })
+      if(res.ok){ const j = await res.json(); setNotes(prev=>[j.note, ...prev]); setNoteText('') }
+    }catch(e){ console.error('add note failed', e) }
+  }
+
+
 
   // Inline edit states
   const [editing, setEditing] = useState(false)
