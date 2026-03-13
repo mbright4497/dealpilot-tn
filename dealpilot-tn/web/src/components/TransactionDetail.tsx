@@ -1,5 +1,6 @@
 'use client'
 import React, {useState, useEffect, useRef} from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
@@ -15,6 +16,20 @@ type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
 
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
+  // URL-derived transaction id (source of truth for this component)
+  const searchParams = useSearchParams()
+  const urlDealParam = (typeof searchParams?.get === 'function') ? searchParams.get('deal') : null
+  const urlTransactionId = urlDealParam ? Number(urlDealParam) : null
+  // If no ?deal= param, render safe placeholder before running data hooks
+  if(!urlTransactionId){
+    return (
+      <div class="p-6">
+        <div class="text-lg font-semibold">Select a deal to continue</div>
+        <div class="text-sm text-gray-500 mt-2">Open a deal from the transactions list or add ?deal=&lt;id&gt; to the URL.</div>
+      </div>
+    )
+  }
+
   // mode: overview (default), documents, parties, deadlines, communications
   const [mode,setMode] = useState<'overview'|'documents'|'parties'|'deadlines'|'communications'>('overview')
   const [remote, setRemote] = useState<any>(null)
