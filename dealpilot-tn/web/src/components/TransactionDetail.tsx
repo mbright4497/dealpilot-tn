@@ -27,6 +27,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
   const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
+  const [rfWarnings, setRfWarnings] = useState<string[]>([])
 
   // documents via documents API (db + storage)
   const supabase = createBrowserClient()
@@ -84,6 +85,60 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             const idx = checklist.findIndex((it:any)=> (it.key||'').toString().toLowerCase() === rfKey)
             if (idx !== -1){ checklist[idx].status = 'done'; setChecklist([...checklist]) }
           }
+
+          // RF form detection & RF-specific checks
+          try{
+            // fetch full extraction (if available)
+            const exRes = await fetch('/api/ai/docs/extract', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ document_id: uploaded.id }) })
+            if(exRes.ok){
+              const exJson = await exRes.json()
+              const text = (exJson.extraction && JSON.stringify(exJson.extraction)) || exJson.text || exJson.content || ''
+              const txt = (text || '').toString().toLowerCase()
+              const warnings:string[] = []
+
+              // simple classification by keyword
+              let detected = 'other'
+              if(txt.includes('rf-401') || txt.includes('time limit of offer') || txt.includes('offer') && txt.includes('time limit')) detected = 'rf401'
+              else if(txt.includes('rf-601') || txt.includes('amendment')) detected = 'rf601'
+              else if(txt.includes('rf-651') || txt.includes('repair') || txt.includes('replacement')) detected = 'rf651'
+
+              // RF401 checks
+              if(detected === 'rf401'){
+                // check Time Limit of Offer date
+                const timeLimitMatch = text.match(/time limit of offer[:\s]*([A-Za-z0-9,\s]+)/i) || text.match(/time limit[:\s]*([A-Za-z0-9,\s]+)/i)
+                if(timeLimitMatch && timeLimitMatch[1]){
+                  const parsed = new Date(timeLimitMatch[1].trim())
+                  if(!isNaN(parsed.getTime())){
+                    if(parsed.getTime() < Date.now()){
+                      warnings.push('RF401: Time Limit of Offer has passed')
+                    }
+                  }
+                }
+
+                // check inspection period days (TN default 10 days)
+                const inspMatch = text.match(/inspection period[:\s]*([0-9]{1,2})/i) || text.match(/inspection[:\s]*period[:\s]*([0-9]{1,2})/i)
+                if(inspMatch && inspMatch[1]){
+                  const days = Number(inspMatch[1])
+                  if(isNaN(days) || days < 10) warnings.push(`RF401: Inspection period is ${days} day(s) (TN default 10 days)`) 
+                } else {
+                  warnings.push('RF401: Inspection period missing or not found (TN default 10 days)')
+                }
+              }
+
+              // RF601 / RF651 quick checks (placeholder)
+              if(detected === 'rf601'){
+                warnings.push('RF601 detected — verify amendment effective dates')
+              }
+              if(detected === 'rf651'){
+                warnings.push('RF651 detected — verify repair responsibilities and timelines')
+              }
+
+              if(warnings.length>0){
+                setRfWarnings(prev=>[...prev, ...warnings])
+              }
+            }
+          }catch(e){ console.warn('rf checks failed', e) }
+
         }
       }catch(e){/* ignore */}
 
@@ -485,6 +540,17 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           })()}
         </div>
       </div>
+
+      {/* RF-specific warnings (from document extractions) */}
+      {rfWarnings && rfWarnings.length>0 && (
+        <div className="mb-4 space-y-2">
+          {rfWarnings.map((w,i)=> (
+            <div key={i} className={`p-3 rounded ${w.toLowerCase().includes('passed')||w.toLowerCase().includes('missing') ? 'bg-amber-700 text-white' : 'bg-orange-600 text-white'}`}>
+              <div className="font-semibold">{w}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Document compliance bar */}
       {(() => {
