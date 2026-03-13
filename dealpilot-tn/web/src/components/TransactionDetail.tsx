@@ -430,6 +430,15 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       </div>
 
+      {/* Quick Actions: Reva-driven drafts */}
+      <div className="mb-4 flex gap-2">
+        <button onClick={()=>openDraft('lender')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Lender Status Update</button>
+        <button onClick={()=>openDraft('title')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Title Update</button>
+        <button onClick={()=>openDraft('closing')} className="px-3 py-2 rounded bg-rose-600 text-white">Send Closing Reminder to All Parties</button>
+      </div>
+
+
+
       {/* EVA HERO (top) - small iterative addition */}
       <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6">
         <div className="mb-2 text-sm text-gray-300 flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" /><span>Reva — Deal Assistant</span></div>
@@ -664,9 +673,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 )}
               </div>
               <div className="flex gap-2">
-                <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${transaction.id}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
-                <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
-                <button onClick={()=>setEditOpen(true)} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">✎ Edit Deal</button>
+                <div className="flex flex-col items-end">
+                  <div className="text-xs text-gray-300">Deal Health</div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${transaction.id}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
+                  <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
+                  <button onClick={()=>setEditOpen(true)} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">✎ Edit Deal</button>
+                </div>
               </div>
             </div>
           </div>
@@ -843,6 +857,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                       }catch(e){ console.warn('extraction failed', e) }
                     } else {
                       console.error('Upload failed', await res.text())
+
                       alert('Upload failed')
                     }
                   }catch(err){ console.error(err); alert('Upload error') }
@@ -941,9 +956,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                           .storage
                           .from(storageBucket)
                           .createSignedUrl(filePath, 60)
-                        if (data?.signedUrl){
-                          window.open(data.signedUrl, '_blank')
-                        }
+                        if (data?.signedUrl) window.open(data.signedUrl, '_blank')
                       }catch(e){ console.error(e) }
                     }
                     const handleDelete = async () => {
@@ -1077,7 +1090,36 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       )}
 
-      <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+transaction.id); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
+      {draftOpen && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white text-black w-full max-w-2xl p-4 rounded">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-semibold">Draft: {draftSubject || (draftKind || '')}</h3>
+          <button onClick={()=>setDraftOpen(false)} className="text-sm">Close</button>
+        </div>
+        <div className="space-y-2">
+          <div>
+            <label className="text-xs">To</label>
+            <input value={draftTo} onChange={e=>setDraftTo(e.target.value)} className="w-full p-2 border rounded" />
+          </div>
+          <div>
+            <label className="text-xs">Subject</label>
+            <input value={draftSubject} onChange={e=>setDraftSubject(e.target.value)} className="w-full p-2 border rounded" />
+          </div>
+          <div>
+            <label className="text-xs">Body</label>
+            <textarea value={draftBody} onChange={e=>setDraftBody(e.target.value)} className="w-full p-2 border rounded h-40" />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={async ()=>{ await sendDraft() }} className="px-3 py-2 bg-orange-500 text-white rounded">Send</button>
+            <button onClick={async ()=>{ try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(draftBody || ''); alert('Copied to clipboard') } }catch(e){ alert('Copy failed') } }} className="px-3 py-2 bg-gray-300 rounded">Copy to Clipboard</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )}
+
+  <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+transaction.id); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
 
       {showIntake && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
