@@ -25,7 +25,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   useEffect(()=>{
     try{
       const has = checklist.findIndex((it:any)=> String(it.key).toLowerCase() === 'rf401')
-      if(has === -1){ checklist.push({ key: 'rf401', title: 'RF401 Purchase & Sale', status: 'todo' }); setChecklist([...checklist]) }
+      if(has === -1){ checklist.push({ key: 'rf401', title: 'Launch RF401 Wizard', status: 'todo' }); setChecklist([...checklist]) }
     }catch(e){}
   }, [])
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
@@ -154,7 +154,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 const newDate = (cj.extracted && (cj.extracted.inspection_end_date || cj.extracted.closing_date)) || cj.new_date || null
                 const oldDate = cj.previous_inspection_date || cj.old_date || null
                 // map label: RF401 is Purchase & Sale; RF601 is Amendment — we label ticker according to detection
-                const label = (rfLower.includes('rf401') || rfLower.includes('rf-401')) ? 'RF401 Purchase & Sale' : 'RF601 Amendment'
+                const label = (rfLower.includes('rf401') || rfLower.includes('rf-401')) ? 'Launch RF401 Wizard' : 'RF601 Amendment'
                 const msg = newDate ? `${label} detected — Inspection deadline changed from ${oldDate||'unknown'} to ${newDate}` : `${label} detected — review changes.`
                 const ev = { ts: now, dealId: transaction.id, message: msg, icon: '📝' }
                 try{
@@ -428,7 +428,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       const reply = j.reply || j.message || j.choices?.[0]?.message?.content || 'Sorry, no response.'
       setChatMessages(m=>[...m, {from:'assistant', text: reply}])
       // if the assistant returned an actionable open_wizard command, dispatch event to open
-      try{ if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: j.action.dealId } })); } }catch(e){}
+      try{ if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: j.action.dealId, address: mergedTx.address || transaction.address } })); } }catch(e){}
     }catch(e:any){
       setChatMessages(m=>[...m, {from:'assistant', text: 'Error contacting AI: '+String(e)}])
     }
@@ -494,6 +494,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   // deal deadlines state (Phase 11)
   const [dealDeadlines, setDealDeadlines] = React.useState<any[]>([])
+  const [recentAiInterpretations, setRecentAiInterpretations] = React.useState<any[]>([])
   React.useEffect(() => {
     let mounted = true
     ;(async () => {
@@ -506,6 +507,17 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         }
       }catch(e){ }
     })()
+
+    // load recent AI interpretations for communications panel
+    ;(async ()=>{
+      try{
+        const r = await fetch('/api/deal-activity-log/recent', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, limit: 5 }) })
+        if(!r.ok) return
+        const j = await r.json()
+        if(mounted && j && j.results) setRecentAiInterpretations(j.results || [])
+      }catch(e){ }
+    })()
+
     return () => { mounted = false }
   }, [transaction.id])
 
@@ -595,10 +607,28 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
       {/* Quick Actions: Reva-driven drafts */}
       <div className="mb-4 flex gap-2">
-        <button onClick={()=>openDraft('lender')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Lender Status Update</button>
+        <button onClick={async ()=>{
+            try{
+              // fetch deal-state and find lender
+              const r = await fetch(`/api/deal-state/${transaction.id}`)
+              if(!r.ok){ addMessage({ from:'assistant', text: "Could not load deal contacts." }); return }
+              const j = await r.json()
+              const contacts = j.contacts || []
+              const lender = (contacts||[]).find((c:any)=> (c.role||'').toLowerCase().includes('lender') || (c.role||'').toLowerCase().includes('loan') )
+              if(!lender || !lender.phone){ addMessage({ from:'assistant', text: "Lender contact not found or missing phone number." }); return }
+              const phone = lender.phone
+              const message = `Hi ${lender.name || 'Lender'}, this is the Closing Assistant for ${mergedTx.client || 'your agent'}. We are requesting a loan status update for the property at ${mergedTx.address || ''}. Please reply with the current status. Thanks!`
+              const send = await fetch('/api/ghl/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ channel: 'sms', recipient: phone, message, contact_id: null }) })
+              if(!send.ok){ addMessage({ from:'assistant', text: "Failed to send lender request via Hublinkpro." }); return }
+              // log to deal_activity_log for compliance trail
+              try{ await fetch('/api/deal-activity-log/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, recipient: lender.name || lender.phone || 'Lender', message }) }) }catch(e){ console.warn('activity log failed', e) }
+
+              addMessage({ from:'assistant', text: "I've sent the status request to the lender via Hublinkpro. I'll notify you here when they reply." })
+            }catch(e){ console.error('request lender failed', e); addMessage({ from:'assistant', text: 'Failed to request lender status.' }) }
+          }} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Lender Status Update</button>
         <button onClick={()=>openDraft('title')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Title Update</button>
         <button onClick={()=>openDraft('closing')} className="px-3 py-2 rounded bg-rose-600 text-white">Send Closing Reminder to All Parties</button>
-        <button onClick={()=>{ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: transaction.id } })); }} className="px-4 py-2 rounded bg-orange-500 text-black font-semibold">RF401 Wizard</button>
+        <button onClick={()=>{ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: transaction.id, address: transaction.address } })); }} className="px-4 py-2 rounded bg-orange-500 text-black font-semibold">RF401 Wizard</button>
       </div>
 
       {/* Mobile: floating Ask Reva button */}
@@ -813,6 +843,28 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                     <div className="text-sm text-gray-300">{fmtDate(e.date || e.created_at)}</div>
                   </div>
                   <div className="text-sm text-gray-400 mt-1">{e.note || e.body || e.summary || ''}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      {/* Recent AI Interpretations panel (communications) */}
+      {mode==='communications' && (
+        <div className="mt-3 p-3 rounded bg-[#07101a] border border-white/10">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-gray-300">Recent AI Interpretations</div>
+            <div className="text-xs text-gray-500">Last 5</div>
+          </div>
+          {recentAiInterpretations.length===0 ? (
+            <div className="text-sm text-gray-400">No recent AI classifications.</div>
+          ) : (
+            <div className="space-y-2">
+              {recentAiInterpretations.map((r:any,i:number)=> (
+                <div key={r.id || i} className="p-2 bg-[#0d1624] rounded">
+                  <div className="text-xs text-gray-400">{fmtDate(r.created_at)} • {r.recipient || ''}</div>
+                  <div className="mt-1 text-sm text-white">{r.message}</div>
+                  <div className="mt-1 text-xs text-amber-300">AI: {(r.metadata && r.metadata.ai && (r.metadata.ai.milestone || JSON.stringify(r.metadata.ai))) || '—'}</div>
                 </div>
               ))}
             </div>

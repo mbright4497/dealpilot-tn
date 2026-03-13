@@ -402,7 +402,8 @@ export default function ChatPage() {
     window.addEventListener('eva:editDeal', onEditDeal)
     window.addEventListener('eva:doAction', onDoAction)
 
-    const onRookOpen = (e:any) => { try{ const id = e?.detail?.transactionId; if(id){ setSelectedTxId(Number(id)); setRookWizardOpen(true) } }catch(_){ } }
+    const [selectedTxAddress, setSelectedTxAddress] = useState<string|null>(null)
+    const onRookOpen = (e:any) => { try{ const id = e?.detail?.transactionId; const addr = e?.detail?.address || null; if(addr) setSelectedTxAddress(String(addr)); if(id){ setSelectedTxId(Number(id)); setRookWizardOpen(true) } }catch(_){ } }
     window.addEventListener('rookwizard:open', onRookOpen)
 
     return ()=>{
@@ -845,7 +846,7 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
 </main>
 
       {rookWizardOpen && selectedTxId && (
-        <RookWizard transactionId={String(selectedTxId)} onClose={() => setRookWizardOpen(false)} />
+        <RookWizard transactionId={String(selectedTxId)} address={selectedTxAddress || selectedTx?.address || ''} onClose={() => { setRookWizardOpen(false); setSelectedTxAddress(null) }} />
       )}
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>

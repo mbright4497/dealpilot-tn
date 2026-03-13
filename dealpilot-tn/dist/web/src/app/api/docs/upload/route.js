@@ -19,8 +19,8 @@ async function POST(req) {
         const originalName = file.name || `${(0, uuid_1.v4)()}.pdf`;
         const filename = originalName;
         const ext = (filename.split('.').pop() || 'pdf');
-        const bucketName = 'documents';
-        const storagePath = `documents/docs/${transaction_id || 'unlinked'}/${(0, uuid_1.v4)()}.${ext}`;
+        const bucketName = 'deal-documents';
+        const storagePath = `deal-${transaction_id || 'unlinked'}/${(0, uuid_1.v4)()}.${ext}`;
         const supabase = (0, auth_helpers_nextjs_1.createRouteHandlerClient)({ cookies: headers_1.cookies });
         const { data: { user } } = await supabase.auth.getUser();
         // ensure bucket exists (create if missing)
@@ -37,25 +37,30 @@ async function POST(req) {
         const { error: uploadErr } = await supabase.storage.from(bucketName).upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' });
         if (uploadErr)
             return server_1.NextResponse.json({ error: uploadErr.message }, { status: 500 });
-        // build public url
-        const { data: publicData } = supabase.storage.from(bucketName).getPublicUrl(storagePath);
-        const publicUrl = publicData?.publicUrl || null;
+        // create a signed URL (private bucket) for immediate download preview (short-lived)
+        let signedUrl = null;
+        try {
+            const { data: signed } = await supabase.storage.from(bucketName).createSignedUrl(storagePath, 60);
+            signedUrl = signed?.signedUrl || null;
+        }
+        catch (e) { /* ignore signed url failures */ }
         // classification key
         const classification = form.get('classification');
-        // insert into deal_documents
-        const { data, error } = await supabase.from('deal_documents').insert([{
+        // insert into canonical documents table
+        const { data, error } = await supabase.from('documents').insert([{
                 deal_id: transaction_id ? Number(transaction_id) : null,
-                doc_key: classification || null,
-                file_name: filename,
-                file_url: publicUrl,
-                status: 'uploaded',
-                uploaded_at: new Date().toISOString(),
+                transaction_id: transaction_id ? Number(transaction_id) : null,
+                filename: filename,
+                file_type: file.type || null,
                 storage_path: storagePath,
-                user_id: user?.id || null,
+                uploaded_at: new Date().toISOString(),
+                uploaded_by: user?.id || null,
+                status_label: 'uploaded',
+                rf_number: classification || null,
             }]).select().single();
         if (error)
             return server_1.NextResponse.json({ error: error.message }, { status: 500 });
-        return server_1.NextResponse.json({ document: data });
+        return server_1.NextResponse.json({ document: data, signed_url: signedUrl });
     }
     catch (e) {
         return server_1.NextResponse.json({ error: e.message || String(e) }, { status: 500 });
