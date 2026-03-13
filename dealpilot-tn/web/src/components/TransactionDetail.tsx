@@ -862,7 +862,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <div className="text-sm text-gray-300">Recent AI Interpretations</div>
             <div className="text-xs text-gray-500">Last 5</div>
           </div>
+          {/* Recent AI Interpretations temporarily disabled to restore stability
           <RecentAiInterpretations data={recentAiInterpretations} />
+          */}
         </div>
       )}
 
