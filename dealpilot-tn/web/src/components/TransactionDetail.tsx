@@ -602,48 +602,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
 
 
-  // Inline edit states
-  const [editing, setEditing] = useState(false)
-  const [editStatus, setEditStatus] = useState<string>(mergedTx.status || '')
-  const [editBinding, setEditBinding] = useState<string|undefined>((mergedTx as any).binding_date || (mergedTx as any).binding || '')
-  const [editClosing, setEditClosing] = useState<string|undefined>((mergedTx as any).closing_date || (mergedTx as any).closing || '')
-  const [editValue, setEditValue] = useState<number|undefined>((mergedTx as any).purchase_price || (mergedTx as any).value || undefined)
-
-  // notes
-  const [notes, setNotes] = useState<any[]>([])
-  const [noteText, setNoteText] = useState('')
-  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch(`/api/deal-notes?dealId=${transaction.id}`); if(!mounted) return; if(res.ok){ const j = await res.json(); setNotes(j.notes || []) } }catch(e){} })(); return ()=>{ mounted=false } },[transaction.id])
-
-  const saveInlineEdits = async ()=>{
-    try{
-      const payload:any = { fields: {} }
-      payload.fields.status = editStatus
-      if(editBinding) payload.fields.binding = editBinding
-      if(editClosing) payload.fields.closing = editClosing
-      if(editValue != null) payload.fields.purchase_price = editValue
-      const res = await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
-      if(!res.ok){ console.error('update failed'); return }
-      const j = await res.json()
-      // refresh remote
-      const r = await fetch(`/api/deal-state/${transaction.id}`)
-      if(r.ok){ const rd = await r.json(); setRemote(rd); setMergedTx({...mergedTx, ...(rd||{})}) }
-      setEditing(false)
-    }catch(e){ console.error('save edits failed', e) }
-  }
-
-  const addNote = async ()=>{
-    if(!noteText) return
-    try{
-      const res = await fetch('/api/deal-notes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, author: 'web', content: noteText }) })
-      if(res.ok){ const j = await res.json(); setNotes(prev=>[j.note, ...prev]); setNoteText('') }
-    }catch(e){ console.error('add note failed', e) }
-  }
-
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
         <div>
-          <button onClick={onBack} className="text-sm text-orange-300">{"\u2190"} Back</button>
+          <button onClick={onBack} className="text-sm text-orange-300">&larr; Back</button>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
             <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
@@ -899,6 +862,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             </div>
           )}
         </div>
+      )}
 
       {/* Recent AI Interpretations panel (communications) */}
       {mode==='communications' && (
