@@ -49,7 +49,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [showAddContact,setShowAddContact]=useState(false)
   const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
-  const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
+  const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${urlTransactionId}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
   const [rfWarnings, setRfWarnings] = useState<string[]>([])
 
   // communication / draft state (fix: ensure variables referenced by Quick Actions exist)
@@ -98,7 +98,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     // For now assume no GHL connected — queue locally and notify user
     try{
       // add audit log
-      try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'queue_message', resource:'communications', resource_id: transaction.id, details: { kind: draftKind, to: draftTo, subject: draftSubject } }) }) }catch(e){}
+      try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'queue_message', resource:'communications', resource_id: urlTransactionId, details: { kind: draftKind, to: draftTo, subject: draftSubject } }) }) }catch(e){}
       // show queued notification
       alert('Message queued — connect GHL in Settings to send.')
     }catch(e){ console.error('sendDraft failed', e); alert('Failed to queue message') }
@@ -114,7 +114,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     async function loadDocs() {
       try {
-        const res = await fetch(`/api/documents/${transaction.id}`)
+        const res = await fetch(`/api/documents/${urlTransactionId}`)
         if (!mounted) return
         if (res.ok) {
           const j = await res.json()
@@ -126,7 +126,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     }
     loadDocs()
     return ()=>{ mounted = false }
-  }, [transaction.id])
+  }, [urlTransactionId])
 
   const handleUpload = async (file: File) => {
     if (!file) return
@@ -139,14 +139,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       setUploading(true)
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch(`/api/documents/${transaction.id}`, { method: 'POST', body: fd })
+      const res = await fetch(`/api/documents/${urlTransactionId}`, { method: 'POST', body: fd })
       if (!res.ok) {
         alert('Upload failed')
         return
       }
       const uploaded = await res.json()
       // audit upload
-      try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'upload_document', resource:'documents', resource_id: transaction.id, details: { filename: uploaded?.name || file.name, document_id: uploaded?.id } }) }) }catch(e){ console.error('audit failed', e) }
+      try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'upload_document', resource:'documents', resource_id: urlTransactionId, details: { filename: uploaded?.name || file.name, document_id: uploaded?.id } }) }) }catch(e){ console.error('audit failed', e) }
 
       // attempt classification
       try{
@@ -171,10 +171,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 // map label: RF401 is Purchase & Sale; RF601 is Amendment — we label ticker according to detection
                 const label = (rfLower.includes('rf401') || rfLower.includes('rf-401')) ? 'RF401 Purchase & Sale' : 'RF601 Amendment'
                 const msg = newDate ? `${label} detected — Inspection deadline changed from ${oldDate||'unknown'} to ${newDate}` : `${label} detected — review changes.`
-                const ev = { ts: now, dealId: transaction.id, message: msg, icon: '📝' }
+                const ev = { ts: now, dealId: urlTransactionId, message: msg, icon: '📝' }
                 try{
                   // persist to server-backed ticker
-                  const r = await fetch('/api/deal-ticker/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, event_type: rfLower.includes('rf401')||rfLower.includes('rf-401') ? 'rf401' : 'rf601', message: msg, metadata: { detected: rfLower.includes('rf401')||rfLower.includes('rf-401') ? 'rf401' : 'rf601', uploaded_id: uploaded?.id } }) })
+                  const r = await fetch('/api/deal-ticker/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: urlTransactionId, event_type: rfLower.includes('rf401')||rfLower.includes('rf-401') ? 'rf401' : 'rf601', message: msg, metadata: { detected: rfLower.includes('rf401')||rfLower.includes('rf-401') ? 'rf401' : 'rf601', uploaded_id: uploaded?.id } }) })
                   if(r.ok){
                     // also bump client UI via event
                     window.dispatchEvent(new CustomEvent('deal:ticker', { detail: ev }))
@@ -191,7 +191,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                     checklist[idxRf].status = 'done';
                     setChecklist([...checklist])
                     // persist change to server-side checklist
-                    try{ const ck = (rfLower.includes('rf401')||rfLower.includes('rf-401')) ? 'rf401' : 'rf601'; await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, key: ck, status: 'done' }) }) }catch(e){ console.warn('persist checklist failed', e) }
+                    try{ const ck = (rfLower.includes('rf401')||rfLower.includes('rf-401')) ? 'rf401' : 'rf601'; await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId, key: ck, status: 'done' }) }) }catch(e){ console.warn('persist checklist failed', e) }
                   }
                 }catch(e){ /* ignore */ }
 
@@ -199,7 +199,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 try{
                   const newBinding = (transaction && ((transaction as any).binding_date || (transaction as any).binding)) || (cj.extracted && (cj.extracted.binding_date || cj.extracted.binding)) || cj.new_binding || null
                   if(newBinding){
-                    try{ await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields: { binding: newBinding, binding_date: newBinding } }) }) }catch(e){ console.warn('persist binding failed', e) }
+                    try{ await fetch('/api/transactions/'+urlTransactionId, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields: { binding: newBinding, binding_date: newBinding } }) }) }catch(e){ console.warn('persist binding failed', e) }
                   }
                 }catch(e){ }
               }
@@ -263,7 +263,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       }catch(e){/* ignore */}
 
       // refresh docs
-      const refresh = await fetch(`/api/documents/${transaction.id}`)
+      const refresh = await fetch(`/api/documents/${urlTransactionId}`)
       if (refresh.ok){ const rj = await refresh.json(); setDocs(rj || []) }
     } finally {
       setUploading(false)
@@ -273,17 +273,17 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   // next steps persistent checkboxes
   const [nextSteps,setNextSteps] = useState<{contractReceived:boolean, earnestVerified:boolean, inspectionsScheduled:boolean}>(()=>{
-    try{ const raw = localStorage.getItem(`dp-nextsteps-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){}
+    try{ const raw = localStorage.getItem(`dp-nextsteps-${urlTransactionId}`); if(raw) return JSON.parse(raw) }catch(e){}
     return { contractReceived:false, earnestVerified:false, inspectionsScheduled:false }
   })
-  useEffect(()=>{ try{ localStorage.setItem(`dp-nextsteps-${transaction.id}`, JSON.stringify(nextSteps)) }catch(e){} },[nextSteps, transaction.id])
+  useEffect(()=>{ try{ localStorage.setItem(`dp-nextsteps-${urlTransactionId}`, JSON.stringify(nextSteps)) }catch(e){} },[nextSteps, urlTransactionId])
 
   // fetch richer deal-state on mount and merge
   useEffect(()=>{
     let mounted = true
     async function load(){
       try{
-        const res = await fetch(`/api/deal-state/${transaction.id}`)
+        const res = await fetch(`/api/deal-state/${urlTransactionId}`)
         if(!mounted) return
         if(res.ok){
           const j = await res.json()
@@ -300,7 +300,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     }
     load()
     return ()=>{ mounted=false }
-  },[transaction.id])
+  },[urlTransactionId])
 
   // helpers for dates and formatting
   const fmtDate = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return 'Not set'; try{ const dt = typeof d==='string'? new Date(d): d; return isNaN(dt.getTime())? 'Not set' : dt.toLocaleDateString() }catch(e){ return 'Not set' } }
@@ -344,10 +344,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
   const transitionPhase = async (toPhase:string) => {
     try{
-      const res = await fetch('/api/deal-state/transition', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, to_phase: toPhase, triggered_by: 'web' }) })
+      const res = await fetch('/api/deal-state/transition', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId, to_phase: toPhase, triggered_by: 'web' }) })
       if(!res.ok){ const j = await res.json().catch(()=>({})); throw new Error(j.error || 'transition failed') }
       // refresh remote deal-state
-      const r = await fetch(`/api/deal-state/${transaction.id}`)
+      const r = await fetch(`/api/deal-state/${urlTransactionId}`)
       if(r.ok){ const j = await r.json(); setRemote(j); setMergedTx(prev=>({ ...prev, ...(j||{}) })) }
     }catch(e){ alert('Transition failed: '+String(e)) }
   }
@@ -396,7 +396,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch(`/api/deal-priorities/${transaction.id}`)
+        const res = await fetch(`/api/deal-priorities/${urlTransactionId}`)
         if(!mounted) return
         if(res.ok){
           const j = await res.json()
@@ -410,7 +410,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       }catch(e){ /* ignore */ }
     })();
     return ()=>{ mounted=false }
-  },[transaction.id])
+  },[urlTransactionId])
 
   const [showIntake, setShowIntake] = useState(false)
   const [extractionPreview, setExtractionPreview] = useState<any|null>(null)
@@ -453,14 +453,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     if(!newContact.name||!newContact.role) return
     const candidate = { ...newContact }
     try{
-      const res = await fetch('/api/deal-parties/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, contacts: [candidate] }) })
-      if(res.ok){ const j = await res.json(); const saved = j.contacts || []; const updated = [...localContacts, ...saved.map((c:any)=>({ role: candidate.role, name: c.name, company: c.company, phone: c.phone, email: c.email }))]; setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated) }
-    }catch(e){ console.error('save contact failed', e); const updated = [...localContacts, {...candidate}]; setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated) }
+      const res = await fetch('/api/deal-parties/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: urlTransactionId, contacts: [candidate] }) })
+      if(res.ok){ const j = await res.json(); const saved = j.contacts || []; const updated = [...localContacts, ...saved.map((c:any)=>({ role: candidate.role, name: c.name, company: c.company, phone: c.phone, email: c.email }))]; setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(urlTransactionId, updated) }
+    }catch(e){ console.error('save contact failed', e); const updated = [...localContacts, {...candidate}]; setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(urlTransactionId, updated) }
     setNewContact({role:'',name:'',company:'',phone:'',email:''})
     setShowAddContact(false)
-    try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'add_party', resource: 'deal_parties', resource_id: transaction.id, details: { party: candidate } }) }) }catch(e){ console.error('audit failed', e) }
+    try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'add_party', resource: 'deal_parties', resource_id: urlTransactionId, details: { party: candidate } }) }) }catch(e){ console.error('audit failed', e) }
   }
-  async function removeContact(idx:number){ const updated = localContacts.filter((_,i)=>i!==idx); setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(transaction.id, updated); try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'remove_party', resource: 'deal_parties', resource_id: transaction.id, details: { removed_index: idx } }) }) }catch(e){ console.error('audit failed', e) } }
+  async function removeContact(idx:number){ const updated = localContacts.filter((_,i)=>i!==idx); setLocalContacts(updated); if(onUpdateContacts) onUpdateContacts(urlTransactionId, updated); try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'remove_party', resource: 'deal_parties', resource_id: urlTransactionId, details: { removed_index: idx } }) }) }catch(e){ console.error('audit failed', e) } }
 
   // split timeline into past / upcoming
   const now = Date.now()
@@ -485,13 +485,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch(`/api/deal-health/${transaction.id}`)
+        const res = await fetch(`/api/deal-health/${urlTransactionId}`)
         if(!mounted) return
         if(res.ok){ const j = await res.json(); setHealth(j) }
       }catch(e){ }
     })()
     return ()=>{ mounted=false }
-  },[transaction.id])
+  },[urlTransactionId])
 
   // deal brief state
   const [brief, setBrief] = React.useState<{greeting:string,summary:string,primary_focus:string}|null>(null)
@@ -499,13 +499,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch(`/api/deal-brief/${transaction.id}`)
+        const res = await fetch(`/api/deal-brief/${urlTransactionId}`)
         if(!mounted) return
         if(res.ok){ const j = await res.json(); setBrief(j) }
       }catch(e){ }
     })()
     return ()=>{ mounted=false }
-  },[transaction.id])
+  },[urlTransactionId])
 
   // deal deadlines state (Phase 11)
   const [dealDeadlines, setDealDeadlines] = React.useState<any[]>([])
@@ -513,7 +513,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     ;(async () => {
       try{
-        const res = await fetch(`/api/deal-deadlines/${transaction.id}`)
+        const res = await fetch(`/api/deal-deadlines/${urlTransactionId}`)
         if(!mounted) return
         if(res.ok){
           const j = await res.json()
@@ -522,7 +522,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       }catch(e){ }
     })()
     return () => { mounted = false }
-  }, [transaction.id])
+  }, [urlTransactionId])
 
   // playbook rules/progress for this deal (stepper)
   const [playbookSteps, setPlaybookSteps] = React.useState<any[]>([])
@@ -530,7 +530,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     let mounted = true
     ;(async ()=>{
       try{
-        const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
+        const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId }), credentials: 'include' })
         if(!res.ok) return
         const j = await res.json()
         if(!mounted) return
@@ -541,15 +541,15 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       }catch(e){ console.warn('playbook steps load failed', e) }
     })()
     return ()=>{ mounted=false }
-  },[transaction.id])
+  },[urlTransactionId])
 
   const markMilestoneComplete = async (milestone_key:string)=>{
     try{
-      const res = await fetch('/api/reva/playbook-progress', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, milestone_key, completed_by: 'web-ui' }) })
+      const res = await fetch('/api/reva/playbook-progress', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId, milestone_key, completed_by: 'web-ui' }) })
       if(!res.ok) throw new Error('failed')
       const j = await res.json()
       // refresh steps
-      const refresh = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
+      const refresh = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId }), credentials: 'include' })
       if(refresh.ok){ const rj = await refresh.json(); const rows = (rj.results && rj.results[0] && rj.results[0].gaps) ? rj.results[0].gaps : []; setPlaybookSteps(rows) }
     }catch(e){ console.error('mark milestone failed', e) }
   }
@@ -564,7 +564,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   // notes
   const [notes, setNotes] = useState<any[]>([])
   const [noteText, setNoteText] = useState('')
-  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch(`/api/deal-notes?dealId=${transaction.id}`); if(!mounted) return; if(res.ok){ const j = await res.json(); setNotes(j.notes || []) } }catch(e){} })(); return ()=>{ mounted=false } },[transaction.id])
+  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch(`/api/deal-notes?dealId=${urlTransactionId}`); if(!mounted) return; if(res.ok){ const j = await res.json(); setNotes(j.notes || []) } }catch(e){} })(); return ()=>{ mounted=false } },[urlTransactionId])
 
   const saveInlineEdits = async ()=>{
     try{
@@ -573,11 +573,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       if(editBinding) payload.fields.binding = editBinding
       if(editClosing) payload.fields.closing = editClosing
       if(editValue != null) payload.fields.purchase_price = editValue
-      const res = await fetch('/api/transactions/'+transaction.id, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      const res = await fetch('/api/transactions/'+urlTransactionId, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
       if(!res.ok){ console.error('update failed'); return }
       const j = await res.json()
       // refresh remote
-      const r = await fetch(`/api/deal-state/${transaction.id}`)
+      const r = await fetch(`/api/deal-state/${urlTransactionId}`)
       if(r.ok){ const rd = await r.json(); setRemote(rd); setMergedTx({...mergedTx, ...(rd||{})}) }
       setEditing(false)
     }catch(e){ console.error('save edits failed', e) }
@@ -586,7 +586,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const addNote = async ()=>{
     if(!noteText) return
     try{
-      const res = await fetch('/api/deal-notes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, author: 'web', content: noteText }) })
+      const res = await fetch('/api/deal-notes', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId, author: 'web', content: noteText }) })
       if(res.ok){ const j = await res.json(); setNotes(prev=>[j.note, ...prev]); setNoteText('') }
     }catch(e){ console.error('add note failed', e) }
   }
@@ -598,7 +598,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
-            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
+            <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${urlTransactionId}`}</span>
           </div>
           <div className="text-sm text-gray-300 font-semibold">Client: {mergedTx.client || '—'} • Status: <span className={`px-2 py-1 rounded ${mergedTx.status==='Active'?'bg-green-800 text-green-100':'bg-gray-800 text-gray-200'}`}>{mergedTx.status}</span></div>
         </div>
@@ -613,7 +613,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         <button onClick={()=>openDraft('lender')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Lender Status Update</button>
         <button onClick={()=>openDraft('title')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Title Update</button>
         <button onClick={()=>openDraft('closing')} className="px-3 py-2 rounded bg-rose-600 text-white">Send Closing Reminder to All Parties</button>
-        <button onClick={()=>{ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: transaction.id } })); }} className="px-4 py-2 rounded bg-orange-500 text-black font-semibold">RF401 Wizard</button>
+        <button onClick={()=>{ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: urlTransactionId } })); }} className="px-4 py-2 rounded bg-orange-500 text-black font-semibold">RF401 Wizard</button>
       </div>
 
       {/* Mobile: floating Ask Reva button */}
@@ -644,7 +644,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
               let mounted = true
               ;(async ()=>{
                 try{
-                  const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
+                  const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId }), credentials: 'include' })
                   if(!res.ok) return
                   const j = await res.json()
                   if(!mounted) return
@@ -654,7 +654,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 }catch(e){ console.warn('playbook gaps error', e); if(mounted) setGapActions([]) }
               })()
               return ()=>{ mounted = false }
-            },[transaction.id])
+            },[urlTransactionId])
 
             if(!gapActions) return <div className="text-sm text-gray-400">Loading actions…</div>
             if(gapActions.length===0) return <>
@@ -727,7 +727,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
             {/* Audit Button: prominent, full-width under metrics */}
             <div className="mb-4">
-              <a href={`/api/transactions/${transaction.id}/audit-report`} className="w-full inline-block text-center px-4 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition">
+              <a href={`/api/transactions/${urlTransactionId}/audit-report`} className="w-full inline-block text-center px-4 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition">
                 ⬇️ Download Audit Log
               </a>
             </div>
@@ -857,7 +857,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 <div className="text-xs text-gray-300">Deal Health</div>
                 <div className="flex items-center gap-3">
                   <div className={`w-3 h-3 rounded-full ${health?.status==='healthy' ? 'bg-green-500' : health?.status==='attention' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
-                  <div className="font-semibold">{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</div>
+                  <div className="font-semibold">{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${urlTransactionId}`}</div>
                   <div className="text-xs text-gray-300 ml-2">{health ? health.score + '%' : ''}</div>
                 </div>
                 {/* existing signals (structured) */}
@@ -878,8 +878,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   <div className="text-xs text-gray-300">Deal Health</div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${transaction.id}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
-                  <a href={`/api/transactions/${transaction.id}/audit-report`} className="ml-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">Download Compliance Report</a>
+                  <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${urlTransactionId}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
+                  <a href={`/api/transactions/${urlTransactionId}/audit-report`} className="ml-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">Download Compliance Report</a>
                   <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
                   <button onClick={()=>setEditOpen(true)} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">✎ Edit Deal</button>
                 </div>
@@ -1037,13 +1037,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   try{
                     const fd = new FormData();
                     fd.append('file', f);
-                    fd.append('transaction_id', String(transaction.id));
+                    fd.append('transaction_id', String(urlTransactionId));
                     fd.append('classification', String(docDef.key));
                     const res = await fetch('/api/docs/upload', { method: 'POST', body: fd });
                     if(res.ok){
                       const j = await res.json();
                       // refresh docs
-                      const refresh = await fetch('/api/documents/' + transaction.id);
+                      const refresh = await fetch('/api/documents/' + urlTransactionId);
                       if(refresh.ok){ const rj = await refresh.json(); setDocs(rj || []) }
 
                       // if the uploaded doc looks like a Purchase & Sale (classification present), run AI extraction
@@ -1094,7 +1094,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 if(!found) return;
                 const res = await fetch('/api/docs/status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ documentId: found.id, status: 'signed' }) });
                 if(res.ok){
-                  const refresh = await fetch('/api/documents/' + transaction.id);
+                  const refresh = await fetch('/api/documents/' + urlTransactionId);
                   if(refresh.ok){
                     const rj = await refresh.json();
                     setDocs(rj || []);
@@ -1122,7 +1122,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                     <button onClick={()=>setShowIntake(true)} className="px-3 py-1 rounded-lg bg-[#16213e] border border-white/10 text-sm text-gray-200">Upload Contract (AI)</button>
                   </div>
                 </div>
-                <ContractUpload dealId={String(transaction.id)} onSave={(data)=>{ setContractData(data); if((data as any)?.__remote){ const r=(data as any).__remote; setRemote(r); setMergedTx(prev=>({ ...prev, ...(r||{}) })); if(r.contacts) setLocalContacts(r.contacts) } }} onDelete={()=>setContractData(null)} />
+                <ContractUpload dealId={String(urlTransactionId)} onSave={(data)=>{ setContractData(data); if((data as any)?.__remote){ const r=(data as any).__remote; setRemote(r); setMergedTx(prev=>({ ...prev, ...(r||{}) })); if(r.contacts) setLocalContacts(r.contacts) } }} onDelete={()=>setContractData(null)} />
 
                 {/* Compact Contract Summary Card (collapsible) */}
                 <div className="mt-4 p-3 bg-gray-900 rounded">
@@ -1133,10 +1133,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                       <div className="text-sm text-gray-400">Price: {contractData?.purchase_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(contractData.purchase_price) : (mergedTx as any).purchase_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format((mergedTx as any).purchase_price) : '—'} • Closing: {fmtDate(contractData?.closing_date || (mergedTx as any).closing_date || mergedTx.closing)}</div>
                     </div>
                     <div>
-                      <button onClick={()=>{ const el = document.getElementById('contract-full-details-'+transaction.id); if(!el){ const node = document.createElement('div'); node.id = 'contract-full-details-'+transaction.id; node.innerText = JSON.stringify(contractData || mergedTx, null, 2); node.className = 'mt-3 p-2 bg-gray-800 rounded text-xs text-gray-300 whitespace-pre-wrap'; document.getElementById('contract-summary-'+transaction.id)?.appendChild(node); } else { const existing = document.getElementById('contract-full-details-'+transaction.id); existing.remove(); } }} className="px-3 py-1 bg-gray-800 rounded text-sm">Show full details</button>
+                      <button onClick={()=>{ const el = document.getElementById('contract-full-details-'+urlTransactionId); if(!el){ const node = document.createElement('div'); node.id = 'contract-full-details-'+urlTransactionId; node.innerText = JSON.stringify(contractData || mergedTx, null, 2); node.className = 'mt-3 p-2 bg-gray-800 rounded text-xs text-gray-300 whitespace-pre-wrap'; document.getElementById('contract-summary-'+urlTransactionId)?.appendChild(node); } else { const existing = document.getElementById('contract-full-details-'+urlTransactionId); existing.remove(); } }} className="px-3 py-1 bg-gray-800 rounded text-sm">Show full details</button>
                     </div>
                   </div>
-                  <div id={`contract-summary-${transaction.id}`} />
+                  <div id={`contract-summary-${urlTransactionId}`} />
                 </div>
 
               </div>
@@ -1151,7 +1151,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                   </div>
                   {docs.length===0 && <div className="text-gray-500">No files</div>}
                   {docs.map((d:any,i:number)=>{
-                    const filePath = `deal-${transaction.id}/${d.name}`
+                    const filePath = `deal-${urlTransactionId}/${d.name}`
                     const handleDownload = async () => {
                       try{
                         const { data } = await supabase
@@ -1171,9 +1171,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                         const { data } = await supabase
                           .storage
                           .from(storageBucket)
-                          .list(`deal-${transaction.id}`)
+                          .list(`deal-${urlTransactionId}`)
                         setDocs(data || [])
-                        try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'delete_document', resource:'documents', resource_id: transaction.id, details: { filename: d.name, filePath } }) }) }catch(e){ console.error('audit failed', e) }
+                        try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'delete_document', resource:'documents', resource_id: urlTransactionId, details: { filename: d.name, filePath } }) }) }catch(e){ console.error('audit failed', e) }
                       }catch(e){ console.error(e) }
                     }
                     return (
@@ -1206,7 +1206,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 ) : (
                   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                   // @ts-ignore
-                  <DealPartiesPanel transactionId={transaction.id} />
+                  <DealPartiesPanel transactionId={urlTransactionId} />
                 )}
               </div>
 
@@ -1222,7 +1222,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                           <div className="font-semibold">{it.title}</div>
                           <div className="text-xs text-gray-400">{dl ? fmtDate(dl.date) : 'Not set'}</div>
                         </div>
-                        <input type="checkbox" checked={it.status==='done'} onChange={async ()=>{ try{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]); await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, key: it.key, status: it.status }) }); await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'checklist_toggle', resource: 'deal_checklist', resource_id: transaction.id, details: { key: it.key, new_status: it.status } }) }) }catch(e){ console.error('audit failed', e) } }} />
+                        <input type="checkbox" checked={it.status==='done'} onChange={async ()=>{ try{ it.status= it.status==='done'?'todo':'done'; setChecklist([...checklist]); await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId, key: it.key, status: it.status }) }); await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action: 'checklist_toggle', resource: 'deal_checklist', resource_id: urlTransactionId, details: { key: it.key, new_status: it.status } }) }) }catch(e){ console.error('audit failed', e) } }} />
                       </div>
                     )
                   })}
@@ -1322,7 +1322,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     </div>
   )}
 
-  <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+transaction.id); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
+  <EditTransactionModal transaction={mergedTx} open={editOpen} onClose={()=>setEditOpen(false)} onSaved={async (tx:any)=>{ try{ const res = await fetch('/api/deal-state/'+urlTransactionId); if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) } }catch(e){console.error(e)} }} />
 
   {/* Mobile Reva Drawer */}
   {mobileRevaOpen && (
@@ -1354,12 +1354,12 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <ContractIntake onCancel={()=>setShowIntake(false)} onConfirm={async (parsed:any)=>{
               try{
                 // save extracted to contract_store for this deal
-                await fetch(`/api/deals/${transaction.id}/contract`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ extracted: parsed, pdfUrl: null }) })
+                await fetch(`/api/deals/${urlTransactionId}/contract`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ extracted: parsed, pdfUrl: null }) })
                 setContractData(parsed)
                 // refresh docs and deal-state
-                const ref = await fetch(`/api/documents/${transaction.id}`)
+                const ref = await fetch(`/api/documents/${urlTransactionId}`)
                 if(ref.ok){ const rj = await ref.json(); setDocs(rj || []) }
-                const res = await fetch(`/api/deal-state/${transaction.id}`)
+                const res = await fetch(`/api/deal-state/${urlTransactionId}`)
                 if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) }
               }catch(e){ console.error(e) }
               setShowIntake(false)
