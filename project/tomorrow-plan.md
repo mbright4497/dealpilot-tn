@@ -1,25 +1,20 @@
-# Tomorrow Plan — 2026-03-10
+# Tomorrow Plan — 2026-03-13
 
 ## Top 3 Priority Actions
-1. Execute a live web scan first thing to update market intel and follow-ups with current builder news, inventory, and rate movements; document findings for afternoon posts.
-2. Launch the Facebook ad campaign (3 variations, $20/day) and confirm lead-form/tag routing into the GHL workflow so automation can deliver the New Construction Guide instantly.
-3. Call or text the warmest prospects tagged from price-drop alerts/new construction inquiries (prioritize those within 48h of inquiry) and schedule tours for quick-move-in homes in Stone Castle Village + Colonial Heights.
+1. Run fresh GHL lead export + MLS pull for the Tri-Cities new-construction queue so follow-ups.md and hot-zones.md can be updated with real names, budgets, incentives, and DOM data. [ACTION: Matt]
+2. Finalize ad copy & landing page CTA with actual landing URL, builder incentives, and confirmed price ranges, then launch the $20/day Facebook test across the three variations with proper tagging. [ACTION: Matt]
+3. Test the GHL workflow end-to-end with a sandbox lead: confirm SMS/email templates send, AI intro sequence triggers, and hot_lead notifications/task creation work as scripted.
 
-## Key Follow-ups (by lead/tag)
-- **Tag: New Construction - TriCities** — Reach out within 2 hours to confirm needs, share guide, and book a builder tour.
-- **Tag: price_drop_newbuild** — Send SMS/email alert for latest incentive list and assign to agent for concierge follow-up.
-- **Tag: mortgage_interested** — Push lender rate update email and task lender partner to call the hottest leads.
+## Key Follow-ups (with assignees)
+- Call the top 10 leads once the export arrives to verify budget, timeline, and builder preference; assign these to Matt for priority outreach. [ACTION: Matt]
+- Push today’s social teasers (new builds under $400k + AI speed hook) to organic channels once live URL/details are confirmed; Content Ops to schedule immediately after Matt approves.
+- Monitor builder incentives for Meadow Ridge, Riverbend Estates, and Highland Commons; update follow-ups.md with any price drops or credits discovered during the MLS pull and notify Matt for messaging.
 
 ## Content Topics to Publish
-- Quick-move-in spotlight: Stone Castle Village + Colonial Heights ranch options with incentives and DOM stats.
-- "Stop scrolling Zillow" hook: highlight how AI assistant delivers builder intel in 60 seconds (tie to new ad variation B).
-- First-time buyer assurance: emphasize new build warranties + energy efficiency to support ad variation C.
+- “New builds under $400k” highlight with free guide CTA + landing page link.
+- “AI assistant fast answers” story focusing on speed + 1-min tour.
+- Neighborhood spotlights for Meadow Ridge & Riverbend Estates once incentives confirmed.
 
 ## Time-sensitive Opportunities
-- DR Horton quick-move-ins in Stone Castle Village (limited inventory, DOM 10-14 days) — prioritize tours for buyers available this weekend.
-- Ryan Homes Colonial Heights incentives window closes soon; push urgency on social and SMS alerts.
-- Builder price tweaks in Willow Creek + Meadowview Villas making resale/infill competitive — keep buyers notified and ready to act before listings contract.
-
-## Web Scan
-- **Status:** SKIPPED (Brave Search API key missing).
-- **Suggested sources:** TN real estate news feeds, builder community pages (DR Horton, Ryan Homes, Smith Douglas, Lennar), Freddie/Fannie announcements, and Fed rate headlines for mortgage context.
+- Builder incentives and lot credits for Meadow Ridge, Riverbend Estates, and Bristol North may expire this week; need MLS confirmation and swift ad mention. [ACTION: Matt]
+- Hot lead workflows (budget ≥ $400k or Ready-to-build) should trigger ASAP once live data is in to keep the 30-minute call SLA meaningful.
