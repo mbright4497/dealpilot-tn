@@ -151,7 +151,7 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
           const percent = stateMap[state] ?? (tx.status==='Closed'?100:40)
           const daysToClose = tx.closing ? Math.max(0, Math.ceil((new Date(tx.closing).getTime() - Date.now())/(1000*60*60*24))) : null
           return (
-            <div key={tx.id} onClick={()=>{ if(onOpenDeal) onOpenDeal(tx.id) }} className="p-4 rounded-lg bg-[#0d1b2a] border border-white/6 hover:shadow-lg hover:shadow-orange-500/10 cursor-pointer transition-all">
+            <div key={tx.id} onClick={()=>{ if(onOpenDeal) { onOpenDeal(tx.id) } else { window.location.href = `/chat?deal=${tx.id}` } }} className="p-4 rounded-lg bg-[#0d1b2a] border border-white/6 hover:shadow-lg hover:shadow-orange-500/10 cursor-pointer transition-all">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-lg font-bold text-white">{String(tx.address||'').replace(/\}/g,'')}</div>
