@@ -603,6 +603,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
 
   return (
+    <>
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
         <div>
@@ -1420,5 +1421,6 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       )}
     </div>
+    </>
   )
 }
