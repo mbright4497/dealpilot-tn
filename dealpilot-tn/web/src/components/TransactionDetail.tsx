@@ -10,16 +10,20 @@ import EditTransactionModal from './EditTransactionModal'
 import DealPartiesPanel from './DealPartiesPanel/DealPartiesPanel'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
 
+import RecentAiInterpretations from "@/components/RecentAiInterpretations"
+import ErrorBoundaryClient from "@/components/ErrorBoundaryClient"
+
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
 
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
+  if (!transaction) return <div className="p-10 text-white">Loading transaction data...</div>
   // mode: overview (default), documents, parties, deadlines, communications
   const [mode,setMode] = useState<'overview'|'documents'|'parties'|'deadlines'|'communications'>('overview')
   const [remote, setRemote] = useState<any>(null)
-  const [mergedTx, setMergedTx] = useState<Transaction>(transaction)
+  const [mergedTx, setMergedTx] = useState<Transaction>(transaction || {} as any)
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
 
   // ensure RF401 (Purchase & Sale) is present in checklist (12th item) for TN compliance
@@ -35,7 +39,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [showAddContact,setShowAddContact]=useState(false)
   const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
-  const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
+  const [contractData, setContractData] = useState<any>(()=>{ try{ if(transaction && transaction.id){ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) } }catch(e){} return null })
   const [rfWarnings, setRfWarnings] = useState<string[]>([])
 
   // communication / draft state (fix: ensure variables referenced by Quick Actions exist)
