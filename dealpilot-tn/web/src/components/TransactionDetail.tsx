@@ -744,6 +744,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 </div>
                 <div className="flex gap-2">
                   <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${transaction.id}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
+                  <a href={`/api/transactions/${transaction.id}/audit-report`} className="ml-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">Download Compliance Report</a>
                   <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
                   <button onClick={()=>setEditOpen(true)} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">✎ Edit Deal</button>
                 </div>
