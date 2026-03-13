@@ -45,6 +45,8 @@ export default function RookWizard({ transactionId, onClose }: Props) {
   const [showDealSelector, setShowDealSelector] = useState(false)
   const [availableDeals, setAvailableDeals] = useState<any[]>([])
   const [selectedDeal, setSelectedDeal] = useState<any|null>(null)
+  const [contractPreview, setContractPreview] = useState<any|null>(null)
+  const [contractWarnings, setContractWarnings] = useState<string[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -65,6 +67,29 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           section_2d: payload.wizard_data.section_2d || buildDefaultWizardData().section_2d,
           section_3_6: payload.wizard_data.section_3_6 || buildDefaultWizardData().section_3_6,
         })
+
+        // attempt to fetch deal info for connected state
+        try{
+          const dealRes = await fetch(`/api/deal-state/${transactionId}`)
+          if(dealRes.ok){ const deal = await dealRes.json(); setSelectedDeal(deal) }
+        }catch(e){ /* ignore */ }
+
+        // read local contract extraction if present
+        try{
+          const raw = localStorage.getItem(`dp-contract-${transactionId}`)
+          if(raw){ const parsed = JSON.parse(raw); setContractPreview(parsed); const warnings:string[] = [];
+            // inspection period check
+            const insp = parsed?.inspection_period_days || parsed?.inspection_period || (parsed?.fields && parsed.fields.inspectionPeriod) || null
+            const inspDays = insp ? Number(insp) : null
+            if(inspDays===null || isNaN(inspDays)) warnings.push('Inspection period missing or not found (TN default 10 days)')
+            else if(inspDays < 10) warnings.push(`Inspection period is ${inspDays} day(s) — below TN recommended minimum (10 days)`)
+            // financing contingency
+            const financing = parsed?.financing || parsed?.loan_type || (parsed?.fields && parsed.fields.financing)
+            if(!financing) warnings.push('Financing contingency not found — confirm financing terms')
+            setContractWarnings(warnings)
+          }
+        }catch(e){ /* ignore */ }
+
       } catch (err: any) {
         if (!cancelled) setError(err.message)
       } finally {
