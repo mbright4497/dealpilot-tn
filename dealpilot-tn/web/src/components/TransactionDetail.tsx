@@ -21,11 +21,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [mergedTx, setMergedTx] = useState<Transaction>(transaction)
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
 
-  // ensure RF601 is present in checklist (12th item) for TN compliance
+  // ensure RF401 (Purchase & Sale) is present in checklist (12th item) for TN compliance
   useEffect(()=>{
     try{
-      const has = checklist.findIndex((it:any)=> String(it.key).toLowerCase() === 'rf601')
-      if(has === -1){ checklist.push({ key: 'rf601', title: 'RF601 Amendment', status: 'todo' }); setChecklist([...checklist]) }
+      const has = checklist.findIndex((it:any)=> String(it.key).toLowerCase() === 'rf401')
+      if(has === -1){ checklist.push({ key: 'rf401', title: 'RF401 Purchase & Sale', status: 'todo' }); setChecklist([...checklist]) }
     }catch(e){}
   }, [])
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
@@ -149,15 +149,17 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             // RF601 detection -> push ticker event for dashboard
             try{
               const rfLower = String(cj.rf_number||'').toLowerCase()
-              if(rfLower.includes('rf601') || rfLower.includes('rf-601') || (cj.category && String(cj.category).toLowerCase().includes('amendment'))){
+              if(rfLower.includes('rf401') || rfLower.includes('rf-401') || rfLower.includes('rf601') || rfLower.includes('rf-601') || (cj.category && String(cj.category).toLowerCase().includes('amendment'))){
                 const now = Date.now()
                 const newDate = (cj.extracted && (cj.extracted.inspection_end_date || cj.extracted.closing_date)) || cj.new_date || null
                 const oldDate = cj.previous_inspection_date || cj.old_date || null
-                const msg = newDate ? `RF601 Amendment detected — Inspection deadline changed from ${oldDate||'unknown'} to ${newDate}` : `RF601 Amendment detected — review amendment.`
+                // map label: RF401 is Purchase & Sale; RF601 is Amendment — we label ticker according to detection
+                const label = (rfLower.includes('rf401') || rfLower.includes('rf-401')) ? 'RF401 Purchase & Sale' : 'RF601 Amendment'
+                const msg = newDate ? `${label} detected — Inspection deadline changed from ${oldDate||'unknown'} to ${newDate}` : `${label} detected — review changes.`
                 const ev = { ts: now, dealId: transaction.id, message: msg, icon: '📝' }
                 try{
                   // persist to server-backed ticker
-                  const r = await fetch('/api/deal-ticker/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, event_type: 'rf601', message: msg, metadata: { detected: 'rf601', uploaded_id: uploaded?.id } }) })
+                  const r = await fetch('/api/deal-ticker/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, event_type: rfLower.includes('rf401')||rfLower.includes('rf-401') ? 'rf401' : 'rf601', message: msg, metadata: { detected: rfLower.includes('rf401')||rfLower.includes('rf-401') ? 'rf401' : 'rf601', uploaded_id: uploaded?.id } }) })
                   if(r.ok){
                     // also bump client UI via event
                     window.dispatchEvent(new CustomEvent('deal:ticker', { detail: ev }))
@@ -166,12 +168,15 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
                 // auto-check RF601 checklist item when classification detected (persist to DB)
                 try{
-                  const idxRf = checklist.findIndex((it:any)=> String((it.key||'')).toLowerCase() === 'rf601')
+                  const idxRf = checklist.findIndex((it:any)=> {
+                    const k = String((it.key||'')).toLowerCase()
+                    return k === 'rf601' || k === 'rf401'
+                  })
                   if(idxRf !== -1){
                     checklist[idxRf].status = 'done';
                     setChecklist([...checklist])
                     // persist change to server-side checklist
-                    try{ await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, key: 'rf601', status: 'done' }) }) }catch(e){ console.warn('persist checklist failed', e) }
+                    try{ const ck = (rfLower.includes('rf401')||rfLower.includes('rf-401')) ? 'rf401' : 'rf601'; await fetch('/api/deal-checklist', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, key: ck, status: 'done' }) }) }catch(e){ console.warn('persist checklist failed', e) }
                   }
                 }catch(e){ /* ignore */ }
 
