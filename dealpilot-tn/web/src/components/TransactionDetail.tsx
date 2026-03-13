@@ -137,6 +137,19 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             const rfKey = (cj.rf_number||'').toString().toLowerCase()
             const idx = checklist.findIndex((it:any)=> (it.key||'').toString().toLowerCase() === rfKey)
             if (idx !== -1){ checklist[idx].status = 'done'; setChecklist([...checklist]) }
+
+            // RF601 detection -> push ticker event for dashboard
+            try{
+              const rfLower = String(cj.rf_number||'').toLowerCase()
+              if(rfLower.includes('rf601') || rfLower.includes('rf-601') || (cj.category && String(cj.category).toLowerCase().includes('amendment'))){
+                const now = Date.now()
+                const newDate = (cj.extracted && (cj.extracted.inspection_end_date || cj.extracted.closing_date)) || cj.new_date || null
+                const oldDate = cj.previous_inspection_date || cj.old_date || null
+                const msg = newDate ? `RF601 Amendment detected — Inspection deadline changed from ${oldDate||'unknown'} to ${newDate}` : `RF601 Amendment detected — review amendment.`
+                const ev = { ts: now, dealId: transaction.id, message: msg, icon: '📝' }
+                try{ const key = 'deal_ticker_events'; const raw = localStorage.getItem(key); const arr = raw ? JSON.parse(raw) : []; arr.unshift(ev); localStorage.setItem(key, JSON.stringify(arr.slice(0,100))); window.dispatchEvent(new CustomEvent('deal:ticker', { detail: ev })) }catch(e){/* ignore */}
+              }
+            }catch(e){ console.warn('ticker push failed', e) }
           }
 
           // RF form detection & RF-specific checks
