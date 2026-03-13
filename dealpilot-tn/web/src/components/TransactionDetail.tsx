@@ -20,6 +20,14 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [remote, setRemote] = useState<any>(null)
   const [mergedTx, setMergedTx] = useState<Transaction>(transaction)
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
+
+  // ensure RF601 is present in checklist (12th item) for TN compliance
+  useEffect(()=>{
+    try{
+      const has = checklist.findIndex((it:any)=> String(it.key).toLowerCase() === 'rf601')
+      if(has === -1){ checklist.push({ key: 'rf601', title: 'RF601 Amendment', status: 'todo' }); setChecklist([...checklist]) }
+    }catch(e){}
+  }, [])
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
   const [input,setInput]=useState('')
   const [localContacts,setLocalContacts]=useState<Contact[]>(transaction.contacts || [])
@@ -149,10 +157,18 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 const ev = { ts: now, dealId: transaction.id, message: msg, icon: '📝' }
                 try{
                   // persist to server-backed ticker
-                  await fetch('/api/deal-ticker/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, event_type: 'rf601', message: msg, metadata: { detected: 'rf601', uploaded_id: uploaded?.id } }) })
-                  // also bump client UI via event
-                  window.dispatchEvent(new CustomEvent('deal:ticker', { detail: ev }))
+                  const r = await fetch('/api/deal-ticker/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ transactionId: transaction.id, event_type: 'rf601', message: msg, metadata: { detected: 'rf601', uploaded_id: uploaded?.id } }) })
+                  if(r.ok){
+                    // also bump client UI via event
+                    window.dispatchEvent(new CustomEvent('deal:ticker', { detail: ev }))
+                  }
                 }catch(e){ console.warn('ticker add failed', e) }
+
+                // auto-check RF601 checklist item when classification detected
+                try{
+                  const idxRf = checklist.findIndex((it:any)=> String((it.key||'')).toLowerCase() === 'rf601')
+                  if(idxRf !== -1){ checklist[idxRf].status = 'done'; setChecklist([...checklist]) }
+                }catch(e){ /* ignore */ }
               }
             }catch(e){ console.warn('ticker push failed', e) }
           }
