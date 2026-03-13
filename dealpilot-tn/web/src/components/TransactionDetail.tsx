@@ -613,6 +613,13 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 <div className="text-xl font-bold text-white">{((mergedTx as any).purchase_price || (mergedTx as any).value) ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number((mergedTx as any).purchase_price || (mergedTx as any).value)) : '—'}</div>
               </div>
             </div>
+
+            {/* Audit Button: prominent, full-width under metrics */}
+            <div className="mb-4">
+              <a href={`/api/transactions/${transaction.id}/audit-report`} className="w-full inline-block text-center px-4 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition">
+                ⬇️ Download Audit Log
+              </a>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
