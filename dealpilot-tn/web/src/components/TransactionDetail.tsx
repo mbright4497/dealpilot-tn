@@ -46,6 +46,42 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   // storage bucket name used for signed URLs
   const storageBucket = 'contracts'
 
+  // Draft / Quick Action helpers
+  const [draftKind, setDraftKind] = useState<string>('')
+  function openDraft(kind: string){
+    setDraftKind(kind)
+    // prefill subject/body/to based on kind
+    const addr = mergedTx.address || ''
+    const buyer = mergedTx.client || ''
+    if(kind==='lender'){
+      setDraftSubject(`Request: Loan status update for ${addr}`)
+      setDraftBody(`Hi [Lender],\n\nThis is a status update request for ${addr}. Please confirm the current loan status and any outstanding conditions.\n\nThanks,\n${buyer}`)
+      setDraftTo('[Lender Email]')
+    } else if(kind==='title'){
+      setDraftSubject(`Request: Title update for ${addr}`)
+      setDraftBody(`Hi Title Team,\n\nCould you please provide the current title commitment status for ${addr}? Please include any exceptions or required cures.\n\nThanks,\n${buyer}`)
+      setDraftTo('[Title Email]')
+    } else if(kind==='closing'){
+      setDraftSubject(`Reminder: Closing timeline for ${addr}`)
+      setDraftBody(`Hello all,\n\nThis is a reminder that closing for ${addr} is upcoming. Please confirm final readiness and any outstanding items.\n\nThanks,\n${buyer}`)
+      setDraftTo('[All Parties]')
+    }
+    // add visible draft message to chat immediately
+    addMessage({ from: 'assistant', text: `Draft: ${draftSubject || ''}\n\n${draftBody || ''}` })
+    setDraftOpen(true)
+  }
+
+  async function sendDraft(){
+    // For now assume no GHL connected — queue locally and notify user
+    try{
+      // add audit log
+      try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'queue_message', resource:'communications', resource_id: transaction.id, details: { kind: draftKind, to: draftTo, subject: draftSubject } }) }) }catch(e){}
+      // show queued notification
+      alert('Message queued — connect GHL in Settings to send.')
+    }catch(e){ console.error('sendDraft failed', e); alert('Failed to queue message') }
+    setDraftOpen(false)
+  }
+
   // documents via documents API (db + storage)
   const supabase = createBrowserClient()
   const [docs,setDocs]=useState<any[]>([])
@@ -1202,8 +1238,9 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
             <textarea value={draftBody} onChange={e=>setDraftBody(e.target.value)} className="w-full p-2 border rounded h-40" />
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={async ()=>{ await sendDraft() }} className="px-3 py-2 bg-orange-500 text-white rounded">Send</button>
-            <button onClick={async ()=>{ try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(draftBody || ''); alert('Copied to clipboard') } }catch(e){ alert('Copy failed') } }} className="px-3 py-2 bg-gray-300 rounded">Copy to Clipboard</button>
+            <button onClick={async ()=>{ await sendDraft() }} className="px-3 py-2 bg-orange-500 text-white rounded">Approve & Queue</button>
+            <button onClick={()=>setDraftOpen(false)} className="px-3 py-2 bg-gray-700 text-white rounded">Cancel</button>
+            <button onClick={async ()=>{ try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(draftBody || ''); alert('Copied to clipboard') } }catch(e){ alert('Copy failed') } }} className="px-3 py-2 bg-gray-300 rounded">Copy</button>
           </div>
         </div>
       </div>
