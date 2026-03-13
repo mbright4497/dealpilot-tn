@@ -22,7 +22,6 @@ type SectionValues = Record<SectionName, Record<string, any>>
 
 type Props = {
   transactionId: string
-  address?: string
   onClose: () => void
 }
 
@@ -258,8 +257,8 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           <div>
             <h2 className="text-lg font-semibold text-white">RookWizard ({transactionId})</h2>
             <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Step {step} · {status}</p>
-            { (address || selectedDeal) ? (
-              <div className="mt-1 text-sm text-emerald-300">Connected to: <span className="font-semibold text-white">{address || (selectedDeal && (selectedDeal.address || selectedDeal.address_line || `Deal ${selectedDeal.id}`))}</span></div>
+            {selectedDeal ? (
+              <div className="mt-1 text-sm text-emerald-300">Connected to: <span className="font-semibold text-white">{selectedDeal.address || selectedDeal.address_line || `Deal ${selectedDeal.id}`}</span></div>
             ) : (
               <div className="mt-1 text-sm text-gray-400">Select a deal to connect to RookWizard</div>
             )}

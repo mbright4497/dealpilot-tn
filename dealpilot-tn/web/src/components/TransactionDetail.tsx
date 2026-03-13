@@ -10,27 +10,22 @@ import EditTransactionModal from './EditTransactionModal'
 import DealPartiesPanel from './DealPartiesPanel/DealPartiesPanel'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
 
-import RecentAiInterpretations from "@/components/RecentAiInterpretations"
-import ErrorBoundaryClient from "@/components/ErrorBoundaryClient"
-
-
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
 type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
 
 export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
-  if (!transaction) return <div className="p-10 text-white">Loading transaction data...</div>
   // mode: overview (default), documents, parties, deadlines, communications
   const [mode,setMode] = useState<'overview'|'documents'|'parties'|'deadlines'|'communications'>('overview')
   const [remote, setRemote] = useState<any>(null)
-  const [mergedTx, setMergedTx] = useState<Transaction>(transaction || {} as any)
+  const [mergedTx, setMergedTx] = useState<Transaction>(transaction)
   const [checklist,setChecklist]=useState(()=> createChecklistInstance())
 
   // ensure RF401 (Purchase & Sale) is present in checklist (12th item) for TN compliance
   useEffect(()=>{
     try{
       const has = checklist.findIndex((it:any)=> String(it.key).toLowerCase() === 'rf401')
-      if(has === -1){ checklist.push({ key: 'rf401', title: 'Launch RF401 Wizard', status: 'todo' }); setChecklist([...checklist]) }
+      if(has === -1){ checklist.push({ key: 'rf401', title: 'RF401 Purchase & Sale', status: 'todo' }); setChecklist([...checklist]) }
     }catch(e){}
   }, [])
   const [chatMessages,setChatMessages]=useState<any[]>([{from:'system',text:`Transaction: ${transaction.address} (${transaction.client})`}])
@@ -39,7 +34,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [showAddContact,setShowAddContact]=useState(false)
   const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
-  const [contractData, setContractData] = useState<any>(()=>{ try{ if(transaction && transaction.id){ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) } }catch(e){} return null })
+  const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${transaction.id}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
   const [rfWarnings, setRfWarnings] = useState<string[]>([])
 
   // communication / draft state (fix: ensure variables referenced by Quick Actions exist)
@@ -159,7 +154,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 const newDate = (cj.extracted && (cj.extracted.inspection_end_date || cj.extracted.closing_date)) || cj.new_date || null
                 const oldDate = cj.previous_inspection_date || cj.old_date || null
                 // map label: RF401 is Purchase & Sale; RF601 is Amendment — we label ticker according to detection
-                const label = (rfLower.includes('rf401') || rfLower.includes('rf-401')) ? 'Launch RF401 Wizard' : 'RF601 Amendment'
+                const label = (rfLower.includes('rf401') || rfLower.includes('rf-401')) ? 'RF401 Purchase & Sale' : 'RF601 Amendment'
                 const msg = newDate ? `${label} detected — Inspection deadline changed from ${oldDate||'unknown'} to ${newDate}` : `${label} detected — review changes.`
                 const ev = { ts: now, dealId: transaction.id, message: msg, icon: '📝' }
                 try{
@@ -433,7 +428,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
       const reply = j.reply || j.message || j.choices?.[0]?.message?.content || 'Sorry, no response.'
       setChatMessages(m=>[...m, {from:'assistant', text: reply}])
       // if the assistant returned an actionable open_wizard command, dispatch event to open
-      try{ if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: j.action.dealId, address: mergedTx.address || transaction.address } })); } }catch(e){}
+      try{ if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: j.action.dealId } })); } }catch(e){}
     }catch(e:any){
       setChatMessages(m=>[...m, {from:'assistant', text: 'Error contacting AI: '+String(e)}])
     }
@@ -501,7 +496,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [dealDeadlines, setDealDeadlines] = React.useState<any[]>([])
   React.useEffect(() => {
     let mounted = true
-    async function loadDeadlines(){
+    ;(async () => {
       try{
         const res = await fetch(`/api/deal-deadlines/${transaction.id}`)
         if(!mounted) return
@@ -510,8 +505,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
           setDealDeadlines(j.deadlines || j.all_deadlines || [])
         }
       }catch(e){ }
-    }
-    loadDeadlines()
+    })()
     return () => { mounted = false }
   }, [transaction.id])
 
@@ -519,7 +513,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   const [playbookSteps, setPlaybookSteps] = React.useState<any[]>([])
   React.useEffect(()=>{
     let mounted = true
-    async function loadPlaybook(){
+    ;(async ()=>{
       try{
         const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id }), credentials: 'include' })
         if(!res.ok) return
@@ -530,8 +524,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         rows.sort((a:any,b:any)=> (a.sort_order||0) - (b.sort_order||0))
         setPlaybookSteps(rows)
       }catch(e){ console.warn('playbook steps load failed', e) }
-    }
-    loadPlaybook()
+    })()
     return ()=>{ mounted=false }
   },[transaction.id])
 
@@ -556,18 +549,7 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
   // notes
   const [notes, setNotes] = useState<any[]>([])
   const [noteText, setNoteText] = useState('')
-  React.useEffect(()=>{
-    let mounted = true
-    async function loadNotes(){
-      try{
-        const res = await fetch(`/api/deal-notes?dealId=${transaction.id}`)
-        if(!mounted) return
-        if(res.ok){ const j = await res.json(); setNotes(j.notes || []) }
-      }catch(e){ }
-    }
-    loadNotes()
-    return ()=>{ mounted=false }
-  },[transaction.id])
+  useEffect(()=>{ let mounted=true; (async ()=>{ try{ const res = await fetch(`/api/deal-notes?dealId=${transaction.id}`); if(!mounted) return; if(res.ok){ const j = await res.json(); setNotes(j.notes || []) } }catch(e){} })(); return ()=>{ mounted=false } },[transaction.id])
 
   const saveInlineEdits = async ()=>{
     try{
@@ -594,14 +576,11 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
     }catch(e){ console.error('add note failed', e) }
   }
 
-
-
   return (
-    <>
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
         <div>
-          <button onClick={onBack} className="text-sm text-orange-300">&larr; Back</button>
+          <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold mt-1">{mergedTx.address}</h2>
             <span className={`px-2 py-1 rounded text-sm font-semibold ${health?.status==='healthy' ? 'bg-green-50 text-green-700 border border-green-200' : health?.status==='attention' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : health?.status==='at_risk' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-gray-800 text-gray-300'}`}>{health ? (transaction?.status === 'Closed' ? 'Closed – Complete' : health.status==='healthy'? 'Healthy' : health.status==='attention'? 'Needs Attention' : 'At Risk') : `#${transaction.id}`}</span>
@@ -616,28 +595,10 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
 
       {/* Quick Actions: Reva-driven drafts */}
       <div className="mb-4 flex gap-2">
-        <button onClick={async ()=>{
-            try{
-              // fetch deal-state and find lender
-              const r = await fetch(`/api/deal-state/${transaction.id}`)
-              if(!r.ok){ addMessage({ from:'assistant', text: "Could not load deal contacts." }); return }
-              const j = await r.json()
-              const contacts = j.contacts || []
-              const lender = (contacts||[]).find((c:any)=> (c.role||'').toLowerCase().includes('lender') || (c.role||'').toLowerCase().includes('loan') )
-              if(!lender || !lender.phone){ addMessage({ from:'assistant', text: "Lender contact not found or missing phone number." }); return }
-              const phone = lender.phone
-              const message = `Hi ${lender.name || 'Lender'}, this is the Closing Assistant for ${mergedTx.client || 'your agent'}. We are requesting a loan status update for the property at ${mergedTx.address || ''}. Please reply with the current status. Thanks!`
-              const send = await fetch('/api/ghl/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ channel: 'sms', recipient: phone, message, contact_id: null }) })
-              if(!send.ok){ addMessage({ from:'assistant', text: "Failed to send lender request via Hublinkpro." }); return }
-              // log to deal_activity_log for compliance trail
-              try{ await fetch('/api/deal-activity-log/add', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: transaction.id, recipient: lender.name || lender.phone || 'Lender', message }) }) }catch(e){ console.warn('activity log failed', e) }
-
-              addMessage({ from:'assistant', text: "I've sent the status request to the lender via Hublinkpro. I'll notify you here when they reply." })
-            }catch(e){ console.error('request lender failed', e); addMessage({ from:'assistant', text: 'Failed to request lender status.' }) }
-          }} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Lender Status Update</button>
+        <button onClick={()=>openDraft('lender')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Lender Status Update</button>
         <button onClick={()=>openDraft('title')} className="px-3 py-2 rounded bg-indigo-600 text-white">Request Title Update</button>
         <button onClick={()=>openDraft('closing')} className="px-3 py-2 rounded bg-rose-600 text-white">Send Closing Reminder to All Parties</button>
-        <button onClick={()=>{ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: transaction.id, address: transaction.address } })); }} className="px-4 py-2 rounded bg-orange-500 text-black font-semibold">RF401 Wizard</button>
+        <button onClick={()=>{ window.dispatchEvent(new CustomEvent('rookwizard:open', { detail: { transactionId: transaction.id } })); }} className="px-4 py-2 rounded bg-orange-500 text-black font-semibold">RF401 Wizard</button>
       </div>
 
       {/* Mobile: floating Ask Reva button */}
@@ -855,22 +816,6 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Recent AI Interpretations panel (communications) */}
-      {mode==='communications' && (
-        <div className="mt-3 p-3 rounded bg-[#07101a] border border-white/10">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-gray-300">Recent AI Interpretations</div>
-            <div className="text-xs text-gray-500">Last 5</div>
-          </div>
-          {/* Recent AI Interpretations: render only when enabled and guarded by ErrorBoundary */}
-          {typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_ENABLE_RECENT_AI === 'true') && (
-            <ErrorBoundaryClient>
-              <RecentAiInterpretations data={[] /* data removed for stability; enable via env flag */} />
-            </ErrorBoundaryClient>
           )}
         </div>
       )}
@@ -1408,6 +1353,5 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
         </div>
       )}
     </div>
-    </>
   )
 }
