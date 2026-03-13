@@ -157,6 +157,16 @@ export default function ChatPage() {
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
 
+  // If a deal query param is present, auto-select that deal on load
+  useEffect(()=>{
+    try{
+      if (typeof window === 'undefined') return
+      const qp = new URLSearchParams(window.location.search)
+      const d = qp.get('deal')
+      if(d){ const id = Number(d); if(!isNaN(id)){ setSelectedTxId(id); setView('deal') } }
+    }catch(e){ /* ignore */ }
+  },[])
+
   // unified send helper for dashboard chat
   async function sendDashboardMessage(val:string){
     if(!val) return
