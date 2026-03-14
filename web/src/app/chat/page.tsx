@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import TCDashboard from '@/components/TCDashboard'
 import TransactionList from '@/components/TransactionList'
 import FormsFillView from '@/components/FormsFillView'
@@ -94,12 +95,20 @@ const NAV_ITEMS = [
 ]
 
 export default function ChatPage() {
+  const router = useRouter()
   const [view, setView] = useState('dashboard')
   const [chatOpen, setChatOpen] = useState(false)
   const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
   const [voiceEnabled, setVoiceEnabled] = useState(true)
+
+  // listen for programmatic transaction creation events from Reva components
+  useEffect(()=>{
+    const onCreate = async (e:any) => { try{ const data = e?.detail; if(!data) return; await addTransaction(data); setView('transactions'); pushUrlFor('transactions'); }catch(err){ console.error('reva:create_transaction handler failed', err) } }
+    window.addEventListener('reva:create_transaction', onCreate)
+    return ()=> window.removeEventListener('reva:create_transaction', onCreate)
+  },[])
 
   useEffect(() => {
     // load transactions
