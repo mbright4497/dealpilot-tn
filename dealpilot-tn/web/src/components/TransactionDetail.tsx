@@ -11,21 +11,8 @@ function handleRevaIntent(intent: any, setMode: any, setActiveDocument: any) {
 }
 
 
-async function handleDeleteTransaction(urlTransactionId: string) {
-  if (!urlTransactionId) return;
-  await fetch('/api/transactions/' + urlTransactionId, { method: 'DELETE' });
-  window.location.href = '/transactions';
-}
-
-async function handleUpdateTransaction(urlTransactionId: string, data: any) {
-  if (!urlTransactionId) return;
-  await fetch('/api/transactions/' + urlTransactionId, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  });
-  window.location.reload();
-}
+// NOTE: we avoid global navigation here. Use the onBack prop to return to the transactions view
+// and refresh local state via fetches. Inline helpers will be used instead of these globals.
 
 import { parseRevaIntent } from '@/lib/revaIntentParser'
 import { useSearchParams } from 'next/navigation'
@@ -43,17 +30,17 @@ type Contact = { role:string, name:string, company?:string, phone?:string, email
 type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
 
-export default function TransactionDetail({transaction, onBack, onUpdateContacts}:{transaction:Transaction,onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
-  // URL-derived transaction id (source of truth for this component)
+export default function TransactionDetail({transaction, dealId, onBack, onUpdateContacts}:{transaction:Transaction, dealId?:number | undefined, onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
+  // URL-derived transaction id (source of truth for this component). Fallback to prop.dealId when URL param missing.
   const searchParams = useSearchParams()
   const urlDealParam = (typeof searchParams?.get === 'function') ? searchParams.get('deal') : null
-  const urlTransactionId = urlDealParam ? Number(urlDealParam) : null
-  // If no ?deal= param, render safe placeholder before running data hooks
+  const urlTransactionId = urlDealParam ? Number(urlDealParam) : (typeof dealId === 'number' ? dealId : null)
+  // If no transaction id available, render safe placeholder before running data hooks
   if(!urlTransactionId){
     return (
-      <div class="p-6">
-        <div class="text-lg font-semibold">Select a deal to continue</div>
-        <div class="text-sm text-gray-500 mt-2">Open a deal from the transactions list or add ?deal=&lt;id&gt; to the URL.</div>
+      <div className="p-6">
+        <div className="text-lg font-semibold">Select a deal to continue</div>
+        <div className="text-sm text-gray-500 mt-2">Open a deal from the transactions list or add ?deal=&lt;id&gt; to the URL.</div>
       </div>
     )
   }
@@ -791,8 +778,8 @@ export default function TransactionDetail({transaction, onBack, onUpdateContacts
                 {!editing ? (
                   <div className="flex gap-2 items-center">
                     <button onClick={()=>{ setEditing(true); setEditStatus(mergedTx.status||''); setEditBinding((mergedTx as any).binding||''); setEditClosing((mergedTx as any).closing_date || (mergedTx as any).closing || ''); setEditValue((mergedTx as any).purchase_price || (mergedTx as any).value || undefined) }} className="px-3 py-1 bg-gray-700 rounded text-sm">Edit deal</button>
-                      <button onClick={async ()=>{ if(!window.confirm('Delete this transaction? This cannot be undone.')) return; try{ const id = transaction?.id || (mergedTx && (mergedTx as any).id); const res = await fetch('/api/transactions/'+id, { method: 'DELETE' }); if(!res.ok){ const j=await res.json(); alert('Delete failed: '+(j.error||res.statusText)); return } // navigate back to transactions
-                      window.location.href = '/transactions'; }catch(e){ console.error(e); alert('Delete failed') } }} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete Transaction</button>
+                      <button onClick={async ()=>{ if(!window.confirm('Delete this transaction? This cannot be undone.')) return; try{ const id = transaction?.id || (mergedTx && (mergedTx as any).id); const res = await fetch('/api/transactions/'+id, { method: 'DELETE' }); if(!res.ok){ const j=await res.json(); alert('Delete failed: '+(j.error||res.statusText)); return } // call onBack to navigate and refresh
+                      try{ onBack(); }catch(e){ console.warn('onBack failed', e) } }catch(e){ console.error(e); alert('Delete failed') } }} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Delete Transaction</button>
                   </div>
                 ) : (
                   <div className="space-y-2">
