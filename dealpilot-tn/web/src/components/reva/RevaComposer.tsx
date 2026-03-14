@@ -52,6 +52,9 @@ export default function EvaComposer(){
     }catch(e){
       addMessage({id:'eva_err_'+Date.now(), role:'eva', content:'REVA is unavailable (placeholder).'})
     }
+      // If REVA returns a structured action to create a transaction, surface it via a window event
+      try{ if(j.action && j.action.type === 'create_transaction' && j.action.data){ window.dispatchEvent(new CustomEvent('reva:create_transaction', { detail: j.action.data })) } }catch(_){ }
+
   }
 
   const send = async (e?: React.MouseEvent)=>{
