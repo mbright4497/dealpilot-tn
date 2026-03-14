@@ -181,14 +181,32 @@ export default function ChatPage() {
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
 
-  // If a deal query param is present, auto-select that deal on load
+  // On mount: restore view from URL and add popstate listener
   useEffect(()=>{
     try{
       if (typeof window === 'undefined') return
       const qp = new URLSearchParams(window.location.search)
       const d = qp.get('deal')
+      const viewParam = qp.get('view')
       if(d){ const id = Number(d); if(!isNaN(id)){ setSelectedTxId(id); setView('deal') } }
+      else if(viewParam === 'transactions'){ setView('transactions'); setSelectedTxId(null) }
+      else if(viewParam === 'deadlines'){ setView('deadlines'); setSelectedTxId(null) }
+      else { setView('dashboard'); setSelectedTxId(null) }
     }catch(e){ /* ignore */ }
+
+    const onPop = ()=>{
+      try{
+        const qp = new URLSearchParams(window.location.search)
+        const d = qp.get('deal')
+        const viewParam = qp.get('view')
+        if(d){ const id = Number(d); if(!isNaN(id)){ setSelectedTxId(id); setView('deal'); return } }
+        if(viewParam === 'transactions'){ setSelectedTxId(null); setView('transactions'); return }
+        if(viewParam === 'deadlines'){ setSelectedTxId(null); setView('deadlines'); return }
+        setSelectedTxId(null); setView('dashboard')
+      }catch(e){ console.error(e) }
+    }
+    window.addEventListener('popstate', onPop)
+    return ()=> window.removeEventListener('popstate', onPop)
   },[])
 
   // unified send helper for dashboard chat
@@ -210,6 +228,7 @@ export default function ChatPage() {
         setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()) }])
         // handle actionable response to open wizard
         if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
+        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva', e) } }
       }
     }catch(e){ console.error(e); addToast('Chat failed') }
     finally{ setChatLoading(false) }
@@ -314,14 +333,27 @@ export default function ChatPage() {
     }
   }
 
+  function pushUrlFor(viewName: string, txId?: number|null){
+    try{
+      if(typeof window === 'undefined') return
+      if(viewName === 'dashboard') window.history.pushState({}, '', '/chat')
+      else if(viewName === 'transactions') window.history.pushState({}, '', '/chat?view=transactions')
+      else if(viewName === 'deadlines') window.history.pushState({}, '', '/chat?view=deadlines')
+      else if(viewName === 'deal' && txId) window.history.pushState({}, '', `/chat?deal=${txId}`)
+      else window.history.pushState({}, '', '/chat')
+    }catch(e){ }
+  }
+
   function openDeal(txId: number) {
     setSelectedTxId(txId)
     setView('deal')
+    pushUrlFor('deal', txId)
   }
 
   function openChecklist(txId: number) {
     setSelectedTxId(txId)
     setView('deal')
+    pushUrlFor('deal', txId)
   }
 
   async function deleteTransaction(txId: number) {
@@ -345,16 +377,21 @@ export default function ChatPage() {
     if (dest === 'transactions') {
       setSelectedTxId(null)
       setView('transactions')
+      pushUrlFor('transactions')
     } else if (dest === 'forms') {
       setView('forms')
+      pushUrlFor('dashboard')
     } else if (dest === 'deadlines') {
       setView('deadlines')
+      pushUrlFor('deadlines')
     } else if (dest === 'checklist') {
       setView('transactions')
+      pushUrlFor('transactions')
     } else if (dest === 'ai') {
       setChatOpen(true)
     } else {
       setView(dest)
+      pushUrlFor(dest)
     }
   }
 
@@ -645,10 +682,6 @@ export default function ChatPage() {
  >
  {evaSpeaking ? "⏹" : "▶️"}
  </button>
-
- <div className="ml-3">
-   <button onClick={()=>{ if(selectedTxId){ setRookWizardOpen(true) } else setShowRookPicker(true) }} className="px-3 py-2 bg-orange-500 rounded text-black font-semibold">Open RF401 Wizard</button>
- </div>
  <form
  onSubmit={async (e) => {
  e.preventDefault();
@@ -672,6 +705,8 @@ export default function ChatPage() {
  setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()) }])
  addToast("Reva replied");
  }
+        // create_transaction action from Reva (dashboard form)
+        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva form', e) } }
  } catch (err) {
  console.error(err);
  addToast("Chat failed");
@@ -814,7 +849,7 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
             <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} /></>)}
-        {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
+        {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} dealId={selectedTxId || undefined} onBack={() => { setView('transactions'); pushUrlFor('transactions') }} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && (<>
           <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
           <FormsFillView />

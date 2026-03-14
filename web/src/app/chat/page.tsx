@@ -102,6 +102,7 @@ export default function ChatPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true)
 
   useEffect(() => {
+    // load transactions
     fetch('/api/deal-state/all')
       .then(r => r.json())
       .then(data => {
@@ -135,6 +136,47 @@ export default function ChatPage() {
         }
       })
       .catch(err => console.error('Failed to load deal states:', err))
+
+    // On mount: read URL params to restore view
+    try{
+      const params = new URLSearchParams(window.location.search)
+      const deal = params.get('deal')
+      const viewParam = params.get('view')
+      if (deal) {
+        setSelectedTxId(Number(deal))
+        setView('deal')
+      } else if (viewParam === 'transactions') {
+        setView('transactions')
+      } else if (viewParam === 'deadlines') {
+        setView('deadlines')
+      } else {
+        setView('dashboard')
+      }
+    }catch(e){/* ignore on server */}
+
+    // popstate listener for back/forward
+    const onPop = () => {
+      try{
+        const params = new URLSearchParams(window.location.search)
+        const deal = params.get('deal')
+        const viewParam = params.get('view')
+        if (deal) {
+          setSelectedTxId(Number(deal))
+          setView('deal')
+        } else if (viewParam === 'transactions') {
+          setSelectedTxId(null)
+          setView('transactions')
+        } else if (viewParam === 'deadlines') {
+          setSelectedTxId(null)
+          setView('deadlines')
+        } else {
+          setSelectedTxId(null)
+          setView('dashboard')
+        }
+      }catch(e){console.error(e)}
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
   }, [])
 
   async function addTransaction(tx: any) {
@@ -179,14 +221,32 @@ export default function ChatPage() {
     }
   }
 
+  function pushUrlFor(viewName: string, txId?: number|null) {
+    try{
+      if (viewName === 'dashboard') {
+        window.history.pushState({}, '', '/chat')
+      } else if (viewName === 'transactions') {
+        window.history.pushState({}, '', '/chat?view=transactions')
+      } else if (viewName === 'deadlines') {
+        window.history.pushState({}, '', '/chat?view=deadlines')
+      } else if (viewName === 'deal' && txId) {
+        window.history.pushState({}, '', `/chat?deal=${txId}`)
+      } else {
+        window.history.pushState({}, '', '/chat')
+      }
+    }catch(e){/* noop on server */}
+  }
+
   function openDeal(txId: number) {
     setSelectedTxId(txId)
     setView('deal')
+    pushUrlFor('deal', txId)
   }
 
   function openChecklist(txId: number) {
     setSelectedTxId(txId)
     setView('deal')
+    pushUrlFor('deal', txId)
   }
 
   async function deleteTransaction(txId: number) {
@@ -210,16 +270,21 @@ export default function ChatPage() {
     if (dest === 'transactions') {
       setSelectedTxId(null)
       setView('transactions')
+      pushUrlFor('transactions')
     } else if (dest === 'forms') {
       setView('forms')
+      pushUrlFor('dashboard')
     } else if (dest === 'deadlines') {
       setView('deadlines')
+      pushUrlFor('deadlines')
     } else if (dest === 'checklist') {
       setView('transactions')
+      pushUrlFor('transactions')
     } else if (dest === 'ai') {
       setChatOpen(true)
     } else {
       setView(dest)
+      pushUrlFor(dest)
     }
   }
 
@@ -277,7 +342,7 @@ export default function ChatPage() {
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && <TCDashboard transactions={transactions} onNavigate={handleNavigate} onOpenDeal={openDeal} style={assistantStyle} />}
         {view === 'transactions' && <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} />}
-        {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} onBack={() => setView('transactions')} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
+        {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} dealId={selectedTxId || undefined} onBack={() => { setView('transactions'); pushUrlFor('transactions') }} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && <FormsFillView />}
         {view === 'deadlines' && <DeadlineCalculator />}         {view === 'tx-steps' && <div className="grid lg:grid-cols-2 gap-6"><TransactionStepper /><ContractViewer contract={{propertyAddress:'123 Maple St, Johnson City TN',buyers:'John Smith, Jane Smith',sellers:'Bob Johnson',purchasePrice:425000,earnestMoney:5000,closingDate:'2026-05-30',inspectionStart:'2026-03-01',inspectionEnd:'2026-03-10',financingDate:'2026-04-15',specialStipulations:'Seller to repair roof prior to closing.'}} /></div>}
         {view === 'personality' && <><PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} /><div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div></>}
