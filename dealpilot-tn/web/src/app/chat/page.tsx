@@ -1,5 +1,5 @@
 'use client'
-import React, {useState, useEffect} from 'react'
+import React, {useState, useEffect, useRef} from 'react'
 import Link from 'next/link'
 import { speakAPI as speakText, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
 import {useRouter} from 'next/navigation'
@@ -181,6 +181,10 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
   const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string, attachments?:any, showUpload?:boolean, parsed?:any}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
   const chatRef = React.useRef<HTMLDivElement|null>(null)
+  const [askInput, setAskInput] = useState('')
+  const [micSupported, setMicSupported] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<any>(null)
 
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
   const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
@@ -249,11 +253,7 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
     if(!val) return
     setChatMode(true)
     setChatMessages(m=>[...m, { role: 'user', content: val }])
-    try{
-      // clear input field if present
-      const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
-      if(inp) inp.value = ''
-    }catch(_){ }
+    setAskInput('')
     setChatLoading(true)
     try{
       // build full conversation payload from chatMessages + new user message
@@ -267,6 +267,75 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
       }
     }catch(e){ console.error(e); addToast('Chat failed') }
     finally{ setChatLoading(false) }
+  }
+
+  const handleSend = async () => {
+    const trimmed = askInput.trim()
+    if (!trimmed) return
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+    }
+    await sendDashboardMessage(trimmed)
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) return
+    const recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+    recognition.onresult = (event: any) => {
+      let finalTranscript = ''
+      let interimTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i]
+        const transcript = result[0]?.transcript || ''
+        if (result.isFinal) {
+          finalTranscript += transcript
+        } else {
+          interimTranscript += transcript
+        }
+      }
+      const nextValue = finalTranscript || interimTranscript
+      if (nextValue) {
+        setAskInput(nextValue)
+      }
+      if (finalTranscript) {
+        setIsListening(false)
+        try { recognition.stop() } catch (err) { console.error(err) }
+      }
+    }
+    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => setIsListening(false)
+    recognitionRef.current = recognition
+    setMicSupported(true)
+    return () => {
+      recognition.onresult = null
+      recognition.onerror = null
+      recognition.onend = null
+      try { recognition.abort() } catch (_err) {}
+      recognitionRef.current = null
+    }
+  }, [])
+
+  const toggleMicListening = () => {
+    const recognition = recognitionRef.current
+    if (!recognition) return
+    if (isListening) {
+      recognition.stop()
+      setIsListening(false)
+      return
+    }
+    try {
+      recognition.start()
+      setIsListening(true)
+    } catch (err) {
+      console.error('Speech recognition start failed', err)
+      setIsListening(false)
+    }
   }
 
   // inline upload handler used when Reva asks user to upload a contract
@@ -431,6 +500,7 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
   }
 
   const selectedTx = transactions.find(t => t.id === selectedTxId)
+  const inputHasText = askInput.trim().length > 0
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState<number>(0)
 
@@ -685,93 +755,91 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
  </div>
 
  {/* Controls: play/stop + input + refresh */}
- <div className="mt-6 flex items-center gap-4">
- <button
- onClick={async () => {
- try {
- // If there's a message in the input, treat this as a send action
- const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
- const val = inp?.value?.trim()
- if(val){ await sendDashboardMessage(val); return }
- if (evaSpeaking) {
- stopSpeaking();
- setEvaSpeaking(false);
- return;
- }
- if (!briefing) return;
- await speakText(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
- setEvaSpeaking(false)
- );
- } catch (e) {
- console.error(e);
- setEvaSpeaking(false);
- }
- }}
- className={
- "w-12 h-12 rounded-full flex items-center justify-center text-white " +
- (evaSpeaking
- ? "bg-orange-500 animate-pulse"
- : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
- }
- title={evaSpeaking ? "Stop Reva" : "Play Reva briefing"}
- >
- {evaSpeaking ? "⏹" : "▶️"}
- </button>
- <form
- onSubmit={async (e) => {
- e.preventDefault();
- const val = (e.target as any).elements.ask.value;
- if (!val) return;
- // append user message, clear input, switch to chat mode
- setChatMode(true)
- setChatMessages(m=>[...m, { role: 'user', content: val }])
- try { (e.target as any).elements.ask.value = '' }catch(_){ }
- setChatLoading(true)
- try {
- const payload = { messages: chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content })).concat([{ role: 'user', content: val }]) }
- const res = await fetch("/api/eva/chat", {
- method: "POST",
- headers: { "Content-Type": "application/json" },
- body: JSON.stringify(payload),
- });
- if (res.ok) {
- const j = await res.json();
- const reply = j.reply || j.message || j.summary || '';
- setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()) }])
- addToast("Reva replied");
- }
-        // create_transaction action from Reva (dashboard form)
-        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva form', e) } }
- } catch (err) {
- console.error(err);
- addToast("Chat failed");
- } finally { setChatLoading(false) }
- }}
- className="flex-1"
- >
- <input
- name="ask"
- placeholder="Ask Reva anything..."
-className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
- />
- </form>
-
- <button
- onClick={async () => {
- try {
- stopSpeaking();
- setEvaSpeaking(false);
- setChatMode(false);
- await loadCommandCenter();
- } catch (e) {
- console.error(e);
- }
- }}
- className="px-3 py-2 bg-gray-800 rounded text-sm hover:bg-gray-700 transition"
- >
- Refresh
- </button>
+ <div className="mt-6 flex items-center gap-3">
+   <button
+     onClick={async () => {
+       try {
+         const attempt = askInput.trim()
+         if (attempt) {
+           await handleSend()
+           return
+         }
+         if (evaSpeaking) {
+           stopSpeaking();
+           setEvaSpeaking(false);
+           return;
+         }
+         if (!briefing) return;
+         await speakText(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
+           setEvaSpeaking(false)
+         );
+       } catch (e) {
+         console.error(e);
+         setEvaSpeaking(false);
+       }
+     }}
+     className={
+       "w-12 h-12 rounded-full flex items-center justify-center text-white " +
+       (evaSpeaking
+         ? "bg-orange-500 animate-pulse"
+         : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
+     }
+     title={evaSpeaking ? "Stop Reva" : "Play Reva briefing"}
+   >
+     {evaSpeaking ? "⏹" : "▶️"}
+   </button>
+   {micSupported && (
+     <button
+       type="button"
+       onClick={toggleMicListening}
+       className={
+         "w-12 h-12 rounded-full flex items-center justify-center text-white " +
+         (isListening ? "bg-orange-500 animate-pulse" : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
+       }
+       title={isListening ? "Stop voice input" : "Start voice input"}
+     >
+       {isListening ? "🛑" : "🎙️"}
+     </button>
+   )}
+   <form
+     onSubmit={async (e) => {
+       e.preventDefault()
+       await handleSend()
+     }}
+     className="flex-1 flex items-center gap-3"
+   >
+     <input
+       name="ask"
+       placeholder="Ask Reva anything..."
+       value={askInput}
+       onChange={(e) => setAskInput(e.target.value)}
+       className="flex-1 min-w-0 px-4 py-3 rounded-full bg-[#0b1a2b] placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
+     />
+     <button
+       type="submit"
+       disabled={!inputHasText}
+       className={`px-4 py-2 rounded-full text-sm font-semibold transition ${inputHasText ? "bg-[#F97316] text-black hover:bg-orange-500" : "bg-gray-700 text-gray-500 cursor-not-allowed"}`}
+     >
+       Send
+     </button>
+   </form>
+   <button
+     onClick={async () => {
+       try {
+         stopSpeaking();
+         setEvaSpeaking(false);
+         setChatMode(false);
+         await loadCommandCenter();
+       } catch (e) {
+         console.error(e);
+       }
+     }}
+     className="px-3 py-2 bg-gray-800 rounded text-sm hover:bg-gray-700 transition"
+   >
+     Refresh
+   </button>
  </div>
+
 
  {/* Local keyframes */}
  <style jsx>{`
