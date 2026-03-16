@@ -222,7 +222,13 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           const dealRes = await fetch(`/api/deal-state/${transactionId}`)
           if (dealRes.ok) {
             const deal = await dealRes.json()
-            if (!cancelled) setSelectedDeal(deal)
+            if (!cancelled) setSelectedDeal({
+              id: deal.id,
+              address: deal.address || deal.property_address || deal.propertyAddress || '',
+              client: deal.client || deal.client_name || deal.clientName || '',
+              status: deal.status || deal.current_state || deal.state_label || '',
+              closing_date: deal.closing_date || deal.closing || deal.closingDate || null,
+            })
           }
         } catch (_e) {
           // ignore

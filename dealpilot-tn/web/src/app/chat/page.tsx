@@ -181,6 +181,14 @@ export default function ChatPage() {
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
 
+  // restore rookwizard selected deal from localStorage so the card persists across refreshes
+  useEffect(()=>{
+    try{
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('rookwizard_selected_deal') : null
+      if(raw){ const d = JSON.parse(raw); if(d && d.id){ setSelectedTxId(Number(d.id)) } }
+    }catch(_){ }
+  },[])
+
   // On mount: restore view from URL and add popstate listener
   useEffect(()=>{
     try{
