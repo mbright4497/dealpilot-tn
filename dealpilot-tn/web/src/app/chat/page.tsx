@@ -266,14 +266,23 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
   // load existing ticker events and subscribe to updates from document classifier
   useEffect(()=>{
     let mounted = true
-    ;(async ()=>{
-      const success = await refreshDealTicker()
-      if(success) return
-      try{
-        const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null
-        const arr = raw ? JSON.parse(raw) : []
-        if(Array.isArray(arr) && mounted) setDealTickerEvents(arr.slice(0,50))
-      }catch(_){}
+	;(async ()=>{
+		try {
+			const res = await fetch('/api/deal-ticker')
+			if (res.ok) {
+				const data = await res.json()
+				if (mounted) setDealTickerEvents(data.events || [])
+				return
+			}
+		} catch (e) {
+			// fallback to localStorage below
+		}
+		try{
+			const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null
+			const arr = raw ? JSON.parse(raw) : []
+			if(Array.isArray(arr) && mounted) setDealTickerEvents(arr.slice(0,50))
+		}catch(_){ }
+		})()
     })()
 
     const handler = (e:any)=>{ try{ const detail = e?.detail; if(detail){ setDealTickerEvents(prev=>[detail, ...prev].slice(0,50)) } }catch(_){ } }
