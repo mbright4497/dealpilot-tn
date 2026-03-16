@@ -116,3 +116,10 @@ export default function DealPickerModal({
               </button>
             ))}
           </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
