@@ -34,6 +34,87 @@ type DealContactRow = {
   }
 }
 
+const DEFICIENCY_OPTIONS = [
+  { key: 'hvac', label: 'HVAC' },
+  { key: 'plumbing', label: 'Plumbing' },
+  { key: 'electrical', label: 'Electrical' },
+  { key: 'roof', label: 'Roof' },
+  { key: 'foundation', label: 'Foundation' },
+  { key: 'appliances', label: 'Appliances' },
+  { key: 'other', label: 'Other (describe)' },
+] as const
+
+type DeficiencyKey = (typeof DEFICIENCY_OPTIONS)[number]['key']
+interface DeficiencyState {
+  checked: boolean
+  notes: string
+}
+type Rf401Status = 'Satisfactory' | 'Unsatisfactory' | 'Satisfactory with exceptions'
+const OVERALL_STATUSES: Rf401Status[] = ['Satisfactory', 'Unsatisfactory', 'Satisfactory with exceptions']
+
+interface Rf401DraftState {
+  propertyAddress: string
+  inspectionDate: string
+  deficiencies: Record<DeficiencyKey, DeficiencyState>
+  overallStatus: Rf401Status
+}
+
+function buildEmptyDeficiencies(): Record<DeficiencyKey, DeficiencyState> {
+  return DEFICIENCY_OPTIONS.reduce((acc, option) => {
+    acc[option.key] = { checked: false, notes: '' }
+    return acc
+  }, {} as Record<DeficiencyKey, DeficiencyState>)
+}
+
+function buildDefaultRf401Draft(address?: string): Rf401DraftState {
+  return {
+    propertyAddress: address || '',
+    inspectionDate: '',
+    deficiencies: buildEmptyDeficiencies(),
+    overallStatus: 'Satisfactory',
+  }
+}
+
+function mergeDeficiencies(source?: Record<string, any>): Record<DeficiencyKey, DeficiencyState> {
+  const base = buildEmptyDeficiencies()
+  if (!source) return base
+  return DEFICIENCY_OPTIONS.reduce((acc, option) => {
+    const origin = source[option.key]
+    acc[option.key] = {
+      checked: Boolean(origin?.checked),
+      notes: typeof origin?.notes === 'string' ? origin.notes : '',
+    }
+    return acc
+  }, {} as Record<DeficiencyKey, DeficiencyState>)
+}
+
+function evaluateRf401MissingFields(data: Rf401DraftState): string[] {
+  const missing: string[] = []
+  if (!data.propertyAddress.trim()) missing.push('Property address')
+  if (!data.inspectionDate) missing.push('Inspection date')
+  if (!data.overallStatus) missing.push('Overall status')
+  Object.entries(data.deficiencies).forEach(([key, state]) => {
+    if (state.checked && state.notes.trim().length === 0) {
+      const option = DEFICIENCY_OPTIONS.find((opt) => opt.key === key)
+      missing.push(`${option?.label || key} notes`)  
+    }
+  })
+  return missing
+}
+
+
+  id: string
+  deal_id: number
+  role: string
+  contact_id: string
+  contacts?: {
+    id?: string
+    name?: string
+    email?: string
+    phone?: string
+  }
+}
+
 const DEFAULT_VALUES = buildDefaultWizardData()
 
 export default function RookWizard({ transactionId, onClose }: Props) {
@@ -52,6 +133,11 @@ export default function RookWizard({ transactionId, onClose }: Props) {
   const [dealContacts, setDealContacts] = useState<DealContactRow[]>([])
   const [dealDetailsLoading, setDealDetailsLoading] = useState(false)
   const [confirmingParties, setConfirmingParties] = useState(false)
+  const [rf401Draft, setRf401Draft] = useState<Rf401DraftState>(() => buildDefaultRf401Draft())
+  const [draftSaving, setDraftSaving] = useState(false)
+  const [draftMessage, setDraftMessage] = useState<string | null>(null)
+  const [finalizing, setFinalizing] = useState(false)
+  const [exportMessage, setExportMessage] = useState<string | null>(null)
 
   const displayFieldValue = (section: SectionName, key: string, type: 'text' | 'number' | 'date') => {
     const sectionData = sectionValues[section] || {}
@@ -111,6 +197,67 @@ export default function RookWizard({ transactionId, onClose }: Props) {
     }
   }
 
+  const persistRf401Data = async (mode: 'draft' | 'submitted') => {
+    if (!transactionId) {
+      setError('Transaction ID is required to save RF401 data.')
+      return false
+    }
+    if (mode === 'draft') {
+      setDraftSaving(true)
+    } else {
+      setFinalizing(true)
+    }
+    setError(null)
+    try {
+      const res = await fetch(`/api/rf401/${transactionId}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: rf401Draft, mode }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(body?.error || 'Unable to persist RF401 data')
+      }
+      if (mode === 'draft') {
+        const now = new Date().toLocaleTimeString()
+        setDraftMessage(`Draft saved at ${now}`)
+      } else {
+        const missing = evaluateRf401MissingFields(rf401Draft)
+        setCompleteSummary({
+          missing_fields: missing,
+          next_actions: missing.length ? 'Resolve highlighted fields before exporting.' : 'RF401 data saved to the deal.',
+        })
+        setStatus(sectionProgress.section_3_6.status)
+      }
+      return true
+    } catch (err: any) {
+      setError(err.message || 'Unable to save RF401 data')
+      return false
+    } finally {
+      if (mode === 'draft') setDraftSaving(false)
+      else setFinalizing(false)
+    }
+  }
+
+  const handleSaveRf401Draft = async () => persistRf401Data('draft')
+
+  const handleSaveToDeal = async () => {
+    const missing = evaluateRf401MissingFields(rf401Draft)
+    if (missing.length) {
+      setError('Please resolve missing RF401 fields before saving to the deal.')
+      return false
+    }
+    const saved = await persistRf401Data('submitted')
+    if (saved) {
+      setExportMessage('RF401 draft promoted to the deal. PDF export is a future feature.')
+    }
+    return saved
+  }
+
+  const handleRequestExport = () => {
+    setExportMessage('PDF export is a placeholder; integration coming soon.')
+  }
+
   const handleComplete = async () => {
     setSaving(true)
     setError(null)
@@ -137,14 +284,8 @@ export default function RookWizard({ transactionId, onClose }: Props) {
   }, [sectionValues.section_1])
 
   const rf401Ready = useMemo(() => {
-    const price = sectionValues.section_2.purchase_price_numeric
-    const closingDate = sectionValues.section_3_6.closing_date
-    const earnestAmount = sectionValues.section_3_6.earnest_money_amount
-    const earnestDue = sectionValues.section_3_6.earnest_money_due_date
-    const priceValid = typeof price === 'number' && !Number.isNaN(price) && price > 0
-    const earnestValid = typeof earnestAmount === 'number' && !Number.isNaN(earnestAmount) && earnestAmount > 0
-    return Boolean(priceValid && closingDate && earnestValid && earnestDue)
-  }, [sectionValues.section_2, sectionValues.section_3_6])
+    return Boolean(rf401Draft.propertyAddress.trim() && rf401Draft.inspectionDate && rf401Draft.overallStatus)
+  }, [rf401Draft])
 
   const allowComplete = status === sectionProgress.section_3_6.status
   const progressPercent = useMemo(() => ((activeStep - 1) / (STEP_CONFIG.length - 1)) * 100, [activeStep])
@@ -231,12 +372,11 @@ export default function RookWizard({ transactionId, onClose }: Props) {
       return
     }
     if (activeStep === 3) {
-      const priceSaved = await handleSaveSection('section_2')
-      if (!priceSaved) return
-      const earnestSaved = await handleSaveSection('section_3_6')
-      if (earnestSaved) {
+      const saved = await handleSaveRf401Draft()
+      if (saved) {
         setActiveStep(4)
       }
+      return
     }
   }
 
@@ -360,6 +500,38 @@ export default function RookWizard({ transactionId, onClose }: Props) {
     }
   }, [transactionId])
 
+  useEffect(() => {
+    let cancelled = false
+    const loadRf401Draft = async () => {
+      if (!transactionId) return
+      try {
+        const res = await fetch(`/api/rf401/${transactionId}/draft`)
+        if (!res.ok) return
+        const payload = await res.json().catch(() => null)
+        if (cancelled) return
+        const stored = payload?.data?.value
+        if (stored) {
+          setRf401Draft((prev) => ({
+            propertyAddress: stored.propertyAddress || prev.propertyAddress,
+            inspectionDate: stored.inspectionDate || prev.inspectionDate,
+            overallStatus: OVERALL_STATUSES.includes(stored.overallStatus) ? stored.overallStatus : prev.overallStatus,
+            deficiencies: mergeDeficiencies(stored.deficiencies),
+          }))
+        }
+      } catch (_err) {
+        // ignore for now
+      }
+    }
+    loadRf401Draft()
+    return () => { cancelled = true }
+  }, [transactionId])
+
+  useEffect(() => {
+    if (selectedDeal?.address) {
+      setRf401Draft((prev) => (prev.propertyAddress ? prev : { ...prev, propertyAddress: selectedDeal.address }))
+    }
+  }, [selectedDeal?.address])
+
   const connectDealPanel = (
     <div className="space-y-4">
       <p className="text-sm text-gray-300">A connected deal keeps your RF401 aligned with the correct transaction record.</p>
@@ -453,73 +625,125 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </button>
       </div>
     </div>
-  )  const rf401Panel = (
+  )  const flaggedDeficiencies = useMemo(
+    () => DEFICIENCY_OPTIONS.filter((option) => rf401Draft.deficiencies[option.key].checked),
+    [rf401Draft]
+  )
+  const missingFields = useMemo(() => evaluateRf401MissingFields(rf401Draft), [rf401Draft])
+  const completeness = useMemo(() => {
+    const baseFields = 3
+    const totalRequired = baseFields + flaggedDeficiencies.length
+    if (totalRequired === 0) return 100
+    const filled = Math.max(totalRequired - missingFields.length, 0)
+    return Math.round((filled / totalRequired) * 100)
+  }, [flaggedDeficiencies.length, missingFields.length])
+
+  const rf401Panel = (
     <div className="space-y-4">
-      <p className="text-sm text-gray-300">Capture the critical RF401 data points listed below.</p>
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
-          Purchase price
-          <input
-            type="number"
-            value={displayFieldValue('section_2', 'purchase_price_numeric', 'number')}
-            onChange={(event) => handleFieldChange('section_2', 'purchase_price_numeric', event.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
-            placeholder="Numeric value"
-          />
-        </label>
-        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
-          Closing date
-          <input
-            type="date"
-            value={displayFieldValue('section_3_6', 'closing_date', 'date')}
-            onChange={(event) => handleFieldChange('section_3_6', 'closing_date', event.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
-          />
-        </label>
-        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
-          Earnest money amount
-          <input
-            type="number"
-            value={displayFieldValue('section_3_6', 'earnest_money_amount', 'number')}
-            onChange={(event) => handleFieldChange('section_3_6', 'earnest_money_amount', event.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
-            placeholder="Numeric value"
-          />
-        </label>
-        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
-          Earnest money due date
-          <input
-            type="date"
-            value={displayFieldValue('section_3_6', 'earnest_money_due_date', 'date')}
-            onChange={(event) => handleFieldChange('section_3_6', 'earnest_money_due_date', event.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
-          />
-        </label>
-      </div>
+      <p className="text-sm text-gray-300">Capture the Tennessee RF401 inspection details for this deal.</p>
       <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
-        Special stipulations
-        <textarea
-          value={displayFieldValue('section_3_6', 'special_assessments', 'text')}
-          onChange={(event) => handleFieldChange('section_3_6', 'special_assessments', event.target.value)}
+        Property address
+        <input
+          type="text"
+          value={rf401Draft.propertyAddress}
+          onChange={(event) => setRf401Draft((prev) => ({ ...prev, propertyAddress: event.target.value }))}
           className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
-          rows={3}
-          placeholder="Capture any unique stipulations or adjustments."
+          placeholder="Property address"
         />
       </label>
-      {!rf401Ready && (
-        <div className="text-sm text-amber-300">Price, closing date, and earnest fields are required before review.</div>
-      )}
+      <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+        Inspection date
+        <input
+          type="date"
+          value={rf401Draft.inspectionDate}
+          onChange={(event) => setRf401Draft((prev) => ({ ...prev, inspectionDate: event.target.value }))}
+          className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+        />
+      </label>
+      <div className="space-y-3">
+        {DEFICIENCY_OPTIONS.map((option) => {
+          const state = rf401Draft.deficiencies[option.key]
+          return (
+            <div key={option.key} className="rounded-2xl border border-white/10 bg-[#050c14] p-4">
+              <label className="flex items-center gap-2 text-sm font-semibold text-white">
+                <input
+                  type="checkbox"
+                  checked={state.checked}
+                  onChange={(event) =>
+                    setRf401Draft((prev) => ({
+                      ...prev,
+                      deficiencies: {
+                        ...prev.deficiencies,
+                        [option.key]: { ...prev.deficiencies[option.key], checked: event.target.checked },
+                      },
+                    }))
+                  }
+                  className="h-4 w-4 rounded border-white/20 bg-transparent text-orange-500 focus:ring-0"
+                />
+                {option.label}
+              </label>
+              {state.checked && (
+                <textarea
+                  value={state.notes}
+                  onChange={(event) =>
+                    setRf401Draft((prev) => ({
+                      ...prev,
+                      deficiencies: {
+                        ...prev.deficiencies,
+                        [option.key]: { ...prev.deficiencies[option.key], notes: event.target.value },
+                      },
+                    }))
+                  }
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+                  rows={2}
+                  placeholder={`Notes for ${option.label}`}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs uppercase tracking-[0.3em] text-gray-400">Overall status</div>
+        <div className="flex flex-wrap gap-3">
+          {OVERALL_STATUSES.map((statusOption) => (
+            <label
+              key={statusOption}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold ${rf401Draft.overallStatus === statusOption ? 'border-cyan-400 text-cyan-200' : 'border-white/10 text-white/70'}`}
+            >
+              <input
+                type="radio"
+                name="rf401-status"
+                value={statusOption}
+                checked={rf401Draft.overallStatus === statusOption}
+                onChange={() => setRf401Draft((prev) => ({ ...prev, overallStatus: statusOption }))}
+                className="hidden"
+              />
+              {statusOption}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={handleSaveRf401Draft}
+          disabled={draftSaving}
+          className="rounded-full border border-cyan-400 bg-cyan-400 px-6 py-2 text-sm font-semibold text-black transition hover:bg-cyan-300 disabled:opacity-50"
+        >
+          {draftSaving ? 'Saving draft…' : 'Save draft'}
+        </button>
+        {draftMessage && <span className="text-xs text-cyan-200">{draftMessage}</span>}
+      </div>
     </div>
-  )
-
-  const reviewPanel = (
+  )  const reviewPanel = (
     <div className="space-y-4">
       <div className="grid gap-3 rounded-2xl border border-white/10 bg-[#041022] p-4">
         <div className="text-xs uppercase tracking-[0.3em] text-gray-400">RF401 summary</div>
         <div className="flex flex-col gap-2 text-sm text-gray-200">
           <div>Connected deal: {selectedDeal ? selectedDeal.address : `Transaction ${transactionId}`}</div>
-          <div>Buyer: {displayFieldValue('section_1', 'buyer_name', 'text') || '—'}</div>
-          <div>Seller: {displayFieldValue('section_1', 'seller_name', 'text') || '—'}</div>
+          <div>Property address: {rf401Draft.propertyAddress || '—'}</div>
+          <div>Inspection date: {rf401Draft.inspectionDate ? new Date(rf401Draft.inspectionDate).toLocaleDateString() : '—'}</div>
+          <div>Overall status: {rf401Draft.overallStatus}</div>
         </div>
       </div>
       {contractWarnings.length > 0 && (
@@ -532,6 +756,55 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           </ul>
         </div>
       )}
+      <div className="rounded-2xl border border-white/10 bg-[#031022] p-4">
+        <div className="text-xs uppercase tracking-[0.3em] text-gray-400">Completeness</div>
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-lg font-semibold text-white">{completeness}%</div>
+          <div className="w-2/3">
+            <div className="h-2 rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-cyan-400" style={{ width: `${completeness}%` }} />
+            </div>
+          </div>
+        </div>
+        {missingFields.length > 0 ? (
+          <div className="mt-3 text-xs text-red-300">
+            Missing: {missingFields.join(', ')}
+          </div>
+        ) : (
+          <div className="mt-3 text-xs text-emerald-200">All required fields completed.</div>
+        )}
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-[#031022] p-4">
+        <div className="text-xs uppercase tracking-[0.3em] text-gray-400">Deficiencies flagged</div>
+        <div className="mt-2 space-y-2 text-sm text-gray-200">
+          {flaggedDeficiencies.length > 0 ? (
+            flaggedDeficiencies.map((def) => (
+              <div key={def.key} className="rounded-xl border border-white/10 bg-[#050d1a] p-3">
+                <div className="text-sm font-semibold text-white">{def.label}</div>
+                <p className="text-xs text-gray-400">{rf401Draft.deficiencies[def.key].notes || 'Notes are pending.'}</p>
+              </div>
+            ))
+          ) : (
+            <div className="text-xs text-gray-400">No deficiencies flagged.</div>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={handleRequestExport}
+          className="rounded-full border border-white/10 bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black"
+        >
+          Export PDF
+        </button>
+        <button
+          onClick={handleSaveToDeal}
+          disabled={finalizing || missingFields.length > 0}
+          className="rounded-full border border-cyan-400 bg-cyan-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black disabled:opacity-60"
+        >
+          {finalizing ? 'Saving to deal…' : 'Save to Deal'}
+        </button>
+        {exportMessage && <span className="text-xs text-cyan-200">{exportMessage}</span>}
+      </div>
       {completeSummary && (
         <div className="rounded-2xl border border-cyan-400/40 bg-cyan-500/5 p-4 text-sm text-cyan-100">
           <div className="text-xs uppercase tracking-[0.3em] text-cyan-200">Completion notes</div>
@@ -556,9 +829,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </div>
       )}
     </div>
-  )
-
-  const nextStepLabel = STEP_CONFIG[activeStep]?.title ?? ''
+  )  const nextStepLabel = STEP_CONFIG[activeStep]?.title ?? ''
 
   const renderStepContent = () => {
     if (loading) {
