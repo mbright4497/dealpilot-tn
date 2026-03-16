@@ -218,27 +218,25 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           section_3_6: wizardData.section_3_6 || DEFAULT_VALUES.section_3_6,
         })
 
-        try {
-          const dealRes = await fetch(`/api/deal-state/${transactionId}`)
-          if (dealRes.ok) {
-            const deal = await dealRes.json()
-            if (!cancelled) setSelectedDeal({
-              id: deal.id,
-              address: deal.address || deal.property_address || deal.propertyAddress || '',
-              client: deal.client || deal.client_name || deal.clientName || '',
-              status: deal.status || deal.current_state || deal.state_label || '',
-              closing_date: deal.closing_date || deal.closing || deal.closingDate || null,
-            })
-          }
-        } catch (_e) {
-          // ignore
-        }
+
+        // NOTE: /api/deal-state/* is a lifecycle/state API and does not include address/client.
+        // We'll rely on /api/transactions/${transactionId} below to populate selectedDeal.
 
         try {
           const txRes = await fetch(`/api/transactions/${transactionId}`)
           if (txRes.ok) {
             const tx = await txRes.json()
             if (cancelled) return
+            // Build selectedDeal from transaction record (transactions API contains address/client)
+            const mapped = {
+              id: tx.id ?? Number(transactionId),
+              address: tx.address || tx.property_address || tx.propertyAddress || '',
+              client: tx.client || tx.client_name || tx.clientName || '',
+              status: tx.status || tx.current_state || tx.state_label || '',
+              closing_date: tx.closing_date || tx.closing || tx.closingDate || null,
+            }
+            setSelectedDeal(mapped)
+
             const overrides: Record<string, any> = {}
             if (tx.property_address) overrides.property_address = tx.property_address
             if (tx.buyer_name || tx.buyer_names) overrides.buyer_name = tx.buyer_name || tx.buyer_names || tx.client
