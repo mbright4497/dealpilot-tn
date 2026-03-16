@@ -22,6 +22,7 @@ type Props = { transactionId: string; onClose: () => void }
 type SectionValues = Record<SectionName, Record<string, any>>
 
 type DealContactRow = {
+  type DealContactRow = {
   id: string
   deal_id: number
   role: string
@@ -96,13 +97,13 @@ function evaluateRf401MissingFields(data: Rf401DraftState): string[] {
   Object.entries(data.deficiencies).forEach(([key, state]) => {
     if (state.checked && state.notes.trim().length === 0) {
       const option = DEFICIENCY_OPTIONS.find((opt) => opt.key === key)
-      missing.push(`${option?.label || key} notes`)  
+      missing.push(`${option?.label || key} notes`)
     }
   })
   return missing
 }
 
-
+type DealContactRow = {
   id: string
   deal_id: number
   role: string
@@ -114,6 +115,8 @@ function evaluateRf401MissingFields(data: Rf401DraftState): string[] {
     phone?: string
   }
 }
+
+
 
 const DEFAULT_VALUES = buildDefaultWizardData()
 
