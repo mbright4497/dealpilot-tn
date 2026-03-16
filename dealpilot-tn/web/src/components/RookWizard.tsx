@@ -21,20 +21,6 @@ type SummaryPayload = { missing_fields: string[]; next_actions: string }
 type Props = { transactionId: string; onClose: () => void }
 type SectionValues = Record<SectionName, Record<string, any>>
 
-type DealContactRow = {
-  type DealContactRow = {
-  id: string
-  deal_id: number
-  role: string
-  contact_id: string
-  contacts?: {
-    id?: string
-    name?: string
-    email?: string
-    phone?: string
-  }
-}
-
 const DEFICIENCY_OPTIONS = [
   { key: 'hvac', label: 'HVAC' },
   { key: 'plumbing', label: 'Plumbing' },
