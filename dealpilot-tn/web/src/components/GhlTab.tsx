@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 
 type Msg = {
@@ -83,7 +84,7 @@ export default function GhlTab({ dealId }: { dealId: string }){
           {connected ? (
             <div className="text-sm text-emerald-300">Connected — {tenant?.name || 'Tenant'}</div>
           ) : (
-            <div className="text-sm text-red-400">GHL not connected — <a href="/settings/ghl" className="underline">go to Settings</a></div>
+            <div className="text-sm text-red-400">GHL not connected — <Link href="/settings/ghl" className="underline">go to Settings</Link></div>
           )}
         </div>
       </div>
@@ -133,7 +134,7 @@ export default function GhlTab({ dealId }: { dealId: string }){
         </div>
       </div>
       ) : (
-        <div className="mt-4 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/5 text-gray-300">Connect GoHighLevel to start messaging. <a href="/settings/ghl" className="underline">Configure GHL</a></div>
+        <div className="mt-4 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/5 text-gray-300">Connect GoHighLevel to start messaging. <Link href="/settings/ghl" className="underline">Configure GHL</Link></div>
       )}
     </div>
   )

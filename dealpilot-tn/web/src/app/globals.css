@@ -122,6 +122,62 @@ body {
   color: var(--accent) !important;
   font-weight: 600;
 }
+.dp-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 0.75rem;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background-color 150ms ease, transform 150ms ease, color 150ms ease;
+}
+.dp-nav-item:hover {
+  background: var(--sidebar-hover);
+  color: var(--foreground);
+  transform: translateX(4px);
+}
+.dp-nav-item.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px rgba(79,140,255,0.2);
+}
+.dp-nav-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dp-nav-label {
+  font-size: 0.95rem;
+}
+.dp-sidebar-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.dp-sidebar-footer button {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.dp-sidebar-footer button:hover {
+  color: var(--foreground);
+}
+.dp-main {
+  flex: 1;
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
 
 /* Robot mascot */
 .dp-robot {

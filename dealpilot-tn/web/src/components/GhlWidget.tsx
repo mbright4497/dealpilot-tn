@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 
 function timeAgo(dateStr?: string){
@@ -87,8 +88,8 @@ export default function GhlWidget(){
           </div>
 
           <div className="flex gap-4">
-            <a href="/communications" className="text-sm text-cyan-300 hover:underline">Open Comms Hub</a>
-            <a href="/settings/ghl" className="text-sm text-cyan-300 hover:underline">Settings</a>
+            <Link href="/communications" className="text-sm text-cyan-300 hover:underline">Open Comms Hub</Link>
+            <Link href="/settings/ghl" className="text-sm text-cyan-300 hover:underline">Settings</Link>
           </div>
         </>
       )}
