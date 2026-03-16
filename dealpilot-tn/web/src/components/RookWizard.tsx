@@ -21,6 +21,19 @@ type SummaryPayload = { missing_fields: string[]; next_actions: string }
 type Props = { transactionId: string; onClose: () => void }
 type SectionValues = Record<SectionName, Record<string, any>>
 
+type DealContactRow = {
+  id: string
+  deal_id: number
+  role: string
+  contact_id: string
+  contacts?: {
+    id?: string
+    name?: string
+    email?: string
+    phone?: string
+  }
+}
+
 const DEFAULT_VALUES = buildDefaultWizardData()
 
 export default function RookWizard({ transactionId, onClose }: Props) {
@@ -36,6 +49,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
   const [contractWarnings, setContractWarnings] = useState<string[]>([])
   const [showDealPicker, setShowDealPicker] = useState(false)
   const [activeStep, setActiveStep] = useState<WizardStep>(1)
+  const [dealContacts, setDealContacts] = useState<DealContactRow[]>([])
+  const [dealDetailsLoading, setDealDetailsLoading] = useState(false)
+  const [confirmingParties, setConfirmingParties] = useState(false)
 
   const displayFieldValue = (section: SectionName, key: string, type: 'text' | 'number' | 'date') => {
     const sectionData = sectionValues[section] || {}
@@ -133,9 +149,20 @@ export default function RookWizard({ transactionId, onClose }: Props) {
   const allowComplete = status === sectionProgress.section_3_6.status
   const progressPercent = useMemo(() => ((activeStep - 1) / (STEP_CONFIG.length - 1)) * 100, [activeStep])
 
+  const loadDealContacts = async (dealId: number): Promise<DealContactRow[]> => {
+    const res = await fetch(`/api/communications/contacts?deal_id=${dealId}`)
+    if (!res.ok) {
+      throw new Error('Unable to load deal parties')
+    }
+    const payload = await res.json().catch(() => ({}))
+    return Array.isArray(payload?.contacts) ? payload.contacts : []
+  }
+
   const connectDealAndPopulate = async (deal: DealSummary) => {
     setSelectedDeal(deal)
     setShowDealPicker(false)
+    setDealDetailsLoading(true)
+    setError(null)
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem('rookwizard_selected_deal', JSON.stringify(deal))
@@ -143,23 +170,54 @@ export default function RookWizard({ transactionId, onClose }: Props) {
     } catch (_e) {
       // ignore
     }
-    const currentSection = sectionValues.section_1 || {}
-    const override: Record<string, any> = {}
-    if (deal.address) override.property_address = deal.address
-    if (deal.client && !override.buyer_name) override.buyer_name = deal.client
-    if (deal.buyer_names) {
-      const names = Array.isArray(deal.buyer_names)
-        ? deal.buyer_names
-        : String(deal.buyer_names).split(',').map((name) => name.trim()).filter(Boolean)
-      if (names.length) {
-        override.buyer_name = names.join(', ')
+    try {
+      const [txRes, contacts] = await Promise.all([
+        fetch(`/api/transactions/${deal.id}`),
+        loadDealContacts(deal.id),
+      ])
+      const txPayload = await txRes.json().catch(() => null)
+      if (!txRes.ok && txPayload?.error) {
+        throw new Error(txPayload.error)
       }
-    }
-    const merged = { ...currentSection, ...override }
-    setSectionValues((prev) => ({ ...prev, section_1: merged }))
-    const saved = await handleSaveSection('section_1', merged)
-    if (saved) {
-      setActiveStep(2)
+      setDealContacts(contacts)
+      const mergedDeal: DealSummary = {
+        ...deal,
+        address: txPayload?.address || deal.address,
+        status: txPayload?.status || deal.status,
+        closing_date: txPayload?.closing_date || deal.closing_date,
+        client: txPayload?.client || deal.client,
+      }
+      setSelectedDeal(mergedDeal)
+      const currentSection = sectionValues.section_1 || {}
+      const override: Record<string, any> = {
+        property_address: mergedDeal.address || deal.address || currentSection.property_address,
+      }
+      if (txPayload?.buyer_name) {
+        override.buyer_name = txPayload.buyer_name
+      } else if (!override.buyer_name && mergedDeal.client) {
+        override.buyer_name = mergedDeal.client
+      }
+      if (txPayload?.seller_name) {
+        override.seller_name = txPayload.seller_name
+      }
+      const buyerContact = contacts.find((contact) => contact.role === 'buyer' && contact.contacts?.name)
+      const sellerContact = contacts.find((contact) => contact.role === 'seller' && contact.contacts?.name)
+      if (buyerContact?.contacts?.name) {
+        override.buyer_name = buyerContact.contacts.name
+      }
+      if (sellerContact?.contacts?.name) {
+        override.seller_name = sellerContact.contacts.name
+      }
+      const merged = { ...currentSection, ...override }
+      setSectionValues((prev) => ({ ...prev, section_1: merged }))
+      const saved = await handleSaveSection('section_1', merged)
+      if (saved) {
+        setActiveStep(2)
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Unable to load deal information')
+    } finally {
+      setDealDetailsLoading(false)
     }
   }
 
@@ -169,10 +227,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
       return
     }
     if (activeStep === 2) {
-      const saved = await handleSaveSection('section_1')
-      if (saved) {
-        setActiveStep(3)
-      }
+      await handleConfirmParties()
       return
     }
     if (activeStep === 3) {
@@ -183,6 +238,15 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         setActiveStep(4)
       }
     }
+  }
+
+
+  const handleConfirmParties = async () => {
+    if (!partyComplete) return
+    setConfirmingParties(true)
+    const saved = await handleSaveSection('section_1')
+    if (saved) setActiveStep(3)
+    setConfirmingParties(false)
   }
 
   const handleBack = () => {
@@ -200,6 +264,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
       setContractPreview(null)
       setContractWarnings([])
       setSelectedDeal(null)
+      setDealContacts([])
       setActiveStep(1)
       try {
         const res = await fetch(`/api/rookwizard/${transactionId}/start`, { method: 'POST' })
@@ -236,11 +301,17 @@ export default function RookWizard({ transactionId, onClose }: Props) {
               closing_date: tx.closing_date || tx.closing || tx.closingDate || null,
             }
             setSelectedDeal(mapped)
+            const loadedContacts = await loadDealContacts(mapped.id)
+            setDealContacts(loadedContacts)
 
             const overrides: Record<string, any> = {}
             if (tx.property_address) overrides.property_address = tx.property_address
             if (tx.buyer_name || tx.buyer_names) overrides.buyer_name = tx.buyer_name || tx.buyer_names || tx.client
             if (tx.seller_name) overrides.seller_name = tx.seller_name
+            const buyerContact = loadedContacts.find((contact) => contact.role === 'buyer' && contact.contacts?.name)
+            const sellerContact = loadedContacts.find((contact) => contact.role === 'seller' && contact.contacts?.name)
+            if (buyerContact?.contacts?.name) overrides.buyer_name = buyerContact.contacts.name
+            if (sellerContact?.contacts?.name) overrides.seller_name = sellerContact.contacts.name
             if (tx.client && !overrides.buyer_name) overrides.buyer_name = tx.client
             if (Object.keys(overrides).length > 0) {
               setSectionValues((prev) => ({ ...prev, section_1: { ...prev.section_1, ...overrides } }))
@@ -298,11 +369,18 @@ export default function RookWizard({ transactionId, onClose }: Props) {
             <div className="text-xs text-gray-400">Connected deal</div>
             <div className="text-lg font-semibold text-white">{selectedDeal.address || `Deal ${selectedDeal.id}`}</div>
             <div className="text-xs text-gray-400">{selectedDeal.client || 'Unknown client'} · {selectedDeal.status || 'Status unknown'}</div>
+            {selectedDeal.closing_date && (
+              <div className="text-xs text-gray-400">Closing: {new Date(selectedDeal.closing_date).toLocaleDateString()}</div>
+            )}
+            <div className="text-xs text-gray-400">Linked contacts: {dealContacts.length}</div>
           </div>
         ) : (
           <div className="text-sm text-gray-400">No deal connected yet. Please select one to continue.</div>
         )}
       </div>
+      {dealDetailsLoading && (
+        <div className="rounded-2xl border border-white/10 bg-[#031322] px-4 py-2 text-xs text-gray-400">Loading deal details…</div>
+      )}
       <button
         onClick={() => setShowDealPicker(true)}
         className="rounded-full border border-orange-500 px-4 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-orange-200 transition hover:bg-orange-500/10"
@@ -320,7 +398,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </div>
       )}
     </div>
-  )
+  )  const agentContacts = dealContacts.filter((contact) => (contact.role || '').includes('agent') || (contact.role || '').includes('coordinator'))
 
   const partiesPanel = (
     <div className="space-y-4">
@@ -348,10 +426,34 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </label>
       </div>
       {!partyComplete && <div className="text-sm text-amber-300">Buyer and seller names must be provided before continuing.</div>}
+      <div className="rounded-2xl border border-white/10 bg-[#041022] p-4 text-sm text-gray-300">
+        <div className="text-xs uppercase tracking-[0.3em] text-gray-400">Agent & coordinator contacts</div>
+        {agentContacts.length > 0 ? (
+          <div className="mt-3 space-y-3">
+            {agentContacts.map((contact) => (
+              <div key={contact.id} className="rounded-xl border border-white/10 bg-[#050d1a] p-3">
+                <div className="text-sm font-semibold text-white">{contact.contacts?.name || 'Unnamed contact'}</div>
+                <div className="text-[0.65rem] uppercase tracking-[0.3em] text-gray-400">{contact.role}</div>
+                {contact.contacts?.phone && <div className="text-xs text-gray-400">Phone: {contact.contacts.phone}</div>}
+                {contact.contacts?.email && <div className="text-xs text-gray-400">Email: {contact.contacts.email}</div>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 text-xs text-gray-400">No agent or coordinator contacts linked yet.</div>
+        )}
+      </div>
+      <div className="flex justify-end">
+        <button
+          onClick={handleConfirmParties}
+          disabled={!partyComplete || confirmingParties}
+          className="rounded-full border border-orange-400 bg-orange-500 px-6 py-2 text-sm font-semibold text-black transition hover:bg-orange-400 disabled:opacity-50"
+        >
+          {confirmingParties ? 'Confirming…' : 'Confirm Parties'}
+        </button>
+      </div>
     </div>
-  )
-
-  const rf401Panel = (
+  )  const rf401Panel = (
     <div className="space-y-4">
       <p className="text-sm text-gray-300">Capture the critical RF401 data points listed below.</p>
       <div className="grid gap-4 md:grid-cols-2">
@@ -522,8 +624,8 @@ export default function RookWizard({ transactionId, onClose }: Props) {
                 onClick={handleNextStep}
                 disabled={
                   saving ||
-                  (activeStep === 1 && !selectedDeal) ||
-                  (activeStep === 2 && !partyComplete) ||
+                  (activeStep === 1 && (!selectedDeal || dealDetailsLoading)) ||
+                  (activeStep === 2 && (!partyComplete || confirmingParties)) ||
                   (activeStep === 3 && !rf401Ready)
                 }
                 className="rounded-full border border-orange-400 bg-orange-500 px-6 py-2 text-sm font-semibold text-black transition hover:bg-orange-400 disabled:opacity-60"
