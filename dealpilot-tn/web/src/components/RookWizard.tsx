@@ -559,7 +559,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </div>
       )}
     </div>
-  )  const agentContacts = dealContacts.filter((contact) => (contact.role || '').includes('agent') || (contact.role || '').includes('coordinator'))
+  )
+
+  const agentContacts = dealContacts.filter((contact) => (contact.role || '').includes('agent') || (contact.role || '').includes('coordinator'))
 
   const partiesPanel = (
     <div className="space-y-4">
@@ -614,7 +616,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </button>
       </div>
     </div>
-  )  const flaggedDeficiencies = useMemo(
+  )
+
+  const flaggedDeficiencies = useMemo(
     () => DEFICIENCY_OPTIONS.filter((option) => rf401Draft.deficiencies[option.key].checked),
     [rf401Draft]
   )
@@ -724,7 +728,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         {draftMessage && <span className="text-xs text-cyan-200">{draftMessage}</span>}
       </div>
     </div>
-  )  const reviewPanel = (
+  )
+
+  const reviewPanel = (
     <div className="space-y-4">
       <div className="grid gap-3 rounded-2xl border border-white/10 bg-[#041022] p-4">
         <div className="text-xs uppercase tracking-[0.3em] text-gray-400">RF401 summary</div>
@@ -818,7 +824,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         </div>
       )}
     </div>
-  )  const nextStepLabel = STEP_CONFIG[activeStep]?.title ?? ''
+  )
+
+  const nextStepLabel = STEP_CONFIG[activeStep]?.title ?? ''
 
   const renderStepContent = () => {
     if (loading) {
