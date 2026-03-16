@@ -283,12 +283,11 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
 			if(Array.isArray(arr) && mounted) setDealTickerEvents(arr.slice(0,50))
 		}catch(_){ }
 		})()
-    })()
 
     const handler = (e:any)=>{ try{ const detail = e?.detail; if(detail){ setDealTickerEvents(prev=>[detail, ...prev].slice(0,50)) } }catch(_){ } }
     window.addEventListener('deal:ticker', handler as EventListener)
     return ()=>{ window.removeEventListener('deal:ticker', handler as EventListener); mounted = false }
-  },[refreshDealTicker])
+  }, [])
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
