@@ -1,23 +1,42 @@
-import { FormDefinition } from '../form-registry'
+import { FormDefinition } from '../types'
 
-const RF621: FormDefinition = {
-  formId: 'rf621',
-  formName: 'RF621 — Addendum to Purchase and Sale Agreement',
-  category: 'addendum',
-  version: '01/01/2026',
-  description: 'Standard addendum template for PSAs',
+export const RF621_FORM: FormDefinition = {
+  id: 'rf621',
+  name: 'RF621 – Inspection & Certification Summary',
+  description: 'Phase 21 inspection certification worksheet for Tennessee transactions',
+  category: 'other',
+  defaultStepId: 'select-deal',
   steps: [
-    { id: 1, title: 'Select Deal' },
-    { id: 2, title: 'Addendum Terms' },
-    { id: 3, title: 'Review & Export' },
+    { id: 'select-deal', label: 'Select Deal', fieldIds: ['deal_reference'] },
+    {
+      id: 'certification',
+      label: 'Inspection Certification',
+      fieldIds: ['buyer_names', 'seller_names', 'property_address', 'inspection_date', 'inspection_outcome', 'inspection_notes'],
+    },
+    {
+      id: 'financing',
+      label: 'Financing Snapshot',
+      fieldIds: ['loan_type', 'loan_amount', 'loan_status'],
+    },
+    { id: 'review-export', label: 'Review & Export', fieldIds: ['review_notes'] },
   ],
   fields: [
-    { fieldKey: 'addendum_terms', label: 'Addendum Terms', type: 'multiline', required: true, section: 'section_2' },
+    { id: 'deal_reference', label: 'Deal reference', type: 'text', required: true },
+    { id: 'buyer_names', label: 'Buyer(s)', type: 'text', required: true },
+    { id: 'seller_names', label: 'Seller(s)', type: 'text', required: true },
+    { id: 'property_address', label: 'Property address', type: 'text', required: true },
+    { id: 'inspection_date', label: 'Inspection date', type: 'date' },
+    { id: 'inspection_outcome', label: 'Inspection outcome', type: 'select', options: ['Passed', 'Failed', 'Pending'] },
+    { id: 'inspection_notes', label: 'Inspection notes', type: 'textarea', multiLine: true },
+    { id: 'loan_type', label: 'Loan type', type: 'text' },
+    { id: 'loan_amount', label: 'Loan amount ($)', type: 'number' },
+    { id: 'loan_status', label: 'Loan status', type: 'select', options: ['Approved', 'Pending', 'Denied'] },
+    { id: 'review_notes', label: 'Review notes', type: 'textarea', multiLine: true },
   ],
-  autoFillMap: {},
-  parentForm: 'rf401',
-  complianceRules: [],
-  aiPromptContext: 'Create an addendum to the existing purchase agreement.'
+  autoFillMap: {
+    address: 'property_address',
+    buyer_names: 'buyer_names',
+    seller_names: 'seller_names',
+    purchase_price: 'loan_amount',
+  },
 }
-
-export default RF621
