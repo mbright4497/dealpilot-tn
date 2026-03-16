@@ -1,5 +1,5 @@
 'use client'
-import React, {useState, useEffect, useRef} from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { speakAPI as speakText, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
 import {useRouter} from 'next/navigation'
@@ -83,6 +83,116 @@ export type Transaction = {
   documents?: any[]
 }
 
+type ToastVariant = 'success' | 'error' | 'info'
+type ToastMessage = { id: string; msg: string; variant: ToastVariant }
+
+type NormalizedRevaPayload = {
+  address: string
+  client_name: string
+  deal_type: 'buyer' | 'seller'
+  purchase_price: number | null
+  closing_date: string | null
+}
+
+function parseDateValue(value: any): string | null {
+  if (!value) return null
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toISOString().split('T')[0]
+}
+
+function parseNumberValue(value: any): number | null {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  const cleaned = String(value).replace(/[^0-9.\-]/g, '')
+  if (!cleaned) return null
+  const parsed = parseFloat(cleaned)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function resolveDealType(value: any): 'buyer' | 'seller' {
+  const text = String(value || '').toLowerCase()
+  if (text.includes('seller') || text.includes('list')) return 'seller'
+  return 'buyer'
+}
+
+function extractClientName(payload: any): string {
+  if (!payload) return ''
+  const candidates: string[] = []
+  const values = [
+    payload.client_name,
+    payload.client,
+    payload.clientName,
+    payload.primary_contact,
+    payload.contact_name,
+    payload.buyer,
+    payload.buyer_name,
+    payload.buyerNames,
+    payload.buyer_names,
+    payload.parties,
+  ]
+  for (const value of values) {
+    if (!value) continue
+    if (Array.isArray(value)) {
+      value.forEach(item => {
+        if (item) candidates.push(String(item).trim())
+      })
+      continue
+    }
+    if (typeof value === 'object') {
+      const label = value.name || value.fullName || value.label || ''
+      if (label) candidates.push(String(label).trim())
+      continue
+    }
+    const str = String(value).trim()
+    if (str) candidates.push(str)
+  }
+  return candidates.filter(Boolean).join(', ')
+}
+
+function normalizeRevaTransactionPayload(payload: any): NormalizedRevaPayload {
+  const normalizedPayload = payload || {}
+  const address = [
+    normalizedPayload.address,
+    normalizedPayload.property_address,
+    normalizedPayload.propertyAddress,
+    normalizedPayload.property,
+    normalizedPayload.address_line,
+    normalizedPayload.addressLine,
+    normalizedPayload.location,
+  ].find((value) => typeof value === 'string' && value.trim())?.trim() || ''
+  const closingDate = parseDateValue(
+    normalizedPayload.closing_date ??
+      normalizedPayload.closing ??
+      normalizedPayload.closingDate ??
+      normalizedPayload.closingDateTime
+  )
+  const amount = parseNumberValue(
+    normalizedPayload.purchase_price ??
+      normalizedPayload.purchasePrice ??
+      normalizedPayload.price ??
+      normalizedPayload.sale_price ??
+      normalizedPayload.contract_value
+  )
+  return {
+    address,
+    client_name: extractClientName(normalizedPayload),
+    deal_type: resolveDealType(
+      normalizedPayload.deal_type ??
+        normalizedPayload.dealType ??
+        normalizedPayload.type ??
+        normalizedPayload.contract_type ??
+        normalizedPayload.transaction_type
+    ),
+    purchase_price: amount,
+    closing_date: closingDate,
+  }
+}
+
 function NavIcon({ name }: { name: string }) {
   const p = { width: 18, height: 18, fill: 'none' as const, viewBox: '0 0 24 24', stroke: 'currentColor', strokeWidth: 2 }
   if (name === 'dashboard') return <svg {...p}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -155,26 +265,21 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
 
   // load existing ticker events and subscribe to updates from document classifier
   useEffect(()=>{
-    // load from server-backed ticker
     let mounted = true
     ;(async ()=>{
+      const success = await refreshDealTicker()
+      if(success) return
       try{
-        const res = await fetch('/api/deal-ticker')
-        if(!res.ok) throw new Error('fetch failed')
-        const j = await res.json()
-        if(!mounted) return
-        const events = j.events || []
-        setDealTickerEvents(events)
-      }catch(e){
-        // fallback: try reading localStorage
-        try{ const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null; const arr = raw ? JSON.parse(raw) : []; if(Array.isArray(arr)) setDealTickerEvents(arr.slice(0,50)) }catch(_){}
-      }
+        const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null
+        const arr = raw ? JSON.parse(raw) : []
+        if(Array.isArray(arr) && mounted) setDealTickerEvents(arr.slice(0,50))
+      }catch(_){}
     })()
 
     const handler = (e:any)=>{ try{ const detail = e?.detail; if(detail){ setDealTickerEvents(prev=>[detail, ...prev].slice(0,50)) } }catch(_){ } }
     window.addEventListener('deal:ticker', handler as EventListener)
     return ()=>{ window.removeEventListener('deal:ticker', handler as EventListener); mounted = false }
-  },[])
+  },[refreshDealTicker])
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
@@ -187,8 +292,78 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
   const recognitionRef = useRef<any>(null)
 
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
-  const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
-  const addToast = (msg:string)=>{ const id = String(Date.now()) ; setToasts(t=>[...t,{id,msg}]); setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000) }
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const addToast = useCallback((msg: string, variant: ToastVariant = 'info') => {
+    const id = String(Date.now())
+    setToasts(t => [...t, { id, msg, variant }])
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
+  }, [])
+
+  const refreshDealState = useCallback(async () => {
+    try {
+      const res = await fetch('/api/deal-state/all')
+      if (res.ok) {
+        const data = await res.json()
+        setTransactions(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('refresh deal state failed', error)
+    }
+  }, [])
+
+  const refreshDealTicker = useCallback(async () => {
+    try {
+      const res = await fetch('/api/deal-ticker')
+      if (!res.ok) return false
+      const data = await res.json()
+      setDealTickerEvents(data.events || [])
+      return true
+    } catch (error) {
+      console.warn('refresh deal ticker failed', error)
+      return false
+    }
+  }, [])
+
+  const createDealFromPayload = useCallback(async (payload: any, opts?: { successMessage?: string }) => {
+    const normalized = normalizeRevaTransactionPayload(payload)
+    if (!normalized.address || !normalized.client_name) {
+      addToast('Deal requires both an address and client name', 'error')
+      return null
+    }
+    try {
+      const res = await fetch('/api/transactions/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(normalized),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const message = json?.error || json?.message || res.statusText || 'Failed to create deal'
+        addToast(`Failed to create deal: ${message}`, 'error')
+        return null
+      }
+      if (!json?.id) {
+        addToast('Deal created but server did not return an ID', 'error')
+        return null
+      }
+      const newId = json.id
+      addToast(opts?.successMessage || 'Deal created', 'success')
+      await refreshDealState()
+      setSelectedTxId(newId)
+      setView('deal')
+      if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', `/chat?deal=${newId}`)
+      }
+      await refreshDealTicker()
+      window.dispatchEvent(new CustomEvent('deal:ticker', { detail: { ts: Date.now(), dealId: newId, message: normalized.address || 'New deal', icon: '✨' } }))
+      return newId
+    } catch (error) {
+      console.error('create deal from payload failed', error)
+      addToast(`Failed to create deal: ${String(error)}`, 'error')
+      return null
+    }
+  }, [addToast, refreshDealState, refreshDealTicker, setSelectedTxId, setView])
 
   // scroll chat to bottom when messages change
   useEffect(()=>{
@@ -210,14 +385,23 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
       if(b.ok){ const bj=await b.json(); setBriefing(bj.summary||bj.message||null) }
       const r = await fetch('/api/eva/actions')
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
-      const d = await fetch('/api/deal-state/all')
-      if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj)?dj:[]) }
+      await refreshDealState()
       setLastUpdated(new Date())
     }catch(e){ console.warn('command center load',e) }
-    setLoading(false)
+    finally{ setLoading(false) }
   }
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
+
+  useEffect(()=>{
+    const handler = async (event: Event) => {
+      const detail = (event as CustomEvent)?.detail
+      if (!detail) return
+      await createDealFromPayload(detail)
+    }
+    window.addEventListener('reva:create_transaction', handler as EventListener)
+    return () => window.removeEventListener('reva:create_transaction', handler as EventListener)
+  }, [createDealFromPayload])
 
   // On mount: restore view from URL and add popstate listener
   useEffect(()=>{
@@ -263,9 +447,9 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
         setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()) }])
         // handle actionable response to open wizard
         if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
-        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva', e) } }
+        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ const newId = await createDealFromPayload(j.action.data); if(newId){ setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]) } }catch(e){ console.error('failed to add transaction from Reva', e) } }
       }
-    }catch(e){ console.error(e); addToast('Chat failed') }
+    }catch(e){ console.error(e); addToast('Chat failed', 'error') }
     finally{ setChatLoading(false) }
   }
 
@@ -354,7 +538,7 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
       const parsedSummary = j
       // append parsed summary as assistant message with parsed payload
       setChatMessages(m=>[...m, { role:'assistant', content: 'Parsed contract. Please review the summary below:', parsed: parsedSummary }])
-    }catch(e){ console.error(e); addToast('Failed to parse file') }
+    }catch(e){ console.error(e); addToast('Failed to parse file', 'error') }
     finally{ setChatLoading(false); ev.target.value = '' }
   }
 
@@ -396,45 +580,12 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
 
 
   async function addTransaction(tx: any) {
-    try {
-      const res = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: tx.address || '',
-          client: tx.client || '',
-          type: tx.type || 'Buyer',
-          status: tx.status || 'Active',
-          binding: tx.binding || '',
-          closing: tx.closing || '',
-          notes: tx.notes || '',
-          contacts: JSON.stringify(tx.contacts || []),
-          purchase_price: tx.purchase_price || null,
-          earnest_money: tx.earnest_money || null,
-          seller_names: tx.seller_names || null,
-          buyer_names: tx.buyer_names || null,
-          inspection_end_date: tx.inspection_end_date || null,
-          financing_contingency_date: tx.financing_contingency_date || null,
-          special_stipulations: tx.special_stipulations || null,
-          contract_type: tx.contract_type || null,
-          timeline: JSON.stringify(tx.timeline || []),
-          issues: JSON.stringify(tx.issues || []),
-          documents: JSON.stringify(tx.documents || []),
-        }),
-      })
-      const newTx = await res.json()
-      if (newTx && newTx.id) {
-        setTransactions(prev => [...prev, {
-          ...newTx,
-          contacts: typeof newTx.contacts === 'string' ? JSON.parse(newTx.contacts) : (newTx.contacts || []),
-          timeline: typeof newTx.timeline === 'string' ? JSON.parse(newTx.timeline) : (newTx.timeline || []),
-          issues: typeof newTx.issues === 'string' ? JSON.parse(newTx.issues) : (newTx.issues || []),
-          documents: typeof newTx.documents === 'string' ? JSON.parse(newTx.documents) : (newTx.documents || []),
-        }])
-      }
-    } catch (err) {
-      console.error('Failed to add transaction:', err)
+    if (!tx) return
+    if (typeof tx.id === 'number') {
+      setTransactions(prev => [...prev, tx])
+      return
     }
+    await createDealFromPayload(tx)
   }
 
   function pushUrlFor(viewName: string, txId?: number|null){
@@ -941,7 +1092,7 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
                   <div className="text-sm text-gray-300 mb-2">Reva's Actions</div>
                   <div className="flex gap-2">
                     {actions.length===0 ? <div className="text-gray-400">All caught up! No pending actions.</div> : actions.map((a:any)=> (
-                      <button key={`${a.dealId}-${a.milestone_key||a.action}`} onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} for ${a.address}`) } else addToast('Failed') }} className={`px-3 py-1 rounded-full text-sm ${a.urgency==='critical' ? 'bg-red-600 text-white' : a.urgency==='high' ? 'bg-amber-500 text-black' : 'bg-gray-700 text-white'}`}>{a.action} • {a.address}</button>
+                      <button key={`${a.dealId}-${a.milestone_key||a.action}`} onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} for ${a.address}`, 'success') } else addToast('Failed', 'error') }} className={`px-3 py-1 rounded-full text-sm ${a.urgency==='critical' ? 'bg-red-600 text-white' : a.urgency==='high' ? 'bg-amber-500 text-black' : 'bg-gray-700 text-white'}`}>{a.action} • {a.address}</button>
                     ))}
                   </div>
                 </div>
@@ -1002,6 +1153,15 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
         <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
       </button>
+      {toasts.length > 0 && (
+        <div className="pointer-events-none">
+          {toasts.map((toast, idx) => (
+            <div key={toast.id} className={`toast show ${toast.variant}`} style={{ top: 16 + idx * 56 }}>
+              {toast.msg}
+            </div>
+          ))}
+        </div>
+      )}
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>
   )
