@@ -18,15 +18,25 @@ interface Transaction {
   state_label?: string
   current_state?: string
 }
+
+export function shouldShowTransactionSkeleton(transactions: Transaction[], loading: boolean) {
+  return transactions.length === 0 && loading
+}
+
+export function shouldShowTransactionEmptyState(transactions: Transaction[], loading: boolean) {
+  return transactions.length === 0 && !loading
+}
+
 interface Props {
   transactions: Transaction[]
   onViewChecklist: (txId: number) => void
   onOpenDeal?: (txId: number) => void
   onAddTransaction?: (tx: Transaction) => void
   onDeleteTransaction?: (txId: number) => void
-    onStartAdd?: () => void
+  onStartAdd?: () => void
+  loading?: boolean
 }
-export default function TransactionList({ transactions, onViewChecklist, onOpenDeal, onAddTransaction, onDeleteTransaction, onStartAdd }: Props){
+export default function TransactionList({ transactions, onViewChecklist, onOpenDeal, onAddTransaction, onDeleteTransaction, onStartAdd, loading = false }: Props){
   const [filter, setFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'closing'|'days'|'value'|'updated'>('closing')
@@ -36,6 +46,8 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   const [form, setForm] = useState({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [showIntake, setShowIntake] = useState(false)
+  const showSkeleton = shouldShowTransactionSkeleton(transactions, loading)
+  const showEmptyState = shouldShowTransactionEmptyState(transactions, loading)
 
   let list = transactions.filter(m => filter === 'All' || m.status === filter)
   if(phaseFilter !== 'All') list = list.filter(m=> (m.status||'').toLowerCase() === phaseFilter.toLowerCase())
@@ -74,14 +86,19 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   return (
     <div>
       {/* skeleton */}
-      {transactions.length === 0 && (
-        <div className="space-y-3">
+      {showSkeleton && (
+        <div data-testid="transaction-list-skeleton" className="space-y-3">
           {[...Array(6)].map((_,i)=> (
             <div key={i} className="p-4 bg-gray-800 rounded animate-pulse">
               <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
               <div className="h-3 bg-gray-700 rounded w-1/2"></div>
             </div>
           ))}
+        </div>
+      )}
+      {showEmptyState && (
+        <div data-testid="transaction-list-empty" className="text-center text-gray-400 py-6">
+          No active deals yet. Add one to get started.
         </div>
       )}
 

@@ -101,10 +101,35 @@ const NAV_ITEMS = [
 ]
 
 
+
+type SearchParamValue = string | string[] | undefined
+
+function resolveSearchParam(value?: SearchParamValue) {
+  if (!value) return undefined
+  return Array.isArray(value) ? value[0] : value
+}
+
+function parseDealId(value?: SearchParamValue) {
+  const candidate = resolveSearchParam(value)
+  if (!candidate) return null
+  const numeric = Number(candidate)
+  return Number.isNaN(numeric) ? null : numeric
+}
+
+type ChatPageProps = {
+  searchParams?: {
+    view?: SearchParamValue
+    deal?: SearchParamValue
+  }
+}
+
+
 export const dynamic = 'force-dynamic'
 
-export default function ChatPage() {
+export default function ChatPage({ searchParams }: ChatPageProps) {
   const router = useRouter()
+  const initialViewFromParams = resolveSearchParam(searchParams?.view)
+  const initialDealId = parseDealId(searchParams?.deal)
 
   // Command Center state
   const [briefing, setBriefing] = useState<string|null>(null)
@@ -112,8 +137,16 @@ export default function ChatPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
-  const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
-  const [view, setView] = useState('dashboard')
+  const [selectedTxId, setSelectedTxId] = useState<number|null>(() => initialDealId)
+  const [view, setView] = useState(() => {
+    if (initialViewFromParams) return initialViewFromParams
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const windowValue = params.get('view')
+      if (windowValue) return windowValue
+    }
+    return 'dashboard'
+  })
   const [rookWizardOpen, setRookWizardOpen] = useState(false)
   const [showRookPicker, setShowRookPicker] = useState(false)
   const [availableDealsForPicker, setAvailableDealsForPicker] = useState<any[]>([])
@@ -183,6 +216,7 @@ export default function ChatPage() {
 
   // On mount: restore view from URL and add popstate listener
   useEffect(()=>{
+    if (initialDealId !== null) return
     try{
       if (typeof window === 'undefined') return
       const qp = new URLSearchParams(window.location.search)
@@ -207,7 +241,7 @@ export default function ChatPage() {
     }
     window.addEventListener('popstate', onPop)
     return ()=> window.removeEventListener('popstate', onPop)
-  },[])
+  },[initialDealId])
 
   // unified send helper for dashboard chat
   async function sendDashboardMessage(val:string){
@@ -848,7 +882,20 @@ className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:
         })()}
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
-            <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} /></>)}
+            <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} loading={loading} /></>)
+        {view === 'deal' && selectedTxId && !selectedTx && loading && (
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3 text-gray-300">
+              <div className="h-12 w-12 border-4 border-t-orange-400 border-b-transparent border-l-transparent border-r-transparent rounded-full animate-spin" />
+              <p className="text-sm">Loading deal...</p>
+            </div>
+          </div>
+        )}
+        {view === 'deal' && selectedTxId && !selectedTx && !loading && (
+          <div className="min-h-[60vh] flex items-center justify-center text-gray-400">
+            <p className="text-sm">Deal not found.</p>
+          </div>
+        )}
         {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} dealId={selectedTxId || undefined} onBack={() => { setView('transactions'); pushUrlFor('transactions') }} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && (<>
           <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
