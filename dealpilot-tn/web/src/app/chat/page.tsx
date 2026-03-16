@@ -1,6 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import Link from 'next/link'
+import React, {useState, useEffect} from 'react'
 import { speakAPI as speakText, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
 import {useRouter} from 'next/navigation'
 
@@ -24,6 +23,7 @@ import { EvaProvider } from '@/components/eva/EvaProvider'
 import ClosingPilotLogo from '@/components/ClosingPilotLogo'
 import ContractWatch from '@/components/ContractWatch'
 import SmartIntakeCard from '@/components/SmartIntakeCard'
+import DealPickerModal from '@/components/DealPickerModal'
 import RookWizard from '@/components/RookWizard'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
@@ -83,116 +83,6 @@ export type Transaction = {
   documents?: any[]
 }
 
-type ToastVariant = 'success' | 'error' | 'info'
-type ToastMessage = { id: string; msg: string; variant: ToastVariant }
-
-type NormalizedRevaPayload = {
-  address: string
-  client_name: string
-  deal_type: 'buyer' | 'seller'
-  purchase_price: number | null
-  closing_date: string | null
-}
-
-function parseDateValue(value: any): string | null {
-  if (!value) return null
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
-  }
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return null
-  return parsed.toISOString().split('T')[0]
-}
-
-function parseNumberValue(value: any): number | null {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null
-  const cleaned = String(value).replace(/[^0-9.\-]/g, '')
-  if (!cleaned) return null
-  const parsed = parseFloat(cleaned)
-  return Number.isFinite(parsed) ? parsed : null
-}
-
-function resolveDealType(value: any): 'buyer' | 'seller' {
-  const text = String(value || '').toLowerCase()
-  if (text.includes('seller') || text.includes('list')) return 'seller'
-  return 'buyer'
-}
-
-function extractClientName(payload: any): string {
-  if (!payload) return ''
-  const candidates: string[] = []
-  const values = [
-    payload.client_name,
-    payload.client,
-    payload.clientName,
-    payload.primary_contact,
-    payload.contact_name,
-    payload.buyer,
-    payload.buyer_name,
-    payload.buyerNames,
-    payload.buyer_names,
-    payload.parties,
-  ]
-  for (const value of values) {
-    if (!value) continue
-    if (Array.isArray(value)) {
-      value.forEach(item => {
-        if (item) candidates.push(String(item).trim())
-      })
-      continue
-    }
-    if (typeof value === 'object') {
-      const label = value.name || value.fullName || value.label || ''
-      if (label) candidates.push(String(label).trim())
-      continue
-    }
-    const str = String(value).trim()
-    if (str) candidates.push(str)
-  }
-  return candidates.filter(Boolean).join(', ')
-}
-
-function normalizeRevaTransactionPayload(payload: any): NormalizedRevaPayload {
-  const normalizedPayload = payload || {}
-  const address = [
-    normalizedPayload.address,
-    normalizedPayload.property_address,
-    normalizedPayload.propertyAddress,
-    normalizedPayload.property,
-    normalizedPayload.address_line,
-    normalizedPayload.addressLine,
-    normalizedPayload.location,
-  ].find((value) => typeof value === 'string' && value.trim())?.trim() || ''
-  const closingDate = parseDateValue(
-    normalizedPayload.closing_date ??
-      normalizedPayload.closing ??
-      normalizedPayload.closingDate ??
-      normalizedPayload.closingDateTime
-  )
-  const amount = parseNumberValue(
-    normalizedPayload.purchase_price ??
-      normalizedPayload.purchasePrice ??
-      normalizedPayload.price ??
-      normalizedPayload.sale_price ??
-      normalizedPayload.contract_value
-  )
-  return {
-    address,
-    client_name: extractClientName(normalizedPayload),
-    deal_type: resolveDealType(
-      normalizedPayload.deal_type ??
-        normalizedPayload.dealType ??
-        normalizedPayload.type ??
-        normalizedPayload.contract_type ??
-        normalizedPayload.transaction_type
-    ),
-    purchase_price: amount,
-    closing_date: closingDate,
-  }
-}
-
 function NavIcon({ name }: { name: string }) {
   const p = { width: 18, height: 18, fill: 'none' as const, viewBox: '0 0 24 24', stroke: 'currentColor', strokeWidth: 2 }
   if (name === 'dashboard') return <svg {...p}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -212,35 +102,10 @@ const NAV_ITEMS = [
 ]
 
 
-
-type SearchParamValue = string | string[] | undefined
-
-function resolveSearchParam(value?: SearchParamValue) {
-  if (!value) return undefined
-  return Array.isArray(value) ? value[0] : value
-}
-
-function parseDealId(value?: SearchParamValue) {
-  const candidate = resolveSearchParam(value)
-  if (!candidate) return null
-  const numeric = Number(candidate)
-  return Number.isNaN(numeric) ? null : numeric
-}
-
-type ChatPageProps = {
-  searchParams?: {
-    view?: SearchParamValue
-    deal?: SearchParamValue
-  }
-}
-
-
 export const dynamic = 'force-dynamic'
 
-export default function ChatPage({ searchParams }: ChatPageProps) {
+export default function ChatPage() {
   const router = useRouter()
-  const initialViewFromParams = resolveSearchParam(searchParams?.view)
-  const initialDealId = parseDealId(searchParams?.deal)
 
   // Command Center state
   const [briefing, setBriefing] = useState<string|null>(null)
@@ -248,130 +113,44 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [chatOpen, setChatOpen] = useState(false)
-  const [selectedTxId, setSelectedTxId] = useState<number|null>(() => initialDealId)
-  const [view, setView] = useState(() => {
-    if (initialViewFromParams) return initialViewFromParams
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const windowValue = params.get('view')
-      if (windowValue) return windowValue
-    }
-    return 'dashboard'
-  })
+  const [selectedTxId, setSelectedTxId] = useState<number|null>(null)
+  const [view, setView] = useState('dashboard')
   const [rookWizardOpen, setRookWizardOpen] = useState(false)
-  const [showRookPicker, setShowRookPicker] = useState(false)
-  const [availableDealsForPicker, setAvailableDealsForPicker] = useState<any[]>([])
+  const [showDealPicker, setShowDealPicker] = useState(false)
   const [dealTickerEvents, setDealTickerEvents] = useState<any[]>([])
 
   // load existing ticker events and subscribe to updates from document classifier
   useEffect(()=>{
+    // load from server-backed ticker
     let mounted = true
-	;(async ()=>{
-		try {
-			const res = await fetch('/api/deal-ticker')
-			if (res.ok) {
-				const data = await res.json()
-				if (mounted) setDealTickerEvents(data.events || [])
-				return
-			}
-		} catch (e) {
-			// fallback to localStorage below
-		}
-		try{
-			const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null
-			const arr = raw ? JSON.parse(raw) : []
-			if(Array.isArray(arr) && mounted) setDealTickerEvents(arr.slice(0,50))
-		}catch(_){ }
-		})()
+    ;(async ()=>{
+      try{
+        const res = await fetch('/api/deal-ticker')
+        if(!res.ok) throw new Error('fetch failed')
+        const j = await res.json()
+        if(!mounted) return
+        const events = j.events || []
+        setDealTickerEvents(events)
+      }catch(e){
+        // fallback: try reading localStorage
+        try{ const raw = typeof window !== 'undefined' ? localStorage.getItem('deal_ticker_events') : null; const arr = raw ? JSON.parse(raw) : []; if(Array.isArray(arr)) setDealTickerEvents(arr.slice(0,50)) }catch(_){}
+      }
+    })()
 
     const handler = (e:any)=>{ try{ const detail = e?.detail; if(detail){ setDealTickerEvents(prev=>[detail, ...prev].slice(0,50)) } }catch(_){ } }
     window.addEventListener('deal:ticker', handler as EventListener)
     return ()=>{ window.removeEventListener('deal:ticker', handler as EventListener); mounted = false }
-  }, [])
+  },[])
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
   const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string, attachments?:any, showUpload?:boolean, parsed?:any}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
   const chatRef = React.useRef<HTMLDivElement|null>(null)
-  const [askInput, setAskInput] = useState('')
-  const [micSupported, setMicSupported] = useState(false)
-  const [isListening, setIsListening] = useState(false)
-  const recognitionRef = useRef<any>(null)
 
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
-  const [toasts, setToasts] = useState<ToastMessage[]>([])
-  const addToast = useCallback((msg: string, variant: ToastVariant = 'info') => {
-    const id = String(Date.now())
-    setToasts(t => [...t, { id, msg, variant }])
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000)
-  }, [])
-
-  const refreshDealState = useCallback(async () => {
-    try {
-      const res = await fetch('/api/deal-state/all')
-      if (res.ok) {
-        const data = await res.json()
-        setTransactions(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('refresh deal state failed', error)
-    }
-  }, [])
-
-  const refreshDealTicker = useCallback(async () => {
-    try {
-      const res = await fetch('/api/deal-ticker')
-      if (!res.ok) return false
-      const data = await res.json()
-      setDealTickerEvents(data.events || [])
-      return true
-    } catch (error) {
-      console.warn('refresh deal ticker failed', error)
-      return false
-    }
-  }, [])
-
-  const createDealFromPayload = useCallback(async (payload: any, opts?: { successMessage?: string }) => {
-    const normalized = normalizeRevaTransactionPayload(payload)
-    if (!normalized.address || !normalized.client_name) {
-      addToast('Deal requires both an address and client name', 'error')
-      return null
-    }
-    try {
-      const res = await fetch('/api/transactions/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(normalized),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const message = json?.error || json?.message || res.statusText || 'Failed to create deal'
-        addToast(`Failed to create deal: ${message}`, 'error')
-        return null
-      }
-      if (!json?.id) {
-        addToast('Deal created but server did not return an ID', 'error')
-        return null
-      }
-      const newId = json.id
-      addToast(opts?.successMessage || 'Deal created', 'success')
-      await refreshDealState()
-      setSelectedTxId(newId)
-      setView('deal')
-      if (typeof window !== 'undefined') {
-        window.history.pushState({}, '', `/chat?deal=${newId}`)
-      }
-      await refreshDealTicker()
-      window.dispatchEvent(new CustomEvent('deal:ticker', { detail: { ts: Date.now(), dealId: newId, message: normalized.address || 'New deal', icon: '✨' } }))
-      return newId
-    } catch (error) {
-      console.error('create deal from payload failed', error)
-      addToast(`Failed to create deal: ${String(error)}`, 'error')
-      return null
-    }
-  }, [addToast, refreshDealState, refreshDealTicker, setSelectedTxId, setView])
+  const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
+  const addToast = (msg:string)=>{ const id = String(Date.now()) ; setToasts(t=>[...t,{id,msg}]); setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000) }
 
   // scroll chat to bottom when messages change
   useEffect(()=>{
@@ -393,27 +172,17 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
       if(b.ok){ const bj=await b.json(); setBriefing(bj.summary||bj.message||null) }
       const r = await fetch('/api/eva/actions')
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
-      await refreshDealState()
+      const d = await fetch('/api/deal-state/all')
+      if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj)?dj:[]) }
       setLastUpdated(new Date())
     }catch(e){ console.warn('command center load',e) }
-    finally{ setLoading(false) }
+    setLoading(false)
   }
 
   useEffect(()=>{ loadCommandCenter(); const iv = setInterval(()=>{ loadCommandCenter() }, 60000); return ()=>clearInterval(iv) },[])
 
-  useEffect(()=>{
-    const handler = async (event: Event) => {
-      const detail = (event as CustomEvent)?.detail
-      if (!detail) return
-      await createDealFromPayload(detail)
-    }
-    window.addEventListener('reva:create_transaction', handler as EventListener)
-    return () => window.removeEventListener('reva:create_transaction', handler as EventListener)
-  }, [createDealFromPayload])
-
   // On mount: restore view from URL and add popstate listener
   useEffect(()=>{
-    if (initialDealId !== null) return
     try{
       if (typeof window === 'undefined') return
       const qp = new URLSearchParams(window.location.search)
@@ -438,14 +207,18 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
     }
     window.addEventListener('popstate', onPop)
     return ()=> window.removeEventListener('popstate', onPop)
-  },[initialDealId])
+  },[])
 
   // unified send helper for dashboard chat
   async function sendDashboardMessage(val:string){
     if(!val) return
     setChatMode(true)
     setChatMessages(m=>[...m, { role: 'user', content: val }])
-    setAskInput('')
+    try{
+      // clear input field if present
+      const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
+      if(inp) inp.value = ''
+    }catch(_){ }
     setChatLoading(true)
     try{
       // build full conversation payload from chatMessages + new user message
@@ -455,79 +228,10 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
         setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()) }])
         // handle actionable response to open wizard
         if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
-        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ const newId = await createDealFromPayload(j.action.data); if(newId){ setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]) } }catch(e){ console.error('failed to add transaction from Reva', e) } }
+        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva', e) } }
       }
-    }catch(e){ console.error(e); addToast('Chat failed', 'error') }
+    }catch(e){ console.error(e); addToast('Chat failed') }
     finally{ setChatLoading(false) }
-  }
-
-  const handleSend = async () => {
-    const trimmed = askInput.trim()
-    if (!trimmed) return
-    if (isListening) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-    }
-    await sendDashboardMessage(trimmed)
-  }
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) return
-    const recognition = new SpeechRecognition()
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
-    recognition.onresult = (event: any) => {
-      let finalTranscript = ''
-      let interimTranscript = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i]
-        const transcript = result[0]?.transcript || ''
-        if (result.isFinal) {
-          finalTranscript += transcript
-        } else {
-          interimTranscript += transcript
-        }
-      }
-      const nextValue = finalTranscript || interimTranscript
-      if (nextValue) {
-        setAskInput(nextValue)
-      }
-      if (finalTranscript) {
-        setIsListening(false)
-        try { recognition.stop() } catch (err) { console.error(err) }
-      }
-    }
-    recognition.onerror = () => setIsListening(false)
-    recognition.onend = () => setIsListening(false)
-    recognitionRef.current = recognition
-    setMicSupported(true)
-    return () => {
-      recognition.onresult = null
-      recognition.onerror = null
-      recognition.onend = null
-      try { recognition.abort() } catch (_err) {}
-      recognitionRef.current = null
-    }
-  }, [])
-
-  const toggleMicListening = () => {
-    const recognition = recognitionRef.current
-    if (!recognition) return
-    if (isListening) {
-      recognition.stop()
-      setIsListening(false)
-      return
-    }
-    try {
-      recognition.start()
-      setIsListening(true)
-    } catch (err) {
-      console.error('Speech recognition start failed', err)
-      setIsListening(false)
-    }
   }
 
   // inline upload handler used when Reva asks user to upload a contract
@@ -546,7 +250,7 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
       const parsedSummary = j
       // append parsed summary as assistant message with parsed payload
       setChatMessages(m=>[...m, { role:'assistant', content: 'Parsed contract. Please review the summary below:', parsed: parsedSummary }])
-    }catch(e){ console.error(e); addToast('Failed to parse file', 'error') }
+    }catch(e){ console.error(e); addToast('Failed to parse file') }
     finally{ setChatLoading(false); ev.target.value = '' }
   }
 
@@ -588,12 +292,45 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
 
 
   async function addTransaction(tx: any) {
-    if (!tx) return
-    if (typeof tx.id === 'number') {
-      setTransactions(prev => [...prev, tx])
-      return
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: tx.address || '',
+          client: tx.client || '',
+          type: tx.type || 'Buyer',
+          status: tx.status || 'Active',
+          binding: tx.binding || '',
+          closing: tx.closing || '',
+          notes: tx.notes || '',
+          contacts: JSON.stringify(tx.contacts || []),
+          purchase_price: tx.purchase_price || null,
+          earnest_money: tx.earnest_money || null,
+          seller_names: tx.seller_names || null,
+          buyer_names: tx.buyer_names || null,
+          inspection_end_date: tx.inspection_end_date || null,
+          financing_contingency_date: tx.financing_contingency_date || null,
+          special_stipulations: tx.special_stipulations || null,
+          contract_type: tx.contract_type || null,
+          timeline: JSON.stringify(tx.timeline || []),
+          issues: JSON.stringify(tx.issues || []),
+          documents: JSON.stringify(tx.documents || []),
+        }),
+      })
+      const newTx = await res.json()
+      if (newTx && newTx.id) {
+        setTransactions(prev => [...prev, {
+          ...newTx,
+          contacts: typeof newTx.contacts === 'string' ? JSON.parse(newTx.contacts) : (newTx.contacts || []),
+          timeline: typeof newTx.timeline === 'string' ? JSON.parse(newTx.timeline) : (newTx.timeline || []),
+          issues: typeof newTx.issues === 'string' ? JSON.parse(newTx.issues) : (newTx.issues || []),
+          documents: typeof newTx.documents === 'string' ? JSON.parse(newTx.documents) : (newTx.documents || []),
+        }])
+      }
+    } catch (err) {
+      console.error('Failed to add transaction:', err)
     }
-    await createDealFromPayload(tx)
   }
 
   function pushUrlFor(viewName: string, txId?: number|null){
@@ -659,7 +396,6 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
   }
 
   const selectedTx = transactions.find(t => t.id === selectedTxId)
-  const inputHasText = askInput.trim().length > 0
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState<number>(0)
 
@@ -755,17 +491,17 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
           </button>
 
           {/* Communications & Settings links */}
-          <Link href="/communications" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
+          <a href="/communications" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             Communications
             {unreadCount > 0 && (
               <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">{unreadCount}</span>
             )}
-          </Link>
-          <Link href="/settings/ghl" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
+          </a>
+          <a href="/settings/ghl" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15v2m0-6v2m0-6v2M4 7h16M4 11h16M4 15h10"/></svg>
             Settings
-          </Link>
+          </a>
         </nav>
         {selectedTxId && view === 'deal' && (
           <div className="px-4 py-3 border-t border-gray-800">
@@ -914,91 +650,93 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
  </div>
 
  {/* Controls: play/stop + input + refresh */}
- <div className="mt-6 flex items-center gap-3">
-   <button
-     onClick={async () => {
-       try {
-         const attempt = askInput.trim()
-         if (attempt) {
-           await handleSend()
-           return
-         }
-         if (evaSpeaking) {
-           stopSpeaking();
-           setEvaSpeaking(false);
-           return;
-         }
-         if (!briefing) return;
-         await speakText(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
-           setEvaSpeaking(false)
-         );
-       } catch (e) {
-         console.error(e);
-         setEvaSpeaking(false);
-       }
-     }}
-     className={
-       "w-12 h-12 rounded-full flex items-center justify-center text-white " +
-       (evaSpeaking
-         ? "bg-orange-500 animate-pulse"
-         : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
-     }
-     title={evaSpeaking ? "Stop Reva" : "Play Reva briefing"}
-   >
-     {evaSpeaking ? "⏹" : "▶️"}
-   </button>
-   {micSupported && (
-     <button
-       type="button"
-       onClick={toggleMicListening}
-       className={
-         "w-12 h-12 rounded-full flex items-center justify-center text-white " +
-         (isListening ? "bg-orange-500 animate-pulse" : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
-       }
-       title={isListening ? "Stop voice input" : "Start voice input"}
-     >
-       {isListening ? "🛑" : "🎙️"}
-     </button>
-   )}
-   <form
-     onSubmit={async (e) => {
-       e.preventDefault()
-       await handleSend()
-     }}
-     className="flex-1 flex items-center gap-3"
-   >
-     <input
-       name="ask"
-       placeholder="Ask Reva anything..."
-       value={askInput}
-       onChange={(e) => setAskInput(e.target.value)}
-       className="flex-1 min-w-0 px-4 py-3 rounded-full bg-[#0b1a2b] placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
-     />
-     <button
-       type="submit"
-       disabled={!inputHasText}
-       className={`px-4 py-2 rounded-full text-sm font-semibold transition ${inputHasText ? "bg-[#F97316] text-black hover:bg-orange-500" : "bg-gray-700 text-gray-500 cursor-not-allowed"}`}
-     >
-       Send
-     </button>
-   </form>
-   <button
-     onClick={async () => {
-       try {
-         stopSpeaking();
-         setEvaSpeaking(false);
-         setChatMode(false);
-         await loadCommandCenter();
-       } catch (e) {
-         console.error(e);
-       }
-     }}
-     className="px-3 py-2 bg-gray-800 rounded text-sm hover:bg-gray-700 transition"
-   >
-     Refresh
-   </button>
- </div>
+ <div className="mt-6 flex items-center gap-4">
+ <button
+ onClick={async () => {
+ try {
+ // If there's a message in the input, treat this as a send action
+ const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
+ const val = inp?.value?.trim()
+ if(val){ await sendDashboardMessage(val); return }
+ if (evaSpeaking) {
+ stopSpeaking();
+ setEvaSpeaking(false);
+ return;
+ }
+ if (!briefing) return;
+ await speakText(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
+ setEvaSpeaking(false)
+ );
+ } catch (e) {
+ console.error(e);
+ setEvaSpeaking(false);
+ }
+ }}
+ className={
+ "w-12 h-12 rounded-full flex items-center justify-center text-white " +
+ (evaSpeaking
+ ? "bg-orange-500 animate-pulse"
+ : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
+ }
+ title={evaSpeaking ? "Stop Reva" : "Play Reva briefing"}
+ >
+ {evaSpeaking ? "⏹" : "▶️"}
+ </button>
+ <form
+ onSubmit={async (e) => {
+ e.preventDefault();
+ const val = (e.target as any).elements.ask.value;
+ if (!val) return;
+ // append user message, clear input, switch to chat mode
+ setChatMode(true)
+ setChatMessages(m=>[...m, { role: 'user', content: val }])
+ try { (e.target as any).elements.ask.value = '' }catch(_){ }
+ setChatLoading(true)
+ try {
+ const payload = { messages: chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content })).concat([{ role: 'user', content: val }]) }
+ const res = await fetch("/api/eva/chat", {
+ method: "POST",
+ headers: { "Content-Type": "application/json" },
+ body: JSON.stringify(payload),
+ });
+ if (res.ok) {
+ const j = await res.json();
+ const reply = j.reply || j.message || j.summary || '';
+ setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()) }])
+ addToast("Reva replied");
+ }
+        // create_transaction action from Reva (dashboard form)
+        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva form', e) } }
+ } catch (err) {
+ console.error(err);
+ addToast("Chat failed");
+ } finally { setChatLoading(false) }
+ }}
+ className="flex-1"
+ >
+ <input
+ name="ask"
+ placeholder="Ask Reva anything..."
+className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
+ />
+ </form>
 
+ <button
+ onClick={async () => {
+ try {
+ stopSpeaking();
+ setEvaSpeaking(false);
+ setChatMode(false);
+ await loadCommandCenter();
+ } catch (e) {
+ console.error(e);
+ }
+ }}
+ className="px-3 py-2 bg-gray-800 rounded text-sm hover:bg-gray-700 transition"
+ >
+ Refresh
+ </button>
+ </div>
 
  {/* Local keyframes */}
  <style jsx>{`
@@ -1036,40 +774,19 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
                     {selectedTx && <p className="text-xs text-gray-500">Client: {selectedTx.client}</p>}
                   </div>
                   <button
-                    onClick={async () => { if (selectedTxId) { setRookWizardOpen(true); return } setShowRookPicker(true); try{ const r = await fetch('/api/transactions'); if(r.ok){ const j = await r.json(); setAvailableDealsForPicker(Array.isArray(j)? j : (j.result||[])) } }catch(e){ console.error('failed to load transactions for picker', e) } } }
-                    disabled={false}
+                    onClick={() => {
+                      if (selectedTxId) {
+                        setRookWizardOpen(true)
+                        return
+                      }
+                      setShowDealPicker(true)
+                    }}
                     className="rounded-full border border-orange-500 bg-orange-500 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black transition disabled:opacity-50 disabled:text-white/40"
                   >
-                    {selectedTxId ? 'Open Wizard' : 'Select a deal first'}
+                    {selectedTxId ? 'Launch RF401 Wizard' : 'SELECT A DEAL FIRST'}
                   </button>
                 </div>
                 <div className="mt-3 text-xs text-gray-400">Connected to {selectedTxId ? `transaction ${selectedTxId}` : 'no deal selected'}. Export disabled until completion.</div>
-
-              {/* Deal picker modal */}
-              {showRookPicker && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                  <div className="w-full max-w-2xl bg-[#071224] p-4 rounded-xl">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="text-white font-semibold">Select a Deal</div>
-                      <button onClick={()=>setShowRookPicker(false)} className="text-sm text-gray-400">Close</button>
-                    </div>
-                    <div className="space-y-2 max-h-80 overflow-auto">
-                      {availableDealsForPicker.length===0 && <div className="text-gray-400">No active deals</div>}
-                      {availableDealsForPicker.map((d:any)=> (
-                        <div key={d.id} className="p-2 rounded hover:bg-gray-800 flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-white">{d.address}</div>
-                            <div className="text-xs text-gray-400">{d.client} • {d.status}</div>
-                          </div>
-                          <div>
-                            <button onClick={()=>{ setSelectedTxId(d.id); setShowRookPicker(false); setRookWizardOpen(true); }} className="px-3 py-1 bg-emerald-500 text-black rounded">Select</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
               </div>
               {/* BOTTOM HALF - Deal ticker + action pills */}
               <div className="h-44 bg-[#071224] rounded-lg p-4">
@@ -1100,7 +817,7 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
                   <div className="text-sm text-gray-300 mb-2">Reva's Actions</div>
                   <div className="flex gap-2">
                     {actions.length===0 ? <div className="text-gray-400">All caught up! No pending actions.</div> : actions.map((a:any)=> (
-                      <button key={`${a.dealId}-${a.milestone_key||a.action}`} onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} for ${a.address}`, 'success') } else addToast('Failed', 'error') }} className={`px-3 py-1 rounded-full text-sm ${a.urgency==='critical' ? 'bg-red-600 text-white' : a.urgency==='high' ? 'bg-amber-500 text-black' : 'bg-gray-700 text-white'}`}>{a.action} • {a.address}</button>
+                      <button key={`${a.dealId}-${a.milestone_key||a.action}`} onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} for ${a.address}`) } else addToast('Failed') }} className={`px-3 py-1 rounded-full text-sm ${a.urgency==='critical' ? 'bg-red-600 text-white' : a.urgency==='high' ? 'bg-amber-500 text-black' : 'bg-gray-700 text-white'}`}>{a.action} • {a.address}</button>
                     ))}
                   </div>
                 </div>
@@ -1110,20 +827,7 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
         })()}
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
-            <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} loading={loading} /></>)}
-        {view === 'deal' && selectedTxId && !selectedTx && loading && (
-          <div className="min-h-[60vh] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3 text-gray-300">
-              <div className="h-12 w-12 border-4 border-t-orange-400 border-b-transparent border-l-transparent border-r-transparent rounded-full animate-spin" />
-              <p className="text-sm">Loading deal...</p>
-            </div>
-          </div>
-        )}
-        {view === 'deal' && selectedTxId && !selectedTx && !loading && (
-          <div className="min-h-[60vh] flex items-center justify-center text-gray-400">
-            <p className="text-sm">Deal not found.</p>
-          </div>
-        )}
+            <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} /></>)}
         {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} dealId={selectedTxId || undefined} onBack={() => { setView('transactions'); pushUrlFor('transactions') }} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && (<>
           <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
@@ -1151,6 +855,16 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
                   }
                 }catch(e:any){ console.error(e); alert('Error creating transaction: '+String(e)) }
               }} onCancel={() => setView('transactions')} />}
+        <DealPickerModal
+          open={showDealPicker}
+          selectedDealId={selectedTxId}
+          onClose={() => setShowDealPicker(false)}
+          onSelect={(deal) => {
+            setSelectedTxId(deal.id)
+            setShowDealPicker(false)
+            setRookWizardOpen(true)
+          }}
+        />
         <input id="inline-upload" type="file" accept="application/pdf" className="hidden" onChange={(e)=>handleInlineUpload(e)} />
 </main>
 
@@ -1161,15 +875,6 @@ export default function ChatPage({ searchParams }: ChatPageProps) {
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
         <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
       </button>
-      {toasts.length > 0 && (
-        <div className="pointer-events-none">
-          {toasts.map((toast, idx) => (
-            <div key={toast.id} className={`toast show ${toast.variant}`} style={{ top: 16 + idx * 56 }}>
-              {toast.msg}
-            </div>
-          ))}
-        </div>
-      )}
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>
   )

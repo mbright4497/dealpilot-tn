@@ -1,167 +1,68 @@
 'use client'
+
 import React, { useEffect, useMemo, useState } from 'react'
+import ClosingPilotLogo from '@/components/ClosingPilotLogo'
+import DealPickerModal, { DealSummary } from '@/components/DealPickerModal'
 import {
   buildDefaultWizardData,
-  getSectionDefinitions,
-  markSectionUnknown,
-  sectionOrder,
   sectionPaths,
   sectionProgress,
   SectionName,
   UNKNOWN_MARKER,
 } from '@/lib/rookwizard'
 
-const SECTION_LABELS: Record<SectionName, string> = {
-  section_1: 'Purchase & Sale Details',
-  section_2: 'Purchase Price & Payment',
-  section_2d: 'Closing Expenses & Title',
-  section_3_6: 'Timing, Possession & Conditions',
-}
+const STEP_CONFIG = [
+  { id: 1, title: 'Connect Deal', description: 'Match this RF401 experience with an active transaction.' },
+  { id: 2, title: 'Verify Parties', description: 'Confirm the buyer and seller legal names before proceeding.' },
+  { id: 3, title: 'Fill RF401', description: 'Enter price, closing schedule, earnest money, and stipulations.' },
+  { id: 4, title: 'Review & Generate', description: 'Validate everything and export your compliance document.' },
+] as const
 
+type WizardStep = (typeof STEP_CONFIG)[number]['id']
+type SummaryPayload = { missing_fields: string[]; next_actions: string }
+type Props = { transactionId: string; onClose: () => void }
 type SectionValues = Record<SectionName, Record<string, any>>
 
-type Props = {
-  transactionId: string
-  onClose: () => void
-}
+const DEFAULT_VALUES = buildDefaultWizardData()
 
 export default function RookWizard({ transactionId, onClose }: Props) {
-  const [sectionValues, setSectionValues] = useState<SectionValues>({
-    section_1: {},
-    section_2: {},
-    section_2d: {},
-    section_3_6: {},
-  })
-  const [currentSection, setCurrentSection] = useState<SectionName>('section_1')
+  const [sectionValues, setSectionValues] = useState<SectionValues>(DEFAULT_VALUES)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [step, setStep] = useState(1)
   const [status, setStatus] = useState('initialized')
   const [error, setError] = useState<string | null>(null)
-  const [completeSummary, setCompleteSummary] = useState<{ missing_fields: string[]; next_actions: string } | null>(null)
-  const [isComplete, setIsComplete] = useState(false)
-
-  // Deal selector states
-  const [showDealSelector, setShowDealSelector] = useState(false)
-  const [availableDeals, setAvailableDeals] = useState<any[]>([])
-  const [selectedDeal, setSelectedDeal] = useState<any|null>(null)
-  const [contractPreview, setContractPreview] = useState<any|null>(null)
+  const [completeSummary, setCompleteSummary] = useState<SummaryPayload | null>(null)
+  const [selectedDeal, setSelectedDeal] = useState<DealSummary | null>(null)
+  const [contractPreview, setContractPreview] = useState<any | null>(null)
   const [contractWarnings, setContractWarnings] = useState<string[]>([])
+  const [showDealPicker, setShowDealPicker] = useState(false)
+  const [activeStep, setActiveStep] = useState<WizardStep>(1)
 
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/rookwizard/${transactionId}/start`, { method: 'POST' })
-        let payload: any = null
-        try { payload = await res.json() } catch(e){ payload = null }
-        if (!res.ok) {
-          const msg = (payload && payload.error) ? payload.error : `rookwizard start failed: ${res.status}`
-          throw new Error(msg)
-        }
-        if (cancelled) return
-        setStep(payload.step || 1)
-        setStatus(payload.status || 'initialized')
-        const wizardData = (payload && payload.wizard_data) ? payload.wizard_data : buildDefaultWizardData()
-        setSectionValues({
-          section_1: wizardData.section_1 || buildDefaultWizardData().section_1,
-          section_2: wizardData.section_2 || buildDefaultWizardData().section_2,
-          section_2d: wizardData.section_2d || buildDefaultWizardData().section_2d,
-          section_3_6: wizardData.section_3_6 || buildDefaultWizardData().section_3_6,
-        })
-
-        // attempt to fetch deal info for connected state (deal-state + transactions)
-        try{
-          const dealRes = await fetch(`/api/deal-state/${transactionId}`)
-          if(dealRes.ok){ const deal = await dealRes.json(); setSelectedDeal(deal) }
-        }catch(e){ /* ignore */ }
-
-        // also fetch canonical transactions row to prefill specific fields
-        try{
-          const txRes = await fetch(`/api/transactions/${transactionId}`)
-          if(txRes.ok){ const tx = await txRes.json(); if(tx){
-            const override:any = {}
-            if(tx.property_address) override.property_address = tx.property_address
-            if(tx.buyer_name) override.buyer_legal_name = tx.buyer_name
-            if(tx.seller_name) override.seller_legal_name = tx.seller_name
-            // other mapping fallbacks
-            if(tx.client) override.buyer_legal_name = override.buyer_legal_name || tx.client
-            if(Object.keys(override).length>0){ setSectionValues(prev => ({ ...prev, section_1: { ...(prev.section_1||{}), ...override } }));
-              // save immediately so the server wizard row is aware
-              await handleSaveSection('section_1', { ...(sectionValues.section_1 || {}), ...override })
-            }
-          } }
-        }catch(e){ /* ignore */ }
-
-        // read local contract extraction if present
-        try{
-          const raw = localStorage.getItem(`dp-contract-${transactionId}`)
-          if(raw){ const parsed = JSON.parse(raw); setContractPreview(parsed); const warnings:string[] = [];
-            // inspection period check
-            const insp = parsed?.inspection_period_days || parsed?.inspection_period || (parsed?.fields && parsed.fields.inspectionPeriod) || null
-            const inspDays = insp ? Number(insp) : null
-            if(inspDays===null || isNaN(inspDays)) warnings.push('Inspection period missing or not found (TN default 10 days)')
-            else if(inspDays < 10) warnings.push(`Inspection period is ${inspDays} day(s) — below TN recommended minimum (10 days)`)
-            // financing contingency
-            const financing = parsed?.financing || parsed?.loan_type || (parsed?.fields && parsed.fields.financing)
-            if(!financing) warnings.push('Financing contingency not found — confirm financing terms')
-            setContractWarnings(warnings)
-          }
-        }catch(e){ /* ignore */ }
-
-      } catch (err: any) {
-        if (!cancelled) setError(err.message || 'Failed to load wizard')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    load()
-    return () => {
-      cancelled = true
-    }
-  }, [transactionId])
-
-  const definitions = getSectionDefinitions(currentSection)
-
-  const displayValue = (key: string, type: string) => {
-    const section = sectionValues[currentSection] || {}
-    const value = section[key]
-    if (type === 'array') {
-      if (Array.isArray(value)) {
-        if (value.length === 0) return ''
-        if (value.every((item) => item === UNKNOWN_MARKER)) return ''
-        return value.filter((item) => item !== UNKNOWN_MARKER).join(', ')
-      }
-      return typeof value === 'string' ? value : ''
-    }
+  const displayFieldValue = (section: SectionName, key: string, type: 'text' | 'number' | 'date') => {
+    const sectionData = sectionValues[section] || {}
+    const value = sectionData[key]
     if (type === 'number') {
-      if (value === null || value === undefined) return ''
-      if (typeof value === 'string' && value.trim() === UNKNOWN_MARKER) return ''
+      if (value === null || value === undefined || value === UNKNOWN_MARKER) return ''
       return String(value)
     }
     if (type === 'date') {
       if (!value || value === UNKNOWN_MARKER) return ''
       return String(value)
     }
-    if (typeof value === 'string' && value === UNKNOWN_MARKER) return ''
+    if (typeof value === 'string' && value.trim() === UNKNOWN_MARKER) return ''
     return value ?? ''
   }
 
-  const handleInput = (key: string, val: string, type: string) => {
+  const handleFieldChange = (section: SectionName, key: string, value: string) => {
     setSectionValues((prev) => ({
       ...prev,
-      [currentSection]: {
-        ...prev[currentSection],
-        [key]: val,
+      [section]: {
+        ...prev[section],
+        [key]: value,
       },
     }))
   }
-
-  const nextSection = useMemo(() => {
-    const idx = sectionOrder.indexOf(currentSection)
-    return sectionOrder[idx + 1] ?? null
-  }, [currentSection])
 
   const handleSaveSection = async (sectionKey: SectionName, override?: Record<string, any>) => {
     setSaving(true)
@@ -177,9 +78,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
       if (!res.ok) {
         throw new Error(body?.error || 'Save failed')
       }
-      setStep(body.step)
-      setStatus(body.status)
-      if (body.wizard_data) {
+      setStep((prev) => body?.step || prev)
+      setStatus((prev) => body?.status || prev)
+      if (body?.wizard_data) {
         setSectionValues({
           section_1: body.wizard_data.section_1,
           section_2: body.wizard_data.section_2,
@@ -187,20 +88,13 @@ export default function RookWizard({ transactionId, onClose }: Props) {
           section_3_6: body.wizard_data.section_3_6,
         })
       }
-      if (sectionKey === currentSection && nextSection) {
-        setCurrentSection(nextSection)
-      }
+      return true
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || 'Save failed')
+      return false
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleMarkUnknown = async () => {
-    const unknownPayload = markSectionUnknown(currentSection)
-    setSectionValues((prev) => ({ ...prev, [currentSection]: unknownPayload }))
-    await handleSaveSection(currentSection, unknownPayload)
   }
 
   const handleComplete = async () => {
@@ -213,167 +107,445 @@ export default function RookWizard({ transactionId, onClose }: Props) {
         throw new Error(body?.error || 'Completion failed')
       }
       setCompleteSummary(body.summary)
-      setIsComplete(body.status === 'complete')
       setStatus(body.status)
       setStep(5)
     } catch (err: any) {
-      setError(err.message)
+      setError(err.message || 'Completion failed')
     } finally {
       setSaving(false)
     }
   }
 
-  const allowComplete = status === sectionProgress.section_3_6.status
+  const partyComplete = useMemo(() => {
+    const { buyer_name, seller_name } = sectionValues.section_1 || {}
+    const clean = (value: any) => typeof value === 'string' && value.trim().length > 0 && value !== UNKNOWN_MARKER
+    return Boolean(clean(buyer_name) && clean(seller_name))
+  }, [sectionValues.section_1])
 
-  // Deal selector handlers
-  async function openDealSelector(){
-    setShowDealSelector(true)
-    try{
-      const r = await fetch('/api/transactions')
-      if(!r.ok) return
-      const j = await r.json()
-      setAvailableDeals(Array.isArray(j) ? j : (j.result || []))
-    }catch(e){ console.error('failed to load deals', e) }
+  const rf401Ready = useMemo(() => {
+    const price = sectionValues.section_2.purchase_price_numeric
+    const closingDate = sectionValues.section_3_6.closing_date
+    const earnestAmount = sectionValues.section_3_6.earnest_money_amount
+    const earnestDue = sectionValues.section_3_6.earnest_money_due_date
+    const priceValid = typeof price === 'number' && !Number.isNaN(price) && price > 0
+    const earnestValid = typeof earnestAmount === 'number' && !Number.isNaN(earnestAmount) && earnestAmount > 0
+    return Boolean(priceValid && closingDate && earnestValid && earnestDue)
+  }, [sectionValues.section_2, sectionValues.section_3_6])
+
+  const allowComplete = status === sectionProgress.section_3_6.status
+  const progressPercent = useMemo(() => ((activeStep - 1) / (STEP_CONFIG.length - 1)) * 100, [activeStep])
+
+  const connectDealAndPopulate = async (deal: DealSummary) => {
+    setSelectedDeal(deal)
+    setShowDealPicker(false)
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('rookwizard_selected_deal', JSON.stringify(deal))
+      }
+    } catch (_e) {
+      // ignore
+    }
+    const currentSection = sectionValues.section_1 || {}
+    const override: Record<string, any> = {}
+    if (deal.address) override.property_address = deal.address
+    if (deal.client && !override.buyer_name) override.buyer_name = deal.client
+    if (deal.buyer_names) {
+      const names = Array.isArray(deal.buyer_names)
+        ? deal.buyer_names
+        : String(deal.buyer_names).split(',').map((name) => name.trim()).filter(Boolean)
+      if (names.length) {
+        override.buyer_name = names.join(', ')
+      }
+    }
+    const merged = { ...currentSection, ...override }
+    setSectionValues((prev) => ({ ...prev, section_1: merged }))
+    const saved = await handleSaveSection('section_1', merged)
+    if (saved) {
+      setActiveStep(2)
+    }
   }
 
-  function connectDealAndPopulate(deal:any){
-    // store selection for this wizard
-    try{ localStorage.setItem('rookwizard_selected_deal', JSON.stringify(deal)) }catch(e){}
-    setSelectedDeal(deal)
-    // prefill section_1 fields (property address, buyer names)
-    const override:any = {}
-    if(deal.address) override.property_address = deal.address
-    if(deal.buyer_names) override.buyer_names = Array.isArray(deal.buyer_names) ? deal.buyer_names : String(deal.buyer_names).split(',').map((s:string)=>s.trim())
-    setSectionValues(prev => ({ ...prev, section_1: { ...(prev.section_1 || {}), ...override } }))
-    // save this section immediately
-    handleSaveSection('section_1', { ...(sectionValues.section_1 || {}), ...override })
-    setShowDealSelector(false)
+  const handleNextStep = async () => {
+    if (activeStep === 1) {
+      setActiveStep(2)
+      return
+    }
+    if (activeStep === 2) {
+      const saved = await handleSaveSection('section_1')
+      if (saved) {
+        setActiveStep(3)
+      }
+      return
+    }
+    if (activeStep === 3) {
+      const priceSaved = await handleSaveSection('section_2')
+      if (!priceSaved) return
+      const earnestSaved = await handleSaveSection('section_3_6')
+      if (earnestSaved) {
+        setActiveStep(4)
+      }
+    }
+  }
+
+  const handleBack = () => {
+    if (activeStep > 1) {
+      setActiveStep((prev) => (prev - 1) as WizardStep)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    const loadWizard = async () => {
+      setLoading(true)
+      setError(null)
+      setCompleteSummary(null)
+      setContractPreview(null)
+      setContractWarnings([])
+      setSelectedDeal(null)
+      setActiveStep(1)
+      try {
+        const res = await fetch(`/api/rookwizard/${transactionId}/start`, { method: 'POST' })
+        const payload = await res.json().catch(() => null)
+        if (!res.ok) {
+          throw new Error(payload?.error || 'Failed to load wizard data')
+        }
+        if (cancelled) return
+        setStep(payload?.step || 1)
+        setStatus(payload?.status || 'initialized')
+        const wizardData = payload?.wizard_data || buildDefaultWizardData()
+        setSectionValues({
+          section_1: wizardData.section_1 || DEFAULT_VALUES.section_1,
+          section_2: wizardData.section_2 || DEFAULT_VALUES.section_2,
+          section_2d: wizardData.section_2d || DEFAULT_VALUES.section_2d,
+          section_3_6: wizardData.section_3_6 || DEFAULT_VALUES.section_3_6,
+        })
+
+        try {
+          const dealRes = await fetch(`/api/deal-state/${transactionId}`)
+          if (dealRes.ok) {
+            const deal = await dealRes.json()
+            if (!cancelled) setSelectedDeal(deal)
+          }
+        } catch (_e) {
+          // ignore
+        }
+
+        try {
+          const txRes = await fetch(`/api/transactions/${transactionId}`)
+          if (txRes.ok) {
+            const tx = await txRes.json()
+            if (cancelled) return
+            const overrides: Record<string, any> = {}
+            if (tx.property_address) overrides.property_address = tx.property_address
+            if (tx.buyer_name || tx.buyer_names) overrides.buyer_name = tx.buyer_name || tx.buyer_names || tx.client
+            if (tx.seller_name) overrides.seller_name = tx.seller_name
+            if (tx.client && !overrides.buyer_name) overrides.buyer_name = tx.client
+            if (Object.keys(overrides).length > 0) {
+              setSectionValues((prev) => ({ ...prev, section_1: { ...prev.section_1, ...overrides } }))
+            }
+          }
+        } catch (_e) {
+          // ignore
+        }
+
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem(`dp-contract-${transactionId}`)
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              if (!cancelled) {
+                setContractPreview(parsed)
+                const warnings: string[] = []
+                const insp = parsed?.inspection_period_days || parsed?.inspection_period || parsed?.fields?.inspectionPeriod
+                const inspDays = insp ? Number(insp) : null
+                if (inspDays === null || Number.isNaN(inspDays)) {
+                  warnings.push('Inspection period missing or not found (TN default 10 days)')
+                } else if (inspDays < 10) {
+                  warnings.push(`Inspection period is ${inspDays} day(s) — below TN recommended minimum (10 days)`)
+                }
+                const financing = parsed?.financing || parsed?.loan_type || parsed?.fields?.financing
+                if (!financing) warnings.push('Financing contingency not found — confirm financing terms')
+                setContractWarnings(warnings)
+              }
+            }
+          } catch (_e) {
+            // ignore
+          }
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || 'Unable to load wizard')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadWizard()
+    return () => {
+      cancelled = true
+    }
+  }, [transactionId])
+
+  const connectDealPanel = (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-300">A connected deal keeps your RF401 aligned with the correct transaction record.</p>
+      <div className="rounded-2xl border border-white/10 bg-[#041022] p-4">
+        {selectedDeal ? (
+          <div className="space-y-1">
+            <div className="text-xs text-gray-400">Connected deal</div>
+            <div className="text-lg font-semibold text-white">{selectedDeal.address || `Deal ${selectedDeal.id}`}</div>
+            <div className="text-xs text-gray-400">{selectedDeal.client || 'Unknown client'} · {selectedDeal.status || 'Status unknown'}</div>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-400">No deal connected yet. Please select one to continue.</div>
+        )}
+      </div>
+      <button
+        onClick={() => setShowDealPicker(true)}
+        className="rounded-full border border-orange-500 px-4 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-orange-200 transition hover:bg-orange-500/10"
+      >
+        {selectedDeal ? 'Change Deal' : 'Select a Deal'}
+      </button>
+      {contractPreview && (
+        <div className="rounded-2xl border border-white/10 bg-[#051428] p-4 text-sm text-gray-300">
+          <div className="text-xs uppercase tracking-[0.3em] text-gray-400">Latest contract preview</div>
+          <div className="mt-2 grid gap-2 text-sm">
+            <div>Address: <span className="font-semibold text-white">{contractPreview.fields?.propertyAddress || '—'}</span></div>
+            <div>Buyer(s): <span className="font-semibold text-white">{Array.isArray(contractPreview.fields?.buyerNames) ? contractPreview.fields?.buyerNames.join(', ') : contractPreview.fields?.buyerNames || '—'}</span></div>
+            <div>Seller(s): <span className="font-semibold text-white">{contractPreview.fields?.sellerNames || '—'}</span></div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  const partiesPanel = (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-300">Update the legal names so RF401 references match the contract.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+          Buyer legal name
+          <input
+            type="text"
+            value={displayFieldValue('section_1', 'buyer_name', 'text')}
+            onChange={(event) => handleFieldChange('section_1', 'buyer_name', event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+            placeholder="Buyer legal name"
+          />
+        </label>
+        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+          Seller legal name
+          <input
+            type="text"
+            value={displayFieldValue('section_1', 'seller_name', 'text')}
+            onChange={(event) => handleFieldChange('section_1', 'seller_name', event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+            placeholder="Seller legal name"
+          />
+        </label>
+      </div>
+      {!partyComplete && <div className="text-sm text-amber-300">Buyer and seller names must be provided before continuing.</div>}
+    </div>
+  )
+
+  const rf401Panel = (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-300">Capture the critical RF401 data points listed below.</p>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+          Purchase price
+          <input
+            type="number"
+            value={displayFieldValue('section_2', 'purchase_price_numeric', 'number')}
+            onChange={(event) => handleFieldChange('section_2', 'purchase_price_numeric', event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+            placeholder="Numeric value"
+          />
+        </label>
+        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+          Closing date
+          <input
+            type="date"
+            value={displayFieldValue('section_3_6', 'closing_date', 'date')}
+            onChange={(event) => handleFieldChange('section_3_6', 'closing_date', event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+          />
+        </label>
+        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+          Earnest money amount
+          <input
+            type="number"
+            value={displayFieldValue('section_3_6', 'earnest_money_amount', 'number')}
+            onChange={(event) => handleFieldChange('section_3_6', 'earnest_money_amount', event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+            placeholder="Numeric value"
+          />
+        </label>
+        <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+          Earnest money due date
+          <input
+            type="date"
+            value={displayFieldValue('section_3_6', 'earnest_money_due_date', 'date')}
+            onChange={(event) => handleFieldChange('section_3_6', 'earnest_money_due_date', event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+          />
+        </label>
+      </div>
+      <label className="space-y-1 text-xs uppercase tracking-[0.3em] text-gray-400">
+        Special stipulations
+        <textarea
+          value={displayFieldValue('section_3_6', 'special_assessments', 'text')}
+          onChange={(event) => handleFieldChange('section_3_6', 'special_assessments', event.target.value)}
+          className="w-full rounded-2xl border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
+          rows={3}
+          placeholder="Capture any unique stipulations or adjustments."
+        />
+      </label>
+      {!rf401Ready && (
+        <div className="text-sm text-amber-300">Price, closing date, and earnest fields are required before review.</div>
+      )}
+    </div>
+  )
+
+  const reviewPanel = (
+    <div className="space-y-4">
+      <div className="grid gap-3 rounded-2xl border border-white/10 bg-[#041022] p-4">
+        <div className="text-xs uppercase tracking-[0.3em] text-gray-400">RF401 summary</div>
+        <div className="flex flex-col gap-2 text-sm text-gray-200">
+          <div>Connected deal: {selectedDeal ? selectedDeal.address : `Transaction ${transactionId}`}</div>
+          <div>Buyer: {displayFieldValue('section_1', 'buyer_name', 'text') || '—'}</div>
+          <div>Seller: {displayFieldValue('section_1', 'seller_name', 'text') || '—'}</div>
+        </div>
+      </div>
+      {contractWarnings.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm text-amber-100">
+          <div className="text-xs uppercase tracking-[0.3em] text-amber-200">Contract flags</div>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            {contractWarnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {completeSummary && (
+        <div className="rounded-2xl border border-cyan-400/40 bg-cyan-500/5 p-4 text-sm text-cyan-100">
+          <div className="text-xs uppercase tracking-[0.3em] text-cyan-200">Completion notes</div>
+          <p className="mt-2 text-white">{completeSummary.next_actions}</p>
+          {completeSummary.missing_fields.length > 0 ? (
+            <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-cyan-200">
+              {completeSummary.missing_fields.map((field) => (
+                <li key={field}>{field}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-emerald-200">Ready for export with no gaps.</p>
+          )}
+          <div className="mt-4">
+            <a
+              href={`/api/rookwizard/${transactionId}/export`}
+              className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-black"
+            >
+              Download RF401 Export
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  const nextStepLabel = STEP_CONFIG[activeStep]?.title ?? ''
+
+  const renderStepContent = () => {
+    if (loading) {
+      return (
+        <div className="rounded-2xl border border-white/10 bg-[#051126] p-6 text-sm text-gray-300">Loading wizard data…</div>
+      )
+    }
+    switch (activeStep) {
+      case 1:
+        return connectDealPanel
+      case 2:
+        return partiesPanel
+      case 3:
+        return rf401Panel
+      case 4:
+        return reviewPanel
+      default:
+        return null
+    }
   }
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-[#030712] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white">RookWizard ({transactionId})</h2>
-            <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Step {step} · {status}</p>
-            {selectedDeal ? (
-              <div className="mt-1 text-sm text-emerald-300">Connected to: <span className="font-semibold text-white">{selectedDeal.address || selectedDeal.address_line || `Deal ${selectedDeal.id}`}</span></div>
+      <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-[#030712] shadow-2xl">
+        <div>
+          <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+            <div className="flex items-center gap-4">
+              <ClosingPilotLogo size="sm" />
+              <div>
+                <p className="text-xs uppercase tracking-[0.4em] text-gray-400">ClosingPilot TN</p>
+                <h2 className="text-xl font-semibold text-white">RF401 Buyer Wizard</h2>
+                <p className="text-sm text-gray-400">Step {step} · {status}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-sm font-semibold uppercase tracking-[0.2em] text-gray-400 hover:text-white">Close</button>
+          </div>
+          <div className="px-6 py-4">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-indigo-500" style={{ width: `${progressPercent}%` }} />
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[0.65rem] uppercase tracking-[0.4em] text-gray-400">
+              {STEP_CONFIG.map((stepDef) => (
+                <span key={stepDef.id} className={stepDef.id === activeStep ? 'text-white font-semibold' : ''}>{stepDef.title}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="px-6 py-6">
+          {error && (
+            <div className="mb-4 rounded-2xl border border-red-600/50 bg-red-900/40 p-3 text-sm text-red-200">{error}</div>
+          )}
+          {renderStepContent()}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <button
+              onClick={handleBack}
+              disabled={activeStep === 1 || saving}
+              className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white/70 hover:border-white/40 disabled:opacity-50"
+            >
+              Back
+            </button>
+            {activeStep < STEP_CONFIG.length ? (
+              <button
+                onClick={handleNextStep}
+                disabled={
+                  saving ||
+                  (activeStep === 1 && !selectedDeal) ||
+                  (activeStep === 2 && !partyComplete) ||
+                  (activeStep === 3 && !rf401Ready)
+                }
+                className="rounded-full border border-orange-400 bg-orange-500 px-6 py-2 text-sm font-semibold text-black transition hover:bg-orange-400 disabled:opacity-60"
+              >
+                {saving ? 'Saving…' : `Next: ${nextStepLabel}`}
+              </button>
             ) : (
-              <div className="mt-1 text-sm text-gray-400">Select a deal to connect to RookWizard</div>
+              <button
+                onClick={handleComplete}
+                disabled={!allowComplete || saving}
+                className="rounded-full border border-cyan-400 bg-cyan-400 px-6 py-2 text-sm font-semibold text-black transition hover:bg-cyan-300 disabled:opacity-50"
+              >
+                {saving ? 'Finalizing…' : 'Finalize & Export'}
+              </button>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={openDealSelector} className="text-sm px-3 py-1 bg-gray-800 text-gray-200 rounded hover:bg-gray-700">Select a Deal</button>
-            <button onClick={onClose} className="text-sm font-medium text-gray-300 hover:text-white">Close</button>
-          </div>
-        </div>
-
-        <div className="px-6 py-5">
-          <div className="border border-orange-400 bg-orange-50 p-4 rounded-lg mb-4"><h3 className="text-lg font-bold text-orange-700">Professional Compliance Guide</h3><p className="text-sm text-orange-600">Follow this path to ensure all Tennessee real estate requirements are met without error.</p></div>
-          <div className="mb-4 grid gap-2 sm:grid-cols-2">
-            {sectionOrder.map((section) => (
-              <button
-                key={section}
-                onClick={() => setCurrentSection(section)}
-                className={`rounded-2xl border px-3 py-2 text-left text-xs uppercase tracking-wide transition ${
-                  section === currentSection ? 'border-orange-400 bg-orange-500/10 text-white' : 'border-white/10 text-gray-400 hover:border-white/30'
-                }`}
-              >
-                <div className="text-[0.65rem] text-gray-300">Step {sectionOrder.indexOf(section) + 1}</div>
-                <div className="text-[0.75rem] text-white">{SECTION_LABELS[section]}</div>
-              </button>
-            ))}
-          </div>
-
-          {showDealSelector && (
-            <div className="mb-4 p-4 rounded bg-[#07101a] border border-white/10">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-sm text-gray-300">Select a deal to connect to RookWizard</div>
-                <button onClick={()=>setShowDealSelector(false)} className="text-xs text-gray-400">Close</button>
-              </div>
-              <div className="space-y-2 max-h-60 overflow-auto">
-                {availableDeals.length===0 && <div className="text-sm text-gray-500">No active deals found</div>}
-                {availableDeals.map((d:any)=> (
-                  <div key={d.id} className="p-2 rounded hover:bg-gray-800 flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-white">{d.address}</div>
-                      <div className="text-xs text-gray-400">{d.client} • {d.status}</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={()=>connectDealAndPopulate(d)} className="px-3 py-1 bg-emerald-500 text-black rounded">Select</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="rounded-2xl border border-white/10 bg-[#0c1726] p-6 text-sm text-gray-300">Loading wizard data...</div>
-          ) : (
-            <div className="rounded-2xl border border-white/5 bg-[#0c1726] p-6 shadow-inner">
-              {error && <div className="mb-3 rounded border border-red-600/50 bg-red-900/40 p-3 text-sm text-red-200">{error}</div>}
-              <div className="space-y-4">
-                {definitions.map((field) => (
-                  <div key={field.key} className="grid w-full gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-400">{field.label}</label>
-                    {field.type === 'enum' ? (
-                      <select
-                        className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
-                        value={displayValue(field.key, field.type)}
-                        onChange={(event) => handleInput(field.key, event.target.value, field.type)}
-                      >
-                        <option value="">Select an option</option>
-                        {field.enumOptions?.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                        className="rounded-lg border border-white/10 bg-transparent px-3 py-2 text-white focus:border-orange-400"
-                        placeholder={field.type === 'array' ? 'Comma-separated values' : ''}
-                        value={displayValue(field.key, field.type)}
-                        onChange={(event) => handleInput(field.key, event.target.value, field.type)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => handleSaveSection(currentSection)}
-                  disabled={saving}
-                  className="rounded-full border border-orange-400 bg-orange-500 px-5 py-2 text-sm font-semibold text-black transition hover:bg-orange-400 disabled:opacity-60"
-                >
-                  {saving ? 'Saving…' : 'Save & Continue'}
-                </button>
-                <button onClick={handleMarkUnknown} disabled={saving} className="rounded-full border border-white/20 px-5 py-2 text-sm text-white hover:border-white/50 disabled:opacity-60">Mark as Unknown</button>
-                <button onClick={handleComplete} disabled={!(allowComplete || selectedDeal) || saving} className="rounded-full border border-cyan-400 px-5 py-2 text-sm text-cyan-200 hover:border-cyan-200 disabled:opacity-50">{saving && (allowComplete || selectedDeal) ? 'Completing…' : 'Finalize & Export'}</button>
-              </div>
-              {completeSummary && (
-                <div className="mt-6 rounded-2xl border border-white/5 bg-white/5 p-4 text-sm text-gray-200">
-                  <div className="font-semibold text-white">Summary</div>
-                  <div className="text-gray-300">{completeSummary.next_actions}</div>
-                  {completeSummary.missing_fields.length > 0 ? (
-                    <ul className="mt-3 list-disc space-y-1 pl-4 text-xs text-orange-200">
-                      {completeSummary.missing_fields.map((field) => (
-                        <li key={field}>{field}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="mt-3 text-xs text-emerald-200">No missing fields. Ready for export.</div>
-                  )}
-                  <div className="mt-4">
-                    <a href={`/api/rookwizard/${transactionId}/export`} className="px-4 py-2 bg-cyan-400 text-black rounded font-semibold">Download TN Compliance Summary</a>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
+      <DealPickerModal
+        open={showDealPicker}
+        selectedDealId={selectedDeal?.id ?? null}
+        onClose={() => setShowDealPicker(false)}
+        onSelect={connectDealAndPopulate}
+      />
     </div>
   )
 }
