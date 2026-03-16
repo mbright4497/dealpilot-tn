@@ -26,7 +26,18 @@ export async function GET() {
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+
+  // Remap DB columns to frontend-friendly keys so TransactionList/Transaction cards
+  // can read `closing` and `binding` (the DB stores closing_date and binding_date).
+  const payload = Array.isArray(data)
+    ? data.map((r: any) => ({
+        ...r,
+        closing: r.closing_date ?? r.closing ?? null,
+        binding: r.binding_date ?? r.binding ?? null,
+      }))
+    : data
+
+  return NextResponse.json(payload)
 }
 
 export async function POST(req: Request) {
