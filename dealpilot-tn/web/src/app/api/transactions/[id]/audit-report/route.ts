@@ -3,7 +3,9 @@ import { NextResponse } from 'next/server'
 export async function GET(req: Request, { params }: { params: { id: string } }){
   const id = params.id
   try{
-    const base = new URL(req.url).origin
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || ''
+    const proto = req.headers.get('x-forwarded-proto') || 'https'
+    const base = host ? `${proto}://${host}` : ''
     const fetchJson = async (path:string)=>{
       try{ const r = await fetch((base||'') + path, { cache: 'no-store' }); if(!r.ok) return { error: r.statusText }; return await r.json() }catch(e){ return { error: String(e) } }
     }
