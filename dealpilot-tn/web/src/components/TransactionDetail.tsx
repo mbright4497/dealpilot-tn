@@ -360,7 +360,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const daysUntil = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return null; const t = new Date(d).getTime(); if(isNaN(t)) return null; return Math.ceil((t-Date.now())/(1000*60*60*24)) }
 
   function genDeadlinesFromRemote(){
-    const b = mergedTx.binding ? new Date(mergedTx.binding) : null
+    const b = ((mergedTx as any).binding_date || mergedTx.binding) ? new Date((mergedTx as any).binding_date || mergedTx.binding) : null
     const closing = (mergedTx as any).closing_date || mergedTx.closing ? new Date((mergedTx as any).closing_date || mergedTx.closing) : null
     if(!b) return []
     const add = (d:Date, days:number)=>{ const r=new Date(d); r.setDate(r.getDate()+days); return r }
