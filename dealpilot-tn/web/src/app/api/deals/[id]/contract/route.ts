@@ -100,10 +100,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       const { data: files } = await supabase
         .storage
         .from('contracts')
-        .list(`deal-${dealId}`)
+        .list(`deals/${dealId}`)
 
       if (files && files.length > 0) {
-        const filePaths = files.map(f => `deal-${dealId}/${f.name}`)
+        const filePaths = files.map(f => `deals/${dealId}/${f.name}`)
         await supabase.storage.from('contracts').remove(filePaths)
       }
     } catch (_e) {

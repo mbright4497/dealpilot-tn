@@ -115,41 +115,38 @@ export default function ContractUpload({ dealId, onExtracted, onSave, onDelete }
       formData.append('dealId', dealId);
       const res = await fetch('/api/ai/extract-contract', { method: 'POST', body: formData });
       if (!res.ok) {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Extraction failed');
       }
       const data = await res.json();
-      setExtractedData(data.extracted);
-      if (onExtractedRef.current) onExtractedRef.current(data.extracted);
+      const extracted = data.extracted;
+      setExtractedData(extracted);
+      if (onExtractedRef.current) onExtractedRef.current(extracted);
 
-      // Upload PDF to Supabase Storage
-      try {
-        const uploadForm = new FormData();
-        uploadForm.append('file', file);
-        const uploadRes = await fetch(`/api/deals/${dealId}/contract-upload`, { method: 'POST', body: uploadForm });
-        if (uploadRes.ok) {
-          const ud = await uploadRes.json();
-          if (ud?.url) {
-            uploadedUrl = ud.url;
-            setPdfUrl(ud.url);
-            // Revoke blob since we have the real URL now
-            if (blobUrlRef.current) {
-              URL.revokeObjectURL(blobUrlRef.current);
-              blobUrlRef.current = null;
-            }
-          }
-        }
-      } catch (_e) { /* ignore upload errors */ }
+      const uploadForm = new FormData();
+      uploadForm.append('file', file);
+      const uploadRes = await fetch(`/api/deals/${dealId}/contract-upload`, { method: 'POST', body: uploadForm });
+      if (!uploadRes.ok) {
+        const uploadErrData = await uploadRes.json().catch(() => ({}));
+        throw new Error(uploadErrData.error || 'Contract upload failed');
+      }
+      const uploadData = await uploadRes.json();
+      if (!uploadData?.url) {
+        throw new Error('Contract upload did not return a URL');
+      }
+      uploadedUrl = uploadData.url;
+      setPdfUrl(uploadedUrl);
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
 
-      // Auto-save extracted data with the uploaded URL
-      try {
-        await fetch(`/api/deals/${dealId}/contract`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ extracted: data.extracted, pdfUrl: uploadedUrl }),
-        });
-        setSaved(true);
-      } catch (_e) { /* ignore */ }
+      await fetch(`/api/deals/${dealId}/contract`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extracted, pdfUrl: uploadedUrl }),
+      });
+      setSaved(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to extract contract data');
     } finally {
