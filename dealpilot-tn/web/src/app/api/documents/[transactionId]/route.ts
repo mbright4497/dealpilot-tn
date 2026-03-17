@@ -18,7 +18,6 @@ export async function GET(request: Request, { params }: { params: { transactionI
       .eq('transaction_id', transactionId)
       .order('created_at', { ascending: false })
 
-    if (user) q = q.eq('user_id', user.id)
 
     const { data, error } = await q
 

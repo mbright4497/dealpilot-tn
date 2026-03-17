@@ -436,7 +436,8 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   },[remote, mergedTx, docs])
 
   // documentsByKey memo (Phase 21) - placed BEFORE return
-  const documentsByKey = React.useMemo(() => {
+  const [documentsByKey, setDocumentsByKey] = React.useState<Record<string, any>>({})
+  React.useEffect(() => {
     const m: Record<string, any> = {}
     ;(docs || []).forEach((d: any) => {
       const key = (d.classification || d.rf_number || d.key || '').toString()
@@ -449,7 +450,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
         path: d.path || d.storage_path || null,
       }
     })
-    return m
+    setDocumentsByKey(m)
   }, [docs])
 
   // priorities state
@@ -1159,14 +1160,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
             onView={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('contracts').createSignedUrl(path, 60)
+                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
                 if(data?.signedUrl) window.open(data.signedUrl, '_blank')
               }catch(e){ console.error('view error', e) }
             }}
             onDownload={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('contracts').createSignedUrl(path, 60)
+                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
                 if(data?.signedUrl){
                   const a = document.createElement('a')
                   a.href = data.signedUrl
