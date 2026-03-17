@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from('audit_logs')
       .select('*')
-      .eq('deal_id', dealId)
+      .eq('resource_id', dealId)
       .order('created_at', { ascending: false })
       .limit(100)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

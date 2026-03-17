@@ -13,7 +13,7 @@ export async function GET(req: Request){
   const dealId = params.get('dealId')
   if(!dealId) return NextResponse.json({ error: 'Missing dealId' }, { status: 400 })
   const { data, error } = await supabase
-    .from('deal_checklist')
+    .from('checklists')
     .select('*')
     .eq('deal_id', dealId)
     .order('updated_at', { ascending: false })
@@ -27,9 +27,9 @@ export async function POST(req: Request){
     const { dealId, key, status } = body || {}
     if(!dealId || !key) return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
 
-    // upsert into deal_checklist table
-    const payload = { deal_id: dealId, item_key: String(key), status: String(status), updated_at: new Date().toISOString() }
-    const { data, error } = await supabase.from('deal_checklist').upsert(payload, { onConflict: 'deal_id,item_key' }).select().single()
+    // upsert into checklists table
+    const payload = { deal_id: dealId, title: String(key), status: String(status), metadata: {} }
+    const { data, error } = await supabase.from('checklists').upsert(payload, { onConflict: 'deal_id,title' }).select().single()
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true, row: data })
   }catch(e:any){ return NextResponse.json({ error: String(e) }, { status: 500 }) }
