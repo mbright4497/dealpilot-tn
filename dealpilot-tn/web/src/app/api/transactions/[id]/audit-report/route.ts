@@ -1,23 +1,40 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-export async function GET(req: Request, { params }: { params: { id: string } }){
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  {
+    global: {
+      fetch: (url: any, options: any = {}) =>
+        fetch(url, { ...options, cache: 'no-store' }),
+    },
+  }
+)
+
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   const id = params.id
-  try{
-    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || process.env.VERCEL_URL || 'dealpilot-tn.vercel.app'
-    const proto = req.headers.get('x-forwarded-proto') || 'https'
-    const base = `${proto}://${host}`
-    const fetchJson = async (path:string)=>{
-      try{ const r = await fetch((base||'') + path, { cache: 'no-store' }); if(!r.ok) return { error: r.statusText }; return await r.json() }catch(e){ return { error: String(e) } }
-    }
+  if (!id) {
+    return NextResponse.json({ error: 'Missing transaction ID' }, { status: 400 })
+  }
 
-    const [dealState, events, comms, checklist, documents, auditLogs] = await Promise.all([
-      fetchJson(`/api/deal-state/${id}`),
-      fetchJson(`/api/deal-events/${id}`),
-      fetchJson(`/api/communications/history?dealId=${id}`),
-      fetchJson(`/api/deal-checklist?dealId=${id}`),
-      fetchJson(`/api/documents/${id}`),
-      fetchJson(`/api/audit/logs?dealId=${id}`),
-    ])
+  const safeQuery = async (query: () => Promise<{ data: any; error: any }>) => {
+    try {
+      const { data, error } = await query()
+      if (error) throw error
+      return data
+    } catch (_e) {
+      return { error: 'table not found' }
+    }
+  }
+
+  try {
+    const dealState = await safeQuery(() => supabase.from('deal_state').select('*').eq('deal_id', id).maybeSingle())
+    const events = await safeQuery(() => supabase.from('deal_events').select('*').eq('deal_id', id))
+    const comms = await safeQuery(() => supabase.from('communications').select('*').eq('deal_id', id))
+    const checklist = await safeQuery(() => supabase.from('deal_checklist').select('*').eq('deal_id', id))
+    const documents = await safeQuery(() => supabase.from('deal_documents').select('*').eq('deal_id', id))
+    const auditLogs = await safeQuery(() => supabase.from('audit_logs').select('*').eq('deal_id', id))
 
     const html = `<!doctype html>
     <html>
@@ -51,12 +68,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }){
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `attachment; filename="audit-report-${id}.html"`
-      }
+        'Content-Disposition': `attachment; filename="audit-report-${id}.html"`,
+      },
     })
-  }catch(e:any){
+  } catch (e: any) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
 
-function escapeHtml(s:string){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function escapeHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
