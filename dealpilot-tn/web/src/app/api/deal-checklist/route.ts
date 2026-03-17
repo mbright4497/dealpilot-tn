@@ -16,7 +16,7 @@ export async function GET(req: Request){
     .from('checklists')
     .select('*')
     .eq('deal_id', dealId)
-    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
   if(error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
 }
