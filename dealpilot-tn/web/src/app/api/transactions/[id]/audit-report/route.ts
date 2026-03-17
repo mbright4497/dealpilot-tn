@@ -1,30 +1,43 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  {
-    global: {
-      fetch: (url: any, options: any = {}) =>
-        fetch(url, { ...options, cache: 'no-store' }),
-    },
-  }
-)
-
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const id = params.id
   if (!id) {
     return NextResponse.json({ error: 'Missing transaction ID' }, { status: 400 })
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({
+      error: 'Supabase configuration is incomplete',
+      supabaseUrl: supabaseUrl ? supabaseUrl.slice(0, 20) : 'not set',
+      serviceRoleKey: serviceRoleKey ? 'set' : 'not set',
+      anonKey: anonKey ? 'set' : 'not set',
+    }, { status: 500 })
+  }
+
+  const supabase = createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      global: {
+        fetch: (url: any, options: any = {}) =>
+          fetch(url, { ...options, cache: 'no-store' }),
+      },
+    }
+  )
+
   const safeQuery = async (query: () => Promise<{ data: any; error: any }>) => {
     try {
       const { data, error } = await query()
       if (error) throw error
       return data
-    } catch (_e) {
-      return { error: 'table not found' }
+    } catch (e: any) {
+      return { error: String(e) }
     }
   }
 
@@ -36,6 +49,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const documents = await safeQuery(() => supabase.from('deal_documents').select('*').eq('deal_id', id))
     const auditLogs = await safeQuery(() => supabase.from('audit_logs').select('*').eq('deal_id', id))
 
+    const debugBlock = `<div style="font-size:12px;color:#666;margin-bottom:10px">Supabase URL: ${supabaseUrl.slice(0, 20)}${supabaseUrl.length > 20 ? '...' : ''}<br/>Service Role Key: set<br/>Anon Key: ${anonKey ? 'set' : 'not set'}</div>`
+
     const html = `<!doctype html>
     <html>
     <head><meta charset="utf-8"><title>Audit Report - ${id}</title>
@@ -43,6 +58,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     </head>
     <body>
       <h1>Audit Report — Transaction ${id}</h1>
+      ${debugBlock}
+
       <h2>Summary</h2>
       <pre>${escapeHtml(JSON.stringify(dealState, null, 2))}</pre>
 
