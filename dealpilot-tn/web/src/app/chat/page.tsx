@@ -722,11 +722,19 @@ export default function ChatPage() {
  }}
  className="flex-1"
  >
- <input
- name="ask"
- placeholder="Ask Reva anything..."
-className="px-4 py-3 rounded-full bg-[#0b1a2b] w-[600px] max-w-full placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
- />
+  <div className="flex items-center gap-2">
+   <input
+    name="ask"
+    placeholder="Ask Reva anything..."
+    className="flex-1 px-4 py-3 rounded-full bg-[#0b1a2b] placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
+   />
+   <button
+    type="submit"
+    className="px-4 py-3 rounded-full bg-orange-500 hover:bg-orange-600 text-black font-semibold text-sm transition whitespace-nowrap"
+   >
+    Send
+   </button>
+  </div>
  </form>
 
  <button
