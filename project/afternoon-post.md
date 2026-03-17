@@ -1,21 +1,15 @@
-Headline: "Found your future home — faster."
+# Afternoon Social Post — 2026-03-17 Midday
 
-Primary text (<=125 chars): Stop scrolling — get instant answers about new builds near you. Free guide + instant AI help.
+**Headline:** Tri-Cities builders still pushing afternoon spec releases
 
-Body copy (Facebook / Instagram):
-Thinking about new construction in the Tri-Cities? Don't wait for callbacks. Our AI assistant knows which builders have move-in ready homes, current incentives, and estimated timelines — so you can compare options in minutes, not days. Grab the free New Construction Guide and get a 1‑min AI walkthrough.
+**Primary text (≤125 chars):** Tri-Cities specs still rolling—call now before the final D.R. Horton/Kingsport homes vanish.
 
-CTA: "Get the Guide & Quick Tour"
+**Supporting bullets:**
+- Archer’s Pointe and Beechwood Meadows in Johnson City still show final opportunities in the mid-$343K band, so buyers can still grab a move-in-ready plan before the last 3 specs shift under contract.
+- Kingsport’s Arbor Townhomes/Polo Fields plus Fieldcrest Acres keep new inventory priced $250K–$332K; we can hold a Saturday tour if you say yes this afternoon.
 
-Suggested image/visual: Carousel: 1) Exterior of a popular spec home, 2) interior open-plan kitchen, 3) screenshot of AI chat answering a builder question. Use local landmarks subtly in background (e.g., Johnson City skyline) to increase relevance.
+**CTA:** Text TRI-SPEC to (###) ###-#### or reply to this post with your favored community and preferred move-in timeline—we’ll lock a builder tour today.
 
-Hashtags: #TriCitiesTN #NewConstruction #JohnsonCity #Kingsport #BristolTN #HomeBuilding #MoveInReady #RealEstate
+**Suggested image:** Lifestyle shot of a finished D.R. Horton kitchen or the Arbor Townhomes exterior with an overlay that reads “Final specs under $340K—call now.”
 
-Stories variant (short, 2 lines):
-New construction answers in 60 seconds. Swipe up for the free guide + AI tour.
-
-Notes:
-- Tone: helpful, local, actionable. Different angle from morning post — focuses on speed and AI assistant as decision shortcut rather than price or financing.
-- Workhorse: when pushing live, use dynamic image text overlays with price starting points per ad set (requires MLS/builder confirmation). Tag ad creative by neighborhood for performance tracking.
-
-Generated: SUBAGENT — ready to paste into FB/IG composer. Replace price overlays after MLS pull.
+**Sources:** D.R. Horton Northeast Tennessee landing pages (Johnson City + Kingsport) as of 12:00 PM ET; builder portals still gating direct captures, so we’re calling reps for the latest open houses.

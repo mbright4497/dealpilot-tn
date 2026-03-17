@@ -1,39 +1,23 @@
-# Hot Zones — Top 5 New-Construction Neighborhoods (Tri-Cities TN)
+# Tri-Cities Hot Zones — 2026-03-17 Midday
 
-Note: automated web_search failed due to missing Brave API key. Workhorse must run a live MLS export and check builder sites to validate prices, inventory, and source links. Fields marked [ASSUMPTION] are based on local agent knowledge and should be replaced with MLS/builder confirmations.
+*Based on the builder landing pages that remain accessible (primarily D.R. Horton’s Tri-Cities hubs). All price bands should be validated against MLS/builder reps once those feeds reopen.*
 
-1) Meadow Ridge (Johnson City)
-- Typical price range: $280,000 - $420,000 [ASSUMPTION]
-- Why it's hot: Multiple local builders releasing spec homes; low inventory of completed move-in homes so pre-sales and incentives are driving quick contract activity. Short DOM on move-in ready units reported anecdotally by listing agents.
-- What to verify: active listings count, current builder incentives, average DOM from MLS.
-- Sources: Builder pages (TBD), MLS export (TBD)
+1. **Archer’s Pointe (Johnson City)**
+   - **Price range moving fastest:** Mid-$343K range for 4–5 bed, 2–3 bath, 1,774 sq. ft. Spec homes with standard finish packages still show “Final Opportunities,” so underwriters should expect multiple offers inside the first week.
+   - **Rationale:** D.R. Horton’s Johnson City hub shows just three quick-move-in homes left at this price, so activity is concentrated on closing these final slots before the next release window.
 
-2) Riverbend Estates (Kingsport)
-- Typical price range: $300,000 - $480,000 [ASSUMPTION]
-- Why it's hot: New phase opened in last 60 days; builders offering limited-time lot credits which are accelerating contracts. Good commuter access to I-26.
-- What to verify: phase release date, incentive details, number of contracts recorded in past 30 days.
-- Sources: Builder announcement (TBD), MLS export (TBD)
+2. **Beechwood Meadows (Johnson City)**
+   - **Price range:** Mid-$343K range for 3–4 bed, 2–3.5 bath houses (~1,749 sq. ft.).
+   - **Rationale:** The “Now Selling” banner and three active specs indicate that the builder is setting this pocket up for fast closings, making it our go-to for buyers who want move-in-ready homes with under-$360K mortgages.
 
-3) Highland Commons (Johnson City / near Washington County line)
-- Typical price range: $250,000 - $390,000 [ASSUMPTION]
-- Why it's hot: Attractive price-point for first-time buyers; several quick-build models with short wait times. Inventory turning fast due to competitive pricing and FHA-friendly floorplans.
-- What to verify: median DOM, financing breakdown of buyers, active lot inventory.
-- Sources: MLS export (TBD)
+3. **The Arbor Townhomes (Kingsport)**
+   - **Price range:** Mid-$250K, 3–4 bed, 2.5 bath, 1,381 sq. ft. townhomes.
+   - **Rationale:** Seventeen move-in-ready townhomes are still listed, so the pace is highest for buyers needing a two-car garage and a sub-$280K payment; expect new contracts to wipe out the remaining inventory if rates stay stable.
 
-4) Bristol North (Bristol)
-- Typical price range: $260,000 - $440,000 [ASSUMPTION]
-- Why it's hot: New community marketing to relocators; builder incentives for trades and closing cost assistance creating buyer urgency. Lower overall new-home inventory in Bristol increases demand on new releases.
-- What to verify: incentive amounts, number of spec homes vs. presales, DOM.
-- Sources: Builder site (TBD), MLS export (TBD)
+4. **Polo Fields (Kingsport)**
+   - **Price range:** Starting in the $318K range for 4–5 bed, 2–3.5 bath single-family homes (~1,649 sq. ft.).
+   - **Rationale:** Only three homes remain on the Kingsport page, so the community is the most active release for buyers requiring a little more square footage but still staying below the $340K ceiling.
 
-5) Creekside at Meadow (Kingsport/Unicoi border)
-- Typical price range: $320,000 - $520,000 [ASSUMPTION]
-- Why it's hot: Higher-end product but limited lot releases have buyers moving quickly; strong interest from buyers trading up from older homes needing repairs.
-- What to verify: lot release schedule, builder backlog, price movement last 30 days.
-- Sources: MLS export (TBD), builder pages (TBD)
-
-Assumptions & Next Steps:
-- All price ranges and "why it's hot" notes are preliminary and based on local market knowledge and morning follow-ups. Replace each [ASSUMPTION] with MLS listing counts, confirmed incentive amounts, exact DOM metrics, and direct source links.
-- Workhorse action required: run MLS export for Tri-Cities new-construction (30-day window), pull builder community pages for the five neighborhoods above, and update each entry with direct source links and confirmed numbers.
-
-Generated: SUBAGENT — concise draft for Matt. Update with live data to finalize.
+5. **Fieldcrest Acres (Kingsport/Blountville)**
+   - **Price range:** Townhomes from the $265K range and single-family models from the $332K range.
+   - **Rationale:** Fieldcrest Acres shows both townhome and single-family inventory left in the builder’s “Now Selling” slate (five townhomes, eighteen houses), which means the community is absorbing offers steadily—great for buyers who can write contracts this afternoon.

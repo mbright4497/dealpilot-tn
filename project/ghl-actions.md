@@ -1,83 +1,24 @@
-# GHL Actions — Follow-up Sequences & Templates (Fire today)
+# GoHighLevel Actions — 2026-03-17 Midday Lead Nurture
 
-Note: automated web_search failed (Brave API key missing). Workhorse should run a GHL export and MLS pull to fill any placeholders (e.g., budget thresholds, neighborhood tags).
+## 1. Final-spec alert (D.R. Horton Johnson City + Kingsport)
+- **Trigger:** Manually tag leads that requested under-$360K new construction today with `Tag: MIDDAY_LEAD_NURTURE` + `Tag: SPEC_ALERT` after confirming they can tour within 7 days.
+- **Sequence:** Immediately fire SMS & email templates, then queue a call/text reminder for 24 hours later if no reply.
+- **SMS template:** “Final specs still available at Archer’s Pointe, Beechwood or Kingsport towns. Reply YES and we’ll book a builder tour before they go under contract.”
+- **Email template subject:** “Last call for DR Horton specs—call us to hold one now.” Body: include price points, community names, CTA to text or schedule a walkthrough.
+- **Testing steps:** Apply tags to test contact “Midday QA”; trigger sequence; confirm SMS arrives in <1 min and email renders with CTA link (ask QA to respond YES and ensure follow-up task appears).
 
-Overview:
-- Trigger: New lead captured from Facebook lead ad or landing page form
-- Immediate actions (within 1 minute): assign tag, send SMS + email, enqueue 5-min AI intro sequence
-- Follow-up cadence: 5-min AI intro → 24-hour email/SMS → 3-day check-in → 7-day nurture (if not HOT)
-- HOT lead rules: tag + notify agent when (a) lead marks "Ready to build" OR (b) budget >= $400K (adjust after MLS pull)
+## 2. Fieldcrest + Arbor priority follow-up
+- **Trigger:** Lead opens any new construction email today and clicks a Kingsport community link OR responds to the TRI-SPEC keyword via SMS.
+- **Actions:** Tag `Tag: KINGS_PORTFOLIO`; send second SMS with Polo Fields/Arbor Townhomes highlights + mention Fieldcrest Acres backup; create agent task to call within 90 minutes and note price band ($250K–$332K).
+- **Templates:** SMS copy = “Polo Fields & The Arbor: still in stock today from $250K–$332K. Want me to run the builder dashboard and hold a lot for this afternoon?”
+- **Testing:** Use QA lead to click the link + send keyword; verify tags attach, SMS dispatch, and task is created for the assigned agent.
 
-Tagging rules:
-- tag:ad_variation_A | ad_variation_B | ad_variation_C (set at form submission)
-- tag:neighborhood_<name> (set by form choice or landing-page parameter)
-- tag:lead_source:facebook | lead_source:landing_page
-- tag:hot_lead (set by qualifying answers or lead score)
+## 3. Builder outreach reminder (Lennar / Smith Douglas / Ryan Homes)
+- **Trigger:** Tag a warm lead with `Tag: TRI_BUILDER_CHECKIN` after noting the blocked portals; run the automation so reps know to source inventory via rep calls.
+- **Sequence:** Send an internal SMS/email to the buyer agent with the note “Builder portals gated; call Lennar/Smith Douglas/Ryan Homes for the hottest inventory before noon tomorrow.” Include CTA to log rep feedback in the lead timeline.
+- **Testing:** Create internal test lead with `TRI_BUILDER_CHECKIN` and confirm the reminder message posts in the agent’s chat and a follow-up task is scheduled for next morning.
 
-Immediate SMS (send within 1 minute):
-- From: iHome Team (Matt)
-- Message:
-Hi {first_name}! Thanks for requesting the New Construction Guide. I’m Matt — I’ll send the guide now. Want quick answers about budgets, move-in dates, or builder incentives? Reply with "ASK" and our AI will get you answers in 60s.
-
-Immediate Email (send within 1 minute):
-- Subject: Here’s your New Construction Guide — + quick AI help
-- Body:
-Hi {first_name},
-
-Thanks for your interest — attached is the New Construction Guide for Tri-Cities. Reply to this email or click the button below to get a 1‑minute AI walkthrough of local builders and move-in ready homes.
-
-[Button: Get 1-Minute AI Tour]
-
-— Matt, iHome Team
-
-5-Min AI Intro (automated chat / SMS follow-up):
-- Trigger: 5 minutes after lead capture (if no reply)
-- SMS Template:
-Hey {first_name}, Matt here. Quick 60s check — are you: 1) Looking to move in <3 months, 2) Building within 3-6 months, or 3) Just researching? Reply 1, 2, or 3 and I’ll send tailored options.
-- Action: route reply into AI chat flow; if reply indicates 1 or Ready-to-build, add tag:hot_lead and notify agent.
-
-24-Hour Follow-up (email + SMS):
-- Email Subject: Still Shopping? New builds & incentives you should see
-- Email Body:
-Hi {first_name},
-
-Quick update — builders in {neighborhood} currently offering closing-cost help and lot credits for select plans. Want me to check move-in ready homes that fit {budget_range}? Click below.
-
-[Button: Show Me Move-In Ready Homes]
-
-— Matt
-
-- SMS:
-Hi {first_name}, saw you were interested in new builds near {neighborhood}. Want me to pull move-in ready homes under {budget_range}? Reply YES.
-
-3-Day Check-in (SMS):
-- SMS Template:
-Hi {first_name}, Matt again. Any questions about building timeline, upgrades, or incentives? I can set up tours this week if you’re ready.
-
-HOT Lead Notification (agent alert):
-- Trigger: tag:hot_lead OR lead answer indicates Ready-to-build OR budget >= {budget_threshold}
-- Action: send internal SMS + email to Matt; create GHL task "Call HOT lead" with 30-min SLA.
-- Internal alert message:
-HOT lead: {first_name} {last_name} — {phone} — Budget: {budget} — Ready-to-build: {yes/no} — {lead_source}. Call now.
-
-Agent Call Task (automated):
-- Create task when: tag:hot_lead OR budget >= {budget_threshold}
-- Task details:
-Title: Call HOT lead — {first_name} {last_name}
-Due: within 30 minutes
-Notes: Confirm budget, timeline, builder preference, and willingness to schedule lot visits. Use script: Are you pre-approved? Timeline? Must-haves?
-
-Nurture (if not HOT after 7 days):
-- Weekly email with new move-in ready listings and mortgage rate tips
-- Retarget via FB custom audience for 30 days
-
-Templates / Placeholders to fill:
-- {budget_threshold} — suggested default $400,000 (adjust after MLS pull)
-- {neighborhood} — set from landing page param or lead form
-- {budget_range} — use lead's stated budget or ad audience default
-
-Workhorse Actions:
-- Run GHL export and MLS pull to confirm appropriate budget_threshold and neighborhood tags; update templates with local price points and insert listing links into the 24-hour email/button.
-- Turn on tracking: set ad_variation tags and test end-to-end with a sandbox lead.
-
-Generated: SUBAGENT — actionable GHL sequences ready to deploy after live-data fill.
+## 4. Afternoon social CTA follow-up
+- **Trigger:** Lead replies to the social post or website form with “TRI-SPEC.”
+- **Actions:** Tag `Tag: SOCIAL_TRI_SPEC`, send automated SMS + email pointing to the same hero communities (Archer’s Pointe, Arbor, Fieldcrest), and assign a task to text with available nearby tour windows.
+- **Testing:** Submit test form + keyword; verify tags, SMS, email, and task creation succeed, and the task contains the CTA from the post (“Hold Arbor Townhomes for me”).
