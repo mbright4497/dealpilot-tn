@@ -359,6 +359,16 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const fmtDate = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return 'Not set'; try{ const dt = typeof d==='string'? new Date(d): d; return isNaN(dt.getTime())? 'Not set' : dt.toLocaleDateString() }catch(e){ return 'Not set' } }
   const daysUntil = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return null; const t = new Date(d).getTime(); if(isNaN(t)) return null; return Math.ceil((t-Date.now())/(1000*60*60*24)) }
 
+  function parseNames(val:any){
+    if(!val) return []
+    if(Array.isArray(val)) return val.map((n:any)=>String(n).trim()).filter(Boolean)
+    const text = String(val).trim()
+    if(text.startsWith('[')){
+      try{ const parsed = JSON.parse(text); if(Array.isArray(parsed)) return parsed.map((n:any)=>String(n).trim()).filter(Boolean) }catch(_){ }
+    }
+    return text.split(',').map((n)=>n.trim()).filter(Boolean)
+  }
+
   function genDeadlinesFromRemote(){
     const b = ((mergedTx as any).binding_date || mergedTx.binding) ? new Date((mergedTx as any).binding_date || mergedTx.binding) : null
     const closing = (mergedTx as any).closing_date || mergedTx.closing ? new Date((mergedTx as any).closing_date || mergedTx.closing) : null
@@ -860,13 +870,13 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
         <div className="p-4 rounded bg-[#061021]" style={{border: '1px solid rgba(249,115,22,0.12)'}}>
           {((mergedTx as any).buyer_names || (mergedTx as any).seller_names) ? (
             <div className="grid grid-cols-1 gap-2">
-              {((mergedTx as any).buyer_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+              {parseNames((mergedTx as any).buyer_names || '').map((name:string,i:number)=>(
                 <div key={`buyer-${i}`} className="p-2 bg-gray-800 rounded">
                   <div className="font-semibold text-white">{name}</div>
                   <div className="text-xs text-gray-400">Buyer</div>
                 </div>
               ))}
-              {((mergedTx as any).seller_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+              {parseNames((mergedTx as any).seller_names || '').map((name:string,i:number)=>(
                 <div key={`seller-${i}`} className="p-2 bg-gray-800 rounded">
                   <div className="font-semibold text-white">{name}</div>
                   <div className="text-xs text-gray-400">Seller</div>
@@ -1269,13 +1279,13 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                 {/* Deal parties: prefer committed transaction fields (buyer_names/seller_names) when present */}
                 {((mergedTx as any).buyer_names || (mergedTx as any).seller_names) ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {((mergedTx as any).buyer_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                    {parseNames((mergedTx as any).buyer_names || '').map((name:string,i:number)=>(
                       <div key={`buyer-${i}`} className="p-2 bg-gray-800 rounded">
                         <div className="font-semibold text-white">{name}</div>
                         <div className="text-xs text-gray-400">Buyer</div>
                       </div>
                     ))}
-                    {((mergedTx as any).seller_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                    {parseNames((mergedTx as any).seller_names || '').map((name:string,i:number)=>(
                       <div key={`seller-${i}`} className="p-2 bg-gray-800 rounded">
                         <div className="font-semibold text-white">{name}</div>
                         <div className="text-xs text-gray-400">Seller</div>
