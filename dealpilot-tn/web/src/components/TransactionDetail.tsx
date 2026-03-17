@@ -1,5 +1,5 @@
 'use client'
-import React, {useState, useEffect, useRef} from 'react'
+import React, {useState, useEffect, useRef, useCallback} from 'react'
 
 // Intent handler for Reva
 function handleRevaIntent(intent: any, setMode: any, setActiveDocument: any) {
@@ -73,6 +73,44 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [draftSubject, setDraftSubject] = useState<string>('')
   const [draftBody, setDraftBody] = useState<string>('')
   const [draftContactId, setDraftContactId] = useState<number|undefined>(undefined)
+  const [auditGenerating, setAuditGenerating] = useState(false)
+  const generationTimeoutRef = useRef<number | null>(null)
+  const auditBlurHandlerRef = useRef<(() => void) | null>(null)
+
+  const resetAuditGeneration = useCallback(() => {
+    if (typeof window === 'undefined') {
+      setAuditGenerating(false)
+      return
+    }
+    if (generationTimeoutRef.current) {
+      window.clearTimeout(generationTimeoutRef.current)
+      generationTimeoutRef.current = null
+    }
+    if (auditBlurHandlerRef.current) {
+      window.removeEventListener('blur', auditBlurHandlerRef.current)
+      auditBlurHandlerRef.current = null
+    }
+    setAuditGenerating(false)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      resetAuditGeneration()
+    }
+  }, [resetAuditGeneration])
+
+  const handleAuditDownload = () => {
+    if (auditGenerating) return
+    if (typeof window === 'undefined') return
+    setAuditGenerating(true)
+    const onBlur = () => {
+      resetAuditGeneration()
+    }
+    auditBlurHandlerRef.current = onBlur
+    window.addEventListener('blur', onBlur)
+    generationTimeoutRef.current = window.setTimeout(() => resetAuditGeneration(), 3000)
+    window.open(`/api/transactions/${urlTransactionId}/audit-report`, '_blank')
+  }
 
   // helper to add a message to the Reva chat stream
   function addMessage(msg: {id?:string, role?:string, content?:string, from?:string, text?:string}){
@@ -756,9 +794,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
             {/* Audit Button: prominent, full-width under metrics */}
             <div className="mb-4">
-              <a href={`/api/transactions/${urlTransactionId}/audit-report`} className="w-full inline-block text-center px-4 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition">
-                ⬇️ Download Audit Log
-              </a>
+              <button
+              type="button"
+              onClick={handleAuditDownload}
+              disabled={auditGenerating}
+              className={`w-full inline-block text-center px-4 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition ${auditGenerating ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {auditGenerating ? 'Generating...' : '⬇️ Download Audit Log'}
+            </button>
             </div>
           </div>
 
@@ -908,7 +951,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                 </div>
                 <div className="flex gap-2">
                   <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${urlTransactionId}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
-                  <a href={`/api/transactions/${urlTransactionId}/audit-report`} className="ml-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">Download Compliance Report</a>
+                  <button
+                    type="button"
+                    onClick={handleAuditDownload}
+                    disabled={auditGenerating}
+                    className={`ml-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm ${auditGenerating ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  >
+                    {auditGenerating ? 'Generating...' : 'Download Compliance Report'}
+                  </button>
                   <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
                   <button onClick={()=>setEditOpen(true)} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">✎ Edit Deal</button>
                 </div>

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 export async function GET(req: Request, { params }: { params: { id: string } }){
   const id = params.id
   try{
-    const base = process.env.NEXT_PUBLIC_BASE_URL || ''
+    const base = new URL(req.url).origin
     const fetchJson = async (path:string)=>{
       try{ const r = await fetch((base||'') + path, { cache: 'no-store' }); if(!r.ok) return { error: r.statusText }; return await r.json() }catch(e){ return { error: String(e) } }
     }
