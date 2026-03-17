@@ -148,6 +148,12 @@ export async function GET(
 
   const computed = computeLifecycleState(data)
   const integrity = validateLifecycleIntegrity(data)
+  const { data: tx, error: txErr } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', dealId)
+    .single()
+  const txRow = txErr ? null : tx
 
   if (computed !== data.current_state) {
     await supabase
@@ -164,7 +170,8 @@ export async function GET(
   return NextResponse.json({
     deal_id: data.deal_id,
     binding_date: data.binding_date,
-    purchase_price: data.purchase_price,
+    status: (txRow as any)?.status || null,
+    purchase_price: (txRow as any)?.purchase_price || data.purchase_price || (txRow as any)?.value || 0,
     earnest_money: {
       amount: data.earnest_money_amount,
       due_date: data.earnest_money_due_date,
