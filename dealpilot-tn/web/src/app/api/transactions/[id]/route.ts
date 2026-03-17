@@ -17,7 +17,11 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if(isNaN(id)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   try{
     const supabase = createServerSupabaseClient()
+    await supabase.from('deal_milestones').delete().eq('deal_id', id)
     await supabase.from('deal_state').delete().eq('deal_id', id)
+    await supabase.from('deal_notes').delete().eq('deal_id', id)
+    await supabase.from('deal_playbook_progress').delete().eq('deal_id', id)
+    await supabase.from('documents').delete().eq('transaction_id', id)
     const { error } = await supabase.from('transactions').delete().eq('id', id)
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ success: true })
