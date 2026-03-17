@@ -1,83 +1,33 @@
-# GHL Actions — Follow-up Sequences & Templates (Fire today)
+GHL Actions & Trigger Snippets — Today’s Midday Nurture
 
-Note: automated web_search failed (Brave API key missing). Workhorse should run a GHL export and MLS pull to fill any placeholders (e.g., budget thresholds, neighborhood tags).
+1) Trigger: FB_Lead-Instant_SMS_Email
+- When: Lead from Facebook ad form
+- Action: Send instant SMS + email
+- SMS one-liner: "Hey — Matt from iHome Team here. Thanks for your interest! Can we text a quick time to tour the home?"
+- Email one-liner (subject): "Your New Construction Guide — Next Steps"
+- Email snippet: "Thanks for reaching out — here’s your guide. Want to see quick-move-in homes this weekend? Reply and I’ll book it."
 
-Overview:
-- Trigger: New lead captured from Facebook lead ad or landing page form
-- Immediate actions (within 1 minute): assign tag, send SMS + email, enqueue 5-min AI intro sequence
-- Follow-up cadence: 5-min AI intro → 24-hour email/SMS → 3-day check-in → 7-day nurture (if not HOT)
-- HOT lead rules: tag + notify agent when (a) lead marks "Ready to build" OR (b) budget >= $400K (adjust after MLS pull)
+2) Trigger: GHL_AI_5min_Intro
+- When: 5 minutes after lead capture
+- Action: AI voice/text intro (5-min)
+- SMS: "Quick intro from our AI assistant — I’ll send tailored homes in 60s. Want to see only under $350k? Reply YES."
+- Email: "Here are homes matching your preferences — tell us which to tour."
 
-Tagging rules:
-- tag:ad_variation_A | ad_variation_B | ad_variation_C (set at form submission)
-- tag:neighborhood_<name> (set by form choice or landing-page parameter)
-- tag:lead_source:facebook | lead_source:landing_page
-- tag:hot_lead (set by qualifying answers or lead score)
+3) Trigger: Followup_24hr_Push
+- When: 24 hours after capture (no response)
+- Action: SMS + email reminder
+- SMS: "Still interested? A few quick-move-in homes just dropped in price. Want a tour?"
+- Email: "Don’t miss these new-build options — schedule a weekend showing"
 
-Immediate SMS (send within 1 minute):
-- From: iHome Team (Matt)
-- Message:
-Hi {first_name}! Thanks for requesting the New Construction Guide. I’m Matt — I’ll send the guide now. Want quick answers about budgets, move-in dates, or builder incentives? Reply with "ASK" and our AI will get you answers in 60s.
+4) Trigger: Checkin_3day
+- When: 3 days after capture
+- Action: Personal agent check-in (task for Matt) + SMS
+- SMS: "Matt here — any questions about the homes I sent? I can set up private tours this week."
+- Task note: Call within 24 hours of trigger.
 
-Immediate Email (send within 1 minute):
-- Subject: Here’s your New Construction Guide — + quick AI help
-- Body:
-Hi {first_name},
+5) Trigger: Tag_By_Ad_Variation
+- When: Lead captured
+- Action: Apply tags: tag_ad_A, tag_ad_B, tag_ad_C (match FB ad variation)
+- Use: Segment follow-ups and dynamic ad retargeting.
 
-Thanks for your interest — attached is the New Construction Guide for Tri-Cities. Reply to this email or click the button below to get a 1‑minute AI walkthrough of local builders and move-in ready homes.
-
-[Button: Get 1-Minute AI Tour]
-
-— Matt, iHome Team
-
-5-Min AI Intro (automated chat / SMS follow-up):
-- Trigger: 5 minutes after lead capture (if no reply)
-- SMS Template:
-Hey {first_name}, Matt here. Quick 60s check — are you: 1) Looking to move in <3 months, 2) Building within 3-6 months, or 3) Just researching? Reply 1, 2, or 3 and I’ll send tailored options.
-- Action: route reply into AI chat flow; if reply indicates 1 or Ready-to-build, add tag:hot_lead and notify agent.
-
-24-Hour Follow-up (email + SMS):
-- Email Subject: Still Shopping? New builds & incentives you should see
-- Email Body:
-Hi {first_name},
-
-Quick update — builders in {neighborhood} currently offering closing-cost help and lot credits for select plans. Want me to check move-in ready homes that fit {budget_range}? Click below.
-
-[Button: Show Me Move-In Ready Homes]
-
-— Matt
-
-- SMS:
-Hi {first_name}, saw you were interested in new builds near {neighborhood}. Want me to pull move-in ready homes under {budget_range}? Reply YES.
-
-3-Day Check-in (SMS):
-- SMS Template:
-Hi {first_name}, Matt again. Any questions about building timeline, upgrades, or incentives? I can set up tours this week if you’re ready.
-
-HOT Lead Notification (agent alert):
-- Trigger: tag:hot_lead OR lead answer indicates Ready-to-build OR budget >= {budget_threshold}
-- Action: send internal SMS + email to Matt; create GHL task "Call HOT lead" with 30-min SLA.
-- Internal alert message:
-HOT lead: {first_name} {last_name} — {phone} — Budget: {budget} — Ready-to-build: {yes/no} — {lead_source}. Call now.
-
-Agent Call Task (automated):
-- Create task when: tag:hot_lead OR budget >= {budget_threshold}
-- Task details:
-Title: Call HOT lead — {first_name} {last_name}
-Due: within 30 minutes
-Notes: Confirm budget, timeline, builder preference, and willingness to schedule lot visits. Use script: Are you pre-approved? Timeline? Must-haves?
-
-Nurture (if not HOT after 7 days):
-- Weekly email with new move-in ready listings and mortgage rate tips
-- Retarget via FB custom audience for 30 days
-
-Templates / Placeholders to fill:
-- {budget_threshold} — suggested default $400,000 (adjust after MLS pull)
-- {neighborhood} — set from landing page param or lead form
-- {budget_range} — use lead's stated budget or ad audience default
-
-Workhorse Actions:
-- Run GHL export and MLS pull to confirm appropriate budget_threshold and neighborhood tags; update templates with local price points and insert listing links into the 24-hour email/button.
-- Turn on tracking: set ad_variation tags and test end-to-end with a sandbox lead.
-
-Generated: SUBAGENT — actionable GHL sequences ready to deploy after live-data fill.
+Quick implementation notes: Use exact trigger names above when creating workflows. Keep SMS <160 chars; emails should include the Free New Construction Guide link and a one-click "Schedule a Tour" button.

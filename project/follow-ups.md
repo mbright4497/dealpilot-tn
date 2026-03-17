@@ -1,40 +1,22 @@
-# Follow-ups — Tri-Cities New Construction (template)
+# Follow-up Checklist
 
-**Status template:**
-- DONE: [items completed today]
-- NEXT: [next actions / owners]
-- BLOCKED: [issues preventing progress]
+## 1. Priority calls (top leads)
+1. **Penwell plan – Beechwood Meadows (Johnson City)** – Call D.R. Horton (423-528-9739) to confirm delivery window and deposit schedule; tell the builder we have a pre-qualified buyer looking at the March release. Next step: schedule a weekend model tour and builder incentive review.
+2. **686 Saint Andrews Dr (Cali plan, Kingsport)** – Reconfirm the $350,990 quick-move-in pricing and ask if they can change the upgrade list to match our buyer’s must-haves. Next step: secure a viewing and request a copy of the purchase contract addendum.
+3. **659 Saint Andrews Dr (Kingsport)** – Highlight the $342,150 price to buyers wanting the lowest entry in the community, confirm HOA status, and ask for the confirmation of lot release paperwork. Next step: lock the lot with earnest money instructions.
+4. **698 Saint Andrews Dr (Hayden plan, Kingsport)** – Get clarification on the allowed closing window for the 5-bed plan at $397,865 and whether the builder will cover any closing-cost incentives. Next step: line up a lender pre-approval call for our VIP buyer.
+5. **Hideaway at Fox Meadows (Bluff City/Bristol)** – Call the D.R. Horton Bluff City office (423-528-9739) to check spring delivery timing for 3-bed homes starting at $286,990 and confirm any limited-time upgrades. Next step: email the community brochure and schedule a weekend concierge tour.
 
-## 1) Phone follow-up queue (placeholder)
-**Leads:** [Insert top 8–10 leads from GHL / FB forms; include name, phone, preferred contact window]
-**Call script:**
-- Intro: "Hey [Name], it’s [Agent] with iHome Team. Caught you while you were checking out new construction near [City]."
-- Qualify: "Quick question — what price range and timeline are you aiming for?" + "Are warranties/move-in ready moves important?"
-- Close: "I can share a tailored shortlist and our free New Construction Guide in 5 minutes. Want me to text/email it now?"
-- Notes: Capture budget, timeline, builder preference, and any objections.
+## 2. Listings to promote this week
+- 659 & 686 Saint Andrews Dr – under $352k, move-in ready, highlight 4-bed, 2-bath floor plans on the next social blast and IG story.
+- Penwell Plan at Beechwood Meadows – emphasize the 2,164-sqft layout with covered patio/owner’s suite; use it for a new-build spotlight email.
+- Hideaway at Fox Meadows – position as the only Bristol-area home under $300k with D.R. Horton smart-home package.
 
-## 2) Email follow-up template (placeholder)
-**Subject:** "Your Tri-Cities new build shortlist + guide"
-**Body:**
-Hi [Name],
+## 3. Price-change alerts to watch
+- The quick move-in Haydens (2,511 sqft) are still below $400k; confirm with the builder before pushing buyers who want 5-bed value.
+- Any change at 659 Saint Andrews Dr (currently $342,150) deserves a text blast to the lower-tier buyers list; it’s the floor price anchor for the community.
+- Keep tabs on Fox Meadows pricing—Realtor.com lists starts at $286,990, so a $5k drop would re-open interest for two first-time buyer squads.
 
-Thanks for asking about new construction in the Tri-Cities. I pulled together a short list of Johnson City / Kingsport / Bristol communities that match your [budget/timeline/preferences].
-
-Inside the attached guide you’ll find builder contact info, incentives, and timelines we track daily. I can also send live floorplan links — just reply with what matters most (schools, amenities, move-in date).
-
-Want me to schedule a 5-minute AI walk-through so the assistant answers your questions instantly?
-
-Best,
-[Agent Name] | iHome Team Keller Williams
-Phone: [office phone] | Text: [cell] | Email: [agent email]
-
-## 3) Task placeholders
-- Update CRM tags: [REPLACE WITH TAG SYNC PROCESS]
-- Next checks: call-back reminders, builder incentive updates, social repost plan.
-
-## Notes
-- Replace placeholders with live lead data pulled from GHL exports / MLS lists before sending.
-- Keep a running log (date/time) for follow-ups to update this doc and notify assigned agents.
-
----
-Generated: SUBAGENT — fill placeholders with live lead info before outreach.
+## 4. Phone scripts (two short variations)
+**Script A (builder check-in):** “Hi, this is Matt Bright with iHome Team. I’m working on a Johnson City/Kingsport buyer who is ready for a new-construction home under $400k—can you confirm whether the Penwell/Cali/Hayden pricing is still current and what the next move-in window looks like?”
+**Script B (buyer outreach):** “Hey [Client], quick heads-up that D.R. Horton has new pull-ahead opportunities at Saint Andrews Garth and Fox Meadows with under-$350k pricing. Want to tour the homes before weekend showings fill up?”

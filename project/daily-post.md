@@ -1,17 +1,9 @@
-# Daily Social Post — Tri-Cities New Construction (Facebook)
+Hook: New construction under $400k is back in the Tri-Cities, and iHome Team has the builder intel you need to move fast.
 
-**Objective:** Keep daily organic/ad copy short and spark curiosity about new builds in the Tri-Cities.
+Value:
+- Fresh quick-move-in homes just hit the market in Johnson City, Kingsport and Bristol with modern finishes and builder incentives that make them more affordable than resale comps.
+- Our team is tracking every new plan under $400k so buyers know where to lock the best price before rates drift again.
 
-**Post copy (≤125 characters):**
-New construction in Tri-Cities TN? Get instant AI answers + the free New Construction Guide today.
+CTA: Message the iHome Team at https://www.ihomegroupre.com/contact-us or call (423) 750-3411 for a private tour and builder updates today.
 
-**CTA:** Tap to claim the guide.
-
-**Audience reminder:** 25–45 y/o within 50 miles of Johnson City, TN; interests: new homes, moving, home builders.
-
-**Posting notes:**
-- Keep visual clean: new build exterior or floorplan collage.
-- Use same copy for FB feed + Reels caption to keep messaging consistent.
-
----
-Generated: SUBAGENT — copy already <125 characters; drop-in landing link when ready.
+Suggested image description: Bright open-concept kitchen in a new Tri-Cities build, showing modern cabinetry, quartz island, and a backyard view of rolling hills.
