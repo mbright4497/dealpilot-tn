@@ -1,5 +1,5 @@
 'use client'
-import React, {useState, useEffect, useRef} from 'react'
+import React, {useState, useEffect, useRef, useCallback} from 'react'
 
 // Intent handler for Reva
 function handleRevaIntent(intent: any, setMode: any, setActiveDocument: any) {
@@ -73,6 +73,44 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [draftSubject, setDraftSubject] = useState<string>('')
   const [draftBody, setDraftBody] = useState<string>('')
   const [draftContactId, setDraftContactId] = useState<number|undefined>(undefined)
+  const [auditGenerating, setAuditGenerating] = useState(false)
+  const generationTimeoutRef = useRef<number | null>(null)
+  const auditBlurHandlerRef = useRef<(() => void) | null>(null)
+
+  const resetAuditGeneration = useCallback(() => {
+    if (typeof window === 'undefined') {
+      setAuditGenerating(false)
+      return
+    }
+    if (generationTimeoutRef.current) {
+      window.clearTimeout(generationTimeoutRef.current)
+      generationTimeoutRef.current = null
+    }
+    if (auditBlurHandlerRef.current) {
+      window.removeEventListener('blur', auditBlurHandlerRef.current)
+      auditBlurHandlerRef.current = null
+    }
+    setAuditGenerating(false)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      resetAuditGeneration()
+    }
+  }, [resetAuditGeneration])
+
+  const handleAuditDownload = () => {
+    if (auditGenerating) return
+    if (typeof window === 'undefined') return
+    setAuditGenerating(true)
+    const onBlur = () => {
+      resetAuditGeneration()
+    }
+    auditBlurHandlerRef.current = onBlur
+    window.addEventListener('blur', onBlur)
+    generationTimeoutRef.current = window.setTimeout(() => resetAuditGeneration(), 3000)
+    window.open(`/api/transactions/${urlTransactionId}/audit-report`, '_blank')
+  }
 
   // helper to add a message to the Reva chat stream
   function addMessage(msg: {id?:string, role?:string, content?:string, from?:string, text?:string}){
@@ -321,8 +359,18 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const fmtDate = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return 'Not set'; try{ const dt = typeof d==='string'? new Date(d): d; return isNaN(dt.getTime())? 'Not set' : dt.toLocaleDateString() }catch(e){ return 'Not set' } }
   const daysUntil = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return null; const t = new Date(d).getTime(); if(isNaN(t)) return null; return Math.ceil((t-Date.now())/(1000*60*60*24)) }
 
+  function parseNames(val:any){
+    if(!val) return []
+    if(Array.isArray(val)) return val.map((n:any)=>String(n).trim()).filter(Boolean)
+    const text = String(val).trim()
+    if(text.startsWith('[')){
+      try{ const parsed = JSON.parse(text); if(Array.isArray(parsed)) return parsed.map((n:any)=>String(n).trim()).filter(Boolean) }catch(_){ }
+    }
+    return text.split(',').map((n)=>n.trim()).filter(Boolean)
+  }
+
   function genDeadlinesFromRemote(){
-    const b = mergedTx.binding ? new Date(mergedTx.binding) : null
+    const b = ((mergedTx as any).binding_date || mergedTx.binding) ? new Date((mergedTx as any).binding_date || mergedTx.binding) : null
     const closing = (mergedTx as any).closing_date || mergedTx.closing ? new Date((mergedTx as any).closing_date || mergedTx.closing) : null
     if(!b) return []
     const add = (d:Date, days:number)=>{ const r=new Date(d); r.setDate(r.getDate()+days); return r }
@@ -388,7 +436,8 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   },[remote, mergedTx, docs])
 
   // documentsByKey memo (Phase 21) - placed BEFORE return
-  const documentsByKey = React.useMemo(() => {
+  const [documentsByKey, setDocumentsByKey] = React.useState<Record<string, any>>({})
+  React.useEffect(() => {
     const m: Record<string, any> = {}
     ;(docs || []).forEach((d: any) => {
       const key = (d.classification || d.rf_number || d.key || '').toString()
@@ -401,7 +450,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
         path: d.path || d.storage_path || null,
       }
     })
-    return m
+    setDocumentsByKey(m)
   }, [docs])
 
   // priorities state
@@ -756,9 +805,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
             {/* Audit Button: prominent, full-width under metrics */}
             <div className="mb-4">
-              <a href={`/api/transactions/${urlTransactionId}/audit-report`} className="w-full inline-block text-center px-4 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition">
-                ⬇️ Download Audit Log
-              </a>
+              <button
+              type="button"
+              onClick={handleAuditDownload}
+              disabled={auditGenerating}
+              className={`w-full inline-block text-center px-4 py-3 bg-orange-500 text-black font-semibold rounded-lg hover:bg-orange-400 transition ${auditGenerating ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {auditGenerating ? 'Generating...' : '⬇️ Download Audit Log'}
+            </button>
             </div>
           </div>
 
@@ -817,13 +871,13 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
         <div className="p-4 rounded bg-[#061021]" style={{border: '1px solid rgba(249,115,22,0.12)'}}>
           {((mergedTx as any).buyer_names || (mergedTx as any).seller_names) ? (
             <div className="grid grid-cols-1 gap-2">
-              {((mergedTx as any).buyer_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+              {parseNames((mergedTx as any).buyer_names || '').map((name:string,i:number)=>(
                 <div key={`buyer-${i}`} className="p-2 bg-gray-800 rounded">
                   <div className="font-semibold text-white">{name}</div>
                   <div className="text-xs text-gray-400">Buyer</div>
                 </div>
               ))}
-              {((mergedTx as any).seller_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+              {parseNames((mergedTx as any).seller_names || '').map((name:string,i:number)=>(
                 <div key={`seller-${i}`} className="p-2 bg-gray-800 rounded">
                   <div className="font-semibold text-white">{name}</div>
                   <div className="text-xs text-gray-400">Seller</div>
@@ -908,7 +962,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                 </div>
                 <div className="flex gap-2">
                   <button onClick={()=>{ const blob = new Blob([JSON.stringify({transaction: mergedTx, contacts: localContacts, contractData}, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=`deal-${urlTransactionId}-export.json`; a.click(); URL.revokeObjectURL(url); }} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">Export</button>
-                  <a href={`/api/transactions/${urlTransactionId}/audit-report`} className="ml-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm">Download Compliance Report</a>
+                  <button
+                    type="button"
+                    onClick={handleAuditDownload}
+                    disabled={auditGenerating}
+                    className={`ml-2 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-sm ${auditGenerating ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  >
+                    {auditGenerating ? 'Generating...' : 'Download Compliance Report'}
+                  </button>
                   <button onClick={()=>setMode('dealroom')} className="px-3 py-2 bg-orange-500 rounded">Open Deal Room</button>
                   <button onClick={()=>setEditOpen(true)} className="px-3 py-2 bg-gray-800 border border-gray-700 rounded">✎ Edit Deal</button>
                 </div>
@@ -1099,14 +1160,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
             onView={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('contracts').createSignedUrl(path, 60)
+                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
                 if(data?.signedUrl) window.open(data.signedUrl, '_blank')
               }catch(e){ console.error('view error', e) }
             }}
             onDownload={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('contracts').createSignedUrl(path, 60)
+                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
                 if(data?.signedUrl){
                   const a = document.createElement('a')
                   a.href = data.signedUrl
@@ -1219,13 +1280,13 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                 {/* Deal parties: prefer committed transaction fields (buyer_names/seller_names) when present */}
                 {((mergedTx as any).buyer_names || (mergedTx as any).seller_names) ? (
                   <div className="grid grid-cols-1 gap-2">
-                    {((mergedTx as any).buyer_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                    {parseNames((mergedTx as any).buyer_names || '').map((name:string,i:number)=>(
                       <div key={`buyer-${i}`} className="p-2 bg-gray-800 rounded">
                         <div className="font-semibold text-white">{name}</div>
                         <div className="text-xs text-gray-400">Buyer</div>
                       </div>
                     ))}
-                    {((mergedTx as any).seller_names || '').toString().split(',').map((n:any,i:number)=>n.trim()).filter(Boolean).map((name:string,i:number)=>(
+                    {parseNames((mergedTx as any).seller_names || '').map((name:string,i:number)=>(
                       <div key={`seller-${i}`} className="p-2 bg-gray-800 rounded">
                         <div className="font-semibold text-white">{name}</div>
                         <div className="text-xs text-gray-400">Seller</div>

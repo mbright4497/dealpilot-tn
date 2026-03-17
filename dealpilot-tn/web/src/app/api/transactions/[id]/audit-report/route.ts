@@ -1,21 +1,55 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-export async function GET(req: Request, { params }: { params: { id: string } }){
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   const id = params.id
-  try{
-    const base = process.env.NEXT_PUBLIC_BASE_URL || ''
-    const fetchJson = async (path:string)=>{
-      try{ const r = await fetch((base||'') + path, { cache: 'no-store' }); if(!r.ok) return { error: r.statusText }; return await r.json() }catch(e){ return { error: String(e) } }
-    }
+  if (!id) {
+    return NextResponse.json({ error: 'Missing transaction ID' }, { status: 400 })
+  }
 
-    const [dealState, events, comms, checklist, documents, auditLogs] = await Promise.all([
-      fetchJson(`/api/deal-state/${id}`),
-      fetchJson(`/api/deal-events/${id}`),
-      fetchJson(`/api/communications/history?dealId=${id}`),
-      fetchJson(`/api/deal-checklist?dealId=${id}`),
-      fetchJson(`/api/documents/${id}`),
-      fetchJson(`/api/audit/logs?dealId=${id}`),
-    ])
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({
+      error: 'Supabase configuration is incomplete',
+      supabaseUrl: supabaseUrl ? supabaseUrl.slice(0, 20) : 'not set',
+      serviceRoleKey: serviceRoleKey ? 'set' : 'not set',
+      anonKey: anonKey ? 'set' : 'not set',
+    }, { status: 500 })
+  }
+
+  const supabase = createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      global: {
+        fetch: (url: any, options: any = {}) =>
+          fetch(url, { ...options, cache: 'no-store' }),
+      },
+    }
+  )
+
+  const safeQuery = async (query: () => Promise<{ data: any; error: any }>) => {
+    try {
+      const { data, error } = await query()
+      if (error) throw error
+      return data
+    } catch (e: any) {
+      return { error: String(e) }
+    }
+  }
+
+  try {
+    const dealState = await safeQuery(() => supabase.from('deal_state').select('*').eq('deal_id', id).maybeSingle())
+    const events = await safeQuery(() => supabase.from('deal_events').select('*').eq('deal_id', id))
+    const comms = await safeQuery(() => supabase.from('communications').select('*').eq('deal_id', id))
+    const checklist = await safeQuery(() => supabase.from('deal_checklist').select('*').eq('deal_id', id))
+    const documents = await safeQuery(() => supabase.from('deal_documents').select('*').eq('deal_id', id))
+    const auditLogs = await safeQuery(() => supabase.from('audit_logs').select('*').eq('deal_id', id))
+
+    const debugBlock = `<div style="font-size:12px;color:#666;margin-bottom:10px">Supabase URL: ${supabaseUrl.slice(0, 20)}${supabaseUrl.length > 20 ? '...' : ''}<br/>Service Role Key: set<br/>Anon Key: ${anonKey ? 'set' : 'not set'}</div>`
 
     const html = `<!doctype html>
     <html>
@@ -24,6 +58,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }){
     </head>
     <body>
       <h1>Audit Report — Transaction ${id}</h1>
+      ${debugBlock}
+
       <h2>Summary</h2>
       <pre>${escapeHtml(JSON.stringify(dealState, null, 2))}</pre>
 
@@ -49,12 +85,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }){
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Content-Disposition': `attachment; filename="audit-report-${id}.html"`
-      }
+        'Content-Disposition': `attachment; filename="audit-report-${id}.html"`,
+      },
     })
-  }catch(e:any){
+  } catch (e: any) {
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
 
-function escapeHtml(s:string){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function escapeHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}

@@ -47,19 +47,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const publicUrl = urlData.publicUrl
 
-    // Save PDF URL to contract_store table
-    const { error: dbError } = await supabase
-      .from('contract_store')
-      .upsert({
-        deal_id: dealId,
-        pdf_url: publicUrl,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'deal_id' })
-
-    if (dbError) {
-      console.error('DB update error:', dbError)
-    }
-
     return NextResponse.json({ url: publicUrl })
   } catch (e: any) {
     console.error('Contract upload error:', e)

@@ -18,7 +18,6 @@ export async function GET(request: Request, { params }: { params: { transactionI
       .eq('transaction_id', transactionId)
       .order('created_at', { ascending: false })
 
-    if (user) q = q.eq('user_id', user.id)
 
     const { data, error } = await q
 
@@ -67,9 +66,9 @@ export async function POST(request: Request, { params }: { params: { transaction
           id: id,
           deal_id: null,
           transaction_id: transactionId,
-          uploaded_by: user?.id || null,
-          filename: filename,
-          file_type: file.type,
+          user_id: user?.id || null,
+          name: filename,
+          type: file.type,
           storage_path: storagePath,
           status_label: 'uploaded',
           extracted_data: {},

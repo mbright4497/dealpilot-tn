@@ -88,6 +88,28 @@ function buildTimeline(row: {
   return timeline
 }
 
+async function resolveAgentName(userId?: string | null) {
+  if (!userId) return null
+  const { data: profile, error: profileErr } = await supabase
+    .from('agent_profiles')
+    .select('full_name')
+    .eq('id', userId)
+    .maybeSingle()
+  if (!profileErr && profile && profile.full_name) {
+    const name = (profile.full_name || '').trim()
+    if (name) return name
+  }
+  try {
+    const { data: userData } = await supabase.auth.admin.getUserById(userId)
+    if (userData && userData.user) {
+      return userData.user.user_metadata?.full_name || userData.user.email || null
+    }
+  } catch (_e) {
+    return null
+  }
+  return null
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { dealId: string } }
@@ -126,10 +148,12 @@ export async function GET(
     const computed = computeLifecycleState({ binding_date: bindingDate, inspection_end_date: inspectionEndDate, closing_date: closingDate })
     const timeline = buildTimeline({ inspection_end_date: inspectionEndDate, closing_date: closingDate })
     const integrity = validateLifecycleIntegrity({ binding_date: bindingDate, inspection_end_date: inspectionEndDate, closing_date: closingDate })
+    const agent = await resolveAgentName((tx as any).user_id)
 
     return NextResponse.json({
       deal_id: tx.id,
       binding_date: bindingDate,
+      agent: agent,
       closing_date: closingDate,
       inspection_end_date: inspectionEndDate,
       purchase_price: purchasePrice,
@@ -148,6 +172,13 @@ export async function GET(
 
   const computed = computeLifecycleState(data)
   const integrity = validateLifecycleIntegrity(data)
+  const { data: tx, error: txErr } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', dealId)
+    .single()
+  const txRow = txErr ? null : tx
+  const agent = await resolveAgentName((txRow as any)?.user_id)
 
   if (computed !== data.current_state) {
     await supabase
@@ -164,7 +195,9 @@ export async function GET(
   return NextResponse.json({
     deal_id: data.deal_id,
     binding_date: data.binding_date,
-    purchase_price: data.purchase_price,
+    agent: agent,
+    status: (txRow as any)?.status || null,
+    purchase_price: (txRow as any)?.purchase_price || data.purchase_price || (txRow as any)?.value || 0,
     earnest_money: {
       amount: data.earnest_money_amount,
       due_date: data.earnest_money_due_date,

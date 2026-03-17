@@ -26,15 +26,15 @@ export async function GET(req: Request, { params }: { params: { dealId: string }
   const current_state = computeLifecycleState(row)
   const integrity = validateLifecycleIntegrity(row)
 
+  // Rule: closed deals are always healthy — check FIRST before any penalty rules
+  if (current_state === 'closed' || (row.status && row.status.toLowerCase() === 'closed')) {
+    return NextResponse.json({ status: 'healthy', score: 100, signals: ['Deal closed successfully'] })
+  }
+
   // Rule 1: integrity override
   if (integrity && integrity.valid === false) {
     const first = (integrity.errors && integrity.errors.length>0) ? integrity.errors[0] : 'Integrity issue'
     return NextResponse.json({ status: 'at_risk', score: 30, signals: [{ label: first, impact: 'high' }] })
-  }
-
-  // Rule 2: closed
-  if (current_state === 'closed') {
-    return NextResponse.json({ status: 'healthy', score: 100, signals: [] })
   }
 
   // Rule 3: draft

@@ -135,7 +135,7 @@ export async function GET() {
       bindingDate = ds.binding_date || (tx as any).binding || null
       closingDate = ds.closing_date || (tx as any).closing || null
       inspectionEndDate = ds.inspection_end_date || (tx as any).inspection_end_date || null
-      purchasePrice = ds.purchase_price || (tx as any).purchase_price || (tx as any).value || 0
+      purchasePrice = (tx as any).purchase_price || ds.purchase_price || (tx as any).value || 0
       buyer_names = ds.buyer_names || buyer_names
       seller_names = ds.seller_names || seller_names
       earnest_money = ds.earnest_money || earnest_money
@@ -197,6 +197,9 @@ export async function GET() {
       address: tx.address,
       client: tx.client,
       type: tx.type,
+      status: tx.status || null,
+      notes: tx.notes || null,
+      contacts: tx.contacts || [],
       current_state: lifecycle,
       state_label: STATE_LABELS[lifecycle],
       binding_date: bindingDate,
