@@ -49,14 +49,13 @@ export async function POST(req: Request) {
 
     // insert into canonical documents table
     const { data, error } = await supabase.from('documents').insert([{
-      deal_id: transaction_id ? Number(transaction_id) : null,
+      deal_id: null,
       transaction_id: transaction_id ? Number(transaction_id) : null,
-      filename: filename,
-      file_type: file.type || null,
+      name: filename,
+      type: file.type || null,
       storage_path: storagePath,
       uploaded_at: new Date().toISOString(),
       user_id: user?.id || null,
-      uploaded_by: user?.id || null,
       status_label: 'uploaded',
       rf_number: classification || null,
     }]).select().single()
