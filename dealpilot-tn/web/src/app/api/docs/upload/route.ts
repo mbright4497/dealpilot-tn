@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       const { data: bucketList } = await supabase.storage.listBuckets()
       const has = (bucketList || []).find((b:any)=>b.name===bucketName)
       if(!has){
-        await supabase.storage.createBucket(bucketName, { public: true })
+        await supabase.storage.createBucket(bucketName, { public: false })
       }
     }catch(e){
       // if listing/creation not supported in this SDK/env, continue — upload may still fail and return a clear error
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       file_type: file.type || null,
       storage_path: storagePath,
       uploaded_at: new Date().toISOString(),
+      user_id: user?.id || null,
       uploaded_by: user?.id || null,
       status_label: 'uploaded',
       rf_number: classification || null,
