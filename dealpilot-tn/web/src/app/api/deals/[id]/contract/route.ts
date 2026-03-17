@@ -45,6 +45,66 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
+
+export async function POST(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const dealId = params.id
+    if (!dealId) {
+      return NextResponse.json({ error: 'Invalid deal ID' }, { status: 400 })
+    }
+
+    const formData = await req.formData()
+    const file = formData.get('file') as File | null
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const storagePath = `deals/${dealId}/contract.pdf`
+
+    const { error: uploadError } = await supabase.storage
+      .from('contracts')
+      .upload(storagePath, buffer, {
+        contentType: file.type || 'application/pdf',
+        upsert: true,
+      })
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError)
+      return NextResponse.json({ error: uploadError.message }, { status: 500 })
+    }
+
+    const { data: urlData, error: urlError } = supabase.storage
+      .from('contracts')
+      .getPublicUrl(storagePath)
+
+    if (urlError || !urlData?.publicUrl) {
+      console.error('Failed to generate public URL:', urlError)
+      return NextResponse.json({ error: 'Unable to get public URL' }, { status: 500 })
+    }
+
+    const publicUrl = urlData.publicUrl
+
+    const { error: dbError } = await supabase
+      .from('contract_store')
+      .upsert({
+        deal_id: dealId,
+        pdf_url: publicUrl,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'deal_id' })
+
+    if (dbError) {
+      console.error('DB update error:', dbError)
+      return NextResponse.json({ error: dbError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ url: publicUrl })
+  } catch (e: any) {
+    console.error('Contract POST error:', e)
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json()
