@@ -615,6 +615,24 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
     return ()=>{ mounted=false }
   },[urlTransactionId])
 
+  // gapActions for quick Reva buttons (moved out of JSX to comply with hooks rules)
+  const [gapActions, setGapActions] = React.useState<any[]>([])
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId }), credentials: 'include' })
+        if(!res.ok) return
+        const j = await res.json()
+        if(!mounted) return
+        const gaps = j.results && j.results[0] ? j.results[0].gaps || [] : []
+        const actions = (gaps||[]).slice(0,4).map((g:any)=>({ key: g.milestone_key, label: `${g.milestone_label} — ${g.status==='overdue'?`${Math.abs(g.days_diff)}d overdue`:g.status==='due_today'?'due today':g.days_diff!=null?`${g.days_diff}d`:''}`, gap: g }))
+        setGapActions(actions)
+      } catch(e){ if(mounted) setGapActions([]) }
+    })()
+    return ()=>{ mounted=false }
+  }, [urlTransactionId])
+
   const markMilestoneComplete = async (milestone_key:string)=>{
     try{
       const res = await fetch('/api/reva/playbook-progress', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId, milestone_key, completed_by: 'web-ui' }) })
@@ -724,34 +742,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
         </div>
         <div className="mt-3 flex gap-2">
           {/* Dynamic actions driven by playbook gaps */}
-          {(()=>{
-            const [gapActions, setGapActions] = React.useState<any[]>([])
-            React.useEffect(()=>{
-              let mounted = true
-              ;(async ()=>{
-                try{
-                  const res = await fetch('/api/reva/playbook-gaps', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ dealId: urlTransactionId }), credentials: 'include' })
-                  if(!res.ok) return
-                  const j = await res.json()
-                  if(!mounted) return
-                  const gaps = j.results && j.results[0] ? j.results[0].gaps || [] : []
-                  const actions = (gaps || []).slice(0,4).map((g:any)=> ({ key: g.milestone_key, label: `${g.milestone_label} — ${g.status === 'overdue' ? `${Math.abs(g.days_diff)}d overdue` : g.status === 'due_today' ? 'due today' : g.days_diff!=null? `${g.days_diff}d` : ''}`, gap: g }))
-                  setGapActions(actions)
-                }catch(e){ console.warn('playbook gaps error', e); if(mounted) setGapActions([]) }
-              })()
-              return ()=>{ mounted = false }
-            },[urlTransactionId])
-
-            if(!gapActions) return <div className="text-sm text-gray-400">Loading actions…</div>
-            if(gapActions.length===0) return <>
-              <button onClick={async ()=>{ await sendAIMessage("What's missing?") }} className="px-3 py-1 bg-gray-800 rounded">What's missing?</button>
-              <button onClick={async ()=>{ await sendAIMessage('Draft follow-up email') }} className="px-3 py-1 bg-gray-800 rounded">Draft follow-up email</button>
+          {gapActions.length===0 ? (
+            <>
+              <button onClick={async()=>{ await sendAIMessage("What's missing?") }} className="px-3 py-1 bg-gray-800 rounded">What's missing?</button>
+              <button onClick={async()=>{ await sendAIMessage('Draft follow-up email') }} className="px-3 py-1 bg-gray-800 rounded">Draft follow-up email</button>
             </>
-
-            return gapActions.map((a:any,i:number)=>(
-              <button key={i} onClick={async ()=>{ const txt = `Action request: ${a.label} for ${String(mergedTx.address||'')}. Context: ${JSON.stringify(a.gap)}`; addMessage({ id:`user_${Date.now()}`, role:'user', content: txt }); await sendAIMessage(txt) }} className="px-3 py-1 bg-gray-800 rounded">{a.label}</button>
-            ))
-          })()}
+          ) : gapActions.map((a:any,i:number)=>(
+            <button key={i} onClick={async()=>{ const txt=`Action request: ${a.label} for ${String(mergedTx.address||'')}. Context: ${JSON.stringify(a.gap)}`; addMessage({id:`user_${Date.now()}`,role:'user',content:txt}); await sendAIMessage(txt) }} className="px-3 py-1 bg-gray-800 rounded">{a.label}</button>
+          ))}
         </div>
       </div>
 
@@ -1271,21 +1269,25 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                       }catch(e){ console.error(e) }
                     }
                     return (
-                      <div key={i} className="flex items-center justify-between bg-gray-800 px-3 py-2 rounded mt-2">
-                        <div className="flex items-center gap-3">
-                          <button onClick={handleDownload} className="text-blue-400 hover:underline text-sm">{d.name}</button>
+                      <div key={i} className="bg-gray-800 rounded p-3 mb-2 flex items-center gap-3">
+                        <div className="text-2xl">📄</div>
+                        <div className="flex-1">
+                          <div className="font-semibold">{d.name}</div>
+                          <div className="text-xs text-gray-400">{d.uploaded_at ? fmtDate(d.uploaded_at) : (d.created_at ? fmtDate(d.created_at) : '')}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
                           <button onClick={async ()=>{
                             try{
-                              // fetch signed url (1h) for inline viewing
                               const path = d.storage_path || d.path || `deal-${urlTransactionId}/${d.name}`
-                              try{
-                                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 3600)
-                                if(data && data.signedUrl){ setViewerUrl(data.signedUrl); setViewerOpen(true); setSelectedDocId(d.id || d.document_id || d.name) } else { alert('Unable to get signed URL') }
-                              }catch(e){ console.error(e); alert('Failed to get signed URL') }
-                            }catch(e){ console.error(e); alert('Failed to open viewer') }
-                          }} className="text-gray-300 text-xs px-2 py-1 bg-gray-700 rounded">View</button>
+                              const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ path, bucket: 'deal-documents' }) })
+                              if(!res.ok){ alert('Unable to get signed URL'); return }
+                              const j = await res.json()
+                              if(j.signedUrl) window.open(j.signedUrl, '_blank')
+                              else alert('No signed URL returned')
+                            }catch(e){ alert('Failed to open viewer') }
+                          }} className="text-blue-400 px-2 py-1 rounded bg-gray-900">View</button>
+
                           <button onClick={async ()=>{
-                            // Discuss with Reva: fetch extracted text from new API route and inject into Reva context
                             try{
                               setExtracting(true); setExtractionError(null)
                               const docId = d.id || d.document_id || null
@@ -1294,19 +1296,15 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                               if(!res.ok){ const txt = await res.text(); setExtractionError(txt || 'Extraction failed'); setExtracting(false); return }
                               const j = await res.json()
                               if(!j.ok){ setExtractionError(j.error || 'Extraction failed'); setExtracting(false); return }
-                              // inject as system context and prefill chat input with document name
                               addMessage({ from: 'system', text: `DOCUMENT_CONTEXT: ${j.extractedText.slice(0, 10000)}` })
                               setInput(`Discuss document: ${j.name}`)
-                              // open Reva chat area (overview) so user can see prefilled input
                               setMode('overview')
-                              setExtracting(false)
-                              // open mobile drawer on small screens
                               setMobileRevaOpen(true)
+                              setExtracting(false)
                             }catch(e:any){ console.error(e); setExtractionError(String(e)); setExtracting(false) }
-                          }} className="text-indigo-300 text-xs px-2 py-1 bg-gray-700 rounded">{extracting ? 'Extracting…' : 'Discuss with Reva'}</button>
-                        </div>
-                        <div>
-                          <button onClick={handleDelete} className="text-red-400 text-xs">Delete</button>
+                          }} className="text-indigo-300 px-2 py-1 rounded bg-gray-900">{extracting ? 'Extracting…' : 'Discuss'}</button>
+
+                          <button onClick={handleDelete} className="text-red-400">Delete</button>
                         </div>
                       </div>
                     )
