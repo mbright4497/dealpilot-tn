@@ -1,10 +1,14 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import { v4 as uuidv4 } from 'uuid'
 
 export const runtime = 'nodejs'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: Request) {
   try {
@@ -19,22 +23,6 @@ export async function POST(req: Request) {
     const ext = (filename.split('.').pop() || 'pdf')
     const bucketName = 'deal-documents'
     const storagePath = `deal-${transaction_id || 'unlinked'}/${uuidv4()}.${ext}`
-
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll(cookiesToSet) {
-            try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
-          },
-        },
-      }
-    )
-
-    const { data: { user } } = await supabase.auth.getUser()
 
     // ensure bucket exists (create if missing)
     try{
@@ -60,7 +48,7 @@ export async function POST(req: Request) {
     // classification key
     const classification = form.get('classification') as string | null
 
-    // insert into canonical documents table
+    // insert into canonical documents table (server-side service role; user_id set to null)
     const { data, error } = await supabase.from('documents').insert([{
       deal_id: null,
       transaction_id: transaction_id ? Number(transaction_id) : null,
@@ -68,7 +56,7 @@ export async function POST(req: Request) {
       type: file.type || null,
       storage_path: storagePath,
       uploaded_at: new Date().toISOString(),
-      user_id: user?.id || null,
+      user_id: null,
       status_label: 'uploaded',
       rf_number: classification || null,
     }]).select().single()

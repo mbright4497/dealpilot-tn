@@ -1,25 +1,23 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function GET(request: Request, { params }: { params: { transactionId: string } }) {
-  const supabase = createServerSupabaseClient({ request, response: undefined as any })
   const transactionId = Number(params.transactionId)
   try {
-    const { data: userData } = await supabase.auth.getUser()
-    const user = userData?.user || null
-
-    let q = supabase
+    const { data, error } = await supabase
       .from('documents')
       .select('*')
       .eq('transaction_id', transactionId)
       .order('created_at', { ascending: false })
-
-
-    const { data, error } = await q
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data || [])
@@ -29,7 +27,6 @@ export async function GET(request: Request, { params }: { params: { transactionI
 }
 
 export async function POST(request: Request, { params }: { params: { transactionId: string } }) {
-  const supabase = createServerSupabaseClient({ request, response: undefined as any })
   const transactionId = Number(params.transactionId)
 
   try {
@@ -57,16 +54,13 @@ export async function POST(request: Request, { params }: { params: { transaction
       let signedUrl: string | null = null
       try{ const { data: signed } = await supabase.storage.from('deal-documents').createSignedUrl(storagePath, 60); signedUrl = signed?.signedUrl || null }catch(e){}
 
-      const { data: userData } = await supabase.auth.getUser()
-      const user = userData?.user || null
-
       const { data: insertData, error: insertError } = await supabase
         .from('documents')
         .insert([{
           id: id,
           deal_id: null,
           transaction_id: transactionId,
-          user_id: user?.id || null,
+          user_id: null,
           name: filename,
           type: file.type,
           storage_path: storagePath,
@@ -100,16 +94,13 @@ export async function POST(request: Request, { params }: { params: { transaction
       const { data: publicData } = supabase.storage.from('deal-documents').getPublicUrl(storagePath)
       const publicUrl = publicData.publicUrl
 
-      const { data: userData } = await supabase.auth.getUser()
-      const user = userData?.user || null
-
       const { data: insertData, error: insertError } = await supabase
         .from('documents')
         .insert([{
           id: id,
           deal_id: null,
           transaction_id: transactionId,
-          user_id: user?.id || null,
+          user_id: null,
           name: filename,
           type: body.contentType || 'application/pdf',
           url: publicUrl,
@@ -135,7 +126,6 @@ export async function POST(request: Request, { params }: { params: { transaction
 }
 
 export async function DELETE(request: Request) {
-  const supabase = createServerSupabaseClient({ request, response: undefined as any })
   try {
     const body = await request.json()
     const docId = body?.doc_id || body?.id
@@ -147,7 +137,7 @@ export async function DELETE(request: Request) {
     const storagePath = data.storage_path
 
     if (storagePath) {
-      const { error: delError } = await supabase.storage.from('documents').remove([storagePath])
+      const { error: delError } = await supabase.storage.from('deal-documents').remove([storagePath])
       if (delError) return NextResponse.json({ error: delError.message }, { status: 500 })
     }
 

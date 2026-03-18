@@ -1,22 +1,56 @@
-# Follow-up Checklist
+Today's Priority Follow-Ups — iHome Team
+Date: TODO (insert today's date)
 
-## 1. Priority calls (top leads)
-1. **Penwell plan – Beechwood Meadows (Johnson City)** – Call D.R. Horton (423-528-9739) to confirm delivery window and deposit schedule; tell the builder we have a pre-qualified buyer looking at the March release. Next step: schedule a weekend model tour and builder incentive review.
-2. **686 Saint Andrews Dr (Cali plan, Kingsport)** – Reconfirm the $350,990 quick-move-in pricing and ask if they can change the upgrade list to match our buyer’s must-haves. Next step: secure a viewing and request a copy of the purchase contract addendum.
-3. **659 Saint Andrews Dr (Kingsport)** – Highlight the $342,150 price to buyers wanting the lowest entry in the community, confirm HOA status, and ask for the confirmation of lot release paperwork. Next step: lock the lot with earnest money instructions.
-4. **698 Saint Andrews Dr (Hayden plan, Kingsport)** – Get clarification on the allowed closing window for the 5-bed plan at $397,865 and whether the builder will cover any closing-cost incentives. Next step: line up a lender pre-approval call for our VIP buyer.
-5. **Hideaway at Fox Meadows (Bluff City/Bristol)** – Call the D.R. Horton Bluff City office (423-528-9739) to check spring delivery timing for 3-bed homes starting at $286,990 and confirm any limited-time upgrades. Next step: email the community brochure and schedule a weekend concierge tour.
+1) New Leads (call priority)
+- High: contact within 5 minutes — lead source = FB Lead Ad, hot intent (requested showing or builder incentive)
+- Medium: contact within 1 business hour — downloaded guide, messaged but no call request
+- Low: contact within 24 hours — general inquiry
 
-## 2. Listings to promote this week
-- 659 & 686 Saint Andrews Dr – under $352k, move-in ready, highlight 4-bed, 2-bath floor plans on the next social blast and IG story.
-- Penwell Plan at Beechwood Meadows – emphasize the 2,164-sqft layout with covered patio/owner’s suite; use it for a new-build spotlight email.
-- Hideaway at Fox Meadows – position as the only Bristol-area home under $300k with D.R. Horton smart-home package.
+Template table (fill per lead):
+- Name | Phone | Source | Priority | Notes | Assigned Agent
 
-## 3. Price-change alerts to watch
-- The quick move-in Haydens (2,511 sqft) are still below $400k; confirm with the builder before pushing buyers who want 5-bed value.
-- Any change at 659 Saint Andrews Dr (currently $342,150) deserves a text blast to the lower-tier buyers list; it’s the floor price anchor for the community.
-- Keep tabs on Fox Meadows pricing—Realtor.com lists starts at $286,990, so a $5k drop would re-open interest for two first-time buyer squads.
+2) Listings to promote
+- Placeholder entries: replace with live listing links and prices
+  - [Listing 1] — TODO: paste link — Price: TODO
+  - [Listing 2] — TODO: paste link — Price: TODO
 
-## 4. Phone scripts (two short variations)
-**Script A (builder check-in):** “Hi, this is Matt Bright with iHome Team. I’m working on a Johnson City/Kingsport buyer who is ready for a new-construction home under $400k—can you confirm whether the Penwell/Cali/Hayden pricing is still current and what the next move-in window looks like?”
-**Script B (buyer outreach):** “Hey [Client], quick heads-up that D.R. Horton has new pull-ahead opportunities at Saint Andrews Garth and Fox Meadows with under-$350k pricing. Want to tour the homes before weekend showings fill up?”
+3) Price change alerts
+- Watchlist: any price reductions on new construction or comps within 7 days — replace with live items
+  - [Address or MLS#] — Old Price: TODO — New Price: TODO — Date: TODO
+
+4) Next steps
+- Schedule showings for high-priority leads within 48 hours
+- Push promoted listings to social and Boost top performing post
+- Update GHL tags: source, priority, listing_promoted
+
+Call scripts (30s) — Use conversational tone, close for appointment
+- Cold/Inbound Lead (Quick Caller):
+  "Hi [Name], this is [Agent] with iHome Team at Keller Williams. You requested info on new construction in the Tri-Cities — did you have a moment now to talk through what you're looking for? Great — are you focused on Johnson City, Kingsport, or Bristol? I can schedule a quick walkthrough this week or send available listings. What's best for you?"
+
+- Hot Lead (asked for showing/incentive):
+  "Hi [Name], it's [Agent] from iHome Team — congrats on taking the next step. We have an open slot for a walkthrough on [day/time]. Can I put you down for that or would you prefer another time? Also I can text you builder incentives and lot availability right now."
+
+SMS templates (short, for initial outreach)
+- Template A (high priority):
+  "Hi [Name] — this is [Agent] w/iHome Team. Thanks for your interest in new construction in Tri-Cities. Can we schedule a quick tour this week? Reply Y to confirm or call/text (###) ###-####."
+
+- Template B (downloaded guide):
+  "Hi [Name] — thanks for downloading the New Construction Guide. Want me to send listings under $400K in Johnson City/Kingsport/Bristol? Reply with the city you prefer. — [Agent]"
+
+- Template C (price reduction alert):
+  "Price update: [Address] just reduced to [New Price]. Want more details or to tour? — [Agent]"
+
+Agent instructions:
+- Log every contact in GHL and tag with lead source and priority.
+- Move hot leads into the 24hr follow-up workflow and assign to show-ready agent.
+- Replace TODO placeholders with live links/prices from MLS or Zillow.
+
+Exact searches to run for new construction under $400K (copy/paste)
+- Realtor.com search string (example for Johnson City):
+  "site:realtor.com Johnson City TN new construction under $400,000"
+- Zillow search string (example for Johnson City):
+  "site:zillow.com Johnson City TN new construction under $400,000"
+
+Replace city name for Kingsport and Bristol.
+
+-- iHome Team — Keller Williams Kingsport
