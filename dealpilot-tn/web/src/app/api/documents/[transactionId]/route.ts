@@ -20,7 +20,20 @@ export async function GET(request: Request, { params }: { params: { transactionI
       .order('created_at', { ascending: false })
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json(data || [])
+
+    // deduplicate by name (keep most recent first)
+    const seen = new Set<string>()
+    const deduped = [] as any[]
+    for (const row of (data || [])) {
+      const name = (row && row.name) ? String(row.name) : ''
+      if (!name) continue
+      if (seen.has(name)) continue
+      seen.add(name)
+      deduped.push(row)
+    }
+
+    return NextResponse.json(deduped)
+
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 })
   }

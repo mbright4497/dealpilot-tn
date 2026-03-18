@@ -169,6 +169,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
   const [extracting, setExtracting] = useState(false)
   const [extractionError, setExtractionError] = useState<string | null>(null)
+  const [discussingDoc, setDiscussingDoc] = useState<string|null>(null)
 
 
   useEffect(() => {
@@ -191,11 +192,20 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
   const handleUpload = async (file: File) => {
     if (!file) return
-    const duplicate = docs.find(d => d.name === file.name)
-    if (duplicate) {
-      alert('A file with this name already exists.')
-      return
+    // refresh docs from server to check for duplicates
+    try{
+      const currentRes = await fetch(`/api/documents/${urlTransactionId}`)
+      const currentDocs = currentRes.ok ? await currentRes.json() : docs
+      const duplicate = (currentDocs||[]).find((d:any) => d.name === file.name)
+      if (duplicate) {
+        alert('A file with this name already exists.')
+        return
+      }
+    }catch(e){ /* ignore and fallback to in-memory check */
+      const duplicate = docs.find(d => d.name === file.name)
+      if (duplicate) { alert('A file with this name already exists.'); return }
     }
+
     try {
       setUploading(true)
       const fd = new FormData()
@@ -1121,6 +1131,10 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
       {/* Documents mode: DocumentChecklist integration */}
       {mode==='documents' && (
         <div>
+          <div className="mb-3 flex items-center gap-2">
+            <button onClick={()=>setMode('overview')} className="flex items-center gap-1 text-sm text-orange-400 hover:text-orange-300">← Back to Overview</button>
+            <span className="text-gray-400 text-sm">Document Checklist</span>
+          </div>
           <DocumentChecklist
             context={{ state: 'TN', side: transaction.type === 'seller' ? 'seller' : 'buyer', conditions: {} }}
             documentsByKey={documentsByKey}
@@ -1240,6 +1254,9 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                   <div>
                     <input type="file" onChange={(e)=>{ const file = e.target.files?.[0]; if (file) handleUpload(file) }} className="text-sm text-gray-300" />
                     {uploading && <div className="text-xs text-gray-400 mt-2">Uploading...</div>}
+                    {discussingDoc && (
+                      <div className="mt-2 p-2 bg-indigo-900 rounded text-sm text-indigo-200">💬 Reva is discussing <strong>{discussingDoc}</strong> — scroll up to see the chat</div>
+                    )}
                   </div>
                   {docs.length===0 && <div className="text-gray-500">No files</div>}
                   {docs.map((d:any,i:number)=>{
@@ -1296,15 +1313,32 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                               if(!res.ok){ const txt = await res.text(); setExtractionError(txt || 'Extraction failed'); setExtracting(false); return }
                               const j = await res.json()
                               if(!j.ok){ setExtractionError(j.error || 'Extraction failed'); setExtracting(false); return }
+
+                              // inject context, prefill and auto-send a short discussion message, and show banner
                               addMessage({ from: 'system', text: `DOCUMENT_CONTEXT: ${j.extractedText.slice(0, 10000)}` })
                               setInput(`Discuss document: ${j.name}`)
                               setMode('overview')
+                              setDiscussingDoc(j.name)
+                              setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }); }, 100)
+                              setTimeout(()=>{ sendAIMessage(`Discuss document: ${j.name}. Context: ${ (j.extractedText||'').slice(0,2000) }`) }, 300)
+                              setTimeout(()=>setDiscussingDoc(null), 10000)
                               setMobileRevaOpen(true)
                               setExtracting(false)
                             }catch(e:any){ console.error(e); setExtractionError(String(e)); setExtracting(false) }
                           }} className="text-indigo-300 px-2 py-1 rounded bg-gray-900">{extracting ? 'Extracting…' : 'Discuss'}</button>
 
-                          <button onClick={handleDelete} className="text-red-400">Delete</button>
+                          <button onClick={async ()=>{
+                            try{
+                              if(!confirm('Delete this file?')) return
+                              const docId = d.id
+                              if(!docId){ alert('Cannot delete: missing document ID'); return }
+                              const res = await fetch(`/api/documents/${urlTransactionId}`, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ doc_id: docId }) })
+                              if(!res.ok){ const j = await res.json().catch(()=>null); alert('Delete failed: '+(j?.error||res.statusText)); return }
+                              const refresh = await fetch(`/api/documents/${urlTransactionId}`)
+                              if(refresh.ok){ const rj = await refresh.json(); setDocs(rj||[]) }
+                              try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'delete_document', resource:'documents', resource_id: urlTransactionId, details: { filename: d.name, doc_id: docId } }) }) }catch(e){}
+                            }catch(e){ console.error(e); alert('Delete failed') }
+                          }} className="text-red-400">Delete</button>
                         </div>
                       </div>
                     )
