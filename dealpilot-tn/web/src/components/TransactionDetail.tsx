@@ -1168,22 +1168,18 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
             onView={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
-                if(data?.signedUrl) window.open(data.signedUrl, '_blank')
+                const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ path, bucket: 'deal-documents' }) })
+                const j = await res.json()
+                if (j.signedUrl) window.open(j.signedUrl, '_blank')
+                else console.error('signed-url error', j.error)
               }catch(e){ console.error('view error', e) }
             }}
             onDownload={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 60)
-                if(data?.signedUrl){
-                  const a = document.createElement('a')
-                  a.href = data.signedUrl
-                  a.download = ''
-                  document.body.appendChild(a)
-                  a.click()
-                  a.remove()
-                }
+                const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ path, bucket: 'deal-documents' }) })
+                const j = await res.json()
+                if (j.signedUrl) { const a = document.createElement('a'); a.href = j.signedUrl; a.download = ''; document.body.appendChild(a); a.click(); a.remove() } else console.error('signed-url error', j.error)
               }catch(e){ console.error('download error', e) }
             }}
             onMarkSigned={async (docKey) => {
