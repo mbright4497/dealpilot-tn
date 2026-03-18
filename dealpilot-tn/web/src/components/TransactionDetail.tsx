@@ -163,6 +163,14 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [docs,setDocs]=useState<any[]>([])
   const [uploading, setUploading] = useState(false)
 
+  // Document viewer & Reva discussion state
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null)
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractionError, setExtractionError] = useState<string | null>(null)
+
+
   useEffect(() => {
     let mounted = true
     async function loadDocs() {
@@ -1268,8 +1276,42 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                     }
                     return (
                       <div key={i} className="flex items-center justify-between bg-gray-800 px-3 py-2 rounded mt-2">
-                        <button onClick={handleDownload} className="text-blue-400 hover:underline text-sm">{d.name}</button>
-                        <button onClick={handleDelete} className="text-red-400 text-xs">Delete</button>
+                        <div className="flex items-center gap-3">
+                          <button onClick={handleDownload} className="text-blue-400 hover:underline text-sm">{d.name}</button>
+                          <button onClick={async ()=>{
+                            try{
+                              // fetch signed url (1h) for inline viewing
+                              const path = d.storage_path || d.path || `deal-${urlTransactionId}/${d.name}`
+                              try{
+                                const { data } = await supabase.storage.from('deal-documents').createSignedUrl(path, 3600)
+                                if(data && data.signedUrl){ setViewerUrl(data.signedUrl); setViewerOpen(true); setSelectedDocId(d.id || d.document_id || d.name) } else { alert('Unable to get signed URL') }
+                              }catch(e){ console.error(e); alert('Failed to get signed URL') }
+                            }catch(e){ console.error(e); alert('Failed to open viewer') }
+                          }} className="text-gray-300 text-xs px-2 py-1 bg-gray-700 rounded">View</button>
+                          <button onClick={async ()=>{
+                            // Discuss with Reva: fetch extracted text from new API route and inject into Reva context
+                            try{
+                              setExtracting(true); setExtractionError(null)
+                              const docId = d.id || d.document_id || null
+                              if(!docId){ setExtractionError('Missing doc id'); setExtracting(false); return }
+                              const res = await fetch(`/api/documents/${urlTransactionId}/text-extract?docId=${encodeURIComponent(docId)}`)
+                              if(!res.ok){ const txt = await res.text(); setExtractionError(txt || 'Extraction failed'); setExtracting(false); return }
+                              const j = await res.json()
+                              if(!j.ok){ setExtractionError(j.error || 'Extraction failed'); setExtracting(false); return }
+                              // inject as system context and prefill chat input with document name
+                              addMessage({ from: 'system', text: `DOCUMENT_CONTEXT: ${j.extractedText.slice(0, 10000)}` })
+                              setInput(`Discuss document: ${j.name}`)
+                              // open Reva chat area (overview) so user can see prefilled input
+                              setMode('overview')
+                              setExtracting(false)
+                              // open mobile drawer on small screens
+                              setMobileRevaOpen(true)
+                            }catch(e:any){ console.error(e); setExtractionError(String(e)); setExtracting(false) }
+                          }} className="text-indigo-300 text-xs px-2 py-1 bg-gray-700 rounded">{extracting ? 'Extracting…' : 'Discuss with Reva'}</button>
+                        </div>
+                        <div>
+                          <button onClick={handleDelete} className="text-red-400 text-xs">Delete</button>
+                        </div>
                       </div>
                     )
                   })}
