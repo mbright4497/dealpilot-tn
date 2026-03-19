@@ -65,6 +65,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [aiFilling,setAiFilling]=useState<Record<string,boolean>>({})
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
   const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${urlTransactionId}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
+  const [activePdfUrl, setActivePdfUrl] = useState<string|null>(()=>{ try{ return (contractData && (contractData.pdfUrl || contractData.pdf_url)) || null }catch(e){ return null } })
   const [rfWarnings, setRfWarnings] = useState<string[]>([])
 
   // communication / draft state (fix: ensure variables referenced by Quick Actions exist)
@@ -638,6 +639,16 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
 
       {/* EVA HERO (top) - small iterative addition */}
+
+      {/* Top document viewer (binds to activePdfUrl) */}
+      <div id="top-viewer" className="mb-4">
+        {activePdfUrl ? (
+          <div className="w-full h-[600px] bg-black rounded overflow-hidden">
+            <iframe src={activePdfUrl} className="w-full h-full" title="Document viewer" />
+          </div>
+        ) : null}
+      </div>
+
       <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6 hidden md:block">
         <div className="mb-2 text-sm text-gray-300 flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" /><span>Reva — Deal Assistant</span></div>
         <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
@@ -1099,8 +1110,8 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
             onView={async (path: string) => {
               try{
                 if(!path) return
-                const { data } = await supabase.storage.from('contracts').createSignedUrl(path, 60)
-                if(data?.signedUrl) window.open(data.signedUrl, '_blank')
+                const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ path }) })
+                if(res.ok){ const j = await res.json(); const url = j?.url || j?.signedUrl || null; if(url){ setActivePdfUrl(url); } }
               }catch(e){ console.error('view error', e) }
             }}
             onDownload={async (path: string) => {
