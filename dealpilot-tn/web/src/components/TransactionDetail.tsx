@@ -83,14 +83,15 @@ function StackedDocsViewer({ orderedDocs, contractData, urlTransactionId, storag
           <div key={key} className="mb-6">
             <div className="text-sm text-gray-300 mb-2 font-semibold">{label}</div>
             { meta.url ? (
-              <div className="w-full bg-black rounded overflow-hidden" style={{height: '480px'}}>
-                <iframe title={`stacked-doc-${i}`} src={meta.url} className="w-full h-full" />
+              <div className="w-full rounded overflow-hidden" style={{height: '1100px'}}>
+                <embed src={meta.url} type="application/pdf" width="100%" height="1100px" style={{display: 'block', border: 'none'}} />
               </div>
             ) : meta.error ? (
-              <div className="p-3 bg-gray-800 rounded text-sm text-red-400">Failed to load document: {String(meta.error)}</div>
+              <div className="p-3 text-sm text-red-400">Failed to load document: {String(meta.error)}</div>
             ) : (
-              <div className="p-3 bg-gray-800 rounded text-sm text-gray-400">Loading...</div>
+              <div className="p-3 text-sm text-gray-400">Loading...</div>
             ) }
+            {i < (orderedDocs||[]).length - 1 && <hr className="border-t border-gray-700 my-4" /> }
           </div>
         )
       }) }
@@ -1387,11 +1388,11 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                             <button onClick={()=>{ setViewerMode('all'); setSingleViewerUrl(null); setSingleViewerLabel(''); setTimeout(()=>{ try{ mainViewerRef.current?.scrollIntoView({ behavior: 'smooth' }) }catch(e){} }, 50) }} className="px-3 py-1 bg-gray-800 rounded text-sm">← Show All Documents</button>
                           </div>
                           {singleViewerUrl ? (
-                            <div className="w-full bg-black rounded overflow-hidden" style={{height: '720px'}}>
-                              <iframe title={`single-doc-viewer`} src={singleViewerUrl} className="w-full h-full" />
+                            <div className="w-full rounded overflow-hidden" style={{height: '1100px'}}>
+                              <embed src={singleViewerUrl} type="application/pdf" width="100%" height="1100px" style={{display: 'block', border: 'none'}} />
                             </div>
                           ) : (
-                            <div className="p-3 bg-gray-800 rounded text-sm text-gray-400">Loading document…</div>
+                            <div className="p-3 text-sm text-gray-400">Loading document…</div>
                           )}
                         </div>
                       )}
