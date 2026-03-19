@@ -1,5 +1,8 @@
 'use client'
 import React, {useState, useEffect, useRef, useCallback} from 'react'
+import Script from 'next/script'
+
+declare global { interface Window { pdfjsLib: any } }
 
 // Intent handler for Reva
 function handleRevaIntent(intent: any, setMode: any, setActiveDocument: any) {
@@ -32,8 +35,47 @@ type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
 
 
+// PdfDocSection: render a PDF (page-by-page) onto canvases using PDF.js
+function PdfDocSection({ url, label }: { url: string, label: string }){
+  const containerRef = useRef<HTMLDivElement|null>(null)
+  useEffect(()=>{
+    let mounted = true
+    if(!url || !(window as any).pdfjsLib) return
+    const pdfjsLib = (window as any).pdfjsLib
+    const container = containerRef.current
+    if(!container) return
+    container.innerHTML = ''
+    pdfjsLib.getDocument(url).promise.then((pdf: any) => {
+      if(!mounted) return
+      for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+        pdf.getPage(pageNum).then((page: any) => {
+          const viewport = page.getViewport({ scale: 1.5 })
+          const canvas = document.createElement('canvas')
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          canvas.style.display = 'block'
+          canvas.style.width = '100%'
+          canvas.style.marginBottom = '2px'
+          container.appendChild(canvas)
+          const ctx = canvas.getContext('2d')!
+          page.render({ canvasContext: ctx, viewport }).promise.catch(()=>{})
+        }).catch(()=>{})
+      }
+    }).catch(()=>{
+      if(container) container.innerHTML = '<p style="color:#888;padding:8px">Could not load document.</p>'
+    })
+    return ()=>{ mounted = false }
+  }, [url])
+  return (
+    <div style={{ marginBottom: 32 }}>
+      <p style={{ fontSize: 11, color: '#888', marginBottom: 4, borderBottom: '1px solid #333', paddingBottom: 4 }}>{label}</p>
+      <div ref={containerRef} />
+    </div>
+  )
+}
+
 // StackedDocsViewer: internal helper component (declared here to keep changes inside this file only)
-function StackedDocsViewer({ orderedDocs, contractData, urlTransactionId, storageBucket }: any){
+function StackedDocsViewer({ orderedDocs, contractData, urlTransactionId, storageBucket, pdfjsReady }: any){
   const [urls, setUrls] = useState<Record<string, { url?:string, error?:string }>>({})
 
   useEffect(()=>{
@@ -81,11 +123,13 @@ function StackedDocsViewer({ orderedDocs, contractData, urlTransactionId, storag
         const label = d.name || d.file_name || d.filename || (d.__fromContractData ? (contractData && (contractData.fileName || contractData.name || contractData.pdfName)) : 'Document') || `Document ${i+1}`
         return (
           <div key={key} className="mb-6">
-            <div className="text-sm text-gray-300 mb-2 font-semibold">{label}</div>
+            <div className="text-xs text-gray-400 mb-2">{label}</div>
             { meta.url ? (
-              <div className="w-full rounded overflow-hidden" style={{height: '1100px'}}>
-                <embed src={meta.url} type="application/pdf" width="100%" height="1100px" style={{display: 'block', border: 'none'}} />
-              </div>
+              pdfjsReady ? (
+                <PdfDocSection url={meta.url} label={label} />
+              ) : (
+                <div className="p-3 text-sm text-gray-400">Loading document viewer...</div>
+              )
             ) : meta.error ? (
               <div className="p-3 text-sm text-red-400">Failed to load document: {String(meta.error)}</div>
             ) : (
@@ -141,6 +185,9 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [singleViewerUrl, setSingleViewerUrl] = useState<string | null>(null)
   const [singleViewerLabel, setSingleViewerLabel] = useState<string>('')
   const mainViewerRef = useRef<HTMLDivElement|null>(null)
+
+  // PDF.js readiness state
+  const [pdfjsReady, setPdfjsReady] = useState(false)
 
   // Reva panel ref + toast for Discuss action
   const revaPanelRef = useRef<HTMLDivElement|null>(null)
@@ -772,6 +819,17 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
+      {/* PDF.js CDN loader */}
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+        strategy="lazyOnload"
+        onLoad={() => {
+          try{
+            (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+            setPdfjsReady(true)
+          }catch(e){ console.error('pdfjs load failed', e) }
+        }}
+      />
       {/* Discuss toast/banner */}
       {showDiscussToast.show && (
         <div className="fixed top-16 right-4 z-50 bg-black bg-opacity-80 text-white px-4 py-2 rounded shadow">{showDiscussToast.message}</div>
