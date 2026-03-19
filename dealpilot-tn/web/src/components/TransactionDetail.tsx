@@ -1324,19 +1324,30 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                         <div className="flex items-center gap-2">
                           <button onClick={async ()=>{
                             try{
-                              const path = d.storage_path || d.path || `deal-${urlTransactionId}/${d.name}`
-                              const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ path, bucket: 'deal-documents' }) })
-                              if(!res.ok){ console.error('Unable to get signed URL'); return }
-                              const j = await res.json()
-                              if(j.signedUrl){
-                                // set inline viewer instead of opening a new tab
-                                setActivePdfUrl(j.signedUrl)
+                              console.log('[TransactionDetail][ViewDoc] clicked doc:', d)
+                              // determine exact path field present on the doc row
+                              const rawPath = d.path || d.storage_path || d.file_path || d.filePath || d.storagePath || `deal-${urlTransactionId}/${d.name}`
+                              console.log('[TransactionDetail][ViewDoc] extracted path:', rawPath)
+                              const body = { path: rawPath, bucket: 'deal-documents' }
+                              console.log('[TransactionDetail][ViewDoc] POST body:', body)
+
+                              const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+                              console.log('[TransactionDetail][ViewDoc] signed-url response status:', res.status)
+                              if(!res.ok){ console.error('[TransactionDetail][ViewDoc] signed-url fetch failed status', res.status); // fallback
+                                window.open(rawPath, '_blank'); return }
+
+                              const j = await res.json().catch(()=>null)
+                              console.log('[TransactionDetail][ViewDoc] signed-url response json:', j)
+                              const url = j && (j.signedUrl || j.url || j.signed_url || null)
+                              if(url){
+                                setActivePdfUrl(url)
                                 setActivePdfLabel(d.name || 'Document')
-                                // preserve previous behavior: do not open new tab here
+                                console.log('[TransactionDetail][ViewDoc] assigned iframe url:', url)
                               } else {
-                                console.error('No signed URL returned')
+                                console.error('[TransactionDetail][ViewDoc] no url in response, falling back to raw path')
+                                window.open(rawPath, '_blank')
                               }
-                            }catch(e){ console.error('Failed to open viewer', e) }
+                            }catch(e){ console.error('[TransactionDetail][ViewDoc] Failed to open viewer', e); try{ window.open(d.path || d.storage_path || `deal-${urlTransactionId}/${d.name}`, '_blank') }catch(_){ } }
                           }} className="text-blue-400 px-2 py-1 rounded bg-gray-900">View</button>
 
                           <button onClick={async ()=>{
