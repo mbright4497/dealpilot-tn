@@ -31,6 +31,73 @@ type Contact = { role:string, name:string, company?:string, phone?:string, email
 type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
 type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
 
+
+// StackedDocsViewer: internal helper component (declared here to keep changes inside this file only)
+function StackedDocsViewer({ orderedDocs, contractData, urlTransactionId, storageBucket }: any){
+  const [urls, setUrls] = useState<Record<string, { url?:string, error?:string }>>({})
+
+  useEffect(()=>{
+    let mounted = true
+    async function resolveAll(){
+      const map: Record<string, { url?:string, error?:string }> = {}
+      for(const d of (orderedDocs||[])){
+        try{
+          const key = d.id || d.path || d.storage_path || d.name || JSON.stringify(d)
+          if(!key) continue
+
+          // If this entry originates from contractData and has a direct pdfUrl, use it
+          if(d.__fromContractData && contractData){
+            const direct = contractData.pdfUrl || contractData.pdf_url || contractData.url || null
+            if(direct){ map[key] = { url: direct }; continue }
+          }
+
+          // determine rawPath from document object
+          const rawPath = d.path || d.storage_path || d.file_path || `deal-${urlTransactionId}/${d.name}`
+          console.log('[TransactionDetail][StackedDocsViewer] resolving path for', d.name, rawPath)
+
+          // POST to existing signed-url route (matches usage elsewhere in this file)
+          const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ path: rawPath, bucket: 'deal-documents' }) })
+          if(!res.ok){ const txt = await res.text().catch(()=>null); map[key] = { error: `signed-url fetch failed: ${res.status} ${txt||''}` }; continue }
+          const j = await res.json().catch(()=>null)
+          const found = j && (j.signedUrl || j.url || j.signed_url || null)
+          if(found){ map[key] = { url: found } }
+          else { map[key] = { error: 'no url in signed-url response' } }
+        }catch(e:any){
+          const key = d.id || d.path || d.storage_path || d.name || JSON.stringify(d)
+          map[key] = { error: String(e) }
+        }
+      }
+      if(mounted) setUrls(map)
+    }
+    resolveAll()
+    return ()=>{ mounted = false }
+  }, [orderedDocs, contractData, urlTransactionId])
+
+  return (
+    <div className="mt-4 p-3 bg-gray-900 rounded max-h-[600px] overflow-auto">
+      { (orderedDocs||[]).map((d:any, i:number)=>{
+        const key = d.id || d.path || d.storage_path || d.name || JSON.stringify(d)
+        const meta = urls[key] || {}
+        const label = d.name || d.file_name || d.filename || (d.__fromContractData ? (contractData && (contractData.fileName || contractData.name || contractData.pdfName)) : 'Document') || `Document ${i+1}`
+        return (
+          <div key={key} className="mb-6">
+            <div className="text-sm text-gray-300 mb-2 font-semibold">{label}</div>
+            { meta.url ? (
+              <div className="w-full bg-black rounded overflow-hidden" style={{height: '480px'}}>
+                <iframe title={`stacked-doc-${i}`} src={meta.url} className="w-full h-full" />
+              </div>
+            ) : meta.error ? (
+              <div className="p-3 bg-gray-800 rounded text-sm text-red-400">Failed to load document: {String(meta.error)}</div>
+            ) : (
+              <div className="p-3 bg-gray-800 rounded text-sm text-gray-400">Loading...</div>
+            ) }
+          </div>
+        )
+      }) }
+    </div>
+  )
+}
+
 export default function TransactionDetail({transaction, dealId, onBack, onUpdateContacts}:{transaction:Transaction, dealId?:number | undefined, onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
   // URL-derived transaction id (source of truth for this component). Fallback to prop.dealId when URL param missing.
   const searchParams = useSearchParams()
@@ -1244,6 +1311,75 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                   </div>
                 </div>
                 <ContractUpload dealId={String(urlTransactionId)} onSave={(data)=>{ setContractData(data); if((data as any)?.__remote){ const r=(data as any).__remote; setRemote(r); setMergedTx(prev=>({ ...prev, ...(r||{}) })); if(r.contacts) setLocalContacts(r.contacts) } }} onDelete={()=>setContractData(null)} />
+
+                {/* === MAIN STACKED DOCUMENT VIEWER (RF order) === */}
+                {/* Build ordered list: RF401, RF141, RF301, RF302, then others in upload order */}
+                {(() => {
+                  // helper: detect rf code in filename
+                  const detectRF = (name?:string)=>{
+                    if(!name) return null
+                    const s = String(name).trim().toLowerCase()
+                    if(s.includes('rf401') || s.startsWith('rf401') ) return 'RF401'
+                    if(s.includes('rf-401') ) return 'RF401'
+                    if(s.includes('rf141') || s.startsWith('rf141')) return 'RF141'
+                    if(s.includes('rf301') || s.startsWith('rf301')) return 'RF301'
+                    if(s.includes('rf302') || s.startsWith('rf302')) return 'RF302'
+                    return null
+                  }
+
+                  // source array: prefer docs (uploaded list). If contractData represents RF401 separately and not present in docs, include it.
+                  const uploaded = Array.isArray(docs) ? docs.slice() : []
+
+                  // if contractData exists and has a filename/pdf and it's not already in uploaded, try to include it
+                  const contractFileName = contractData && (contractData.fileName || contractData.name || contractData.pdfName || contractData.pdf_url || contractData.pdfUrl) ? (contractData.fileName || contractData.name || contractData.pdfName || contractData.pdfUrl || contractData.pdf_url) : null
+
+                  // Build maps for priority
+                  const priorityKeys = ['RF401','RF141','RF301','RF302']
+                  const prioMap: Record<string, any[]> = { RF401:[], RF141:[], RF301:[], RF302:[] }
+                  const others: any[] = []
+
+                  // Iterate uploaded docs in their original order
+                  for(const d of uploaded){
+                    const fname = d.name || d.file_name || d.filename || ''
+                    const found = detectRF(fname)
+                    if(found && priorityKeys.includes(found)) prioMap[found].push(d)
+                    else others.push(d)
+                  }
+
+                  // If contractData likely represents RF401 and it's not in uploaded, prepend a synthetic locator object that references contractData (we will attempt to resolve pdfUrl)
+                  let contractEntry = null
+                  if(contractFileName){
+                    const foundInUploaded = uploaded.find((d:any)=>{ const fn = (d.name||d.file_name||d.filename||'').toString().toLowerCase(); return fn && fn.includes(String(contractFileName).toLowerCase()) })
+                    if(!foundInUploaded){
+                      contractEntry = { id: `contract-data-${urlTransactionId}`, name: contractFileName, __fromContractData: true }
+                      // include in RF401 if detection matches
+                      if(detectRF(contractFileName) === 'RF401') prioMap.RF401.unshift(contractEntry)
+                    }
+                  }
+
+                  // compose ordered array
+                  const ordered: any[] = []
+                  if(prioMap.RF401.length) ordered.push(...prioMap.RF401)
+                  if(prioMap.RF141.length) ordered.push(...prioMap.RF141)
+                  if(prioMap.RF301.length) ordered.push(...prioMap.RF301)
+                  if(prioMap.RF302.length) ordered.push(...prioMap.RF302)
+
+                  // append others preserving original order
+                  if(others.length) ordered.push(...others)
+
+                  // if nothing, render empty state
+                  if(ordered.length === 0){
+                    return (
+                      <div className="mt-4 p-4 bg-gray-800 rounded text-center text-gray-300">No documents to preview</div>
+                    )
+                  }
+
+                  // state to hold resolved signed urls for main viewer
+                
+                  return (
+                    <StackedDocsViewer orderedDocs={ordered} contractData={contractData} urlTransactionId={urlTransactionId} storageBucket={storageBucket} />
+                  )
+                })()}
 
                 {/* Compact Contract Summary Card (collapsible) */}
                 <div className="mt-4 p-3 bg-gray-900 rounded">
