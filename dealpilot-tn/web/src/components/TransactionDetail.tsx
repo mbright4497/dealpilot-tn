@@ -1395,7 +1395,22 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
               <div className="p-4 bg-gray-800 rounded">
                 <h4 className="font-semibold mb-2">Documents</h4>
                 {/* Inline PDF viewer label + iframe */}
-                <div className="mb-3">
+                <div className="mb-3" ref={mainViewerRef}>
+                  {viewerMode === 'single' && singleViewerUrl ? (
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="text-sm text-gray-300 font-semibold">{singleViewerLabel || 'Document'}</div>
+                        <button onClick={()=>{ setViewerMode('all'); setSingleViewerUrl(null); setSingleViewerLabel(''); }} className="px-2 py-1 bg-gray-800 rounded text-sm">Close</button>
+                      </div>
+                      {pdfjsReady ? (
+                        <PdfDocSection url={singleViewerUrl} label={singleViewerLabel || 'Document'} />
+                      ) : (
+                        <div className="w-full rounded overflow-hidden" style={{height: '800px'}}>
+                          <embed src={singleViewerUrl} type="application/pdf" width="100%" height="800px" style={{display: 'block', border: 'none'}} />
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mb-2 text-sm text-gray-400">Drag & drop files anywhere to upload</div>
