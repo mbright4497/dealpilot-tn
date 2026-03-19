@@ -135,11 +135,11 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${urlTransactionId}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
   const [rfWarnings, setRfWarnings] = useState<string[]>([])
 
-  // PDF inline viewer state (initialize from contract PDF if present)
-  const [activePdfUrl, setActivePdfUrl] = useState<string | null>(() => {
-    try{ return (contractData && (contractData.pdfUrl || contractData.pdf_url)) || null }catch(e){ return null }
-  })
-  const [activePdfLabel, setActivePdfLabel] = useState<string>(()=> activePdfUrl ? 'Contract PDF' : '')
+  // Unified main viewer mode: 'all' = stacked, 'single' = single-doc view
+  const [viewerMode, setViewerMode] = useState<'all'|'single'>('all')
+  const [singleViewerUrl, setSingleViewerUrl] = useState<string | null>(null)
+  const [singleViewerLabel, setSingleViewerLabel] = useState<string>('')
+  const mainViewerRef = useRef<HTMLDivElement|null>(null)
 
   // Reva panel ref + toast for Discuss action
   const revaPanelRef = useRef<HTMLDivElement|null>(null)
@@ -1377,7 +1377,25 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                   // state to hold resolved signed urls for main viewer
                 
                   return (
-                    <StackedDocsViewer orderedDocs={ordered} contractData={contractData} urlTransactionId={urlTransactionId} storageBucket={storageBucket} />
+                    <div ref={mainViewerRef}>
+                      {viewerMode === 'all' ? (
+                        <StackedDocsViewer orderedDocs={ordered} contractData={contractData} urlTransactionId={urlTransactionId} storageBucket={storageBucket} />
+                      ) : (
+                        <div className="mt-4 p-3 bg-gray-900 rounded max-h-[720px] overflow-auto">
+                          <div className="mb-3 flex items-center justify-between">
+                            <div className="text-sm text-gray-300 font-semibold">{singleViewerLabel || 'Document'}</div>
+                            <button onClick={()=>{ setViewerMode('all'); setSingleViewerUrl(null); setSingleViewerLabel(''); setTimeout(()=>{ try{ mainViewerRef.current?.scrollIntoView({ behavior: 'smooth' }) }catch(e){} }, 50) }} className="px-3 py-1 bg-gray-800 rounded text-sm">← Show All Documents</button>
+                          </div>
+                          {singleViewerUrl ? (
+                            <div className="w-full bg-black rounded overflow-hidden" style={{height: '720px'}}>
+                              <iframe title={`single-doc-viewer`} src={singleViewerUrl} className="w-full h-full" />
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-gray-800 rounded text-sm text-gray-400">Loading document…</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )
                 })()}
 
@@ -1404,15 +1422,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                 <h4 className="font-semibold mb-2">Documents</h4>
                 {/* Inline PDF viewer label + iframe */}
                 <div className="mb-3">
-                  {activePdfLabel && <div className="text-sm text-gray-300 mb-1">Viewing: {activePdfLabel}</div>}
-                  {activePdfUrl ? (
-                    <div className="w-full h-[480px] bg-black rounded overflow-hidden mb-3">
-                      <iframe title={`document-viewer-${urlTransactionId}`} src={activePdfUrl} className="w-full h-full" />
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-gray-900 rounded text-sm text-gray-400 mb-3">No document loaded in inline viewer.</div>
-                  )}
-                  </div>
+                </div>
 
                 <div className="mb-2 text-sm text-gray-400">Drag & drop files anywhere to upload</div>
                 <div className="grid grid-cols-1 gap-3">
@@ -1461,7 +1471,6 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                           <button onClick={async ()=>{
                             try{
                               console.log('[TransactionDetail][ViewDoc] clicked doc:', d)
-                              // determine exact path field present on the doc row
                               const rawPath = d.path || d.storage_path || d.file_path || d.filePath || d.storagePath || `deal-${urlTransactionId}/${d.name}`
                               console.log('[TransactionDetail][ViewDoc] extracted path:', rawPath)
                               const body = { path: rawPath, bucket: 'deal-documents' }
@@ -1476,9 +1485,13 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                               console.log('[TransactionDetail][ViewDoc] signed-url response json:', j)
                               const url = j && (j.signedUrl || j.url || j.signed_url || null)
                               if(url){
-                                setActivePdfUrl(url)
-                                setActivePdfLabel(d.name || 'Document')
-                                console.log('[TransactionDetail][ViewDoc] assigned iframe url:', url)
+                                // Unified viewer: switch to single mode and show this doc in main viewer
+                                setSingleViewerUrl(url)
+                                setSingleViewerLabel(d.name || 'Document')
+                                setViewerMode('single')
+                                // scroll to main viewer
+                                try{ mainViewerRef.current?.scrollIntoView({ behavior: 'smooth' }) }catch(e){}
+                                console.log('[TransactionDetail][ViewDoc] switched main viewer to single doc:', url)
                               } else {
                                 console.error('[TransactionDetail][ViewDoc] no url in response, falling back to raw path')
                                 window.open(rawPath, '_blank')
