@@ -1466,10 +1466,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                                 // scroll to main viewer
                                 try{ mainViewerRef.current?.scrollIntoView({ behavior: 'smooth' }) }catch(e){}
                                 console.log('[TransactionDetail][ViewDoc] switched main viewer to single doc:', url)
-                              } else {
-                                console.error('[TransactionDetail][ViewDoc] no url in response, falling back to raw path')
-                                window.open(rawPath, '_blank')
-                              }
+                              } else { alert('Could not get a signed URL for this document. Please try again.') }
                             }catch(e){ console.error('[TransactionDetail][ViewDoc] Failed to open viewer', e); try{ window.open(d.path || d.storage_path || `deal-${urlTransactionId}/${d.name}`, '_blank') }catch(_){ } }
                           }} className="text-blue-400 px-2 py-1 rounded bg-gray-900">View</button>
 
