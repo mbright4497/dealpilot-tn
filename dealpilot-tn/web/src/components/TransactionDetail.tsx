@@ -24,6 +24,7 @@ import DocumentChecklist from './DocumentChecklist'
 import DocumentComplianceBar from './DocumentComplianceBar'
 import EditTransactionModal from './EditTransactionModal'
 import DealPartiesPanel from './DealPartiesPanel/DealPartiesPanel'
+import ContractViewer from './ContractViewer'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
 
 type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
@@ -66,6 +67,16 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [newContact,setNewContact]=useState<Contact>({role:'',name:'',company:'',phone:'',email:''})
   const [contractData, setContractData] = useState<any>(()=>{ try{ const raw = localStorage.getItem(`dp-contract-${urlTransactionId}`); if(raw) return JSON.parse(raw) }catch(e){} return null })
   const [rfWarnings, setRfWarnings] = useState<string[]>([])
+
+  // PDF inline viewer state (initialize from contract PDF if present)
+  const [activePdfUrl, setActivePdfUrl] = useState<string | null>(() => {
+    try{ return (contractData && (contractData.pdfUrl || contractData.pdf_url)) || null }catch(e){ return null }
+  })
+  const [activePdfLabel, setActivePdfLabel] = useState<string>(()=> activePdfUrl ? 'Contract PDF' : '')
+
+  // Reva panel ref + toast for Discuss action
+  const revaPanelRef = useRef<HTMLDivElement|null>(null)
+  const [showDiscussToast, setShowDiscussToast] = useState<{show:boolean, message:string}>({show:false, message: ''})
 
   // communication / draft state (fix: ensure variables referenced by Quick Actions exist)
   const [draftOpen, setDraftOpen] = useState(false)
@@ -693,6 +704,10 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
   return (
     <div className="p-4 rounded-lg bg-gray-900 text-white min-h-[400px]">
+      {/* Discuss toast/banner */}
+      {showDiscussToast.show && (
+        <div className="fixed top-16 right-4 z-50 bg-black bg-opacity-80 text-white px-4 py-2 rounded shadow">{showDiscussToast.message}</div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
         <div>
           <button onClick={onBack} className="text-sm text-orange-300">← Back</button>
@@ -723,7 +738,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
 
       {/* EVA HERO (top) - small iterative addition */}
-      <div className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6 hidden md:block">
+      <div ref={revaPanelRef} className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6 hidden md:block">
         <div className="mb-2 text-sm text-gray-300 flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" /><span>Reva — Deal Assistant</span></div>
         <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
           {chatMessages.map((m,i)=>(
@@ -1235,20 +1250,34 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm text-gray-400">Contract Summary</div>
-                      <div className="text-lg font-bold text-white">{contractData?.buyer || mergedTx.client || 'Buyer'} • {contractData?.property_address || mergedTx.address || 'Property'}</div>
-                      <div className="text-sm text-gray-400">Price: {contractData?.purchase_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(contractData.purchase_price) : (mergedTx as any).purchase_price ? new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format((mergedTx as any).purchase_price) : '—'} • Closing: {fmtDate(contractData?.closing_date || (mergedTx as any).closing_date || mergedTx.closing)}</div>
-                    </div>
-                    <div>
-                      <button onClick={()=>{ const el = document.getElementById('contract-full-details-'+urlTransactionId); if(!el){ const node = document.createElement('div'); node.id = 'contract-full-details-'+urlTransactionId; node.innerText = JSON.stringify(contractData || mergedTx, null, 2); node.className = 'mt-3 p-2 bg-gray-800 rounded text-xs text-gray-300 whitespace-pre-wrap'; document.getElementById('contract-summary-'+urlTransactionId)?.appendChild(node); } else { const existing = document.getElementById('contract-full-details-'+urlTransactionId); existing.remove(); } }} className="px-3 py-1 bg-gray-800 rounded text-sm">Show full details</button>
                     </div>
                   </div>
-                  <div id={`contract-summary-${urlTransactionId}`} />
+                  <div className="mt-3">
+                    {contractData ? (
+                      // Render the human-friendly ContractViewer when contract data is available
+                      <ContractViewer contract={contractData} />
+                    ) : (
+                      <div className="p-3 bg-gray-800 rounded text-sm text-gray-300">No contract data yet. Complete the RF401 Wizard to populate.</div>
+                    )}
+                  </div>
                 </div>
 
               </div>
 
               <div className="p-4 bg-gray-800 rounded">
                 <h4 className="font-semibold mb-2">Documents</h4>
+                {/* Inline PDF viewer label + iframe */}
+                <div className="mb-3">
+                  {activePdfLabel && <div className="text-sm text-gray-300 mb-1">Viewing: {activePdfLabel}</div>}
+                  {activePdfUrl ? (
+                    <div className="w-full h-[480px] bg-black rounded overflow-hidden mb-3">
+                      <iframe title={`document-viewer-${urlTransactionId}`} src={activePdfUrl} className="w-full h-full" />
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-gray-900 rounded text-sm text-gray-400 mb-3">No document loaded in inline viewer.</div>
+                  )}
+                  </div>
+
                 <div className="mb-2 text-sm text-gray-400">Drag & drop files anywhere to upload</div>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
@@ -1297,35 +1326,37 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                             try{
                               const path = d.storage_path || d.path || `deal-${urlTransactionId}/${d.name}`
                               const res = await fetch('/api/docs/signed-url', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ path, bucket: 'deal-documents' }) })
-                              if(!res.ok){ alert('Unable to get signed URL'); return }
+                              if(!res.ok){ console.error('Unable to get signed URL'); return }
                               const j = await res.json()
-                              if(j.signedUrl) window.open(j.signedUrl, '_blank')
-                              else alert('No signed URL returned')
-                            }catch(e){ alert('Failed to open viewer') }
+                              if(j.signedUrl){
+                                // set inline viewer instead of opening a new tab
+                                setActivePdfUrl(j.signedUrl)
+                                setActivePdfLabel(d.name || 'Document')
+                                // preserve previous behavior: do not open new tab here
+                              } else {
+                                console.error('No signed URL returned')
+                              }
+                            }catch(e){ console.error('Failed to open viewer', e) }
                           }} className="text-blue-400 px-2 py-1 rounded bg-gray-900">View</button>
 
                           <button onClick={async ()=>{
                             try{
-                              setExtracting(true); setExtractionError(null)
-                              const docId = d.id || d.document_id || null
-                              if(!docId){ setExtractionError('Missing doc id'); setExtracting(false); return }
-                              const res = await fetch(`/api/documents/${urlTransactionId}/text-extract?docId=${encodeURIComponent(docId)}`)
-                              if(!res.ok){ const txt = await res.text(); setExtractionError(txt || 'Extraction failed'); setExtracting(false); return }
-                              const j = await res.json()
-                              if(!j.ok){ setExtractionError(j.error || 'Extraction failed'); setExtracting(false); return }
-
-                              // inject context, prefill and auto-send a short discussion message, and show banner
-                              addMessage({ from: 'system', text: `DOCUMENT_CONTEXT: ${j.extractedText.slice(0, 10000)}` })
-                              setInput(`Discuss document: ${j.name}`)
+                              // Scroll Reva panel into view
+                              try{ if(revaPanelRef && revaPanelRef.current){ revaPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' }) } else { window.scrollTo({ top: 0, behavior: 'smooth' }) } }catch(e){}
+                              const fileName = d.name || 'document'
+                              const msg = `Please review ${fileName} and tell me what I need to know about this document for the 45 Oak Ln transaction.`
+                              // update input state before calling the assistant
+                              setInput(msg)
+                              // show toast/banner
+                              setShowDiscussToast({ show: true, message: `Sending ${fileName} to Reva for review...` })
+                              setTimeout(()=> setShowDiscussToast({ show: false, message: '' }), 3000)
+                              // ensure Reva drawer is visible
                               setMode('overview')
-                              setDiscussingDoc(j.name)
-                              setTimeout(()=>{ window.scrollTo({ top: 0, behavior: 'smooth' }); }, 100)
-                              setTimeout(()=>{ sendAIMessage(`Discuss document: ${j.name}. Context: ${ (j.extractedText||'').slice(0,2000) }`) }, 300)
-                              setTimeout(()=>setDiscussingDoc(null), 10000)
                               setMobileRevaOpen(true)
-                              setExtracting(false)
-                            }catch(e:any){ console.error(e); setExtractionError(String(e)); setExtracting(false) }
-                          }} className="text-indigo-300 px-2 py-1 rounded bg-gray-900">{extracting ? 'Extracting…' : 'Discuss'}</button>
+                              // send the message to Reva immediately
+                              await sendAIMessage(msg)
+                            }catch(e){ console.error('Discuss failed', e) }
+                          }} className="text-indigo-300 px-2 py-1 rounded bg-gray-900">Discuss</button>
 
                           <button onClick={async ()=>{
                             try{
