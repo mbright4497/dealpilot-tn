@@ -1,0 +1,10 @@
+{
+  "000": { "slug":"orchestrator","name":"Orchestrator","role":"orchestrator","owner":"Matt / mini","runtime":"node","notes":"Highest privilege" },
+  "100": { "slug":"ui-manager","name":"UI Manager","role":"manager","owner":"mini","runtime":"node","notes":"Coordinates UI work and PRs" },
+  "110": { "slug":"ui-refactor","name":"UI Refactor Worker","role":"worker","owner":"mini","runtime":"node","notes":"Component extraction & builds" },
+  "200": { "slug":"build-worker","name":"Build Worker","role":"worker","owner":"mini","runtime":"node","notes":"Runs npx next build and reports logs" },
+  "300": { "slug":"docs-worker","name":"Document Worker","role":"worker","owner":"mini","runtime":"container","notes":"OCR/Classification; GPU optional" },
+  "400": { "slug":"qa-runner","name":"QA Runner","role":"worker","owner":"mini","runtime":"node","notes":"Runs tests and reports results" },
+  "500": { "slug":"deploy-agent","name":"Deploy Agent","role":"worker","owner":"mini","runtime":"node","notes":"Handles pushes and Vercel deploys" },
+  "900": { "slug":"gpu-worker","name":"GPU Worker","role":"worker","owner":"mini","runtime":"gpu","notes":"NVIDIA tasks; requires GPU" }
+}
