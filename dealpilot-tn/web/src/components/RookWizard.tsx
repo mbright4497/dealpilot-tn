@@ -330,8 +330,8 @@ export default function RookWizard({ transactionId, onClose }: Props) {
       if (txPayload?.seller_name) {
         override.seller_name = txPayload.seller_name
       }
-      const buyerContact = contacts.find((contact) => contact.role === 'buyer' && contact.contacts?.name)
-      const sellerContact = contacts.find((contact) => contact.role === 'seller' && contact.contacts?.name)
+      const buyerContact = contacts.find((contact) => (String(contact.role||'').toLowerCase().includes('buyer')) && contact.contacts?.name)
+      const sellerContact = contacts.find((contact) => (String(contact.role||'').toLowerCase().includes('seller')) && contact.contacts?.name)
       if (buyerContact?.contacts?.name) {
         override.buyer_name = buyerContact.contacts.name
       }
@@ -561,7 +561,10 @@ export default function RookWizard({ transactionId, onClose }: Props) {
     </div>
   )
 
-  const agentContacts = dealContacts.filter((contact) => (contact.role || '').includes('agent') || (contact.role || '').includes('coordinator'))
+  const agentContacts = dealContacts.filter((contact) => {
+    const role = String(contact.role||'').toLowerCase()
+    return role.includes('agent') || role.includes('coordinator') || role.includes('transaction')
+  })
 
   const partiesPanel = (
     <div className="space-y-4">
