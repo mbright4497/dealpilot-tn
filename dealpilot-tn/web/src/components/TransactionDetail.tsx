@@ -500,8 +500,43 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   },[urlTransactionId])
 
   // helpers for dates and formatting
-  const fmtDate = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return 'Not set'; try{ const dt = typeof d==='string'? new Date(d): d; return isNaN(dt.getTime())? 'Not set' : dt.toLocaleDateString() }catch(e){ return 'Not set' } }
-  const daysUntil = (d?:string|Date|null)=>{ if(d===null || d===undefined || d==='') return null; const t = new Date(d).getTime(); if(isNaN(t)) return null; return Math.ceil((t-Date.now())/(1000*60*60*24)) }
+  // Date helpers: prefer date-only YYYY-MM-DD without timezone conversion when possible
+  function parseDateLike(d?: string | Date | null): Date | null {
+    if (!d) return null
+    if (typeof d !== 'string') {
+      const dt = new Date(d)
+      return isNaN(dt.getTime()) ? null : dt
+    }
+    const s = d.trim()
+    // If already a simple YYYY-MM-DD, construct a local Date at midnight to avoid timezone shifts
+    const isoDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s)
+    if (isoDateOnly) {
+      const [y, m, day] = s.split('-').map((x) => Number(x))
+      if (!y || !m || !day) return null
+      // construct as local date at midnight
+      const dt = new Date(y, m - 1, day)
+      return isNaN(dt.getTime()) ? null : dt
+    }
+    // fallback: try parsing as ISO or other date string
+    const dt = new Date(s)
+    return isNaN(dt.getTime()) ? null : dt
+  }
+
+  const fmtDate = (d?:string|Date|null)=>{
+    const dt = parseDateLike(d)
+    if(!dt) return 'Not set'
+    try{ return dt.toLocaleDateString() }catch(e){ return 'Not set' }
+  }
+
+  const daysUntil = (d?:string|Date|null)=>{
+    const dt = parseDateLike(d)
+    if(!dt) return null
+    const today = new Date()
+    // clear time portion for day-accurate difference
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+    const target = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime()
+    return Math.ceil((target - start)/(1000*60*60*24))
+  }
 
   function parseNames(val:any){
     if(!val) return []
