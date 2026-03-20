@@ -6,6 +6,6 @@
   "300": { "slug":"docs-worker","name":"Document Worker","role":"worker","owner":"mini","runtime":"container","notes":"OCR/Classification; GPU optional" },
   "400": { "slug":"qa-runner","name":"QA Runner","role":"worker","owner":"mini","runtime":"node","notes":"Runs tests and reports results" },
   "500": { "slug":"deploy-agent","name":"Deploy Agent","role":"worker","owner":"mini","runtime":"node","notes":"Handles pushes and Vercel deploys" },
-  "700": { "slug":"closingpilot","name":"ClosingPilot","role":"worker","owner":"mini","runtime":"node","notes":"Owns dealpilot-tn: bugs, CI, deploys" },
+  "700": { "slug":"closingpilot","name":"ClosingPilot","role":"worker","owner":"mini","runtime":"node","model":"gpt-5.1-codex-mini","notes":"Owns dealpilot-tn: bugs, CI, deploys — use gpt-5.1-codex-mini for cost control" },
   "900": { "slug":"gpu-worker","name":"GPU Worker","role":"worker","owner":"mini","runtime":"gpu","notes":"NVIDIA tasks; requires GPU" }
 }
