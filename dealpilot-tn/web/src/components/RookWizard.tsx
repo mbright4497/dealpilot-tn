@@ -338,6 +338,9 @@ export default function RookWizard({ transactionId, onClose }: Props) {
       if (sellerContact?.contacts?.name) {
         override.seller_name = sellerContact.contacts.name
       }
+      // Agent email fallback: prefer transaction payload agent fields, else pick agent contact email
+      const agentEmail = txPayload?.agent || txPayload?.agent_email || contacts.find((c)=> String(c.role||'').toLowerCase().includes('agent') && c.contacts?.email)?.contacts?.email
+      if(agentEmail) override.agent_email = agentEmail
       const merged = { ...currentSection, ...override }
       setSectionValues((prev) => ({ ...prev, section_1: merged }))
       const saved = await handleSaveSection('section_1', merged)
