@@ -1,27 +1,31 @@
-DONE BY WORKHORSE — DATE: 2026-03-15
-DONE BY WORKHORSE — DATE: 2026-03-15
-DONE BY WORKHORSE — DATE: 2026-03-15
+Date: 2026-03-18
 
-Date: 2026-03-15
-Sources referenced: market-intel.md, follow-ups.md, hot-zones.md, daily-post.md, afternoon-post.md, ghl-actions.md
+Daily Scorecard — iHome Team (Tri-Cities, TN)
 
-Summary (≤400 words):
+Summary of activity
+- Files reviewed: market-intel.md, follow-ups.md, hot-zones.md, daily-post.md, afternoon-post.md, ghl-actions.md (contents mostly placeholders/TODOs).
+- Market intel: Snapshot file contains structure but key metrics remain TODO (median sale price, inventory, days on market, 30/90-day trends, new construction counts).
+- Content: daily-post and afternoon-post exist as placeholders ({CONTENT}) — no published content produced today from these files.
+- Follow-ups & hot zones: follow-ups.md and hot-zones.md are placeholders ({CONTENT}) — no named leads or pipeline updates found in source files.
 
-- Leads identified:
-  - Manual review confirmed demand around Stone Castle Village/Stonebridge (DR Horton), Colonial Heights/Heritage Crest (Ryan Homes), Willow Creek/Hillview Crossing (Smith Douglas), Champions Way/Boones Creek (Lennar), and Hunter’s Ridge/Meadowview (Lennar). No live GHL export yet; tracking is still builder-contact centric. (source: follow-ups.md, hot-zones.md)
+Leads & revenue estimate
+- No explicit leads listed in source files. Therefore no confirmed revenue today.
+- Estimate (placeholder): 0–2 inbound leads expected once price alerts and ad creatives run; potential near-term revenue depends on conversion of new-construction leads (avg commission estimate TBD).
 
-- Content created:
-  - Crafted today’s hot-off-the-blueprint daily post that highlights sub-$400K new construction with modern finishes across Johnson City, Kingsport, and Bristol. (source: daily-post.md)
-  - Finalized afternoon situational update explaining blocked APIs and inviting buyers to DM for manual builder rosters plus incentive alerts. (source: afternoon-post.md)
+Deliverables completed
+- Compiled today's scorecard (this file) from project source files.
+- Noted action items in market-intel.md (price alerts, inventory watch, Facebook audience targeting).
 
-- Actions taken:
-  - Drafted GHL automations for price-drop alerts, new-listing nurtures, hot prospect follow-ups, market broadcasts, and incentive confirmation tasks; each references the five hot zones and uses neighborhood + hot_lead tagging schemes. (source: ghl-actions.md)
-  - Logged market intel noting blocked MLS/API access, placeholder median prices (Zillow Johnson City value index), and the need for MLS/builder confirmation before posting price overlays. (source: market-intel.md)
+GHL actions (short notes)
+- ghl-actions.md is placeholder ({CONTENT}). No active workflow changes recorded today.
+- Recommended immediate GHL actions: connect FB lead form → GHL funnel, create tag mapping for ad variations, enable instant SMS + guide delivery (see SOUL.md workflow spec).
 
-- Tags & KPI numbers:
-  - Tags prepped: ad_variation_A/B/C, neighborhood_<community>, lead_source_builder, hot_lead, mid-day_nurture, incentive_alert. (source: ghl-actions.md)
-  - KPIs tracked: 0 live MLS data pulls due to 429/captcha blocks, 5 hot-zone neighborhoods monitored, 0 price drops confirmed, 0 published paid ads (awaiting MLS confirmation), 1 daily post and 1 afternoon post ready.
+Blockers / Missing data
+- Market live data missing (all TODOs in market-intel.md). Need someone to run live lookups on Realtor/Zillow/MLS and fill median price, inventory, days on market, and new-construction counts.
+- No follow-ups or lead details present; follow-ups.md must be populated.
 
-- Blockers / next steps:
-  - API/MLS feeds remain blocked (429/captcha); manual builder contact or MLS credential access is required to confirm prices/incentives and unlock the live lead list. (source: market-intel.md, hot-zones.md)
-  - Priority next step: pull MLS export + GHL lead list, then update market intel/hot zones with verified DOM, incentives, and price drops before activating automations and publishing paid copy.
+Notes for tomorrow
+- Run the exact Realtor/Zillow queries in market-intel.md and replace TODOs.
+- Build ad creatives and push to FB with the audience specified.
+
+(Concise; <=400 words)

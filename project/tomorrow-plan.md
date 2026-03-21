@@ -1,27 +1,30 @@
-DONE BY WORKHORSE — DATE: 2026-03-15
-DONE BY WORKHORSE — DATE: 2026-03-15
-DONE BY WORKHORSE — DATE: 2026-03-15
+Date: 2026-03-19
 
-Date: 2026-03-15
-Sources referenced: market-intel.md, follow-ups.md, hot-zones.md, ghl-actions.md
+Top 3 Priority Actions
+1) Run live market lookups and update market-intel.md — Owner: Agent
+   - Actions: Run Realtor.com and Zillow searches for Johnson City, Kingsport, Bristol (new construction under $400K). Record median sale price, active inventory, median days on market, 30/90-day trend, and count of new-construction listings. Replace TODOs.
+2) Launch FB ad test (3 variations) and connect lead flow to GHL — Owner: Marketing
+   - Actions: Create 3 ad variations (hooks A/B/C from SOUL.md), set audience (25-45, 50mi Johnson City, interests: new homes/builders/home loans), budget $20/day, run for 3 days. Map lead form to GHL funnel and tag by ad variation.
+3) Implement GHL quick-response workflow & test end-to-end — Owner: Agent + Marketing
+   - Actions: Create GHL workflow: instant SMS+email (New Construction Guide), 5-min AI intro, 24hr follow-up, 3-day check-in. Test with one internal form submit and confirm tags and SMS delivery.
 
-Top 3 priorities for tomorrow (≤200 words):
+Key follow-ups
+- Populate follow-ups.md with any leads found today or during ad tests — Owner: Agent
+- Set price alerts for new construction under $400K in the three cities — Owner: Agent
+- Review hot-zones.md and mark any neighborhoods for targeted ads or open-house pushes — Owner: Marketing
 
-1) Pull live MLS export covering Tri-Cities new construction (30-day) plus builder quick-move-in rosters for Stone Castle Village, Colonial Heights, Willow Creek, Champions Way/Boones Creek, and Hunter’s Ridge. Validate median prices, DOM, incentives, and confirmed price drops under $400K so we can update market intel, hot zones, and creative overlays. (Reason: unlock verified data to drive outreach and paid creative accuracy.)
+Content topics to cover (for socials/emails)
+- New construction guide highlight: "Top 5 Reasons to Buy New in Tri-Cities"
+- Quick video: "How our AI finds new builds under $400K" (short explainer)
+- Testimonial template: buyer-first-time new-build checklist
 
-2) Export and clean GHL leads, assign them to the follow-up queue, tag by neighborhood/ad variation, and schedule call tasks for the hot prospects flagged in follow-ups.md. Ensure price-drop alerts, new-listing nurtures, and incentive confirmations are tied to each lead’s preferred community. (Reason: keeps buyer specialists on the hottest signals.)
+Time-sensitive opportunities for 2026-03-19
+- Early ad launch increases chances to capture weekend-intent shoppers; prioritize ad + GHL connection before 12pm.
+- Any newly-listed price reductions on new builds under $400K must be escalated within 48 hours (Agent).
 
-3) Publish at least one approved social/paid asset (daily or afternoon post) plus the lead magnet/guide landing page once MLS-based pricing is locked. Kick off the GHL automation sequence (market broadcast, follow-up call reminders) to capture inbound interest before the weekend. (Reason: test funnel end-to-end while momentum is fresh.)
+WhatsApp-ready evening wrap-up (short)
+- Wins: Compiled todays scorecard; market ad plan and GHL workflow specs ready.
+- Tomorrow top 3: 1) Run live market lookups (Agent) 2) Launch FB ad test (Marketing) 3) Connect & test GHL workflow (Agent+Marketing).
+- Urgent: Fill market-intel TODOs before launching ads; set price alerts for new construction under $400K.
 
-Key follow-ups:
-- Confirm budget_threshold remains $400K and update GHL automations after MLS export delivers real price ranges. (source: ghl-actions.md)
-- Verify builder incentive notes (Lennar, Smith Douglas, Ryan Homes, DR Horton) and add them to the hot prospect texts/email templates. (source: follow-ups.md, ghl-actions.md)
-
-Content topics to publish:
-- Under-$400K builder spotlight (community + incentives).
-- Price-drop alert recap for Colonial Heights and Willow Creek prospects.
-- AI-driven brief tour invite (60-second video or Reels) teasing manual walk-through support.
-
-Time-sensitive opportunities:
-- Any incentive or lot-credit updates from builders may expire quickly—confirm before tomorrow evening and push updates to warm leads immediately.
-- Manual builder rosters/data should be shared in the next 24 hours so agents can schedule weekend tours for folks already warming up to the communities listed in hot-zones.md.
+Quick motivational note: Small, focused actions tomorrow will unlock the first leads — lets get one test lead live and convert it.
