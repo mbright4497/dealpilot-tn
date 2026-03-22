@@ -76,7 +76,7 @@ export default function MissionControlPage() {
   async function sendChat(){ if(!chatInput.trim()) return; try{ await fetch('/api/mission/chat',{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ text: chatInput }) }); setChatInput(''); await loadChat(); }catch(e){console.error(e)} }
 
   // helpers
-  function groupByDate(events:any[]){ const m:any = {}; events.forEach(ev=>{ const d = fmtDate(ev.start_time); (m[d]|| (m[d]=[])).push(ev); }); return m; }
+  function groupByDate(events:any[]){ const m:any = {}; if(!Array.isArray(events)) return m; events.forEach(ev=>{ const d = fmtDate(ev.start_time); (m[d]|| (m[d]=[])).push(ev); }); return m; }
 
   // UI pieces
   function TabButton({name}:{name:string}){
@@ -126,9 +126,9 @@ export default function MissionControlPage() {
                   <div key={col} className="bg-slate-800 rounded p-3">
                     <h3 className="text-sm font-bold mb-2">{col.replace('_',' ')}</h3>
                     <div className="space-y-2">
-                      {tasks.filter(t=>t.status===col).map(t=> (
-                        <div key={t.id} className="bg-slate-700 p-2 rounded">{t.title}</div>
-                      ))}
+                      {(Array.isArray(tasks)?tasks:[]).filter(t=>t?.status===col).map(t=> (
+                        <div key={t?.id || Math.random()} className="bg-slate-700 p-2 rounded">{t?.title}</div>
+                      )):null}
                     </div>
                   </div>
                 ))}
@@ -157,12 +157,12 @@ export default function MissionControlPage() {
               </div>
 
               <div className="space-y-4">
-                {Object.entries(groupByDate(calendar)).length===0 && <div className="text-gray-400">No events</div>}
-                {Object.entries(groupByDate(calendar)).map(([date, events])=> (
+                {Object.entries(groupByDate(Array.isArray(calendar)?calendar:[])).length===0 && <div className="text-gray-400">No events</div>}
+                {Object.entries(groupByDate(Array.isArray(calendar)?calendar:[])).map(([date, events])=> (
                   <div key={date}>
                     <div className="font-bold mb-2">{date}</div>
                     <div className="space-y-2">
-                      {(events as any[]).map(ev=> (
+                      {Array.isArray(events)? (events as any[]).map(ev=> (
                         <div key={ev.id} className="p-3 bg-slate-800 rounded flex justify-between items-center">
                           <div>
                             <div className="font-medium">{ev.title}</div>
@@ -172,7 +172,7 @@ export default function MissionControlPage() {
                             {ev.assigned_agent && <div className="px-2 py-1 bg-green-700 text-green-100 rounded">{ev.assigned_agent}</div>}
                           </div>
                         </div>
-                      ))}
+                      )):null}
                     </div>
                   </div>
                 ))}
@@ -238,7 +238,7 @@ export default function MissionControlPage() {
               </form>
 
               <div className="space-y-2">
-                {projects.map(p=> (
+                {(Array.isArray(projects)?projects:[]).map((p:any)=> (
                   <div key={p.id} className="p-3 bg-slate-800 rounded flex justify-between items-center">
                     <div>
                       <div className="font-medium">{p.title}</div>
@@ -263,7 +263,7 @@ export default function MissionControlPage() {
                 <button className="px-3 py-2 bg-blue-600 rounded">Add</button>
               </form>
               <div className="space-y-2">
-                {memories.map(m=> (
+                {(Array.isArray(memories)?memories:[]).map((m:any)=> (
                   <div key={m.id} className="p-3 bg-slate-800 rounded">
                     <div className="text-xs text-gray-400">{m.date}</div>
                     <div>{m.text}</div>
@@ -311,7 +311,7 @@ export default function MissionControlPage() {
             <section>
               <h2 className="text-lg font-semibold mb-4">Office</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {office.map((a:any)=> (
+                {(Array.isArray(office)?office:[]).map((a:any)=> (
                   <div key={a.id || a.name} className={`p-4 rounded ${a.status==='working'? 'border-2 border-green-500':'border border-slate-800'} bg-slate-800`}>
                     <div className="flex justify-between items-start">
                       <div>
@@ -328,8 +328,8 @@ export default function MissionControlPage() {
 
               <h3 className="mt-6 text-sm font-bold">Live Activity Feed</h3>
               <div className="mt-2 space-y-2 max-h-48 overflow-auto bg-slate-800 p-2 rounded">
-                {activityFeed.map((ev:any)=> (
-                  <div key={ev.id || ev.created_at} className="text-xs text-gray-300">{fmtTime(ev.created_at)} — {ev.source || ev.event_type} — {ev.payload?.current_task || ev.payload}</div>
+                {(Array.isArray(activityFeed)?activityFeed:[]).map((ev:any)=> (
+                  <div key={ev?.id || ev?.created_at || Math.random()} className="text-xs text-gray-300">{fmtTime(ev?.created_at)} — {ev?.source || ev?.event_type} — {ev?.payload?.current_task || ev?.payload}</div>
                 ))}
               </div>
             </section>
