@@ -165,31 +165,23 @@ export default function MissionControl(){
           )}
 
           {/* Calendar */}
-          {tab==='Calendar' && (
-            <section>
-              <h2 className="text-lg font-semibold mb-2">Calendar</h2>
-              {(!Array.isArray(calendar) || calendar.length===0) ? (
-                <div className="text-gray-400">No events</div>
-              ) : (
-                (()=>{
-                  try{
-                    const grouped = groupByDate(calendar || []);
-                    return Object.entries(grouped).map(([d,evs])=> (
-                      <div key={d} className="mb-2">
-                        <div className="font-bold">{d}</div>
-                        {(Array.isArray(evs)?evs:[]).map((ev:any)=> (
-                          <div key={ev?.id} className="p-2 bg-slate-800 rounded my-1">
-                            <div className="font-medium">{ev?.title ?? ''}</div>
-                            <div className="text-sm text-gray-400">{ev?.all_day ? 'All day' : `${fmtTime(ev?.start_time)} — ${fmtTime(ev?.end_time)}`}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ));
-                  }catch(e){ console.error('calendar render error',e); return <div className="text-red-500">Calendar rendering error</div>; }
-                })()
-              )}
-            </section>
-          )}
+          {tab === 'Calendar' && (
+ <section className="p-4">
+ <h2 className="text-lg font-semibold mb-4">Calendar</h2>
+ {!Array.isArray(calendar) || calendar.length === 0 ? (
+ <p className="text-slate-400">No events scheduled.</p>
+ ) : (
+ <ul className="space-y-2">
+ {calendar.map((ev: Record<string, unknown>, i: number) => (
+ <li key={i} className="bg-slate-800 rounded p-3">
+ <div className="font-medium">{String((ev as any)?.title ?? (ev as any)?.name ?? 'Event')}</div>
+ <div className="text-sm text-slate-400">{String((ev as any)?.start_time ?? (ev as any)?.date ?? (ev as any)?.datetime ?? '')}</div>
+ </li>
+ ))}
+ </ul>
+ )}
+ </section>
+)}
 
           {/* Projects */}
           {tab==='Projects' && (
