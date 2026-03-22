@@ -139,6 +139,53 @@ export default function MissionControl(){
             </section>
           )}
 
+          {/* Tasks */}
+          {tab==='Tasks' && (
+            <section>
+              <h2 className="text-lg font-semibold mb-2">Tasks</h2>
+              {['todo','in_progress','done'].map(col=> (
+                <div key={col} className="mb-3">
+                  <h3 className="font-bold">{col}</h3>
+                  {(Array.isArray(tasks)?tasks:[]).filter(t=>t?.status===col).map(t=> <div key={t?.id}>{t?.title}</div>)}
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* Calendar */}
+          {tab==='Calendar' && (
+            <section>
+              <h2 className="text-lg font-semibold mb-2">Calendar</h2>
+              {Object.entries(groupByDate(Array.isArray(calendar)?calendar:[])).map(([d,evs])=> (
+                <div key={d} className="mb-2"><div className="font-bold">{d}</div>{(Array.isArray(evs)?evs:[]).map((ev:any)=> <div key={ev?.id} className="p-2 bg-slate-800 rounded my-1"><div className="font-medium">{ev?.title}</div><div className="text-sm text-gray-400">{ev?.all_day? 'All day' : `${fmtTime(ev?.start_time)} — ${fmtTime(ev?.end_time)}`}</div></div>)}</div>
+              ))}
+            </section>
+          )}
+
+          {/* Projects */}
+          {tab==='Projects' && (
+            <section>
+              <h2 className="text-lg font-semibold mb-2">Projects</h2>
+              {(Array.isArray(projects)?projects:[]).map((p:any)=> <div key={p?.id} className="p-2 bg-slate-800 rounded mb-2"><div className="font-medium">{p?.title}</div><div className="text-sm text-gray-400">{p?.description}</div></div>)}
+            </section>
+          )}
+
+          {/* Memories */}
+          {tab==='Memories' && (
+            <section>
+              <h2 className="text-lg font-semibold mb-2">Memories</h2>
+              {(Array.isArray(memories)?memories:[]).map(m=> <div key={m?.id} className="p-2 bg-slate-800 rounded mb-2"><div className="text-xs text-gray-400">{m?.date}</div><div>{m?.text}</div></div>)}
+            </section>
+          )}
+
+          {/* Office */}
+          {tab==='Office' && (
+            <section>
+              <h2 className="text-lg font-semibold mb-2">Office</h2>
+              {(Array.isArray(office)?office:[]).map(a=> <div key={a?.id || a?.name} className={`p-3 rounded mb-2 ${a?.status==='working'? 'border-2 border-green-500':'border border-slate-800'} bg-slate-800`}><div className="flex justify-between"><div><div className="font-semibold">{a?.name}</div><div className="text-sm text-gray-400">{a?.role}</div>{a?.current_task && <div className="text-sm text-gray-300">Current: {a.current_task}</div>}</div><div className="text-xs text-gray-400">{relativeTime(a?.last_heartbeat)}</div></div></div>)}
+            </section>
+          )}
+
           {/* Chat tab - full UI */}
           {tab==='Chat' && (
             <section className="flex gap-4">
