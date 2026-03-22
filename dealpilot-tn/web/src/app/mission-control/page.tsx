@@ -55,7 +55,7 @@ export default function MissionControlPage() {
   async function loadProjects() { try { const r = await fetch('/api/mission/projects'); if (r.ok) setProjects(await r.json() || []); } catch(e){console.error(e)} }
   async function loadMemories(){ try{ const r = await fetch('/api/mission/memories'); if(r.ok) setMemories(await r.json() || []);}catch(e){console.error(e)} }
   async function loadOffice(){ try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); setOffice(d.team || d.status || []); setActivityFeed(d.activity || d.events || []); } }catch(e){console.error(e)} }
-  async function loadChat(){ try{ const r = await fetch('/api/mission/chat'); if(r.ok) setChat(await r.json() || []); }catch(e){console.error(e)} }
+  async function loadChat(){ try{ const r = await fetch('/api/mission/chat'); if(r.ok){ const d = await r.json(); if(Array.isArray(d)) setChat(d); else if(d && d.messages) setChat(d.messages); else setChat([]); } }catch(e){console.error(e)} }
 
   useEffect(()=>{ loadTasks(); loadCalendar(); loadProjects(); loadMemories(); loadOffice(); loadChat(); const i=setInterval(()=>loadOffice(),10000); return ()=>clearInterval(i); },[]);
   useEffect(()=>{ chatEnd.current?.scrollIntoView({behavior:'smooth'}); },[chat]);
@@ -340,12 +340,15 @@ export default function MissionControlPage() {
             <section className="flex flex-col" style={{height:'60vh'}}>
               <h2 className="text-lg font-semibold mb-4">Mission Chat</h2>
               <div className="flex-1 overflow-auto bg-slate-800 p-4 rounded">
-                {chat.map((m:any, idx:number)=> (
-                  <div key={idx} className={`mb-2 ${m.sender==='Tango'? 'text-blue-200':'text-gray-200'}`}>
-                    <div className="text-xs text-gray-400">{m.sender || 'User'} • {fmtTime(m.created_at)}</div>
-                    <div>{m.text}</div>
-                  </div>
-                ))}
+                {(() => {
+                  const messages = Array.isArray(chat) ? chat : (chat && (chat.messages || chat.data)) || [];
+                  return messages.map((m:any, idx:number)=> (
+                    <div key={idx} className={`mb-2 ${(m?.sender==='Tango')? 'text-blue-200':'text-gray-200'}`}>
+                      <div className="text-xs text-gray-400">{m?.sender || 'User'} • {fmtTime(m?.created_at)}</div>
+                      <div>{m?.text}</div>
+                    </div>
+                  ));
+                })()}
                 <div ref={chatEnd} />
               </div>
               <div className="mt-3 flex gap-2">
