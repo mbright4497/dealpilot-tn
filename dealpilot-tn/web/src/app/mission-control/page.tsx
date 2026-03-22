@@ -11,6 +11,7 @@ type Project={id:number;title:string;description:string;progress:number;owner_ag
 type Memory={id:number;date:string;text:string;tags:string[];created_at:string}
 type ChatMsg={id:number;agent_id:string;message:string;created_at:string}
 
+async function safe(path:string){try{const r=await fetch(path,{cache:'no-store'});return await r.json()}catch{return null}}
 async function api(path:string,opts?:RequestInit){const r=await fetch(path,{cache:'no-store',...opts});return r.json()}
 
 function StatusDot({status}:{status:string}){
@@ -37,22 +38,21 @@ export default function MissionControl(){
   const chatEnd=useRef<HTMLDivElement>(null)
 
   const refresh=useCallback(async()=>{
-    try{
-      const[t,a,tk,p,m,c]=await Promise.all([
-        api('/api/mission/status'),api('/api/mission/activity'),
-        api('/api/mission/tasks'),api('/api/mission/projects'),
-        api('/api/mission/memories'),api('/api/mission/chat')
-      ])
-      if(t.team)setTeam(t.team)
-      if(a.events)setActivity(a.events)
-      if(tk.tasks)setTasks(tk.tasks)
-      if(p.projects)setProjects(p.projects)
-      if(m.memories)setMemories(m.memories)
-      if(c.messages)setChat(c.messages)
-    }catch(e){console.error(e)}
+    const t=await safe('/api/mission/status')
+    if(t?.team)setTeam(t.team)
+    const a=await safe('/api/mission/activity')
+    if(a?.events)setActivity(a.events)
+    const tk=await safe('/api/mission/tasks')
+    if(tk?.tasks)setTasks(tk.tasks)
+    const p=await safe('/api/mission/projects')
+    if(p?.projects)setProjects(p.projects)
+    const m=await safe('/api/mission/memories')
+    if(m?.memories)setMemories(m.memories)
+    const c=await safe('/api/mission/chat')
+    if(c?.messages)setChat(c.messages)
   },[])
 
-  useEffect(()=>{refresh();const i=setInterval(refresh,4000);return()=>clearInterval(i)},[])
+  useEffect(()=>{refresh();const i=setInterval(refresh,5000);return()=>clearInterval(i)},[])
   useEffect(()=>{chatEnd.current?.scrollIntoView({behavior:'smooth'})},[chat])
 
   const tango=team.find(a=>a.is_leader)
@@ -69,7 +69,6 @@ export default function MissionControl(){
 
   return(
     <div className="min-h-screen bg-black text-white">
-      {/* HEADER */}
       <header className="border-b border-gray-800 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-xl font-bold text-blue-400">Mission Control</span>
@@ -80,27 +79,18 @@ export default function MissionControl(){
           <StatusDot status={tango?.status||'idle'}/>
         </div>
       </header>
-
-      {/* TANGO MONITOR BAR */}
       {tango&&<div className="bg-gray-900 border-b border-gray-800 px-6 py-2 flex items-center gap-4 text-xs">
         <span className="text-yellow-400 font-bold">TANGO</span>
         <StatusBadge status={tango.status}/>
         <span className="text-gray-400">{tango.current_task||'Monitoring all systems'}</span>
-        <span className="ml-auto text-gray-600">Last heartbeat: {activity.find(e=>e.agent_id===tango.id&&e.event_type==='heartbeat')? new Date(activity.find(e=>e.agent_id===tango.id&&e.event_type==='heartbeat')!.created_at).toLocaleTimeString():'--'}</span>
       </div>}
-
       <div className="flex">
-        {/* SIDEBAR */}
         <nav className="w-48 border-r border-gray-800 p-4 space-y-1">
           {TABS.map(t=>(
             <button key={t} onClick={()=>setActive(t)} className={`w-full text-left px-3 py-2 rounded text-sm ${active===t?'bg-gray-800 text-white':'text-gray-500 hover:text-gray-300'}`}>{t}</button>
           ))}
         </nav>
-
-        {/* MAIN CONTENT */}
         <main className="flex-1 p-6 overflow-auto" style={{maxHeight:'calc(100vh - 110px)'}}>
-
-          {/* ===== OFFICE TAB ===== */}
           {active==='Office'&&<div>
             <h2 className="text-lg font-bold mb-4">Office Floor</h2>
             <div className="grid grid-cols-3 gap-4">
@@ -118,8 +108,6 @@ export default function MissionControl(){
                 </div>
               ))}
             </div>
-
-            {/* TAP ON SHOULDER - COMMAND PANEL */}
             {selected&&<div className="mt-6 bg-gray-900 rounded-lg p-4 border border-gray-800">
               <h3 className="text-sm font-bold mb-2">Tap {selected.is_leader?'TANGO':selected.name} on the shoulder</h3>
               <div className="flex gap-2">
@@ -127,21 +115,17 @@ export default function MissionControl(){
                 <button onClick={sendCommand} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm font-medium">Send</button>
               </div>
             </div>}
-
-            {/* LIVE ACTIVITY FEED */}
             <h3 className="text-sm font-bold mt-6 mb-2">Live Activity Feed</h3>
             <div className="space-y-1 max-h-60 overflow-auto">
               {activity.slice(0,20).map(e=>(
                 <div key={e.id} className="flex items-center gap-2 text-xs py-1 border-b border-gray-900">
                   <span className="text-gray-600 w-20">{new Date(e.created_at).toLocaleTimeString()}</span>
-                  <span className={`px-1.5 py-0.5 rounded ${e.event_type==='command'?'bg-blue-900 text-blue-300':e.event_type==='heartbeat'?'bg-gray-800 text-gray-400':e.event_type==='result'?'bg-green-900 text-green-300':'bg-gray-800 text-gray-400'}`}>{e.event_type}</span>
+                  <span className={`px-1.5 py-0.5 rounded ${e.event_type==='command'?'bg-blue-900 text-blue-300':e.event_type==='heartbeat'?'bg-gray-800 text-gray-400':'bg-gray-800 text-gray-400'}`}>{e.event_type}</span>
                   <span className="text-gray-300 truncate">{e.payload?.current_task||e.source}</span>
                 </div>
               ))}
             </div>
           </div>}
-
-          {/* ===== TASKS TAB ===== */}
           {active==='Tasks'&&<div>
             <h2 className="text-lg font-bold mb-4">Task Board</h2>
             <div className="grid grid-cols-4 gap-4">
@@ -152,10 +136,7 @@ export default function MissionControl(){
                     {tasks.filter(t=>t.column_name===col).map(t=>(
                       <div key={t.id} className="bg-gray-900 border border-gray-800 rounded p-3">
                         <p className="text-sm font-medium">{t.title}</p>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-500">{t.assigned_agent||'Unassigned'}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${t.priority==='high'?'bg-red-900 text-red-300':t.priority==='medium'?'bg-yellow-900 text-yellow-300':'bg-gray-800 text-gray-400'}`}>{t.priority}</span>
-                        </div>
+                        <span className="text-xs text-gray-500">{t.assigned_agent||'Unassigned'}</span>
                       </div>
                     ))}
                   </div>
@@ -163,8 +144,6 @@ export default function MissionControl(){
               ))}
             </div>
           </div>}
-
-          {/* ===== PROJECTS TAB ===== */}
           {active==='Projects'&&<div>
             <h2 className="text-lg font-bold mb-4">Projects</h2>
             <div className="space-y-3">
@@ -178,15 +157,12 @@ export default function MissionControl(){
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-gray-800 rounded-full h-2"><div className="bg-blue-500 h-2 rounded-full" style={{width:`${p.progress}%`}}/></div>
                     <span className="text-xs text-gray-400">{p.progress}%</span>
-                    <span className="text-xs text-gray-600">{p.owner_agent||'Unassigned'}</span>
                   </div>
                 </div>
               ))}
               {projects.length===0&&<p className="text-gray-600 text-sm">No projects yet</p>}
             </div>
           </div>}
-
-          {/* ===== CALENDAR TAB ===== */}
           {active==='Calendar'&&<div>
             <h2 className="text-lg font-bold mb-4">Calendar</h2>
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-8 text-center">
@@ -194,8 +170,6 @@ export default function MissionControl(){
               <button className="mt-4 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm">Connect Calendar</button>
             </div>
           </div>}
-
-          {/* ===== CHAT TAB ===== */}
           {active==='Chat'&&<div className="flex flex-col" style={{height:'calc(100vh - 160px)'}}>
             <h2 className="text-lg font-bold mb-4">Mission Chat</h2>
             <div className="flex-1 overflow-auto space-y-2 bg-gray-900 rounded-lg p-4 border border-gray-800">
@@ -216,8 +190,6 @@ export default function MissionControl(){
               <button onClick={sendChat} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded text-sm font-medium">Send</button>
             </div>
           </div>}
-
-          {/* ===== TEAM TAB ===== */}
           {active==='Team'&&<div>
             <h2 className="text-lg font-bold mb-4">Team Roster</h2>
             <div className="space-y-2">
@@ -234,32 +206,24 @@ export default function MissionControl(){
               ))}
             </div>
           </div>}
-
-          {/* ===== MEMORIES TAB ===== */}
           {active==='Memories'&&<div>
             <h2 className="text-lg font-bold mb-4">Memories</h2>
             <div className="space-y-2">
               {memories.map(m=>(
                 <div key={m.id} className="bg-gray-900 border border-gray-800 rounded p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-500">{m.date}</span>
-                    <div className="flex gap-1">{m.tags.map(t=><span key={t} className="text-[10px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded">{t}</span>)}</div>
-                  </div>
-                  <p className="text-sm">{m.text}</p>
+                  <span className="text-xs text-gray-500">{m.date}</span>
+                  <p className="text-sm mt-1">{m.text}</p>
                 </div>
               ))}
               {memories.length===0&&<p className="text-gray-600 text-sm">No memories stored yet</p>}
             </div>
           </div>}
-
-          {/* ===== DOCS TAB ===== */}
           {active==='Docs'&&<div>
             <h2 className="text-lg font-bold mb-4">Documentation</h2>
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
               <p className="text-gray-500 text-sm">System docs and agent playbooks will appear here.</p>
             </div>
           </div>}
-
         </main>
       </div>
     </div>
