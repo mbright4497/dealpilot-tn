@@ -42,7 +42,7 @@ const TEAM = [
 ]
 
 export default function MissionControl(){
-  const [active, setActive] = useState<string>('Tasks')
+  const [tab, setTab] = useState<string>('Tasks')
 
   return (
     <div style={{minHeight:'100vh'}} className="bg-[#0f172a] text-white flex">
@@ -50,11 +50,11 @@ export default function MissionControl(){
       <aside style={{width:200}} className="border-r border-gray-800 p-4">
         <h2 className="text-lg font-semibold mb-4">Mission Control</h2>
         <nav className="flex flex-col gap-2">
-          {TABS.map(tab=> (
-            <button key={tab}
-              onClick={()=>setActive(tab)}
-              className={`text-left px-3 py-2 rounded ${active===tab? 'bg-gray-700':'hover:bg-gray-800'}`}>
-              {tab}
+          {TABS.map(t=> (
+            <button key={t}
+              onClick={()=>setTab(t)}
+              className={`text-left px-3 py-2 rounded ${tab===t? 'bg-gray-700':'hover:bg-gray-800'}`}>
+              {t}
             </button>
           ))}
         </nav>
@@ -63,18 +63,23 @@ export default function MissionControl(){
       {/* Main area */}
       <main className="flex-1 p-6">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold">{active}</h1>
-          <p className="text-gray-400">Overview of {active.toLowerCase()}</p>
+          <h1 className="text-2xl font-bold">{tab}</h1>
+          <p className="text-gray-400">Overview of {String(tab).toLowerCase()}</p>
         </header>
 
         <section>
-          {active==='Tasks' && <KanbanBoard />}
-          {active==='Calendar' && <WeeklyCalendar />}
-          {active==='Projects' && <ProjectsView />}
-          {active==='Memories' && <MemoriesView />}
-          {active==='Docs' && <DocsView />}
-          {active==='Team' && <TeamView />}
-          {active==='Office' && <OfficeView />}
+          {tab==='Tasks' && <KanbanBoard />}
+          {tab === 'Calendar' && (
+ <section className="p-4">
+ <h2 className="text-lg font-semibold mb-4">Calendar</h2>
+ <p className="text-slate-400">No events scheduled.</p>
+ </section>
+)}
+          {tab==='Projects' && <ProjectsView />}
+          {tab==='Memories' && <MemoriesView />}
+          {tab==='Docs' && <DocsView />}
+          {tab==='Team' && <TeamView />}
+          {tab==='Office' && <OfficeView />}
         </section>
       </main>
     </div>
@@ -98,21 +103,6 @@ function KanbanBoard(){
   )
 }
 
-function WeeklyCalendar(){
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
-  return (
-    <div className="grid grid-cols-7 gap-2">
-      {days.map(d=> (
-        <div key={d} className="p-3 bg-[#071033] rounded border border-gray-800 min-h-[120px]">
-          <div className="font-semibold mb-2">{d}</div>
-          <ul className="text-sm text-gray-300 space-y-1">
-            {(sampleCalendar as any)[d]?.map((ev:string, i:number)=>(<li key={i} className="px-2 py-1 bg-gray-900 rounded">{ev}</li>))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 function ProjectsView(){
   return (
