@@ -35,7 +35,7 @@ export default function MissionControl(){
   const [chatThread, setChatThread] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
 
-  useEffect(()=>{ // fetch minimal data for board + tasks
+  useEffect(()=>{ // initial minimal load for board + tasks
     (async ()=>{
       try{
         try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); setOffice(Array.isArray(d?.team)?d.team:(d?.status||[])); }}catch(e){console.error(e)}
@@ -43,6 +43,25 @@ export default function MissionControl(){
       }catch(e){console.error(e)}
     })();
   },[]);
+
+  // On-demand refresh when user selects a tab: fetch fresh data for that tab
+  useEffect(()=>{
+    (async ()=>{
+      try{
+        if(tab==='Tasks'){
+          const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); setTasks(Array.isArray(d)?d:(d?.tasks||[])); }
+        } else if(tab==='Calendar'){
+          const r = await fetch('/api/mission/calendar'); if(r.ok){ const d = await r.json(); setCalendar(Array.isArray(d)?d:(d?.events||[])); }
+        } else if(tab==='Projects'){
+          const r = await fetch('/api/mission/projects'); if(r.ok){ const d = await r.json(); setProjects(Array.isArray(d)?d:(d?.projects||[])); }
+        } else if(tab==='Memories'){
+          const r = await fetch('/api/mission/memories'); if(r.ok){ const d = await r.json(); setMemories(Array.isArray(d)?d:(d?.memories||[])); }
+        } else if(tab==='Office'){
+          const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); setOffice(Array.isArray(d?.team)?d.team:(d?.status||[])); setActivity(Array.isArray(d?.activity)?d.activity:(d?.events||[])); }
+        }
+      }catch(e){console.error('tab-refresh',e)}
+    })();
+  },[tab]);
 
   // helper to find agent data from office state
   const findAgent = (name:string)=> (Array.isArray(office)?office:[]).find(a=>a?.name===name) || null;
