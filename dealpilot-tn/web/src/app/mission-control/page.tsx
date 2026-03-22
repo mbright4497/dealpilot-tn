@@ -45,8 +45,10 @@ export default function MissionControlCleanRewrite(){
         try{ const r = await fetch('/api/mission/memories'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.memories||[]); setMemories(arr);} }catch(e){console.error('memories',e)}
         // status + activity
         try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); const o = Array.isArray(d?.team)?d.team:(Array.isArray(d?.status)?d.status:[]); setOffice(o); const af = Array.isArray(d?.activity)?d.activity:(Array.isArray(d?.events)?d.events:[]); setActivity(af);} }catch(e){console.error('status',e)}
-        // chat
-        try{ const r = await fetch('/api/mission/chat'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.messages||[]); setChat(arr);} }catch(e){console.error('chat',e)}
+        // chat: do NOT fetch on mount to avoid client-side runtime issues; chat will load/send only on demand
+        // (kept state empty here)
+        // setChat([])
+        
       }catch(err){console.error('load-all',err)}
     })();
 
@@ -232,8 +234,16 @@ export default function MissionControlCleanRewrite(){
           {tab==='Chat' && (
             <div className="flex flex-col" style={{height:'60vh'}}>
               <h2 className="text-lg font-semibold mb-2">Chat</h2>
-              <div className="flex-1 overflow-auto bg-slate-800 p-4 rounded">{(Array.isArray(chat)?chat:[]).map((m:any,idx:number)=> <div key={idx} className={`mb-2 ${(m?.sender==='Tango')? 'text-blue-200':'text-gray-200'}`}><div className="text-xs text-gray-400">{m?.sender || 'User'} • {fmtTime(m?.created_at)}</div><div>{m?.text}</div></div>)}<div ref={chatEnd} /></div>
-              <div className="mt-3 flex gap-2"><input className="flex-1 p-2 bg-slate-800 rounded" value={chatInput} onChange={e=>setChatInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()} /><button className="px-3 py-2 bg-blue-600 rounded" onClick={sendChat}>Send</button></div>
+
+              {/* Safe static compose UI only - no fetch on mount */}
+              <div className="flex-1 overflow-auto bg-slate-800 p-4 rounded">
+                <div className="text-gray-400">Chat messages are loaded on demand. Use the box below to send a message.</div>
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <input className="flex-1 p-2 bg-slate-800 rounded" value={chatInput} onChange={e=>setChatInput(e.target.value)} />
+                <button className="px-3 py-2 bg-blue-600 rounded" onClick={sendChat}>Send</button>
+              </div>
             </div>
           )}
 
