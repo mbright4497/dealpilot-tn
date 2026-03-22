@@ -68,119 +68,16 @@ export default function MissionControl(){
         </header>
 
         <section>
-          {tab==='Tasks' && <KanbanBoard />}
-          {tab === 'Calendar' && (
- <section className="p-4">
- <h2 className="text-lg font-semibold mb-4">Calendar</h2>
- <p className="text-slate-400">No events scheduled.</p>
- </section>
-)}
-          {tab==='Projects' && <ProjectsView />}
-          {tab==='Memories' && <MemoriesView />}
-          {tab==='Docs' && <DocsView />}
-          {tab==='Team' && <TeamView />}
-          {tab==='Office' && <OfficeView />}
+          {tab === 'Tasks' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Tasks</h2><p className="text-slate-400">Loading tasks...</p></div>}
+          {tab === 'Calendar' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Calendar</h2><p className="text-slate-400">No events scheduled.</p></div>}
+          {tab === 'Projects' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Projects</h2><p className="text-slate-400">No projects yet.</p></div>}
+          {tab === 'Memories' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Memories</h2><p className="text-slate-400">No memories yet.</p></div>}
+          {tab === 'Docs' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Docs</h2><p className="text-slate-400">No docs yet.</p></div>}
+          {tab === 'Team' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Team</h2><p className="text-slate-400">Team view coming soon.</p></div>}
+          {tab === 'Office' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Office</h2><p className="text-slate-400">Office coming soon.</p></div>}
         </section>
       </main>
     </div>
   )
 }
 
-function KanbanBoard(){
-  return (
-    <div className="grid grid-cols-4 gap-4">
-      {Object.entries(sampleKanban).map(([col,items])=> (
-        <div key={col} className="bg-[#071033] p-4 rounded border border-gray-800">
-          <h3 className="font-semibold mb-2">{col}</h3>
-          <ul className="space-y-2">
-            {items.map((it:any,idx:number)=> (
-              <li key={idx} className="bg-gray-900 p-2 rounded">{it}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-
-function ProjectsView(){
-  return (
-    <div className="space-y-4">
-      {sampleProjects.map((p,idx)=> (
-        <div key={idx} className="bg-[#071033] p-4 rounded border border-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-semibold">{p.title}</h4>
-              <p className="text-sm text-gray-400">Progress</p>
-            </div>
-            <div className="w-1/3">
-              <div className="bg-gray-900 h-3 rounded overflow-hidden">
-                <div style={{width:`${p.progress}%`}} className="bg-green-600 h-3"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function MemoriesView(){
-  const sorted = [...sampleMemories].sort((a,b)=> b.date.localeCompare(a.date))
-  return (
-    <div className="space-y-2">
-      {sorted.map((m,idx)=>(
-        <div key={idx} className="bg-[#071033] p-3 rounded border border-gray-800">
-          <div className="text-sm text-gray-400">{m.date}</div>
-          <div className="mt-1">{m.text}</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function DocsView(){
-  return (
-    <div className="space-y-2">
-      {sampleDocs.map((d,idx)=>(
-        <div key={idx} className="bg-[#071033] p-3 rounded border border-gray-800 flex justify-between">
-          <div>
-            <div className="font-medium">{d.name}</div>
-            <div className="text-sm text-gray-400">{d.size}</div>
-          </div>
-          <div className="text-sm text-gray-400">PDF</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function TeamView(){
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      {TEAM.map((t,idx)=> (
-        <div key={idx} className="bg-[#071033] p-3 rounded border border-gray-800 text-center">
-          <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold">{t.name.split(' ').map(s=>s[0]).slice(0,2).join('')}</div>
-          <div className="mt-2 font-medium">{t.name}</div>
-          <div className="text-sm text-gray-400">{t.role}</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function OfficeView(){
-  // simple 8x6 grid with colored dots
-  const rows = 6, cols = 8
-  const colors = ['bg-green-500','bg-yellow-400','bg-red-500','bg-gray-600']
-  return (
-    <div className="grid gap-2" style={{gridTemplateColumns:`repeat(${cols}, 1fr)`}}>
-      {Array.from({length:rows*cols}).map((_,i)=> (
-        <div key={i} className="p-3 bg-[#071033] rounded flex items-center justify-center border border-gray-800">
-          <span className={`w-3 h-3 rounded-full ${colors[i%colors.length]}`}></span>
-        </div>
-      ))}
-    </div>
-  )
-}
