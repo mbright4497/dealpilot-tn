@@ -17,6 +17,13 @@ const RANKS = [8,7,6,5,4,3,2,1];
 const fmtTime = (s?:string)=> s? new Date(s).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
 const relativeTime = (iso?:string)=>{ if(!iso) return '-'; const diff=Math.round((Date.now()-new Date(iso).getTime())/1000); if(diff<60) return `${diff}s ago`; if(diff<3600) return `${Math.floor(diff/60)}m ago`; if(diff<86400) return `${Math.floor(diff/3600)}h ago`; return `${Math.floor(diff/86400)}d ago`; };
 
+class ErrorBoundary extends React.Component<any, {hasError:boolean, error?:any}> {
+  constructor(props:any){ super(props); this.state = { hasError:false }; }
+  static getDerivedStateFromError(error:any){ return { hasError:true, error }; }
+  componentDidCatch(error:any, info:any){ console.error('ErrorBoundary caught', error, info); }
+  render(){ if(this.state.hasError) return <div className="p-6 bg-red-900 text-white">Application error — Mission Control failed to render.</div>; return this.props.children; }
+}
+
 export default function MissionControl(){
   const [tab, setTab] = useState('Overview');
 
@@ -35,33 +42,18 @@ export default function MissionControl(){
   const [chatThread, setChatThread] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
 
-  useEffect(()=>{ // initial minimal load for board + tasks
+  useEffect(()=>{ // initial minimal load for board + related data
     (async ()=>{
       try{
-        try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); setOffice(Array.isArray(d?.team)?d.team:(d?.status||[])); }}catch(e){console.error(e)}
-        try{ const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); setTasks(Array.isArray(d)?d:(d?.tasks||[])); }}catch(e){}
-      }catch(e){console.error(e)}
+        try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); const o = Array.isArray(d?.team)?d.team:(Array.isArray(d?.status)?d.status:[]); setOffice(o); const af = Array.isArray(d?.activity)?d.activity:(Array.isArray(d?.events)?d.events:[]); setActivity(af); } else { setOffice([]); setActivity([]); } }catch(e){console.error('status load',e); setOffice([]); setActivity([]);}
+        try{ const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.tasks ?? d?.items ?? []); setTasks(arr); } else { setTasks([]); } }catch(e){console.error('tasks load',e); setTasks([]); }
+        try{ const r = await fetch('/api/mission/calendar'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.events ?? d?.items ?? []); (window as any).__initialCalendar = arr; /*noop*/ } }catch(e){console.error('calendar load',e);} // don't set calendar globally here
+        try{ const r = await fetch('/api/mission/projects'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.projects ?? d?.items ?? []); (window as any).__initialProjects = arr; } }catch(e){}
+        try{ const r = await fetch('/api/mission/memories'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.memories ?? d?.items ?? []); (window as any).__initialMemories = arr; } }catch(e){}
+      }catch(e){console.error('initial-load',e)}
     })();
   },[]);
 
-  // On-demand refresh when user selects a tab: fetch fresh data for that tab
-  useEffect(()=>{
-    (async ()=>{
-      try{
-        if(tab==='Tasks'){
-          try{ const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.tasks ?? d?.items ?? []); setTasks(arr);} }catch(e){console.error('tasks refresh',e); setTasks([]); }
-        } else if(tab==='Calendar'){
-          try{ const r = await fetch('/api/mission/calendar'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.events ?? d?.items ?? []); setCalendar(arr);} }catch(e){console.error('calendar refresh',e); setCalendar([]); }
-        } else if(tab==='Projects'){
-          try{ const r = await fetch('/api/mission/projects'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.projects ?? d?.items ?? []); setProjects(arr);} }catch(e){console.error('projects refresh',e); setProjects([]); }
-        } else if(tab==='Memories'){
-          try{ const r = await fetch('/api/mission/memories'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.memories ?? d?.items ?? []); setMemories(arr);} }catch(e){console.error('memories refresh',e); setMemories([]); }
-        } else if(tab==='Office'){
-          try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); const o = Array.isArray(d?.team)?d.team:(Array.isArray(d?.status)?d.status:[]); setOffice(o); const af = Array.isArray(d?.activity)?d.activity:(Array.isArray(d?.events)?d.events:[]); setActivity(af);} }catch(e){console.error('office refresh',e); setOffice([]); setActivity([]); }
-        }
-      }catch(e){console.error('tab-refresh',e)}
-    })();
-  },[tab]);
 
   // helper to find agent data from office state
   const findAgent = (name:string)=> (Array.isArray(office)?office:[]).find(a=>a?.name===name) || null;
@@ -104,6 +96,7 @@ export default function MissionControl(){
   };
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-slate-900 text-white p-6">
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
@@ -261,5 +254,6 @@ export default function MissionControl(){
         </main>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
