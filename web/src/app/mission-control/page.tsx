@@ -140,20 +140,18 @@ export default function MissionControl(){
           )}
 
           {tab === 'Calendar' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Calendar</h2>
-              <div className="grid grid-cols-7 gap-2">
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=> (
-                  <div key={d} className="p-3 bg-[#071033] rounded border border-gray-800 min-h-[120px]">
-                    <div className="font-semibold mb-2">{d}</div>
-                    <ul className="text-sm text-gray-300 space-y-1">
-                      {((sampleCalendar as any)[d]||[]).map((ev:string,i:number)=>(<li key={i} className="px-2 py-1 bg-gray-900 rounded">{ev}</li>))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+ <div className="p-4">
+ <h2 className="text-xl font-bold text-amber-400 mb-4">Calendar</h2>
+ <div className="space-y-3">
+ {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => (
+ <div key={day} className="bg-slate-800 rounded p-3">
+ <span className="text-amber-400 font-semibold">{day}</span>
+ <span className="text-slate-400 ml-3 text-sm">No events</span>
+ </div>
+ ))}
+ </div>
+ </div>
+)}
 
           {tab === 'Projects' && (
             <div>
