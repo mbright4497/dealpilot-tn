@@ -121,13 +121,121 @@ export default function MissionControl(){
               </div>
             </div>
           )}
-          {tab === 'Tasks' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Tasks</h2><p className="text-slate-400">Loading tasks...</p></div>}
-          {tab === 'Calendar' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Calendar</h2><p className="text-slate-400">No events scheduled.</p></div>}
-          {tab === 'Projects' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Projects</h2><p className="text-slate-400">No projects yet.</p></div>}
-          {tab === 'Memories' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Memories</h2><p className="text-slate-400">No memories yet.</p></div>}
-          {tab === 'Docs' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Docs</h2><p className="text-slate-400">No docs yet.</p></div>}
-          {tab === 'Team' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Team</h2><p className="text-slate-400">Team view coming soon.</p></div>}
-          {tab === 'Office' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Office</h2><p className="text-slate-400">Office coming soon.</p></div>}
+          {tab === 'Tasks' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Tasks</h2>
+              <div className="grid grid-cols-4 gap-4">
+                {Object.entries(sampleKanban).map(([col,items])=> (
+                  <div key={col} className="bg-[#071033] p-4 rounded border border-gray-800">
+                    <h3 className="font-semibold mb-2">{col}</h3>
+                    <ul className="space-y-2">
+                      {(items as any[]).map((it:any,idx:number)=> (
+                        <li key={idx} className="bg-gray-900 p-2 rounded">{it}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'Calendar' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Calendar</h2>
+              <div className="grid grid-cols-7 gap-2">
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=> (
+                  <div key={d} className="p-3 bg-[#071033] rounded border border-gray-800 min-h-[120px]">
+                    <div className="font-semibold mb-2">{d}</div>
+                    <ul className="text-sm text-gray-300 space-y-1">
+                      {((sampleCalendar as any)[d]||[]).map((ev:string,i:number)=>(<li key={i} className="px-2 py-1 bg-gray-900 rounded">{ev}</li>))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'Projects' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Projects</h2>
+              <div className="space-y-4">
+                {(sampleProjects||[]).map((p:any,idx:number)=> (
+                  <div key={idx} className="bg-[#071033] p-4 rounded border border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">{p.title}</h4>
+                        <p className="text-sm text-gray-400">Progress</p>
+                      </div>
+                      <div className="w-1/3">
+                        <div className="bg-gray-900 h-3 rounded overflow-hidden">
+                          <div style={{width:`${p.progress}%`}} className="bg-green-600 h-3"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'Memories' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Memories</h2>
+              <div className="space-y-2">
+                {([...(sampleMemories||[])].sort((a:any,b:any)=>b.date.localeCompare(a.date))).map((m:any,idx:number)=> (
+                  <div key={idx} className="bg-[#071033] p-3 rounded border border-gray-800">
+                    <div className="text-sm text-gray-400">{m.date}</div>
+                    <div className="mt-1">{m.text}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'Docs' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Docs</h2>
+              <div className="space-y-2">
+                {(sampleDocs||[]).map((d:any,idx:number)=> (
+                  <div key={idx} className="bg-[#071033] p-3 rounded border border-gray-800 flex justify-between">
+                    <div>
+                      <div className="font-medium">{d.name}</div>
+                      <div className="text-sm text-gray-400">{d.size}</div>
+                    </div>
+                    <div className="text-sm text-gray-400">PDF</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'Team' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Team</h2>
+              <div className="grid grid-cols-3 gap-4">
+                {(TEAM||[]).map((t:any,idx:number)=> (
+                  <div key={idx} className="bg-[#071033] p-3 rounded border border-gray-800 text-center">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold">{(t.name||'').split(' ').map((s:any)=>s[0]).slice(0,2).join('')}</div>
+                    <div className="mt-2 font-medium">{t.name}</div>
+                    <div className="text-sm text-gray-400">{t.role}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'Office' && (
+            <div>
+              <h2 className="text-lg font-semibold mb-2">Office</h2>
+              <div className="grid gap-2" style={{gridTemplateColumns:`repeat(${8}, 1fr)`}}>
+                {Array.from({length:6*8}).map((_,i)=> (
+                  <div key={i} className="p-3 bg-[#071033] rounded flex items-center justify-center border border-gray-800">
+                    <span className={`w-3 h-3 rounded-full ${['bg-green-500','bg-yellow-400','bg-red-500','bg-gray-600'][i%4]}`}></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </div>
