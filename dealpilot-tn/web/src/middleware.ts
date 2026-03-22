@@ -6,9 +6,16 @@ const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request: { headers: request.headers }, });
 
-  const supabase = createServerSupabaseClient()
-  const { data } = await supabase.auth.getUser()
-  const user = data?.user || null
+  let user = null
+  try{
+    const supabase = createServerSupabaseClient()
+    const { data } = await supabase.auth.getUser()
+    user = data?.user || null
+  }catch(e){
+    // if Supabase is not configured or errors during middleware, do not block the request
+    console.error('middleware supabase error', e)
+    return response
+  }
 
   const pathname = request.nextUrl.pathname
 
