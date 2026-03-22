@@ -49,15 +49,15 @@ export default function MissionControl(){
     (async ()=>{
       try{
         if(tab==='Tasks'){
-          const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); setTasks(Array.isArray(d)?d:(d?.tasks||[])); }
+          try{ const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.tasks ?? d?.items ?? []); setTasks(arr);} }catch(e){console.error('tasks refresh',e); setTasks([]); }
         } else if(tab==='Calendar'){
-          const r = await fetch('/api/mission/calendar'); if(r.ok){ const d = await r.json(); setCalendar(Array.isArray(d)?d:(d?.events||[])); }
+          try{ const r = await fetch('/api/mission/calendar'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.events ?? d?.items ?? []); setCalendar(arr);} }catch(e){console.error('calendar refresh',e); setCalendar([]); }
         } else if(tab==='Projects'){
-          const r = await fetch('/api/mission/projects'); if(r.ok){ const d = await r.json(); setProjects(Array.isArray(d)?d:(d?.projects||[])); }
+          try{ const r = await fetch('/api/mission/projects'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.projects ?? d?.items ?? []); setProjects(arr);} }catch(e){console.error('projects refresh',e); setProjects([]); }
         } else if(tab==='Memories'){
-          const r = await fetch('/api/mission/memories'); if(r.ok){ const d = await r.json(); setMemories(Array.isArray(d)?d:(d?.memories||[])); }
+          try{ const r = await fetch('/api/mission/memories'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.memories ?? d?.items ?? []); setMemories(arr);} }catch(e){console.error('memories refresh',e); setMemories([]); }
         } else if(tab==='Office'){
-          const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); setOffice(Array.isArray(d?.team)?d.team:(d?.status||[])); setActivity(Array.isArray(d?.activity)?d.activity:(d?.events||[])); }
+          try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); const o = Array.isArray(d?.team)?d.team:(Array.isArray(d?.status)?d.status:[]); setOffice(o); const af = Array.isArray(d?.activity)?d.activity:(Array.isArray(d?.events)?d.events:[]); setActivity(af);} }catch(e){console.error('office refresh',e); setOffice([]); setActivity([]); }
         }
       }catch(e){console.error('tab-refresh',e)}
     })();
