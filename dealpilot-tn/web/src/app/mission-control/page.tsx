@@ -231,21 +231,12 @@ export default function MissionControlCleanRewrite(){
             </div>
           )}
 
-          {tab==='Chat' && (
-            <div className="flex flex-col" style={{height:'60vh'}}>
-              <h2 className="text-lg font-semibold mb-2">Chat</h2>
-
-              {/* Safe static compose UI only - no fetch on mount */}
-              <div className="flex-1 overflow-auto bg-slate-800 p-4 rounded">
-                <div className="text-gray-400">Chat messages are loaded on demand. Use the box below to send a message.</div>
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                <input className="flex-1 p-2 bg-slate-800 rounded" value={chatInput} onChange={e=>setChatInput(e.target.value)} />
-                <button className="px-3 py-2 bg-blue-600 rounded" onClick={sendChat}>Send</button>
-              </div>
-            </div>
-          )}
+          {active === 'Chat' && (
+ <div className="p-4">
+ <h2 className="text-lg font-semibold mb-2">Chat</h2>
+ <p className="text-slate-400">Chat coming soon.</p>
+ </div>
+)}
 
         </main>
       </div>
