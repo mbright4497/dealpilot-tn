@@ -1,242 +1,196 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 
-// Utility formatters
-const fmtTime = (s?: string) => s ? new Date(s).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-const fmtDate = (s?: string) => s ? new Date(s).toLocaleDateString() : '';
-const relativeTime = (iso?: string) => {
-  if(!iso) return '-';
-  const then = new Date(iso).getTime();
-  const diff = Math.round((Date.now()-then)/1000);
-  if(diff<60) return `${diff}s ago`;
-  if(diff<3600) return `${Math.floor(diff/60)}m ago`;
-  if(diff<86400) return `${Math.floor(diff/3600)}h ago`;
-  return `${Math.floor(diff/86400)}d ago`;
-};
+const AGENT_ORDER = [
+  { name: 'Tango', role: 'Leader / Orchestrator', piece: '\u2654', coord: 'e1' },
+  { name: 'Marcus', role: 'COO', piece: '\u2655', coord: 'd1' },
+  { name: 'Rayno', role: 'Software Engineer', piece: '\u2657', coord: 'f1' },
+  { name: 'Reva', role: 'Transaction Coordinator', piece: '\u2656', coord: 'a1' },
+  { name: 'Carlos', role: 'Lead Gen & CRM Manager', piece: '\u2658', coord: 'b1' },
+  { name: 'Nina', role: 'Content & Marketing Director', piece: '\u2659', coord: 'd2' },
+  { name: 'Maya', role: 'Client Success & Booking', piece: '\u2659', coord: 'e2' }
+];
 
-export default function MissionControlCleanRewrite(){
-  const [tab, setTab] = useState<string>('Overview');
+const FILES = ['a','b','c','d','e','f','g','h'];
+const RANKS = [8,7,6,5,4,3,2,1];
 
-  // All state default to arrays
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [calendar, setCalendar] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [memories, setMemories] = useState<any[]>([]);
+const fmtTime = (s?:string)=> s? new Date(s).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+const relativeTime = (iso?:string)=>{ if(!iso) return '-'; const diff=Math.round((Date.now()-new Date(iso).getTime())/1000); if(diff<60) return `${diff}s ago`; if(diff<3600) return `${Math.floor(diff/60)}m ago`; if(diff<86400) return `${Math.floor(diff/3600)}h ago`; return `${Math.floor(diff/86400)}d ago`; };
+
+export default function MissionControl(){
+  const [tab, setTab] = useState('Overview');
+
+  // data
   const [office, setOffice] = useState<any[]>([]);
-  const [activity, setActivity] = useState<any[]>([]);
-  const [chat, setChat] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
 
-  const [calModalOpen, setCalModalOpen] = useState(false);
-  const [calForm, setCalForm] = useState({ title:'', start_time:'', end_time:'', assigned_agent:'', description:'' });
+  // board modal
+  const [selectedAgent, setSelectedAgent] = useState<any|null>(null);
+  const [tapMessage, setTapMessage] = useState('');
+  const [tapSending, setTapSending] = useState(false);
+  const [tapResult, setTapResult] = useState<string|null>(null);
 
-  const chatEnd = useRef<HTMLDivElement|null>(null);
+  // chat
+  const [chatAgent, setChatAgent] = useState<string | null>(null);
+  const [chatThread, setChatThread] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState('');
 
-  useEffect(()=>{
-    // all fetches inside useEffect with try/catch
+  useEffect(()=>{ // fetch minimal data for board + tasks
     (async ()=>{
       try{
-        // tasks
-        try{ const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.tasks||[]); setTasks(arr);} }catch(e){console.error('tasks',e)}
-        // calendar
-        try{ const r = await fetch('/api/mission/calendar'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.events||[]); setCalendar(arr);} }catch(e){console.error('calendar',e)}
-        // projects
-        try{ const r = await fetch('/api/mission/projects'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.projects||[]); setProjects(arr);} }catch(e){console.error('projects',e)}
-        // memories
-        try{ const r = await fetch('/api/mission/memories'); if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.memories||[]); setMemories(arr);} }catch(e){console.error('memories',e)}
-        // status + activity
-        try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); const o = Array.isArray(d?.team)?d.team:(Array.isArray(d?.status)?d.status:[]); setOffice(o); const af = Array.isArray(d?.activity)?d.activity:(Array.isArray(d?.events)?d.events:[]); setActivity(af);} }catch(e){console.error('status',e)}
-        // chat: do NOT fetch on mount to avoid client-side runtime issues; chat will load/send only on demand
-        // (kept state empty here)
-        // setChat([])
-        
-      }catch(err){console.error('load-all',err)}
+        try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); setOffice(Array.isArray(d?.team)?d.team:(d?.status||[])); }}catch(e){console.error(e)}
+        try{ const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); setTasks(Array.isArray(d)?d:(d?.tasks||[])); }}catch(e){}
+      }catch(e){console.error(e)}
     })();
-
-    const id = setInterval(async ()=>{
-      try{ const r = await fetch('/api/mission/status'); if(r.ok){ const d = await r.json(); const o = Array.isArray(d?.team)?d.team:(Array.isArray(d?.status)?d.status:[]); setOffice(o); const af = Array.isArray(d?.activity)?d.activity:(Array.isArray(d?.events)?d.events:[]); setActivity(af);} }catch(e){console.error('poll',e)}
-    },10000);
-
-    return ()=>clearInterval(id);
   },[]);
 
-  useEffect(()=>{ if(chatEnd.current) chatEnd.current.scrollIntoView({behavior:'smooth'}); },[chat]);
+  // helper to find agent data from office state
+  const findAgent = (name:string)=> (Array.isArray(office)?office:[]).find(a=>a?.name===name) || null;
 
-  // safe mapping helpers used in render
-  const safeMap = (arr:any, fn:any) => Array.isArray(arr)? arr.map(fn) : null;
+  // tap shoulder -> post to /api/mission/chat with {agent, message}
+  const tapAgent = async (agentName:string)=>{
+    if(!tapMessage.trim()) return setTapResult('Type a message first');
+    setTapSending(true); setTapResult(null);
+    try{
+      const res = await fetch('/api/mission/chat',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender:'Tango UI', text: tapMessage, agent: agentName}) });
+      if(res.ok){ setTapResult('Sent'); setTapMessage(''); }
+      else { const t = await res.text().catch(()=>null); setTapResult('Error: '+(t||res.status)); }
+    }catch(e:any){ setTapResult('Error: '+(e?.message||String(e))); }
+    setTapSending(false);
+  };
 
-  // small group helper
-  const groupByDate = (items:any[])=>{ const map:any={}; if(!Array.isArray(items)) return map; items.forEach(it=>{ const d = fmtDate(it?.start_time); (map[d]||(map[d]=[])).push(it); }); return map; };
+  // chat: load thread for selected agent on demand
+  const loadThread = async (agentName:string)=>{
+    setChatThread([]);
+    try{
+      const url = '/api/mission/chat?agent=' + encodeURIComponent(agentName);
+      const r = await fetch(url);
+      if(r.ok){ const d = await r.json(); const arr = Array.isArray(d)?d:(d?.messages||[]); setChatThread(arr); }
+    }catch(e){ console.error(e); setChatThread([]); }
+  };
+  const sendChatMessage = async ()=>{
+    if(!chatAgent || !chatInput.trim()) return;
+    try{
+      await fetch('/api/mission/chat',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sender:'You', text: chatInput, agent: chatAgent}) });
+      setChatInput(''); await loadThread(chatAgent);
+    }catch(e){ console.error(e); }
+  };
 
-  // simple add handlers (defensive)
-  const addTask = async (e:React.FormEvent)=>{ e.preventDefault(); try{ const form = e.target as any; const title=form.title.value; const status=form.status.value; await fetch('/api/mission/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,status})}); // refresh
-    try{ const r = await fetch('/api/mission/tasks'); if(r.ok){ const d = await r.json(); setTasks(Array.isArray(d)?d:(d?.tasks||[])); } }catch(e){} }catch(e){console.error(e)} };
-
-  const submitCal = async (e:React.FormEvent)=>{ e.preventDefault(); try{ await fetch('/api/mission/calendar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calForm)}); setCalForm({ title:'', start_time:'', end_time:'', assigned_agent:'', description:'' }); setCalModalOpen(false); try{ const r=await fetch('/api/mission/calendar'); if(r.ok){ const d=await r.json(); setCalendar(Array.isArray(d)?d:(d?.events||[])); }}catch(e){} }catch(e){console.error(e)} };
-
-  const sendChat = async ()=>{ try{ if(!chatInput?.trim()) return; await fetch('/api/mission/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:chatInput})}); setChatInput(''); try{ const r=await fetch('/api/mission/chat'); if(r.ok){ const d=await r.json(); setChat(Array.isArray(d)?d:(d?.messages||[])); }}catch(e){} }catch(e){console.error(e)} };
+  // Board render helpers
+  const getAgentAt = (coord:string)=>{
+    const placement:any = Object.fromEntries(AGENT_ORDER.map(a=>[a.coord, a.name]));
+    const name = placement[coord];
+    if(!name) return null;
+    return { name, ...findAgent(name), piece: AGENT_ORDER.find(a=>a.name===name)?.piece };
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-6">
-      <header className="mb-4">
-        <div className="flex justify-between items-center">
-          <div className="text-xl font-bold text-blue-400">Mission Control</div>
-          <div className="flex items-center gap-4 text-sm text-gray-300">
-            <div className="px-2 py-1 bg-green-700 rounded text-green-100">Tango Online</div>
-            <div>{(Array.isArray(office)?office:[]).filter(a=>a?.status==='working').length}/7 agents active</div>
-          </div>
+      {/* Header */}
+      <header className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-extrabold bg-clip-text text-transparent" style={{background:'linear-gradient(90deg,#f59e0b,#b45309)'}}>Mission Control</h1>
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-amber-600 rounded text-black">Tango Online</div>
+          <div className="text-sm text-gray-200">{(Array.isArray(office)?office:[]).filter(a=>a?.status==='working').length}/7 active</div>
         </div>
-        <div className="mt-2 text-xs text-gray-300"> <span className="px-2 py-0.5 bg-yellow-700 rounded font-bold">TANGO</span> <span className="ml-3">Monitoring all systems</span></div>
       </header>
 
-      <div className="flex">
-        <aside className="w-48 pr-4">
-          <div className="space-y-1">
-            {['Overview','Tasks','Calendar','Projects','Memories','Office','Chat'].map(t=> (
-              <button key={t} onClick={()=>setTab(t)} className={`w-full text-left px-3 py-2 rounded ${tab===t? 'bg-gray-800 text-white':'text-gray-400 hover:text-white'}`}>{t}</button>
-            ))}
-          </div>
-        </aside>
+      <div className="flex gap-6">
+        {/* Left nav */}
+        <nav className="w-48">
+          {['Overview','Tasks','Calendar','Projects','Memories','Office','Chat'].map(t=> (
+            <button key={t} onClick={()=>setTab(t)} className={`w-full text-left px-3 py-2 rounded mb-1 ${tab===t? 'border-l-2 border-amber-500 bg-slate-800':''}`}>{t}</button>
+          ))}
+        </nav>
 
         <main className="flex-1">
+          {/* Board Section */}
           {tab==='Overview' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Overview</h2>
-                  <div className="text-sm text-gray-300">Agent chessboard map (8x8)</div>
+            <section>
+              <h2 className="text-xl font-bold text-amber-300 mb-3">The Board</h2>
+              <div className="mb-3 text-sm text-gray-300">An 8x8 view of agent positions and status</div>
+              <div className="border-4 border-amber-800 rounded shadow-2xl inline-block">
+                <div style={{width: 72*8}} className="grid grid-cols-8">
+                  {RANKS.map(rank=> (
+                    FILES.map((file,i)=>{
+                      const coord = `${file}${rank}`;
+                      const light = ((rank + i) %2 ===0);
+                      const bg = light ? 'bg-amber-100' : 'bg-amber-900';
+                      const agent = getAgentAt(coord);
+                      return (
+                        <div key={coord} className={`${bg} p-0`} style={{width:72,height:72,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+                          {agent ? (
+                            <button onClick={()=>setSelectedAgent(agent)} className="flex flex-col items-center justify-center w-full h-full" title={`${agent.name} - ${agent.role}`}>
+                              <div className={`text-4xl text-white`} style={{textShadow:'0 2px 6px rgba(0,0,0,0.6)'}}>{agent.piece}</div>
+                              <div className="text-xs font-bold text-white mt-1">{agent.name}</div>
+                              <span className={`absolute top-1 right-1 w-3 h-3 rounded-full ${agent?.status==='working'?'bg-green-500':agent?.status==='idle'?'bg-yellow-400':'bg-gray-400'}`}></span>
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })
+                  ))}
                 </div>
-                <div className="text-sm text-gray-300">
-                  <div>Total agents: {(Array.isArray(office)?office:[]).length}</div>
-                  <div>Active: {(Array.isArray(office)?office:[]).filter(a=>a?.status==='working').length}</div>
-                  <div>Tasks pending: {(Array.isArray(tasks)?tasks:[]).filter(t=>t?.status!=='done').length}</div>
-                </div>
-              </div>
-
-              {/* 8x8 Chessboard */}
-              <div className="w-full max-w-3xl mx-auto">
-                <div className="grid grid-cols-9 gap-0">
-                  {/* Top-left corner empty cell for labels */}
-                  <div></div>
-                  {/* Files labels a-h */}
-                  {['a','b','c','d','e','f','g','h'].map(f=> <div key={f} className="text-center text-xs text-gray-400">{f}</div>)}
-
-                  {/* Ranks 8 to 1 with squares */}
-                  {Array.from({length:8}).map((_,rIndex)=>{
-                    const rank = 8 - rIndex;
-                    return (
-                      <React.Fragment key={rank}>
-                        {/* rank label */}
-                        <div className="text-center text-xs text-gray-400">{rank}</div>
-                        {/* 8 files */}
-                        {Array.from({length:8}).map((__,fIndex)=>{
-                          const file = fIndex; // 0..7 corresponds to a..h
-                          const light = (rank + file) % 2 === 0; // alternate
-                          // mapping of agents to positions (example positions)
-                          const placement:any = {
-                            'e1':'Tango', 'd1':'Marcus', 'c1':'Rayno', 'a1':'Reva', 'b1':'Carlos', 'g2':'Nina', 'h2':'Maya'
-                          };
-                          const fileChar = String.fromCharCode(97 + fIndex); // a-h
-                          const coord = `${fileChar}${rank}`;
-                          const agentName = placement[coord] || null;
-                          const agent = (Array.isArray(office)?office:[]).find((x:any)=>x?.name===agentName) || null;
-                          const status = agent?.status || 'offline';
-                          const statusClass = status==='working' ? 'bg-green-500' : status==='idle' ? 'bg-yellow-400' : 'bg-red-500';
-                          // piece unicode mapping
-                          const pieceMap:any = { 'Tango':'\u2654', 'Marcus':'\u2655', 'Rayno':'\u2657', 'Reva':'\u2656', 'Carlos':'\u2658', 'Nina':'\u2659', 'Maya':'\u2659' };
-
-                          return (
-                            <div key={coord} className={`${light? 'bg-slate-600':'bg-slate-800'} p-3 border border-slate-900 flex flex-col items-center justify-center`}>
-                              {agent ? (
-                                <div className="flex flex-col items-center">
-                                  <div className="text-2xl">{String.fromCharCode(parseInt((pieceMap[agent.name]||'\u2659').replace('\\u',''),16) )}</div>
-                                  <div className="text-xs text-gray-200 mt-1">{agent.name}</div>
-                                  <div className="mt-1"><span className={`w-2 h-2 inline-block rounded-full ${statusClass}`}></span></div>
-                                  <div className="text-xs text-gray-400 mt-1">{agent?.role}</div>
-                                  <div className="text-xs text-gray-500">{agent?.current_task? agent.current_task : ''}</div>
-                                  <div className="text-xs text-gray-400">{agent?.last_heartbeat? relativeTime(agent.last_heartbeat):''}</div>
-                                </div>
-                              ) : (
-                                <div className="w-full h-full" />
-                              )}
-                            </div>
-                          );
-
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
+                {/* file labels below */}
+                <div className="flex mt-2 justify-between px-1 text-amber-800">
+                  {FILES.map(f=> <div key={f} style={{width:72,textAlign:'center'}}>{f}</div>)}
                 </div>
               </div>
-            </div>
+            </section>
           )}
 
-          {tab==='Tasks' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Tasks</h2>
-              {['todo','in_progress','done'].map(col=> (
-                <div key={col} className="mb-3">
-                  <h3 className="font-bold">{col}</h3>
-                  {(Array.isArray(tasks)?tasks:[]).filter(t=>t?.status===col).map(t=> <div key={t?.id}>{t?.title}</div>)}
+          {/* Chat tab - full UI */}
+          {tab==='Chat' && (
+            <section className="flex gap-4">
+              <aside className="w-48 bg-slate-800 p-3 rounded">
+                <h3 className="text-sm font-bold mb-2">Agents</h3>
+                {(Array.isArray(office)?office:[]).map((a:any)=> (
+                  <button key={a?.name} onClick={()=>{ setChatAgent(a?.name); loadThread(a?.name); setTab('Chat'); }} className="w-full text-left py-2 px-2 mb-1 rounded hover:bg-slate-700 flex items-center justify-between">
+                    <span>{a?.name}</span>
+                    <span className={`w-3 h-3 rounded-full ${a?.status==='working'?'bg-green-500':a?.status==='idle'?'bg-yellow-400':'bg-gray-400'}`}></span>
+                  </button>
+                ))}
+              </aside>
+
+              <div className="flex-1 bg-slate-800 rounded p-3 flex flex-col">
+                <div className="flex-1 overflow-auto mb-3">
+                  <h3 className="font-bold">{chatAgent || 'Select an agent'}</h3>
+                  {(Array.isArray(chatThread)?chatThread:[]).map((m:any,idx:number)=> (
+                    <div key={idx} className="mb-2">
+                      <div className="text-xs text-gray-400">{m?.sender} • {fmtTime(m?.created_at)}</div>
+                      <div>{m?.text}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <form onSubmit={addTask} className="flex gap-2 mt-2"><input name="title" className="flex-1 p-2 bg-slate-800"/><select name="status" className="p-2 bg-slate-800"><option value="todo">todo</option><option value="in_progress">in_progress</option><option value="done">done</option></select><button className="px-3 py-2 bg-blue-600">Add</button></form>
-            </div>
-          )}
 
-          {tab==='Calendar' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Calendar</h2>
-              {Object.entries(groupByDate(Array.isArray(calendar)?calendar:[])).map(([d,evs])=> (
-                <div key={d} className="mb-2"><div className="font-bold">{d}</div>{(Array.isArray(evs)?evs:[]).map((ev:any)=> <div key={ev?.id} className="p-2 bg-slate-800 rounded my-1 flex justify-between"><div><div className="font-medium">{ev?.title}</div><div className="text-sm text-gray-400">{ev?.all_day? 'All day' : `${fmtTime(ev?.start_time)} — ${fmtTime(ev?.end_time)}`}</div></div>{ev?.assigned_agent? <div className="px-2 py-1 bg-green-600 rounded">{ev.assigned_agent}</div>:null}</div>)}</div>
-              ))}
-              <button className="mt-2 px-3 py-1 bg-blue-600" onClick={()=>setCalModalOpen(true)}>+ New Event</button>
-
-              {calModalOpen && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                  <div className="bg-white text-black p-4 rounded w-full max-w-md">
-                    <h3 className="font-bold mb-2">New Event</h3>
-                    <form onSubmit={submitCal} className="space-y-2">
-                      <input placeholder="Title" className="w-full p-2 border" value={calForm.title} onChange={e=>setCalForm({...calForm,title:e.target.value})} />
-                      <input type="datetime-local" className="w-full p-2 border" value={calForm.start_time} onChange={e=>setCalForm({...calForm,start_time:e.target.value})} />
-                      <input type="datetime-local" className="w-full p-2 border" value={calForm.end_time} onChange={e=>setCalForm({...calForm,end_time:e.target.value})} />
-                      <select className="w-full p-2 border" value={calForm.assigned_agent} onChange={e=>setCalForm({...calForm,assigned_agent:e.target.value})}><option value="">-- none --</option>{['Tango','Marcus','Rayno','Reva','Carlos','Nina','Maya'].map(a=> <option key={a} value={a}>{a}</option>)}</select>
-                      <textarea className="w-full p-2 border" value={calForm.description} onChange={e=>setCalForm({...calForm,description:e.target.value})} />
-                      <div className="flex justify-end gap-2"><button type="button" onClick={()=>setCalModalOpen(false)} className="px-2 py-1 border">Cancel</button><button type="submit" className="px-3 py-1 bg-blue-600 text-white">Create</button></div>
-                    </form>
-                  </div>
+                <div className="flex gap-2">
+                  <input className="flex-1 p-2 bg-slate-700 rounded" value={chatInput} onChange={e=>setChatInput(e.target.value)} />
+                  <button className="px-3 py-2 bg-blue-600 rounded" onClick={sendChatMessage}>Send</button>
                 </div>
-              )}
-
-            </div>
+              </div>
+            </section>
           )}
 
-          {tab==='Projects' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Projects</h2>
-              {(Array.isArray(projects)?projects:[]).map((p:any)=> <div key={p?.id} className="p-2 bg-slate-800 rounded mb-2 flex justify-between"><div><div className="font-medium">{p?.title}</div><div className="text-sm text-gray-400">{p?.description}</div></div>{p?.owner_agent? <div className="px-2 py-1 bg-purple-700 rounded">{p.owner_agent}</div>:null}</div>)}
+          {/* Modal for Tap on shoulder */}
+          {selectedAgent && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+              <div className="bg-slate-900 p-4 rounded w-full max-w-md">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-bold">{selectedAgent.name}</h3>
+                  <button onClick={()=>setSelectedAgent(null)}>X</button>
+                </div>
+                <div className="text-sm text-gray-300 mb-2">{selectedAgent.role}</div>
+                <div className="text-sm text-gray-400 mb-2">Status: {selectedAgent.status}</div>
+                <div className="text-xs text-gray-500 mb-2">Last active: {selectedAgent?.last_heartbeat?relativeTime(selectedAgent.last_heartbeat):'N/A'}</div>
+                <textarea className="w-full p-2 bg-slate-800 mb-2" value={tapMessage} onChange={e=>setTapMessage(e.target.value)} placeholder={`Send a message to ${selectedAgent.name}...`}></textarea>
+                <div className="flex justify-end gap-2">
+                  <button className="px-3 py-1 border" onClick={()=>setSelectedAgent(null)}>Close</button>
+                  <button className="px-3 py-1 bg-amber-600 text-black" onClick={()=>tapAgent(selectedAgent.name)} disabled={tapSending}>Tap</button>
+                </div>
+                {tapResult && <div className="mt-2 text-sm text-gray-300">{tapResult}</div>}
+              </div>
             </div>
           )}
-
-          {tab==='Memories' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Memories</h2>
-              {(Array.isArray(memories)?memories:[]).map(m=> <div key={m?.id} className="p-2 bg-slate-800 rounded mb-2"><div className="text-xs text-gray-400">{m?.date}</div><div>{m?.text}</div></div>)}
-            </div>
-          )}
-
-          {tab==='Office' && (
-            <div>
-              <h2 className="text-lg font-semibold mb-2">Office</h2>
-              {(Array.isArray(office)?office:[]).map(a=> <div key={a?.id || a?.name} className={`p-3 rounded mb-2 ${a?.status==='working'? 'border-2 border-green-500':'border border-slate-800'} bg-slate-800`}><div className="flex justify-between"><div><div className="font-semibold">{a?.name}</div><div className="text-sm text-gray-400">{a?.role}</div>{a?.current_task && <div className="text-sm text-gray-300">Current: {a.current_task}</div>}</div><div className="text-xs text-gray-400">{relativeTime(a?.last_heartbeat)}</div></div></div>)}
-            </div>
-          )}
-
-          {tab === 'Chat' && (
- <div className="p-4">
- <h2 className="text-lg font-semibold mb-2">Chat</h2>
- <p className="text-slate-400">Chat coming soon.</p>
- </div>
-)}
 
         </main>
       </div>
