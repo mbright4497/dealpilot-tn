@@ -88,7 +88,7 @@ export default function MissionControl(){
     <div className="min-h-screen bg-slate-900 text-white p-6">
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-extrabold bg-clip-text text-transparent" style={{background:'linear-gradient(90deg,#f59e0b,#b45309)'}}>Mission Control</h1>
+        <div className="text-amber-400 font-bold text-2xl">Mission Control</div>
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 bg-amber-600 rounded text-black">Tango Online</div>
           <div className="text-sm text-gray-200">{(Array.isArray(office)?office:[]).filter(a=>a?.status==='working').length}/7 active</div>
@@ -122,7 +122,7 @@ export default function MissionControl(){
                           {agent ? (
                             <button onClick={()=>setSelectedAgent(agent)} className="flex flex-col items-center justify-center w-full h-full" title={`${agent.name} - ${agent.role}`}>
                               <div className={`text-4xl text-white`} style={{textShadow:'0 2px 6px rgba(0,0,0,0.6)'}}>{agent.piece}</div>
-                              <div className="text-xs font-bold text-white mt-1">{agent.name}</div>
+                              <div className="text-xs font-bold text-white mt-1" style={{textShadow: '0 1px 2px rgba(0,0,0,0.8)'}}>{agent.name}</div>
                               <span className={`absolute top-1 right-1 w-3 h-3 rounded-full ${agent?.status==='working'?'bg-green-500':agent?.status==='idle'?'bg-yellow-400':'bg-gray-400'}`}></span>
                             </button>
                           ) : null}
