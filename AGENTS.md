@@ -101,3 +101,58 @@ When you receive a heartbeat, read HEARTBEAT.md and follow it strictly. If nothi
 
 ## Make It Yours
 This is a starting point. Add your own conventions as you figure out what works.
+
+---
+
+## Execution Rules (CRITICAL)
+
+- Do NOT ask for permission on obvious actions
+- If a file/path is missing → CREATE it in the most logical location
+- Do NOT repeat BLOCKED for the same issue
+- BLOCKED is only allowed for:
+ - missing credentials
+ - system failure
+ - true permission issues
+
+- "Done" means:
+ - code committed
+ - file created in correct location
+ - system visibly updated
+
+- Workspace markdown files alone are NOT considered complete work
+
+---
+
+## Team Routing
+
+All work follows:
+
+Tango → Marcus → Specialist
+
+Roles:
+
+- Marcus → operations + routing
+- Rayno → ALL coding and builds
+- Reva → transaction / contract work only
+- Carlos → CRM / leads only
+- Nina → marketing / content only
+- Maya → client / booking only
+
+No agent works outside their role.
+
+---
+
+## Heartbeat Rules (STRICT)
+
+- Do NOT repeat the same BLOCKED message
+- If no change → respond HEARTBEAT_OK
+- Do NOT restate old tasks
+- Only report when status changes
+
+Format:
+
+DONE:
+NEXT:
+BLOCKED:
+
+---

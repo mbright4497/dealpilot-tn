@@ -1,39 +1,42 @@
-Ideal Customer Profile — New Construction (Tri-Cities, TN)
+# Ideal Customer Profile — HubLinkPro (Tri-Cities, TN)
 
-Overview
-- Geography: Johnson City, Kingsport, Bristol (Tri-Cities), 50-mile radius
-- Age: 25–45
-- Income: $60k+ household (buyers able to qualify for $250K+ new builds)
-- Life stage: First-time buyers, young families, relocators, and small-scale investors
+## Overview
+HubLinkPro: AI assistant that helps buyers find and navigate new construction in Johnson City, Kingsport, Bristol. Free to buyers; paid by builders. Fast, local, builder-aware guidance 24/7.
 
-Primary Pain Points
-- Confusion about the new-construction process (timeline, closing, inspections)
-- Fear of hidden costs and unknown builder reliability
-- Overwhelm from searching listings across Zillow/Redfin with outdated info
-- Need for fast, reliable answers outside business hours
+## Ideal Buyer Segments (concise)
+- First-time buyers: Age 25–34, looking for low-maintenance homes with warranties, need guidance through financing and the build process.
+- Relocators / job-movers: Age 28–45, moving for work or family, value neighborhood intel, commute times, school info, and quick answers about local builders.
+- Small-scale investors / buy-to-rent: Age 30–50, interested in new builds for lower maintenance and rental appeal; focused on ROI, rental demand, builder reputation.
 
-Value Proposition
-- Instant AI assistant that knows every builder, community, and spec in the Tri-Cities
-- Free to the buyer; trusted local agent relationship + builder commissions covered
-- Reduces time-to-decision: find matching new-construction homes in minutes
+## Key Pain Points
+- First-time buyers: Confused by the new-construction process, worried about hidden costs, financing timelines, and inspection stages.
+- Relocators: Lack local knowledge (builders, communities, commute, schools); overwhelmed by listing sites and inconsistent builder info.
+- Investors: Need reliable data on builder quality, warranty, completion timelines, and local rental market signals.
 
-Where They Hang Out Online
-- Facebook local groups (Tri-Cities buy/sell, neighborhood groups)
-- Zillow, Realtor.com, Redfin (searching listings)
-- Instagram for builder photos/virtual tours
-- Local community pages and Nextdoor
+## Value Proposition
+- Free for buyers — no cost barrier to engage.
+- Commission paid by builders — aligned incentives to get buyers into the right homes.
+- 24/7 AI assistant: instant responses to questions (pricing, availability, builder reputation, floorplans, timelines) so leads convert faster and with less friction.
 
-Secret Sauce
-- 24/7 AI that gives accurate, locality-specific answers (builder timelines, lot availability, incentives)
-- Tags leads by ad variant and funnels them into GHL workflows for personalized follow-up
+## Where They Are Online
+- Facebook: local community groups (e.g., "Johnson City Homes", "Tri-Cities Buy/Sell/Trade"), neighborhood groups, buy/sell housing groups.
+- Zillow & Realtor.com: searching active/new construction listings and saved searches.
+- Local MLS-related and city channels: regional MLS portals, local real estate Facebook pages, Nextdoor for hyperlocal neighborhood chatter.
 
-Audience Targeting (for FB)
-- Age: 25–45
-- Radius: 50 miles of Johnson City, TN
-- Interests: New construction, home buying, Zillow, mortgage, home improvement, builders
-- Behaviors: Recent movers, likely-to-move, engaged shoppers
+## Secret Sauce
+- Instant, accurate AI answers about every local builder and community — trained on builder inventories, community specs, and common buyer questions.
+- Knows builder incentives, floorplan comparisons, and realistic timelines — reduces friction between inquiry and visiting/contracts.
+- Works inside the funnel (GHL) for immediate follow-up, lead tagging, and builder-introduced connections.
 
-KPIs
-- CPL target (test): $20–$50
-- Landing page conversion rate target: 8–12% for initial test
-- Test budget: $20/day across 3 ad variations
+## 3 Short Persona Bullets (for creative)
+- "Sarah, 29 — first-time buyer, wants a low-upkeep new home near good schools; needs step-by-step help and mortgage confidence."
+- "Carlos, 35 — relocating for a tech job, needs fast intel on commute, builders, and neighborhoods before he moves."
+- "Amanda, 42 — investor buying a new build to rent; cares about builder reputation, warranties, and rental demand."
+
+## 3 Suggested Facebook Ad Audience Specs
+1. Age: 25–34; Interests: First-time homebuyer, mortgage loans, Zillow; Radius: 50 miles around Johnson City, TN.
+2. Age: 28–45; Interests: Relocation, jobs in Johnson City/medical/tech, Realtor.com; Radius: 50 miles (Tri-Cities metro).
+3. Age: 30–50; Interests: Real estate investing, rental property, Roofstock, Zillow; Radius: 50 miles (Johnson City + Kingsport + Bristol).
+
+---
+Concise. Actionable. Ready to use in ad copy and landing pages.

@@ -1,20 +1,20 @@
-# Follow-Ups — Midday Lead Nurture
-*Status update anchored at 12:00 PM ET. Live CRM / GHL data and Brave Search access remain blocked until credentials are provided.*
+# Follow-ups — 22 March 2026
 
-## Priority Follow-Ups — Checklist
-1. **Lead call:** Lead 1 (High) needs a callback within 2 hours; details (name/phone/timeline) sit behind the New Construction queue in GoHighLevel. Once someone with GHL access pulls today’s New Construction export, paste the rows below so we can log the exact contact info.
-   - **Suggested 30–60 second script:**
-     > "Hey {{first_name}}, this is Matt Bright with the iHome Team. I noticed you were exploring quick move-in homes around Johnson City/Kingsport — builders are still releasing the very first homes this spring, and I can lock you into a showing and incentive before they disappear. What’s the best time today or tomorrow that we can chat for a few minutes and get you into the builder’s queue?"
-   - **Action:** Mark the lead HOT if the timeline is under 30 days or the loan is preapproved. Tag the record `Lead-Day-Of` + `Builder-Callback-Midday` and record the follow-up on the lead card.
+## New leads to call
+1. **Doritha Sullivan (D.R. Horton Northeast TN)** – mobile 423-202-6041 / office 423-742-2683. Confirm Archer's Pointe (Johnson City) and The Arbor Townhomes (Kingsport) availability plus current incentives before noon.
+2. **Wolfe Development (Jonesborough)** – 423-913-2555. Ask about Fieldcrest Acres quick-move units and the upcoming Fishery Village release near Bristol so we can time buyer previews.
+3. **Patterson Homes (Kingsport)** – 402 E. Main St, 423-390-0344. Get final pricing and move-in windows for Chase Meadows, Old Island, and any lots opening in the Vine Farm on Main corridor.
+4. **iHome Team marketing (Nate Wright office)** – 423-750-3411. Coordinate a builder-focused open house list and the outreach cadence for buyers in the pipeline.
 
-2. **Listings to promote:** Identify at least three move-in-ready or new-construction homes under $400K (focus on DR Horton, Lennar, Smith Douglas, Ryan Homes in Johnson City, Kingsport, Bristol). Run the MLS / builder feed once access is restored to capture:
-   - New listings (posted in the last 48 hours)
-   - Price drops (last 7 days)
-   - Status changes (U/C, Pended, Closed)
-   > *Human next step:* Use GHL or MLS (Brave Search API currently missing) to collect URLs/prices and paste them below.
+## Listings to promote
+1. **123 Mint Ct, Bluff City (Hideaway at Fox Meadows by D.R. Horton)** – $326,005, 3 bd/2.5 ba, 1,634 sqft, move-in ready, builder incentives on record. https://jome.com/new-home/tn/2438865-123-mint-ct-bluff-city-tn-37618
+2. **102 Mint Ct, Bluff City** – $386,385, 4 bd/2.5 ba, 2,618 sqft, quick closing with upgraded kitchen. https://jome.com/new-home/tn/2482843-102-mint-ct-bluff-city-tn-37618
+3. **384 Alta Tree Blvd, Johnson City** – $353,000, 3 bd/2.5 ba, 1,749 sqft, close to Archer’s Pointe schools. https://jome.com/new-home/tn/2451313-384-alta-tree-blvd-johnson-city-tn-37604
+4. **682 St. Andrews Dr, Kingsport** – $357,990, 4 bd/2 ba, 1,774 sqft, D.R. Horton build in The Arbor Townhomes (link). https://jome.com/new-home/tn/2348251-682-st-andrews-dr-kingsport-tn-37664
+5. **1308 Carrberry Ct, Kingsport** – $394,575, 5 bd/3.5 ba, 2,618 sqft, high-end finish kit; great for buyers needing space. https://jome.com/new-home/tn/2321724-1308-carrberry-ct-kingsport-tn-37663
 
-3. **Price-change alerts:** Once we have live builder/MLS data, list specific communities with price reductions and push a price-drop SMS to buyers tagged `Midday-Price-Focus`. Until then, note that the data is pending and flag any urgent incentives manually in GHL.
+## Price reductions
+- No publicly posted price reductions were visible today; rely on builder reps above for real-time updates before messaging buyers.
 
-## Access Notes
-- **GHL access required:** https://app.gohighlevel.com/ (New Construction queue). Please export the latest rows in the `New Construction` view with today’s entry date.
-- **Brave Search API key missing:** Automated listing and market intel pulls cannot run until the key is configured. Please either configure the key or run the listed queries manually and paste the results here.
+## Urgent buyer alerts
+- New construction inventory under $400K is still capped at ~33 homes and 14 communities; emphasize urgency to buyers who have been on the fence so we don’t lose them to other markets or to new rate moves.
