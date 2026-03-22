@@ -231,7 +231,7 @@ export default function MissionControlCleanRewrite(){
             </div>
           )}
 
-          {active === 'Chat' && (
+          {tab === 'Chat' && (
  <div className="p-4">
  <h2 className="text-lg font-semibold mb-2">Chat</h2>
  <p className="text-slate-400">Chat coming soon.</p>
