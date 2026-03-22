@@ -168,9 +168,26 @@ export default function MissionControl(){
           {tab==='Calendar' && (
             <section>
               <h2 className="text-lg font-semibold mb-2">Calendar</h2>
-              {Object.entries(groupByDate(Array.isArray(calendar)?calendar:[])).map(([d,evs])=> (
-                <div key={d} className="mb-2"><div className="font-bold">{d}</div>{(Array.isArray(evs)?evs:[]).map((ev:any)=> <div key={ev?.id} className="p-2 bg-slate-800 rounded my-1"><div className="font-medium">{ev?.title}</div><div className="text-sm text-gray-400">{ev?.all_day? 'All day' : `${fmtTime(ev?.start_time)} — ${fmtTime(ev?.end_time)}`}</div></div>)}</div>
-              ))}
+              {(!Array.isArray(calendar) || calendar.length===0) ? (
+                <div className="text-gray-400">No events</div>
+              ) : (
+                (()=>{
+                  try{
+                    const grouped = groupByDate(calendar || []);
+                    return Object.entries(grouped).map(([d,evs])=> (
+                      <div key={d} className="mb-2">
+                        <div className="font-bold">{d}</div>
+                        {(Array.isArray(evs)?evs:[]).map((ev:any)=> (
+                          <div key={ev?.id} className="p-2 bg-slate-800 rounded my-1">
+                            <div className="font-medium">{ev?.title ?? ''}</div>
+                            <div className="text-sm text-gray-400">{ev?.all_day ? 'All day' : `${fmtTime(ev?.start_time)} — ${fmtTime(ev?.end_time)}`}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ));
+                  }catch(e){ console.error('calendar render error',e); return <div className="text-red-500">Calendar rendering error</div>; }
+                })()
+              )}
             </section>
           )}
 
