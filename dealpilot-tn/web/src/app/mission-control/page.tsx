@@ -96,7 +96,54 @@ export default function MissionControlCleanRewrite(){
         </aside>
 
         <main className="flex-1">
-          {tab==='Overview' && <div><h2 className="text-lg font-semibold">Overview</h2><p className="text-gray-300">Summary</p></div>}
+          {tab==='Overview' && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Overview</h2>
+                  <div className="text-sm text-gray-300">Agent chessboard map</div>
+                </div>
+                <div className="text-sm text-gray-300">
+                  <div>Total agents: {(Array.isArray(office)?office:[]).length}</div>
+                  <div>Active: {(Array.isArray(office)?office:[]).filter(a=>a?.status==='working').length}</div>
+                  <div>Tasks pending: {(Array.isArray(tasks)?tasks:[]).filter(t=>t?.status!=='done').length}</div>
+                </div>
+              </div>
+
+              {/* Chessboard grid */}
+              <div className="w-full max-w-2xl mx-auto">
+                <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8}}>
+                  {/* create 8x4 board squares (4x4 for simplicity) */}
+                  {Array.from({length:16}).map((_,i)=>{
+                    const row = Math.floor(i/4), col = i%4;
+                    const dark = (row+col)%2===0;
+                    // find agent by matching office_x/office_y or assign by index
+                    const agents = Array.isArray(office)?office:[];
+                    const agent = agents.find(a=>a?.office_x===col && a?.office_y===row) || agents[i] || null;
+                    const status = agent?.status || 'offline';
+                    const statusColor = status==='working' ? 'bg-green-500' : status==='idle' ? 'bg-yellow-400' : 'bg-red-500';
+                    return (
+                      <div key={i} className={`${dark? 'bg-slate-800':'bg-slate-700'} p-3 rounded`}>
+                        {agent ? (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-semibold">{agent?.name}</div>
+                              <div className="text-xs text-gray-300">{agent?.role}</div>
+                              <div className="text-xs text-gray-400">{agent?.current_task? `Task: ${agent.current_task}` : ''}</div>
+                            </div>
+                            <div className={`w-3 h-3 rounded-full ${statusColor}`} title={status}></div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">Empty</div>
+                        )}
+                        <div className="mt-2 text-xs text-gray-400">{agent?.last_heartbeat ? relativeTime(agent.last_heartbeat) : ''}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {tab==='Tasks' && (
             <div>
