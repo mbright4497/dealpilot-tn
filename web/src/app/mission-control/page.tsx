@@ -41,8 +41,29 @@ const TEAM = [
   { name: 'Maya', role: 'Client Success & Booking' },
 ]
 
+const AGENT_ORDER = [
+  { name: 'Tango', role: 'Leader / Orchestrator', piece: '\u2654', coord: 'e1' },
+  { name: 'Marcus', role: 'COO', piece: '\u2655', coord: 'd1' },
+  { name: 'Rayno', role: 'Software Engineer', piece: '\u2657', coord: 'f1' },
+  { name: 'Reva', role: 'Transaction Coordinator', piece: '\u2656', coord: 'a1' },
+  { name: 'Carlos', role: 'Lead Gen & CRM Manager', piece: '\u2658', coord: 'b1' },
+  { name: 'Nina', role: 'Content & Marketing Director', piece: '\u2659', coord: 'd2' },
+  { name: 'Maya', role: 'Client Success & Booking', piece: '\u2659', coord: 'e2' }
+]
+
 export default function MissionControl(){
-  const [tab, setTab] = useState<string>('Tasks')
+  const [tab, setTab] = useState<string>('Overview')
+
+  // helper
+  const findAgent = (name:string) => (Array.isArray(TEAM)?TEAM:[]).find(a=>a.name===name) || null
+
+  const getAgentAt = (coord:string)=>{
+    const placement:any = Object.fromEntries(AGENT_ORDER.map(a=>[a.coord, a.name]));
+    const name = placement[coord];
+    if(!name) return null;
+    const agent = findAgent(name);
+    return { name, ...agent, piece: AGENT_ORDER.find(a=>a.name===name)?.piece }
+  }
 
   return (
     <div style={{minHeight:'100vh'}} className="bg-[#0f172a] text-white flex">
@@ -68,6 +89,38 @@ export default function MissionControl(){
         </header>
 
         <section>
+          {tab === 'Overview' && (
+            <div>
+              <h2 className="text-xl font-bold text-amber-300 mb-3">The Board</h2>
+              <div className="mb-3 text-sm text-gray-300">An 8x8 view of agent positions and status</div>
+              <div className="border-4 border-amber-800 rounded shadow-2xl inline-block">
+                <div className="grid grid-cols-8" style={{width:72*8}}>
+                  {RANKS.map(rank=> (
+                    FILES.map((file,i)=>{
+                      const coord = `${file}${rank}`;
+                      const light = ((rank + i) %2 ===0);
+                      const bg = light ? 'bg-amber-100' : 'bg-amber-900';
+                      const agent = getAgentAt(coord);
+                      return (
+                        <div key={coord} className={`${bg} p-0`} style={{width:72,height:72,display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+                          {agent ? (
+                            <button onClick={()=>setTab('Overview')} className="flex flex-col items-center justify-center w-full h-full" title={`${agent.name} - ${agent.role}`}>
+                              <div className="text-4xl text-white" style={{textShadow:'0 2px 6px rgba(0,0,0,0.6)'}}>{agent.piece}</div>
+                              <div className="text-xs font-bold text-white mt-1" style={{textShadow:'0 1px 2px rgba(0,0,0,0.8)'}}>{agent.name}</div>
+                              <span className={`absolute top-1 right-1 w-3 h-3 rounded-full ${agent?.status==='working'?'bg-green-500':agent?.status==='idle'?'bg-yellow-400':'bg-gray-400'}`}></span>
+                            </button>
+                          ) : null}
+                        </div>
+                      )
+                    })
+                  ))}
+                </div>
+                <div className="flex mt-2 justify-between px-1 text-amber-800">
+                  {FILES.map(f=> <div key={f} style={{width:72,textAlign:'center'}}>{f}</div>)}
+                </div>
+              </div>
+            </div>
+          )}
           {tab === 'Tasks' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Tasks</h2><p className="text-slate-400">Loading tasks...</p></div>}
           {tab === 'Calendar' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Calendar</h2><p className="text-slate-400">No events scheduled.</p></div>}
           {tab === 'Projects' && <div className="p-4"><h2 className="text-lg font-semibold mb-2">Projects</h2><p className="text-slate-400">No projects yet.</p></div>}
