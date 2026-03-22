@@ -101,7 +101,7 @@ export default function MissionControlCleanRewrite(){
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-semibold">Overview</h2>
-                  <div className="text-sm text-gray-300">Agent chessboard map</div>
+                  <div className="text-sm text-gray-300">Agent chessboard map (8x8)</div>
                 </div>
                 <div className="text-sm text-gray-300">
                   <div>Total agents: {(Array.isArray(office)?office:[]).length}</div>
@@ -110,34 +110,57 @@ export default function MissionControlCleanRewrite(){
                 </div>
               </div>
 
-              {/* Chessboard grid */}
-              <div className="w-full max-w-2xl mx-auto">
-                <div style={{display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8}}>
-                  {/* create 8x4 board squares (4x4 for simplicity) */}
-                  {Array.from({length:16}).map((_,i)=>{
-                    const row = Math.floor(i/4), col = i%4;
-                    const dark = (row+col)%2===0;
-                    // find agent by matching office_x/office_y or assign by index
-                    const agents = Array.isArray(office)?office:[];
-                    const agent = agents.find(a=>a?.office_x===col && a?.office_y===row) || agents[i] || null;
-                    const status = agent?.status || 'offline';
-                    const statusColor = status==='working' ? 'bg-green-500' : status==='idle' ? 'bg-yellow-400' : 'bg-red-500';
+              {/* 8x8 Chessboard */}
+              <div className="w-full max-w-3xl mx-auto">
+                <div className="grid grid-cols-9 gap-0">
+                  {/* Top-left corner empty cell for labels */}
+                  <div></div>
+                  {/* Files labels a-h */}
+                  {['a','b','c','d','e','f','g','h'].map(f=> <div key={f} className="text-center text-xs text-gray-400">{f}</div>)}
+
+                  {/* Ranks 8 to 1 with squares */}
+                  {Array.from({length:8}).map((_,rIndex)=>{
+                    const rank = 8 - rIndex;
                     return (
-                      <div key={i} className={`${dark? 'bg-slate-800':'bg-slate-700'} p-3 rounded`}>
-                        {agent ? (
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-semibold">{agent?.name}</div>
-                              <div className="text-xs text-gray-300">{agent?.role}</div>
-                              <div className="text-xs text-gray-400">{agent?.current_task? `Task: ${agent.current_task}` : ''}</div>
+                      <React.Fragment key={rank}>
+                        {/* rank label */}
+                        <div className="text-center text-xs text-gray-400">{rank}</div>
+                        {/* 8 files */}
+                        {Array.from({length:8}).map((__,fIndex)=>{
+                          const file = fIndex; // 0..7 corresponds to a..h
+                          const light = (rank + file) % 2 === 0; // alternate
+                          // mapping of agents to positions (example positions)
+                          const placement:any = {
+                            'e1':'Tango', 'd1':'Marcus', 'c1':'Rayno', 'a1':'Reva', 'b1':'Carlos', 'g2':'Nina', 'h2':'Maya'
+                          };
+                          const fileChar = String.fromCharCode(97 + fIndex); // a-h
+                          const coord = `${fileChar}${rank}`;
+                          const agentName = placement[coord] || null;
+                          const agent = (Array.isArray(office)?office:[]).find((x:any)=>x?.name===agentName) || null;
+                          const status = agent?.status || 'offline';
+                          const statusClass = status==='working' ? 'bg-green-500' : status==='idle' ? 'bg-yellow-400' : 'bg-red-500';
+                          // piece unicode mapping
+                          const pieceMap:any = { 'Tango':'\u2654', 'Marcus':'\u2655', 'Rayno':'\u2657', 'Reva':'\u2656', 'Carlos':'\u2658', 'Nina':'\u2659', 'Maya':'\u2659' };
+
+                          return (
+                            <div key={coord} className={`${light? 'bg-slate-600':'bg-slate-800'} p-3 border border-slate-900 flex flex-col items-center justify-center`}>
+                              {agent ? (
+                                <div className="flex flex-col items-center">
+                                  <div className="text-2xl">{String.fromCharCode(parseInt((pieceMap[agent.name]||'\u2659').replace('\\u',''),16) )}</div>
+                                  <div className="text-xs text-gray-200 mt-1">{agent.name}</div>
+                                  <div className="mt-1"><span className={`w-2 h-2 inline-block rounded-full ${statusClass}`}></span></div>
+                                  <div className="text-xs text-gray-400 mt-1">{agent?.role}</div>
+                                  <div className="text-xs text-gray-500">{agent?.current_task? agent.current_task : ''}</div>
+                                  <div className="text-xs text-gray-400">{agent?.last_heartbeat? relativeTime(agent.last_heartbeat):''}</div>
+                                </div>
+                              ) : (
+                                <div className="w-full h-full" />
+                              )}
                             </div>
-                            <div className={`w-3 h-3 rounded-full ${statusColor}`} title={status}></div>
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-500">Empty</div>
-                        )}
-                        <div className="mt-2 text-xs text-gray-400">{agent?.last_heartbeat ? relativeTime(agent.last_heartbeat) : ''}</div>
-                      </div>
+                          );
+
+                        })}
+                      </React.Fragment>
                     );
                   })}
                 </div>
