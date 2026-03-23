@@ -4,12 +4,44 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+type TransactionRow = {
+  closing_date?: string | null
+  binding_date?: string | null
+  closing?: string | null
+  binding?: string | null
+  [key: string]: unknown
+}
+
+type TransactionInsertPayload = {
+  address?: string
+  client?: string
+  type?: string
+  status?: string
+  binding?: string
+  closing?: string
+  notes?: string
+  contacts?: string
+  purchase_price?: number | null
+  earnest_money?: number | null
+  seller_names?: string
+  buyer_names?: string
+  inspection_end_date?: string | null
+  financing_contingency_date?: string | null
+  special_stipulations?: string
+  contract_type?: string
+  timeline?: unknown[]
+  issues?: unknown[]
+  documents?: unknown[]
+}
+
+*** End Patch
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
     global: {
-      fetch: (url: any, options: any = {}) =>
+      fetch: (url: RequestInfo, options?: RequestInit) =>
         fetch(url, { ...options, cache: 'no-store' }),
     },
   }
@@ -30,7 +62,7 @@ export async function GET() {
   // Remap DB columns to frontend-friendly keys so TransactionList/Transaction cards
   // can read `closing` and `binding` (the DB stores closing_date and binding_date).
   const payload = Array.isArray(data)
-    ? data.map((r: any) => ({
+    ? data.map((r: TransactionRow) => ({
         ...r,
         closing: r.closing_date ?? r.closing ?? null,
         binding: r.binding_date ?? r.binding ?? null,
@@ -41,7 +73,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json()
+  const body = (await req.json()) as TransactionInsertPayload
 
   // get auth user
   const authSupabase = createServerSupabaseClient()

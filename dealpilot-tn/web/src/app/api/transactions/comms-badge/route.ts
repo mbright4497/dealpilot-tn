@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getSupabaseSafe } from '@/lib/supabase'
 
+interface CommunicationLogRow {
+  transaction_id: number | string
+  created_at: string
+}
+
 export async function GET(req: Request) {
   try {
     const supabase = getSupabaseSafe()
@@ -18,7 +23,8 @@ export async function GET(req: Request) {
 
     // Reduce to last comm per transaction
     const lastByTx: Record<string, string> = {}
-    for (const row of data as any[]) {
+    const rows = (data ?? []) as CommunicationLogRow[]
+    for (const row of rows) {
       const tx = String(row.transaction_id)
       if (!lastByTx[tx]) lastByTx[tx] = row.created_at
     }
@@ -37,8 +43,9 @@ export async function GET(req: Request) {
     })
 
     return NextResponse.json({ result })
-  } catch (err: any) {
-    console.error('GET /api/transactions/comms-badge error', err)
-    return NextResponse.json({ error: err.message ?? String(err) }, { status: 500 })
+  } catch (error) {
+    console.error('GET /api/transactions/comms-badge error', error)
+    const message = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
+interface TransactionCreatePayload {
+  address?: string
+  client_name?: string
+  purchase_price?: number
+  closing_date?: string
+  deal_type?: string
+}
+
 export async function POST(req: Request){
   try{
-    const supabase = createServerSupabaseClient({ req, res: undefined as any })
+    const supabase = createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if(!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    const body = await req.json()
+    const body = (await req.json()) as TransactionCreatePayload
     const { address, client_name, purchase_price, closing_date, deal_type } = body
     if(!address || !client_name) return NextResponse.json({ error: 'address and client_name required' }, { status: 400 })
 
@@ -27,7 +35,9 @@ export async function POST(req: Request){
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     const id = data.id
     return NextResponse.json({ ok: true, id, url: `/deal/${id}` })
-  }catch(e:any){
-    return NextResponse.json({ error: String(e?.message||e) }, { status: 500 })
+  }catch(error){
+    console.error('POST /api/transactions/create error', error)
+    const message = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
