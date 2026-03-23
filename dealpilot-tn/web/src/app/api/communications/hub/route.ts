@@ -32,15 +32,14 @@ export async function GET(req: Request){
     let error:any = null
     const q = supabase.from('deal_contacts').select('role, contacts(id, name, email, phone)')
     // handle test mocks that resolve select immediately vs real supabase client which returns a query builder
-    if (typeof (q as any).eq === 'function') {
+    if (q && typeof (q as any).eq === 'function') {
       const res = await (q as any).eq('deal_id', dealId)
       data = (res as any).data
       error = (res as any).error
     } else {
-      const res = await (q as any).then ? await q : q
-      // if the mock returned { data } directly
-      data = (res as any)?.data || res
-      error = (res as any)?.error || null
+      const resolved = q && typeof (q as any).then === 'function' ? await q : q
+      data = (resolved as any)?.data || resolved
+      error = (resolved as any)?.error || null
     }
 
     if(error) throw error
@@ -72,13 +71,14 @@ export async function GET(req: Request){
     // For each contact, fetch last communication timestamp
     for(const c of allContacts){
       let comms:any = null
-      const q2 = supabase.from('deal_communications').select('created_at').eq('deal_id', dealId).in('recipient', [c.email, c.phone].filter(Boolean)).order('created_at', { ascending: false }).limit(1)
-      if (typeof (q2 as any).then === 'function') {
-        const r2 = await q2
-        comms = (r2 as any)?.data || r2
-      } else {
-        comms = (q2 as any)?.data || q2
-      }
+      const q2 = supabase.from('deal_communications').select('created_at')
+      const q2WithFilters = q2 && typeof (q2 as any).eq === 'function'
+        ? (q2 as any).eq('deal_id', dealId).in('recipient', [c.email, c.phone].filter(Boolean)).order('created_at', { ascending: false }).limit(1)
+        : q2
+      const resolvedComms = q2WithFilters && typeof (q2WithFilters as any).then === 'function'
+        ? await q2WithFilters
+        : q2WithFilters
+      comms = (resolvedComms as any)?.data || resolvedComms
       ;(c as any).last_communication = comms && comms[0] ? comms[0].created_at : null
     }
 
