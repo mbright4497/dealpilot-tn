@@ -88,7 +88,7 @@ export default function MissionControl(){
     <div className="min-h-screen bg-slate-900 text-white p-6">
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold" style={color: '#f59e0b'}>Mission Control</h1>
+        <h1 className="text-2xl font-bold" style={{color: '#f59e0b'}}>Mission Control</h1>
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 bg-amber-600 rounded text-black">Tango Online</div>
           <div className="text-sm text-gray-200">{(Array.isArray(office)?office:[]).filter(a=>a?.status==='working').length}/7 active</div>
