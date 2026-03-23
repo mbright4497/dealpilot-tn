@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
     // Attempt to find matching transaction by recipient/contact info
     // Try matching by contact id in transactions.external_contact_id or by client name
-    let dealRow: any = null
+    let dealRow: { deal_id?: number; id?: number } | null = null
     const contactIdentifier = payload?.contact?.phone || payload?.contact?.email || payload?.contact?.name || payload?.from || payload?.sender || null
 
     // First try matching by transaction.client
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
     const channel = type.includes('sms') ? 'ghl_sms' : type.includes('email') ? 'ghl_email' : type.includes('call') ? 'ghl_call' : `ghl_${type}`
 
     // Insert into deal_communications
-    const { data: inserted, error: insertErr } = await supabase.from('deal_communications').insert({
+    const { error: insertErr } = await supabase.from('deal_communications').insert({
       deal_id: dealId,
       user_id: tenant.owner_user_id,
       comm_type: channel,
@@ -74,8 +74,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ received: true })
-  } catch (err: any) {
-    console.error('Webhook handler error', err)
-    return NextResponse.json({ error: err.message || String(err) }, { status: 500 })
+  } catch (error) {
+    console.error('Webhook handler error', error)
+    const message = error instanceof Error ? error.message : String(error)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
