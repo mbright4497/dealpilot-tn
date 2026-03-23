@@ -520,7 +520,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
 
   useEffect(() => {
     if (selectedDeal?.address) {
-      setRf401Draft((prev) => (prev.propertyAddress ? prev : { ...prev, propertyAddress: selectedDeal.address }))
+      setRf401Draft((prev) => (prev.propertyAddress ? prev : { ...prev, propertyAddress: selectedDeal.address || '' }))
     }
   }, [selectedDeal?.address])
 
@@ -832,7 +832,7 @@ export default function RookWizard({ transactionId, onClose }: Props) {
     </div>
   )
 
-  const nextStepLabel = STEP_CONFIG[activeStep]?.title ?? ''
+  const nextStepLabel = STEP_CONFIG.find((step) => step.id === activeStep)?.title ?? ''
 
   const renderStepContent = () => {
     if (loading) {

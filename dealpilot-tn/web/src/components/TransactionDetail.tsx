@@ -197,7 +197,6 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const [draftTo, setDraftTo] = useState<string>('')
   const [draftSubject, setDraftSubject] = useState<string>('')
   const [draftBody, setDraftBody] = useState<string>('')
-  const [draftContactId, setDraftContactId] = useState<number|undefined>(undefined)
   const [auditGenerating, setAuditGenerating] = useState(false)
   const generationTimeoutRef = useRef<number | null>(null)
   const auditBlurHandlerRef = useRef<(() => void) | null>(null)
@@ -264,14 +263,36 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
     setDraftOpen(true)
   }
 
+  // Flow map: TransactionDetail.tsx (openDraft/sendDraft) -> web/src/app/api/communications/send/route.ts -> db/migrations/2026-03-23-communications-queue.sql
   async function sendDraft(){
-    // For now assume no GHL connected — queue locally and notify user
+    const toField = (draftTo || '').trim()
+    const subjectField = (draftSubject || '').trim()
+    const bodyField = (draftBody || '').trim()
+    if(!toField||!subjectField||!bodyField){
+      alert('Please complete the draft before queuing. Missing to/subject/body.')
+      return
+    }
+
+    const payload = {
+      deal_id: urlTransactionId,
+      channel: 'email',
+      recipient: toField,
+      subject: subjectField,
+      message: bodyField,
+      queueOnly: true,
+      metadata: { kind: draftKind || 'draft', source: 'approve_and_queue' }
+    }
+
     try{
-      // add audit log
-      try{ await fetch('/api/audit/log',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'queue_message', resource:'communications', resource_id: urlTransactionId, details: { kind: draftKind, to: draftTo, subject: draftSubject } }) }) }catch(e){}
-      // show queued notification
-      alert('Message queued — connect GHL in Settings to send.')
-    }catch(e){ console.error('sendDraft failed', e); alert('Failed to queue message') }
+      const res = await fetch('/api/communications/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      const json = await res.json()
+      if(!res.ok || !json.ok){ throw new Error(json?.error || 'Queueing failed') }
+      addMessage({ from: 'assistant', text: `Queued email to ${toField} — subject: ${subjectField}` })
+      alert(`Message queued${json.queue?.id? ` (id: ${json.queue.id})` : ''}`)
+    }catch(e:any){
+      console.error('sendDraft failed', e)
+      alert(`Failed to queue message: ${e?.message||'unknown error'}`)
+    }
     setDraftOpen(false)
   }
 
