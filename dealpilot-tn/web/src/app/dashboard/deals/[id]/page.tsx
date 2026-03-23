@@ -1,5 +1,5 @@
 "use client"
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
@@ -15,7 +15,7 @@ const TABS: { key: TabKey; label: string }[] = [
 
 export default function DealDetailPage({ params, }: { params: { id: string } }) {
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = useMemo(() => createClientComponentClient(), [])
 
   // set EVA page context when on a deal page (client-only)
   React.useEffect(()=>{
@@ -69,19 +69,20 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
     }
 
     load()
-  }, [params.id])
+  }, [params.id, supabase])
 
   // Deal Health + Countdown
-  const today = new Date()
 
   const bindingCountdown = useMemo(() => {
     if (!editData.binding) return null
+    const today = new Date()
     const diff = new Date(editData.binding).getTime() - today.getTime()
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
   }, [editData.binding])
 
   const closingCountdown = useMemo(() => {
     if (!editData.closing) return null
+    const today = new Date()
     const diff = new Date(editData.closing).getTime() - today.getTime()
     return Math.ceil(diff / (1000 * 60 * 60 * 24))
   }, [editData.closing])
@@ -91,7 +92,7 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
     if (closingCountdown && closingCountdown < 0) return "At Risk"
     if (closingCountdown && closingCountdown <= 7) return "Attention"
     return "Healthy"
-  }, [closingCountdown])
+  }, [closingCountdown, editData.closing])
 
   // Save Changes
   async function handleSave() {
@@ -121,7 +122,7 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
   }
 
   // Load Documents
-  async function loadDocuments() {
+  const loadDocuments = useCallback(async () => {
     if (!transaction) return
     setDocLoading(true)
     const { data, error } = await supabase.storage
@@ -130,11 +131,13 @@ export default function DealDetailPage({ params, }: { params: { id: string } }) 
 
     if (!error) setDocuments(data || [])
     setDocLoading(false)
-  }
+  }, [supabase, transaction])
 
   useEffect(() => {
-    if (activeTab === "documents") loadDocuments()
-  }, [activeTab])
+    if (activeTab === "documents") {
+      loadDocuments()
+    }
+  }, [activeTab, loadDocuments])
 
   // Loading & Error States
   if (loading)
