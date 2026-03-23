@@ -30,10 +30,9 @@ import DealPartiesPanel from './DealPartiesPanel/DealPartiesPanel'
 import ContractViewer from './ContractViewer'
 import { getTransactionConfig, isDocApplicable } from '@/lib/transaction-phases'
 
-type Contact = { role:string, name:string, company?:string, phone?:string, email?:string }
-type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
-type Transaction = { id:number, address:string, client:string, type:string, status:string, binding?:string, closing?:string, contacts?:Contact[], notes?:string, timeline?:TimelineEvent[] }
+import { buildDraftTemplate, Contact, Transaction } from '@/lib/draftTemplate'
 
+type TimelineEvent = { id:string, title:string, date?:string, ts?:number, type?:string, note?:string }
 
 // PdfDocSection: render a PDF (page-by-page) onto canvases using PDF.js
 function PdfDocSection({ url, label }: { url: string, label: string }){
@@ -250,57 +249,18 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
   // Draft / Quick Action helpers
   const [draftKind, setDraftKind] = useState<string>('')
-  function findContactByRole(role:string){
-    // prefer remote.contacts (merged), then localContacts
-    const all = [ ...(mergedTx && (mergedTx as any).contacts ? (mergedTx as any).contacts : []), ...localContacts ]
-    return all.find((c:any)=> (c.role||'').toLowerCase().includes(role.toLowerCase())) || null
-  }
+  const combinedContacts = React.useMemo(() => {
+    const remoteContacts = (mergedTx as any).contacts || []
+    return [...remoteContacts, ...localContacts]
+  }, [mergedTx, localContacts])
 
   function openDraft(kind: string){
     setDraftKind(kind)
-    // prefill subject/body/to based on kind
-    const addr = mergedTx.address || ''
-    const buyer = mergedTx.client || ''
-
-    // helper to set recipient + warning
-    const setRecipientAndBody = (roleLabel:string, roleKey:string, defaultBody:string, defaultSubject:string) => {
-      const contact = findContactByRole(roleKey)
-      if(contact && contact.email){
-        setDraftTo(contact.email)
-        // personalize salutation
-        const name = contact.name || roleLabel
-        setDraftBody(defaultBody.replace('[Lender]', name).replace('Title Team', name))
-      } else {
-        setDraftTo('')
-        setDraftBody(defaultBody)
-        // set a visible warning in the body (UI will also show a warning banner)
-        setDraftBody((prev)=>`[Warning: ${roleLabel} email not on file]\n\n${prev}`)
-      }
-      setDraftSubject(defaultSubject)
-    }
-
-    if(kind==='lender'){
-      setRecipientAndBody('Lender','lender',`Hi [Lender],\n\nThis is a status update request for ${addr}. Please confirm the current loan status and any outstanding conditions.\n\nThanks,\n${buyer}` , `Request: Loan status update for ${addr}`)
-    } else if(kind==='title'){
-      setRecipientAndBody('Title Company','title',`Hi Title Team,\n\nCould you please provide the current title commitment status for ${addr}? Please include any exceptions or required cures.\n\nThanks,\n${buyer}` , `Request: Title update for ${addr}`)
-    } else if(kind==='closing'){
-      // All parties: gather buyer, seller, agents, lender, title emails
-      const emails:Set<string> = new Set()
-      const buyerContact = findContactByRole('buyer')
-      const sellerContact = findContactByRole('seller')
-      const buyerAgent = findContactByRole('buyer agent') || findContactByRole('buyers agent') || findContactByRole('buying agent')
-      const sellerAgent = findContactByRole('seller agent') || findContactByRole("sellers agent") || findContactByRole('selling agent')
-      const lender = findContactByRole('lender')
-      const title = findContactByRole('title')
-      ;[buyerContact,sellerContact,buyerAgent,sellerAgent,lender,title].forEach(c=>{ if(c && c.email) emails.add(c.email) })
-      const list = Array.from(emails).join(', ')
-      if(list.length>0){ setDraftTo(list) } else { setDraftTo(''); setDraftBody((prev)=>`[Warning: Some party emails not on file]\n\n${prev||''}`) }
-      setDraftSubject(`Reminder: Closing timeline for ${addr}`)
-      setDraftBody(`Hello all,\n\nThis is a reminder that closing for ${addr} is upcoming. Please confirm final readiness and any outstanding items.\n\nThanks,\n${buyer}`)
-    }
-
-    // add visible draft message to chat immediately
-    addMessage({ from: 'assistant', text: `Draft: ${draftSubject || ''}\n\n${draftBody || ''}` })
+    const template = buildDraftTemplate(kind, mergedTx, combinedContacts)
+    setDraftSubject(template.subject)
+    setDraftBody(template.body)
+    setDraftTo(template.to)
+    addMessage({ from: 'assistant', text: `Draft: ${template.subject || ''}\n\n${template.body || ''}` })
     setDraftOpen(true)
   }
 
