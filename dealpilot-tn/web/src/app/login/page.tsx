@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [sessionProbeError, setSessionProbeError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -29,21 +28,11 @@ export default function LoginPage() {
       try {
         const { data, error } = await supabase.auth.getUser();
         if (cancelled) return;
-        if (error) {
-          setSessionProbeError(friendlyAuthMessage(error));
-          return;
-        }
-        if (data.user) {
+        if (!error && data.user) {
           router.replace(DASHBOARD_PATH);
         }
-      } catch (e) {
-        if (!cancelled) {
-          setSessionProbeError(
-            e instanceof Error
-              ? e.message
-              : "Could not verify session. You can still sign in."
-          );
-        }
+      } catch {
+        /* logged-out or transient failure — stay on login; no banner */
       }
     })();
     return () => {
@@ -107,12 +96,6 @@ export default function LoginPage() {
         {msg && (
           <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
             {msg}
-          </div>
-        )}
-
-        {sessionProbeError && (
-          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            {sessionProbeError}
           </div>
         )}
 
