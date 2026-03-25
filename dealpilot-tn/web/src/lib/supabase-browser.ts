@@ -18,10 +18,14 @@ function defaultCookieOptions(): CookieOptions {
   if (typeof window === "undefined") {
     return { path: "/", sameSite: "lax" };
   }
+  const isHttps = window.location.protocol === "https:";
   return {
     path: "/",
-    sameSite: "lax",
-    secure: window.location.protocol === "https:",
+    // OAuth redirects are cross-site. `sameSite: "none"` (with `secure`) is the
+    // safest option to ensure PKCE/code-verifier cookies are sent back on the
+    // `/api/auth/callback` request.
+    sameSite: isHttps ? "none" : "lax",
+    secure: isHttps,
   };
 }
 
