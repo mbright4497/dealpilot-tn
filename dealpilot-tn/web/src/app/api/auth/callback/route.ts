@@ -2,8 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse, type NextRequest } from "next/server";
-import { createRouteHandlerSupabaseClient } from "@/lib/supabase/server";
-import { forwardCookies } from "@/lib/supabase/middleware";
+import { createMiddlewareSupabaseClient, forwardCookies } from "@/lib/supabase/middleware";
 import { DASHBOARD_PATH, ONBOARDING_PATH } from "@/lib/auth-constants";
 
 function logCallback(step: number, message: string, extra?: Record<string, unknown>) {
@@ -82,11 +81,11 @@ export async function GET(request: NextRequest) {
       return redirectToLogin(origin, 4, "missing_code", { nextPath });
     }
 
-    logCallback(5, "BEFORE createRouteHandlerSupabaseClient", {
+    logCallback(5, "BEFORE createMiddlewareSupabaseClient", {
       cookieNames: cookieNamesOnly(request),
     });
 
-    const { supabase, getResponse } = createRouteHandlerSupabaseClient(request);
+    const { supabase, getResponse } = createMiddlewareSupabaseClient(request);
 
     logCallback(6, "BEFORE exchangeCodeForSession", { codeLength: code.length });
 
@@ -151,14 +150,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Password recovery: always land on reset-password so the user can call `updateUser`,
+    // Password recovery:
+    // - Supabase may land us on this callback route with PKCE `code` and either:
+    //   - `next=/reset-password`, or
+    //   - query params like `type=recovery` / `action=recovery`.
+    // Always land on `/reset-password` so the user can call `updateUser`,
     // even if they have not completed onboarding yet.
-    const target =
-      nextPath === "/reset-password"
-        ? nextPath
-        : !onboarded
-          ? ONBOARDING_PATH
-          : nextPath;
+    const typeParam =
+      url.searchParams.get("type") ??
+      url.searchParams.get("action") ??
+      url.searchParams.get("scope");
+    const isPasswordRecovery =
+      nextPath === "/reset-password" ||
+      !!typeParam?.toLowerCase().includes("recovery") ||
+      !!typeParam?.toLowerCase().includes("reset");
+
+    const target = isPasswordRecovery
+      ? "/reset-password"
+      : !onboarded
+        ? ONBOARDING_PATH
+        : nextPath;
 
     logCallback(15, "SUCCESS redirect", { target, onboarded, nextPath });
 

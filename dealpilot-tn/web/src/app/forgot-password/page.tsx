@@ -15,7 +15,7 @@ export default function ForgotPassword(){
     setLoading(true)
     try{
       // PKCE recovery: must hit the callback route so `exchangeCodeForSession` runs (same as OAuth).
-      const redirectTo = `${window.location.origin}/api/auth/callback?next=${encodeURIComponent("/reset-password")}`
+      const redirectTo = `${window.location.origin}/api/auth/callback`
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
       if(error) setErr(error.message)
       else setMsg('Check your email for password reset instructions')
