@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { DASHBOARD_PATH, ONBOARDING_PATH } from "@/lib/auth-constants";
 
@@ -15,7 +15,7 @@ function redirectToLogin(origin: string, reason: string) {
   );
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const origin = url.origin;
 
@@ -49,6 +49,15 @@ export async function GET(request: Request) {
 
     console.log(`${LOG} step=createClient`);
     const supabase = createServerSupabaseClient();
+
+    const cookieNames = request.cookies.getAll().map((c) => c.name);
+    console.log(`${LOG} step=pre_exchange cookie_names`, cookieNames);
+    console.log(`${LOG} step=pre_exchange url`, {
+      requestUrl: request.url,
+      hashFragment: null,
+      hashNote:
+        "URL hash (#...) is never sent to the server; only path + query in request.url are available for debugging.",
+    });
 
     console.log(`${LOG} step=exchangeCodeForSession`);
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
