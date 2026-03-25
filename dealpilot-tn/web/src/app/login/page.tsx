@@ -145,7 +145,7 @@ export default function LoginPage() {
           </div>
           <button
             disabled={busy}
-            className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-medium hover:bg-blue-500 disabled:opacity-60"
+            className="w-full rounded-xl bg-[#F97316] py-2.5 text-sm font-medium text-white hover:bg-[#ea580c] disabled:opacity-60"
             type="submit"
           >
             Sign in with Email

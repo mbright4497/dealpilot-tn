@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase-browser";
-import { DASHBOARD_PATH, googleOAuthRedirectTo } from "@/lib/auth-constants";
+import { DASHBOARD_PATH, oauthRedirectTo } from "@/lib/auth-constants";
 import { friendlyAuthMessage } from "@/lib/auth-errors";
 
 export default function SignupPage() {
@@ -28,7 +28,7 @@ export default function SignupPage() {
   async function onGoogleSignup() {
     setLoading(true);
     setError(null);
-    const redirectTo = googleOAuthRedirectTo("/onboarding");
+    const redirectTo = oauthRedirectTo("/onboarding");
     const { error: oAuthErr } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -75,75 +75,76 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0B0F1A]">
-      <div className="w-full max-w-md p-6 rounded-2xl bg-gray-900 text-white">
-        <h2 className="text-2xl font-bold mb-4">Create account</h2>
+    <div className="min-h-screen bg-[#0B0F1A] text-white flex items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 shadow-xl">
+        <div className="mb-6">
+          <p className="text-sm text-white/60">ClosingPilot TN</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
+        </div>
 
         <button
           type="button"
           onClick={() => void onGoogleSignup()}
           disabled={loading}
-          className="w-full rounded-xl bg-white text-black font-medium py-2.5 hover:bg-white/90 mb-4 disabled:opacity-60"
+          className="w-full rounded-xl bg-white text-black font-medium py-2.5 hover:bg-white/90 mb-5 disabled:opacity-60"
         >
           Continue with Google
         </button>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="text-sm text-gray-300">Full name</label>
+            <label className="block text-xs text-white/60 mb-1">Full name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full mt-1 p-2 rounded bg-gray-800 text-white border border-gray-700"
+              className="w-full rounded-xl bg-[#0F1526] border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/25"
             />
           </div>
           <div>
-            <label className="text-sm text-gray-300">Email</label>
+            <label className="block text-xs text-white/60 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full mt-1 p-2 rounded bg-gray-800 text-white border border-gray-700"
+              className="w-full rounded-xl bg-[#0F1526] border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/25"
             />
           </div>
           <div>
-            <label className="text-sm text-gray-300">Password</label>
+            <label className="block text-xs text-white/60 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full mt-1 p-2 rounded bg-gray-800 text-white border border-gray-700"
+              className="w-full rounded-xl bg-[#0F1526] border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/25"
             />
           </div>
           <div>
-            <label className="text-sm text-gray-300">Confirm Password</label>
+            <label className="block text-xs text-white/60 mb-1">Confirm password</label>
             <input
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
-              className="w-full mt-1 p-2 rounded bg-gray-800 text-white border border-gray-700"
+              className="w-full rounded-xl bg-[#0F1526] border border-white/10 px-3 py-2 text-sm outline-none focus:border-white/25"
             />
           </div>
-          <div>
-            <button
-              disabled={loading}
-              type="submit"
-              className="w-full py-2 rounded bg-[#F97316] text-white font-semibold"
-            >
-              {loading ? "Creating..." : "Create account"}
-            </button>
-          </div>
+          <button
+            disabled={loading}
+            type="submit"
+            className="w-full rounded-xl bg-[#F97316] py-2.5 text-sm font-medium text-white hover:bg-[#ea580c] disabled:opacity-60"
+          >
+            {loading ? "Creating..." : "Create account"}
+          </button>
           {message && <div className="text-sm text-emerald-300">{message}</div>}
           {error && <div className="text-sm text-red-400">{error}</div>}
         </form>
-        <div className="mt-4 text-sm text-gray-300">
+        <div className="mt-4 text-sm text-white/60">
           Already have an account?{" "}
-          <Link href="/login" className="text-orange-400">
+          <Link href="/login" className="text-orange-400 hover:text-orange-300">
             Log in
           </Link>
         </div>

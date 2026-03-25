@@ -1,15 +1,37 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { DASHBOARD_PATH } from "@/lib/auth-constants";
+
+function normalizePathname(pathname: string) {
+  if (pathname.length > 1 && pathname.endsWith("/")) return pathname.slice(0, -1);
+  return pathname;
+}
+
+function isPublicPath(pathname: string) {
+  return (
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/api/auth/callback"
+  );
+}
+
+/** Copy cookies from one `NextResponse` to another (e.g. redirect after session refresh). */
+export function forwardCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach(({ name, value, ...opts }) => {
+    to.cookies.set(name, value, opts);
+  });
+}
+
 /**
- * Supabase client for Next.js middleware (Edge). Refreshes the session by reading
- * request cookies and writing updated cookies on the response.
- *
- * @see https://supabase.com/docs/guides/auth/server-side/nextjs
+ * Mirrors `examples/auth/nextjs/lib/supabase/proxy.ts` (`updateSession`).
+ * Uses `getUser()` instead of `getClaims()` for compatibility with this repo's `@supabase/ssr` version.
  */
-export function createMiddlewareSupabaseClient(request: NextRequest) {
-  let response = NextResponse.next({
-    request: { headers: request.headers },
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
   });
 
   const supabase = createServerClient(
@@ -21,23 +43,44 @@ export function createMiddlewareSupabaseClient(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          // Next.js Route Handlers/Middleware should write cookies on the
-          // response, not mutate the request cookies object.
-          response = NextResponse.next({
-            request: { headers: request.headers },
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({
+            request,
           });
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
         },
       },
     }
   );
 
-  return { supabase, getResponse: () => response };
-}
+  // Do not run code between createServerClient and auth refresh above and this call.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-/** Attach cookies from one `NextResponse` to another (e.g. redirect after session refresh). */
-export function forwardCookies(from: NextResponse, to: NextResponse) {
-  from.cookies.getAll().forEach(({ name, value, ...options }) => {
-    to.cookies.set(name, value, options);
-  });
+  const pathname = normalizePathname(request.nextUrl.pathname);
+
+  if (pathname === "/api/auth/callback") {
+    return supabaseResponse;
+  }
+
+  if (!user && !isPublicPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    const redirect = NextResponse.redirect(url);
+    forwardCookies(supabaseResponse, redirect);
+    return redirect;
+  }
+
+  if (user && (pathname === "/login" || pathname === "/signup")) {
+    const url = request.nextUrl.clone();
+    url.pathname = DASHBOARD_PATH;
+    const redirect = NextResponse.redirect(url);
+    forwardCookies(supabaseResponse, redirect);
+    return redirect;
+  }
+
+  return supabaseResponse;
 }
