@@ -20,7 +20,7 @@ Optional (Vercel preview deploys, if your project allows wildcards):
 
 4. `https://*.vercel.app/api/auth/callback`
 
-**Code:** `googleOAuthRedirectTo()` in `src/lib/auth-constants.ts` uses these exact production strings.
+**Code:** `oauthRedirectTo()` in `src/lib/auth-constants.ts` (alias: `googleOAuthRedirectTo`) builds these URLs.
 
 **Middleware:** `/api/auth/callback` is excluded from Supabase session refresh in `middleware.ts` so PKCE cookies are not altered before `exchangeCodeForSession` runs.
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase-browser";
-import { DASHBOARD_PATH, googleOAuthRedirectTo } from "@/lib/auth-constants";
+import { DASHBOARD_PATH, oauthRedirectTo } from "@/lib/auth-constants";
 import { friendlyAuthMessage } from "@/lib/auth-errors";
 
 export default function LoginPage() {
@@ -19,7 +19,9 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
       const err = params.get("error");
       if (err) setMsg(friendlyAuthMessage(err));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export default function LoginPage() {
           router.replace(DASHBOARD_PATH);
         }
       } catch {
-        /* logged-out or transient failure — stay on login; no banner */
+        /* logged out — stay on login */
       }
     })();
     return () => {
@@ -64,7 +66,9 @@ export default function LoginPage() {
             fetch("/api/ghl/contacts/sync", { method: "POST" }).catch(() => {});
           }
         }
-      } catch {}
+      } catch {
+        /* non-fatal */
+      }
     })();
 
     router.replace(DASHBOARD_PATH);
@@ -73,7 +77,7 @@ export default function LoginPage() {
   async function onGoogleLogin() {
     setBusy(true);
     setMsg(null);
-    const redirectTo = googleOAuthRedirectTo("/chat");
+    const redirectTo = oauthRedirectTo("/chat");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },

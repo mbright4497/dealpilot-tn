@@ -5,12 +5,6 @@ import {
   forwardCookies,
 } from "@/lib/supabase/middleware";
 
-/**
- * Paths that do not require a Supabase session. Everything else requires auth.
- * - Auth flows and password reset
- * - /api/* (handlers return 401 JSON as needed; avoid redirecting fetch to HTML login)
- * - /embed* public embeds
- */
 const PUBLIC_PREFIXES = [
   "/login",
   "/signup",
@@ -32,8 +26,7 @@ function isPublicPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   const pathname = normalizePathname(request.nextUrl.pathname);
 
-  // OAuth PKCE callback: do not run session refresh/getUser here — it can alter cookies before
-  // the route handler runs exchangeCodeForSession (Supabase may redirect with ?error=not_authenticated).
+  // PKCE code exchange runs in the Route Handler; do not refresh session here first.
   if (pathname === "/api/auth/callback") {
     return NextResponse.next();
   }
