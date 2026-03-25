@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@supabase/auth-helpers-nextjs'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request){
   try{
-    const supabase = createServerSupabaseClient({ req, res: undefined as any })
+    const supabase = createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if(!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 

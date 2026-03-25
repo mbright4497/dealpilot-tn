@@ -1,9 +1,9 @@
 "use client"
 import React from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@/lib/supabase-browser'
 
 export default function DeadlineTimeline({dealId}:{dealId:string}){
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
   const [deadlines,setDeadlines] = React.useState<any[]>([])
   React.useEffect(()=>{async function load(){const {data} = await supabase.from('deadlines').select('*').eq('deal_id',dealId).order('due_date',{ascending:true}); setDeadlines(data||[])} load()},[dealId])
 

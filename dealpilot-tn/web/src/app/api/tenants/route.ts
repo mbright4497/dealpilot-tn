@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -24,7 +23,7 @@ function maskKey(key?: string) {
 
 export async function GET(req: Request) {
   try {
-    const auth = createRouteHandlerClient({ cookies })
+    const auth = createServerSupabaseClient()
     const { data: { user } } = await auth.auth.getUser()
 
     const { searchParams } = new URL(req.url)
@@ -68,7 +67,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const auth = createRouteHandlerClient({ cookies })
+    const auth = createServerSupabaseClient()
     const { data: { user } } = await auth.auth.getUser()
 
     const body = await req.json().catch(() => ({}))
@@ -102,7 +101,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const auth = createRouteHandlerClient({ cookies })
+    const auth = createServerSupabaseClient()
     const { data: { user } } = await auth.auth.getUser()
 
     const body = await req.json().catch(() => ({}))

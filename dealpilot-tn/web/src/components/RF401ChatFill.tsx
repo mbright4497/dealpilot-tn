@@ -1,10 +1,10 @@
 "use client"
 
 import React from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@/lib/supabase-browser'
 
 export default function RF401ChatFill({dealId}:{dealId:string}){
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
   const [messages,setMessages] = React.useState<{id:string,role:string,text:string}[]>([])
   const [input,setInput] = React.useState('')
   const [fields,setFields] = React.useState<any>({})

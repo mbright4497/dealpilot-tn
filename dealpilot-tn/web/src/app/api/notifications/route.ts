@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +9,7 @@ export async function GET(req: Request){
     let supabase = null
     let user = null
     try{
-      supabase = createRouteHandlerClient({ cookies })
+      supabase = createServerSupabaseClient()
       try{ const supRes = await supabase.auth.getUser(); user = supRes?.data?.user || null }catch(_){ user = null }
     }catch(err){ console.warn('notifications auth init failed', err); return NextResponse.json({ error: 'Unauthorized' }, { status:401 }) }
     if(!user) return NextResponse.json({ error: 'Unauthorized' }, { status:401 })
@@ -28,7 +27,7 @@ export async function GET(req: Request){
 
 export async function POST(req: Request){
   try{
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if(!user) return NextResponse.json({ error: 'Unauthorized' }, { status:401 })
 
@@ -45,7 +44,7 @@ export async function POST(req: Request){
 
 export async function PATCH(req: Request){
   try{
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if(!user) return NextResponse.json({ error: 'Unauthorized' }, { status:401 })
 

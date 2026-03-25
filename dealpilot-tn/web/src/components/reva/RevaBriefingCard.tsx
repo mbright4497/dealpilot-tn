@@ -1,14 +1,14 @@
 "use client"
 import React, { useEffect, useState } from 'react'
 import { useEva } from './EvaProvider'
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createBrowserClient } from "@/lib/supabase-browser"
 
 export default function EvaBriefingCard(){
   const { openEva, addMessage } = useEva()
   const [loading,setLoading] = useState(true)
   const [msg,setMsg] = useState<string>('')
   const [chips,setChips] = useState<string[]>([])
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
 
   useEffect(()=>{
     let mounted = true

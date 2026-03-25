@@ -1,11 +1,11 @@
 "use client"
 import React from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@/lib/supabase-browser'
 
 const columns = [{key:'draft',title:'Draft'},{key:'active',title:'Active'},{key:'pending_close',title:'Pending Close'},{key:'closed',title:'Closed'}]
 
 export default function DealKanban(){
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
   const [deals,setDeals] = React.useState<any[]>([])
 
   React.useEffect(()=>{async function load(){const {data} = await supabase.from('deals').select('*'); setDeals(data||[])} load()},[])

@@ -1,9 +1,9 @@
 "use client"
 import React from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@/lib/supabase-browser'
 
 export default function StatsCards(){
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
   const [stats,setStats] = React.useState<any>({})
 
   React.useEffect(()=>{async function load(){

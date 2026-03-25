@@ -1,9 +1,9 @@
 "use client"
 import React, { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@/lib/supabase-browser'
 
 export default function ComplianceScore({dealId}:{dealId:string}){
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
   const [percent,setPercent] = useState<number | null>(null)
   const [loading,setLoading] = useState(true)
 

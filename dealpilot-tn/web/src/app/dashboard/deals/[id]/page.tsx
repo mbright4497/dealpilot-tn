@@ -1,7 +1,7 @@
 "use client"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createBrowserClient } from "@/lib/supabase-browser"
 
 type TabKey = "overview" | "contract" | "documents" | "timeline" | "assistant"
 
@@ -15,7 +15,7 @@ const TABS: { key: TabKey; label: string }[] = [
 
 export default function DealDetailPage({ params, }: { params: { id: string } }) {
   const router = useRouter()
-  const supabase = useMemo(() => createClientComponentClient(), [])
+  const supabase = useMemo(() => createBrowserClient(), [])
 
   // set EVA page context when on a deal page (client-only)
   React.useEffect(()=>{

@@ -1,12 +1,12 @@
 "use client"
 "use client"
 import React, { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@/lib/supabase-browser'
 
 type Row = { id:string; address:string; milestone:string; date:string|null; days:number|null }
 
 export default function DeadlineTracker(){
-  const supabase = createClientComponentClient()
+  const supabase = createBrowserClient()
   const [rows,setRows] = useState<Row[]>([])
   const [loading,setLoading] = useState(true)
 

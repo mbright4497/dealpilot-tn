@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
 
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
     let supabase = null
     let user = null
     try{
-      supabase = createRouteHandlerClient({ cookies })
+      supabase = createServerSupabaseClient()
       try{
         const supRes = await supabase.auth.getUser()
         user = supRes?.data?.user || null

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@/lib/supabase-browser";
 import type { Transaction } from "@/lib/types/transaction";
 import type { DealStatus } from "@/lib/constants/enums";
 
@@ -17,7 +17,7 @@ type UseTransactionsResult = {
 };
 
 export function useTransactions(options: UseTransactionsOptions = {}): UseTransactionsResult {
-  const supabase = React.useMemo(() => createClientComponentClient(), []);
+  const supabase = React.useMemo(() => createBrowserClient(), []);
   const [transactions, setTransactions] = React.useState<Transaction[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
