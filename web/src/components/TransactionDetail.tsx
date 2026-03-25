@@ -454,7 +454,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
     setChatMessages(m=>[...m, {from:'user', text}])
     try{
       const ctx = { id: mergedTx.id, address: mergedTx.address, client: mergedTx.client, type: mergedTx.type, status: mergedTx.status, binding: mergedTx.binding_date || mergedTx.binding, closing: (mergedTx as any).closing_date || mergedTx.closing, contacts: (localContacts||[]).map(c=>({role:c.role,name:c.name})), notes: mergedTx.notes }
-      const res = await fetch('/api/eva/chat', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages:[user], style:'friendly-tn', dealId: mergedTx.id }) })
+      const res = await fetch('/api/reva/chat', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages:[user], style:'friendly-tn', dealId: mergedTx.id }) })
       const j = await res.json()
       const reply = j.reply || j.message || j.choices?.[0]?.message?.content || 'Sorry, no response.'
       setChatMessages(m=>[...m, {from:'assistant', text: reply}])
@@ -638,7 +638,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
 
 
-      {/* EVA HERO (top) - small iterative addition */}
+      {/* Reva HERO (top) - small iterative addition */}
 
       {/* Top document viewer (binds to activePdfUrl) */}
       <div id="top-viewer" className="mb-4">

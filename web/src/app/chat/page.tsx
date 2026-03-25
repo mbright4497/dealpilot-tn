@@ -374,7 +374,7 @@ export default function ChatPage() {
 
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
-        <img src="/avatar-pilot.png" alt="Eva" className="w-10 h-10 rounded-full object-cover" />
+        <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
       </button>
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>
