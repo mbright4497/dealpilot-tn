@@ -9,13 +9,19 @@ function normalizePathname(pathname: string) {
 }
 
 function isPublicPath(pathname: string) {
-  return (
+  if (
     pathname === "/login" ||
     pathname === "/signup" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname === "/api/auth/callback"
-  );
+  ) {
+    return true;
+  }
+  if (pathname === "/api/ghl" || pathname.startsWith("/api/ghl/")) return true;
+  if (pathname === "/embed" || pathname.startsWith("/embed/")) return true;
+  if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
+  return false;
 }
 
 /** Copy cookies from one `NextResponse` to another (e.g. redirect after session refresh). */
