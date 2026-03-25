@@ -2,8 +2,14 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Supabase client for Edge middleware only. Uses request/response cookies so
- * sessions refresh correctly (see @supabase/ssr — do not use cookies() here).
+ * Supabase client bound to a single `NextRequest` / `NextResponse` cookie jar.
+ * Use in **Edge middleware** and in **Route Handlers** (e.g. OAuth callback).
+ *
+ * Do not use `cookies()` from `next/headers` for PKCE exchange: in Route Handlers
+ * it can miss cookies from the incoming request on Vercel, so `exchangeCodeForSession`
+ * fails with "Unable to exchange external code".
+ *
+ * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
 export function createMiddlewareSupabaseClient(request: NextRequest) {
   let response = NextResponse.next({

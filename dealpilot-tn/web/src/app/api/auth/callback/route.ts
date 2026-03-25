@@ -2,7 +2,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  createMiddlewareSupabaseClient,
+  forwardCookies,
+} from "@/lib/supabase/middleware";
 import { DASHBOARD_PATH, ONBOARDING_PATH } from "@/lib/auth-constants";
 
 const LOG = "[auth/callback]";
@@ -48,7 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`${LOG} step=createClient`);
-    const supabase = createServerSupabaseClient();
+    const { supabase, getResponse } = createMiddlewareSupabaseClient(request);
 
     const cookieNames = request.cookies.getAll().map((c) => c.name);
     console.log(`${LOG} step=pre_exchange cookie_names`, cookieNames);
@@ -65,6 +68,8 @@ export async function GET(request: NextRequest) {
       console.error(`${LOG} step=exchange_failed`, exchangeError.message);
       return redirectToLogin(origin, `exchange:${exchangeError.message}`);
     }
+
+    const sessionCookies = getResponse();
 
     console.log(`${LOG} step=getUser`);
     const {
@@ -94,15 +99,19 @@ export async function GET(request: NextRequest) {
 
     if (!onboarded) {
       console.log(`${LOG} step=redirect`, ONBOARDING_PATH);
-      return NextResponse.redirect(new URL(ONBOARDING_PATH, origin), {
+      const redirect = NextResponse.redirect(new URL(ONBOARDING_PATH, origin), {
         headers: { "Cache-Control": "no-store" },
       });
+      forwardCookies(sessionCookies, redirect);
+      return redirect;
     }
 
     console.log(`${LOG} step=redirect`, nextPath);
-    return NextResponse.redirect(new URL(nextPath, origin), {
+    const redirect = NextResponse.redirect(new URL(nextPath, origin), {
       headers: { "Cache-Control": "no-store" },
     });
+    forwardCookies(sessionCookies, redirect);
+    return redirect;
   } catch (e) {
     console.error(`${LOG} step=fatal`, e);
     return redirectToLogin(origin, `fatal:${e instanceof Error ? e.message : String(e)}`);
