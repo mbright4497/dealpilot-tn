@@ -1,7 +1,6 @@
 "use client"
 import React, { useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase-browser'
-import { useRouter } from 'next/navigation'
 
 export default function ForgotPassword(){
   const supabase = createBrowserClient()
@@ -15,11 +14,12 @@ export default function ForgotPassword(){
     setErr(null); setMsg(null)
     setLoading(true)
     try{
-      const redirectTo = window.location.origin + '/reset-password'
+      // PKCE recovery: must hit the callback route so `exchangeCodeForSession` runs (same as OAuth).
+      const redirectTo = `${window.location.origin}/api/auth/callback?next=${encodeURIComponent("/reset-password")}`
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
       if(error) setErr(error.message)
       else setMsg('Check your email for password reset instructions')
-    }catch(e:any){ setErr(String(e)) }
+    }catch(e: unknown){ setErr(e instanceof Error ? e.message : String(e)) }
     setLoading(false)
   }
 
