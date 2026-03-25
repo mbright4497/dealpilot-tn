@@ -300,6 +300,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
   const supabase = createBrowserClient()
   const [docs,setDocs]=useState<any[]>([])
   const [uploading, setUploading] = useState(false)
+  const [documentsReceived, setDocumentsReceived] = useState<Record<string, boolean>>({})
 
   // Document viewer & Reva discussion state
   const [viewerOpen, setViewerOpen] = useState(false)
@@ -327,6 +328,40 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
     loadDocs()
     return ()=>{ mounted = false }
   }, [urlTransactionId])
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/deals/${urlTransactionId}/documents-received`)
+        if (!mounted || !res.ok) return
+        const j = (await res.json()) as { documents_received?: Record<string, boolean> }
+        setDocumentsReceived({ ...(j.documents_received ?? {}) })
+      } catch (_) {
+        // ignore
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [urlTransactionId])
+
+  const toggleDocumentReceived = useCallback(async (docKey: string) => {
+    const next = !documentsReceived[docKey]
+    const nextMap = { ...documentsReceived, [docKey]: next }
+    setDocumentsReceived(nextMap)
+    try {
+      const res = await fetch(`/api/deals/${urlTransactionId}/documents-received`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documents_received: nextMap }),
+      })
+      if (!res.ok) throw new Error('persist failed')
+    } catch (_) {
+      // revert optimistic state on failure
+      setDocumentsReceived((prev) => ({ ...prev, [docKey]: !next }))
+    }
+  }, [documentsReceived, urlTransactionId])
 
   const handleUpload = async (file: File) => {
     if (!file) return
@@ -971,10 +1006,19 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
           for(const ph of cfg.phases){ for(const d of ph.documents){ if(d.requirement && d.requirement.level==='required') requiredDocs.push(d) }}
           const total = requiredDocs.length
           let done = 0
-          const missing: any[] = []
-          for(const d of requiredDocs){ const rec = documentsByKey[d.key]; if(rec && (rec.status==='uploaded' || rec.status==='signed')) done++; else missing.push(d) }
+          for(const d of requiredDocs){
+            const rec = documentsByKey[d.key]
+            const uploaded = !!(rec && (rec.status==='uploaded' || rec.status==='signed'))
+            if (uploaded || !!documentsReceived[d.key]) done++
+          }
           return (
-            <DocumentComplianceBar requiredTotal={total} doneCount={done} missingDocs={missing} onSelectMissing={(k:string)=>{ setMode('documents'); setTimeout(()=>{},20) }} />
+            <DocumentComplianceBar
+              requiredTotal={total}
+              doneCount={done}
+              docs={requiredDocs}
+              documentsReceived={documentsReceived}
+              onToggleDocument={toggleDocumentReceived}
+            />
           )
         }catch(e){ return null }
       })()}

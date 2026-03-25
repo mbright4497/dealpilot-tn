@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import ClosingPilotLogo from '@/components/ClosingPilotLogo'
+import { signOutAndRedirectToLogin } from '@/lib/auth-client'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', href: '/chat' },
@@ -108,14 +109,8 @@ export default function Sidebar() {
     router.push('/chat?view=ai')
   }
 
-  const handleSignOut = async () => {
-    try {
-      await fetch('/api/auth/signout', { method: 'POST' })
-    } catch (error) {
-      console.error(error)
-    } finally {
-      router.push('/login')
-    }
+  const handleSignOut = () => {
+    void signOutAndRedirectToLogin()
   }
 
   return (

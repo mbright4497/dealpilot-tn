@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import { signOutAndRedirectToLogin } from '@/lib/auth-client'
 
 export default function MobileSidebar({ items, unreadCount, onNavigate, onClose }:{ items:{id:string,label:string}[], unreadCount:number, onNavigate:(id:string)=>void, onClose:()=>void }){
   return (
@@ -21,7 +22,7 @@ export default function MobileSidebar({ items, unreadCount, onNavigate, onClose 
           <button onClick={()=>{ onNavigate('settings'); onClose() }} className="w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">Settings</button>
         </nav>
         <div className="mt-6 border-t border-gray-800 pt-4">
-          <button onClick={async ()=>{ const sb = (typeof window !== 'undefined') ? require('@/lib/supabase-browser').createBrowserClient() : null; if(sb){ await sb.auth.signOut(); window.location.href = '/login' } }} className="w-full flex items-center gap-3 px-3 py-2 rounded text-red-400 hover:bg-gray-800">Logout</button>
+          <button type="button" onClick={() => { void signOutAndRedirectToLogin() }} className="w-full flex items-center gap-3 px-3 py-2 rounded text-red-400 hover:bg-gray-800">Logout</button>
         </div>
       </div>
     </div>

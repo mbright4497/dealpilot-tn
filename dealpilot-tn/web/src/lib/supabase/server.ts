@@ -1,38 +1,37 @@
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
+/**
+ * SSR Supabase client for Route Handlers and server code.
+ * PKCE: use `getAll` / `setAll` so every auth cookie chunk (including code verifier) is read/written.
+ * Deprecated `get` / `set` / `remove` only samples up to 5 chunks per key and can break OAuth exchange.
+ * @see https://supabase.com/docs/guides/auth/server-side/nextjs
+ */
 export function createServerSupabaseClient() {
   const cookieStore = cookies();
 
-    const supabase = createServerClient(  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
-            cookieStore.set({ name, value, ...options });
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
           } catch {
-            // Ignore in edge/runtime mismatch
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: "", ...options });
-          } catch {
-            // Ignore in edge/runtime mismatch
+            // Server Components may forbid writes; route handlers should succeed
           }
         },
       },
     }
   );
-
-  return supabase;
 }
 
-// Backwards-compatible export for code that expects `supabaseService()` helper
-export function supabaseService(){
-  return createServerSupabaseClient()
+export function supabaseService() {
+  return createServerSupabaseClient();
 }

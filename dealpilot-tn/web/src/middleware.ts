@@ -1,39 +1,75 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { DASHBOARD_PATH } from "@/lib/auth-constants";
+import {
+  createMiddlewareSupabaseClient,
+  forwardCookies,
+} from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password", "/api/auth", "/embed"]
+/**
+ * Paths that do not require a Supabase session. Everything else requires auth.
+ * - Auth flows and password reset
+ * - /api/* (handlers return 401 JSON as needed; avoid redirecting fetch to HTML login)
+ * - /embed* public embeds
+ */
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/api",
+  "/embed",
+] as const;
+
+function normalizePathname(pathname: string) {
+  if (pathname.length > 1 && pathname.endsWith("/")) return pathname.slice(0, -1);
+  return pathname;
+}
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request: { headers: request.headers }, });
+  const pathname = normalizePathname(request.nextUrl.pathname);
 
-  let user = null
-  try{
-    const supabase = createServerSupabaseClient()
-    const { data } = await supabase.auth.getUser()
-    user = data?.user || null
-  }catch(e){
-    // if Supabase is not configured or errors during middleware, do not block the request
-    console.error('middleware supabase error', e)
-    return response
+  // OAuth PKCE callback: do not run session refresh/getUser here — it can alter cookies before
+  // the route handler runs exchangeCodeForSession (Supabase may redirect with ?error=not_authenticated).
+  if (pathname === "/api/auth/callback") {
+    return NextResponse.next();
   }
 
-  const pathname = request.nextUrl.pathname
+  const { supabase, getResponse } = createMiddlewareSupabaseClient(request);
 
-  const isPublic = PUBLIC_ROUTES.some(p => pathname.startsWith(p))
-
-  if (!user && !isPublic) {
-    const loginUrl = new URL('/login', request.url)
-    return NextResponse.redirect(loginUrl)
+  let user: { id: string } | null = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data.user) user = data.user;
+  } catch (e) {
+    console.error("middleware supabase error", e);
+    return getResponse();
   }
 
-  if (user && (pathname === '/login' || pathname === '/signup')) {
-    const home = new URL('/', request.url)
-    return NextResponse.redirect(home)
+  const publicRoute = isPublicPath(pathname);
+
+  if (!user && !publicRoute) {
+    const loginUrl = new URL("/login", request.url);
+    const redirect = NextResponse.redirect(loginUrl);
+    forwardCookies(getResponse(), redirect);
+    return redirect;
   }
 
-  return response;
+  if (user && (pathname === "/login" || pathname === "/signup")) {
+    const dash = new URL(DASHBOARD_PATH, request.url);
+    const redirect = NextResponse.redirect(dash);
+    forwardCookies(getResponse(), redirect);
+    return redirect;
+  }
+
+  return getResponse();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/auth/callback|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

@@ -2,6 +2,7 @@
 import React, {useState, useEffect} from 'react'
 import { speakAPI as speakText, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
 import {useRouter} from 'next/navigation'
+import { signOutAndRedirectToLogin } from '@/lib/auth-client'
 
 import TCDashboard from '@/components/TCDashboard'
 import TransactionList from '@/components/TransactionList'
@@ -524,7 +525,7 @@ export default function ChatPage() {
             <p className="text-white text-sm font-medium">Matt Bright</p>
             <p className="text-gray-400 text-xs">iHome-KW Kingsport</p>
           </div>
-          <button onClick={async ()=>{ try{ await fetch('/api/auth/signout',{ method: 'POST' }); window.location.href='/login' }catch(e){ console.error(e) } }} className="text-sm text-gray-400 hover:text-white p-1 rounded" title="Logout">
+          <button type="button" onClick={() => { void signOutAndRedirectToLogin() }} className="text-sm text-gray-400 hover:text-white p-1 rounded" title="Logout">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
@@ -536,8 +537,8 @@ export default function ChatPage() {
           // EVA-first hero + ticker layout
           const activeDeals = transactions.filter(t=>{ const s = ((t as any).current_state || (t as any).state_label || t.status || '').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
           activeDeals.sort((a:any,b:any)=>{
-            const ad = a.closing_date ? new Date(a.closing_date).getTime() : Infinity
-            const bd = b.closing_date ? new Date(b.closing_date).getTime() : Infinity
+            const ad = (a.closing_date || a.closing) ? new Date(a.closing_date || a.closing).getTime() : Infinity
+            const bd = (b.closing_date || b.closing) ? new Date(b.closing_date || b.closing).getTime() : Infinity
             return ad - bd
           })
           return (
@@ -809,7 +810,8 @@ export default function ChatPage() {
                 <div className="mb-2 text-sm text-gray-400">Deal Ticker</div>
                 <div className="flex gap-3 overflow-x-auto py-2">
                   {activeDeals.map((d:any)=>{
-                    const days = d.closing_date ? Math.ceil((new Date(d.closing_date).getTime()-Date.now())/(1000*60*60*24)) : null
+                    const closeDate = d.closing_date || d.closing || null
+                    const days = closeDate ? Math.ceil((new Date(closeDate).getTime()-Date.now())/(1000*60*60*24)) : null
                     const daysClass = days===null ? 'text-amber-400' : (days<=3 ? 'text-red-400' : (days<=14? 'text-amber-300':'text-green-300'))
                     const progress = playbookProgressMap[d.id] ?? 0
                     return (
