@@ -1,9 +1,5 @@
 import { cookies } from "next/headers";
-import {
-  createServerClient,
-  parseCookieHeader,
-  type CookieOptions,
-} from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -49,19 +45,19 @@ export function supabaseService() {
  * @see https://supabase.com/docs/guides/auth/server-side/nextjs
  */
 export function createRouteHandlerSupabaseClient(request: NextRequest) {
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: { headers: request.headers },
   });
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
-        return parseCookieHeader(request.headers.get("Cookie") ?? "");
+        // Prefer NextRequest's cookie parser over the raw `Cookie` header.
+        // On Vercel/Next this is more reliable for auth flows that depend
+        // on PKCE cookies (code verifier) being present server-side.
+        return request.cookies.getAll().map((c) => ({ name: c.name, value: c.value }));
       },
       setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-        response = NextResponse.next({
-          request: { headers: request.headers },
-        });
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
