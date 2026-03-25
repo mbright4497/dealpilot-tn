@@ -34,8 +34,6 @@ type TransactionInsertPayload = {
   documents?: unknown[]
 }
 
-*** End Patch
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -118,3 +116,5 @@ export async function DELETE(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
+
+// noop comment to trigger hot-reload in long-running dev servers

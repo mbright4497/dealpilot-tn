@@ -19,5 +19,21 @@ const nextConfig = {
       }
     ];
   }
+  ,
+  webpack: (config, { dev }) => {
+    // Avoid dev-time "EMFILE: too many open files" by switching
+    // Watchpack/webpack to polling-based watching.
+    if (dev) {
+      config.watchOptions = {
+        ...(config.watchOptions || {}),
+        poll: 1000,
+        aggregateTimeout: 300,
+        // Keep this as a simple array: some webpack versions allow `ignored`
+        // to be RegExp/string/function, and spreading it can crash.
+        ignored: ['**/.next/**', '**/node_modules/**', '**/dist/**'],
+      };
+    }
+    return config;
+  },
 };
 module.exports = nextConfig;
