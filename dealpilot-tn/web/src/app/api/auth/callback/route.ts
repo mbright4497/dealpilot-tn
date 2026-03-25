@@ -1,9 +1,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { parseCookieHeader } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
-  createMiddlewareSupabaseClient,
+  createOAuthCallbackSupabaseClient,
   forwardCookies,
 } from "@/lib/supabase/middleware";
 import { DASHBOARD_PATH, ONBOARDING_PATH } from "@/lib/auth-constants";
@@ -51,10 +52,16 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`${LOG} step=createClient`);
-    const { supabase, getResponse } = createMiddlewareSupabaseClient(request);
+    const { supabase, getResponse } = createOAuthCallbackSupabaseClient(request);
 
-    const cookieNames = request.cookies.getAll().map((c) => c.name);
+    const cookieNames = parseCookieHeader(
+      request.headers.get("Cookie") ?? ""
+    ).map((c) => c.name);
+    const hasPkceVerifierCookie = cookieNames.some((n) =>
+      n.includes("code-verifier")
+    );
     console.log(`${LOG} step=pre_exchange cookie_names`, cookieNames);
+    console.log(`${LOG} step=pre_exchange has_pkce_verifier_cookie`, hasPkceVerifierCookie);
     console.log(`${LOG} step=pre_exchange url`, {
       requestUrl: request.url,
       hashFragment: null,
