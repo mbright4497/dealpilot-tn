@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
     const code = url.searchParams.get("code");
     const nextRaw = url.searchParams.get("next") ?? DASHBOARD_PATH;
     const nextPath = nextRaw.startsWith("/") ? nextRaw : DASHBOARD_PATH;
+    const authFlowMarker = request.cookies.get("dp_auth_flow")?.value;
 
     logCallback(2, "PARSED", {
       hasErrorParam: !!errorParam,
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
       codeLength: code?.length ?? 0,
       nextRaw,
       nextPath,
+      hasPasswordResetMarker: authFlowMarker === "reset",
     });
 
     const oauthFailure = errorParam ?? oauthErrorParam;
@@ -161,6 +163,7 @@ export async function GET(request: NextRequest) {
       url.searchParams.get("action") ??
       url.searchParams.get("scope");
     const isPasswordRecovery =
+      authFlowMarker === "reset" ||
       nextPath === "/reset-password" ||
       !!typeParam?.toLowerCase().includes("recovery") ||
       !!typeParam?.toLowerCase().includes("reset");
@@ -177,6 +180,11 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": "no-store" },
     });
     forwardCookies(sessionResponse, redirect);
+    if (authFlowMarker === "reset") {
+      // Clear the flow marker so future auth callbacks don't accidentally
+      // redirect to `/reset-password`.
+      redirect.cookies.set("dp_auth_flow", "", { path: "/", maxAge: 0 });
+    }
     logCallback(16, "DONE forwardCookies to redirect", {
       finalSetCookieNames: redirect.cookies.getAll().map((c) => c.name),
     });

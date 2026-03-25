@@ -16,6 +16,10 @@ export default function ForgotPassword(){
     try{
       // PKCE recovery: must hit the callback route so `exchangeCodeForSession` runs (same as OAuth).
       const redirectTo = `${window.location.origin}/api/auth/callback`
+      // Flow marker so `/api/auth/callback` can reliably land on `/reset-password`,
+      // even if Supabase doesn't include a dedicated `next=/reset-password` value.
+      const isHttps = window.location.protocol === 'https:'
+      document.cookie = `dp_auth_flow=reset; path=/; max-age=600; samesite=lax;${isHttps ? ' secure;' : ''}`
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
       if(error) setErr(error.message)
       else setMsg('Check your email for password reset instructions')
