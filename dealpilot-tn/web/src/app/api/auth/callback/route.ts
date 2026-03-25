@@ -69,7 +69,14 @@ export async function GET(request: NextRequest) {
       console.error("[auth/callback] profile upsert", e);
     }
 
-    const target = !onboarded ? ONBOARDING_PATH : nextPath;
+    // Password recovery: always land on reset-password so the user can call `updateUser`,
+    // even if they have not completed onboarding yet.
+    const target =
+      nextPath === "/reset-password"
+        ? nextPath
+        : !onboarded
+          ? ONBOARDING_PATH
+          : nextPath;
     const redirect = NextResponse.redirect(new URL(target, origin), {
       headers: { "Cache-Control": "no-store" },
     });
