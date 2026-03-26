@@ -1,8 +1,15 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { FileText, Loader2, Phone, Trash2, Upload } from 'lucide-react'
+import { useDropzone } from 'react-dropzone'
+import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
+import {
+  DOCUMENT_TYPE_OPTIONS,
+  documentPhase,
+  type DocumentPhase,
+} from '@/lib/documents/transactionDocumentTypes'
 
 type AiSummary = {
   deal_overview?: string | null
@@ -48,6 +55,83 @@ type TxDocument = {
   rf_number?: string | null
   category?: string | null
   uploaded_at?: string | null
+}
+
+type TransactionDocumentRow = {
+  id: number
+  document_type: string
+  display_name: string
+  created_at?: string
+  status?: string | null
+  file_url?: string | null
+  signed_url?: string | null
+  is_executed?: boolean
+  broker_review?: {
+    natural_language_summary?: string
+    issues?: { severity: string; message: string; field?: string }[]
+    checks?: { id?: string; name?: string; status?: string; detail?: string }[]
+  } | null
+  extracted_data?: Record<string, unknown> | null
+  deal_impact?: Record<string, unknown> | null
+}
+
+function summarizeTxDoc(d: TransactionDocumentRow): string {
+  const br = d.broker_review
+  if (br?.natural_language_summary) {
+    const s = br.natural_language_summary.trim()
+    return s.length > 200 ? `${s.slice(0, 200)}…` : s
+  }
+  const ex = d.extracted_data as Record<string, unknown> | undefined
+  if (d.document_type === 'rf401_psa' && ex?.fields && typeof ex.fields === 'object') {
+    const f = ex.fields as Record<string, unknown>
+    const p = f.purchasePrice
+    const c = f.closingDate
+    return `Purchase price ${p != null ? String(p) : '—'}, closing ${c != null ? String(c) : '—'}.`
+  }
+  if (d.status === 'reviewed') return 'Processed.'
+  if (d.status === 'error') return 'Extraction error — re-upload or retry.'
+  return 'Processing…'
+}
+
+function brokerIssueCounts(d: TransactionDocumentRow): { critical: number; warning: number; info: number } {
+  const issues = d.broker_review?.issues || []
+  let critical = 0
+  let warning = 0
+  let info = 0
+  for (const i of issues) {
+    const s = String(i.severity || '').toLowerCase()
+    if (s === 'critical') critical++
+    else if (s === 'warning') warning++
+    else info++
+  }
+  return { critical, warning, info }
+}
+
+function buildDealTimeline(tx: TxRow | null, docs: TransactionDocumentRow[]): string[] {
+  const lines: string[] = []
+  const psa = docs.find((d) => d.document_type === 'rf401_psa')
+  const psaEx = psa?.extracted_data as { fields?: Record<string, unknown> } | undefined
+  const p0 = psaEx?.fields?.purchasePrice ?? tx?.purchase_price
+  const c0 = psaEx?.fields?.closingDate ?? tx?.closing_date
+  lines.push(`Original PSA: ${p0 != null ? String(p0) : '—'}, closing ${c0 ? String(c0) : '—'}`)
+  const ordered = [...docs].sort(
+    (a, b) =>
+      new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+  )
+  for (const d of ordered) {
+    if (d.document_type === 'rf406_counter' && d.deal_impact) {
+      const di = d.deal_impact
+      const np = di.new_purchase_price
+      lines.push(`${d.display_name}: price → ${np != null ? String(np) : '—'}`)
+    }
+    if (d.document_type === 'rf407_amendment' && d.deal_impact?.closing_date_change) {
+      lines.push(`${d.display_name}: closing → ${String(d.deal_impact.closing_date_change)}`)
+    }
+  }
+  lines.push(
+    `Current: ${tx?.purchase_price != null ? String(tx.purchase_price) : '—'}, closing ${tx?.closing_date || '—'}`
+  )
+  return lines
 }
 
 type TxRow = {
@@ -156,6 +240,15 @@ export default function TransactionDetailPage() {
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null>(null)
   const [documents, setDocuments] = useState<TxDocument[]>([])
+  const [txDocs, setTxDocs] = useState<TransactionDocumentRow[]>([])
+  const [docTypePick, setDocTypePick] = useState('rf401_psa')
+  const [customDocName, setCustomDocName] = useState('')
+  const [isExecutedToggle, setIsExecutedToggle] = useState(false)
+  const [txDocUploadBusy, setTxDocUploadBusy] = useState(false)
+  const [airdropVisible, setAirdropVisible] = useState(false)
+  const [airdropName, setAirdropName] = useState('')
+  const [airdropWatchId, setAirdropWatchId] = useState<number | null>(null)
+  const [reviewDoc, setReviewDoc] = useState<TransactionDocumentRow | null>(null)
 
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'checklist' | 'deadlines' | 'contacts' | 'comms'>(
     'overview'
@@ -184,9 +277,10 @@ export default function TransactionDetailPage() {
   const contractMissing = useMemo(() => {
     if (!tx) return true
     if (tx.contract_pdf_url) return false
+    if (txDocs.some((d) => d.document_type === 'rf401_psa')) return false
     // Best-effort: treat any "contract-ish" document name as present.
     return !findDocMatch(documents, ['contract', 'agreement', 'purchase', 'sale', 'psa'])
-  }, [tx, documents])
+  }, [tx, documents, txDocs])
 
   const daysLeft = useMemo(() => daysUntil(tx?.closing_date || null), [tx?.closing_date])
   const daysLeftPillClass = useMemo(() => {
@@ -203,7 +297,7 @@ export default function TransactionDetailPage() {
   const bindingLabel = formatDate(tx?.binding_date)
   const closingLabel = formatDate(tx?.closing_date)
 
-  async function loadPageData() {
+  const loadPageData = useCallback(async () => {
     if (!Number.isFinite(txId)) return
     setLoading(true)
     try {
@@ -216,10 +310,15 @@ export default function TransactionDetailPage() {
       const json = await res.json()
       setTx((json?.transaction as TxRow) || null)
       setDocuments(Array.isArray(json?.documents) ? (json.documents as TxDocument[]) : [])
+      setTxDocs(
+        Array.isArray(json?.transaction_documents)
+          ? (json.transaction_documents as TransactionDocumentRow[])
+          : []
+      )
     } finally {
       setLoading(false)
     }
-  }
+  }, [txId, router])
 
   async function loadCommsHistory() {
     if (!Number.isFinite(txId)) return
@@ -238,8 +337,74 @@ export default function TransactionDetailPage() {
 
   useEffect(() => {
     void loadPageData().then(() => loadCommsHistory())
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txId])
+  }, [txId, loadPageData])
+
+  useEffect(() => {
+    if (!Number.isFinite(txId)) return
+    const pending = txDocs.some((d) =>
+      ['uploading', 'uploaded', 'processing'].includes(String(d.status || ''))
+    )
+    if (!pending) return
+    const t = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/transactions/${txId}/documents`, { cache: 'no-store' })
+        if (!res.ok) return
+        const j = await res.json()
+        setTxDocs(Array.isArray(j.documents) ? j.documents : [])
+      } catch {
+        // ignore
+      }
+    }, 2200)
+    return () => clearInterval(t)
+  }, [txDocs, txId])
+
+  const uploadTxDoc = useCallback(
+    async (file: File) => {
+      if (!Number.isFinite(txId)) return
+      if (txDocUploadBusy) return
+      const opt = DOCUMENT_TYPE_OPTIONS.find((o) => o.value === docTypePick)
+      const displayName =
+        docTypePick === 'other'
+          ? customDocName.trim() || 'Custom document'
+          : opt?.label || 'Document'
+      setTxDocUploadBusy(true)
+      setAirdropName(displayName)
+      setAirdropVisible(true)
+      try {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('document_type', docTypePick)
+        fd.append('display_name', displayName)
+        fd.append('is_executed', String(isExecutedToggle))
+        const res = await fetch(`/api/transactions/${txId}/documents`, { method: 'POST', body: fd })
+        if (!res.ok) throw new Error('upload failed')
+        const j = await res.json()
+        if (j.document?.id) setAirdropWatchId(Number(j.document.id))
+        await loadPageData()
+      } catch {
+        setAirdropVisible(false)
+        window.alert('Upload failed.')
+      } finally {
+        setTxDocUploadBusy(false)
+      }
+    },
+    [txId, txDocUploadBusy, docTypePick, customDocName, isExecutedToggle, loadPageData]
+  )
+
+  const onDropTx = useCallback(
+    (accepted: File[]) => {
+      const f = accepted[0]
+      if (f) void uploadTxDoc(f)
+    },
+    [uploadTxDoc]
+  )
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: onDropTx,
+    accept: { 'application/pdf': ['.pdf'] },
+    maxFiles: 1,
+    disabled: txDocUploadBusy,
+  })
 
   // Prime AI state after tx load
   useEffect(() => {
@@ -417,7 +582,7 @@ export default function TransactionDetailPage() {
             </div>
             <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
               <div className="text-xs uppercase tracking-wide text-slate-400">Documents count</div>
-              <div className="mt-1 text-sm font-semibold text-white">{documents.length}</div>
+              <div className="mt-1 text-sm font-semibold text-white">{txDocs.length || documents.length}</div>
             </div>
           </div>
         </div>
@@ -438,15 +603,111 @@ export default function TransactionDetailPage() {
     )
   }
 
+  async function deleteTxDoc(docId: number) {
+    const ok = window.confirm('Delete this document?')
+    if (!ok) return
+    const res = await fetch(`/api/transactions/${txId}/documents/${docId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      window.alert('Delete failed.')
+      return
+    }
+    await loadPageData()
+  }
+
   function documentsTab() {
+    const PHASE_LABEL: Record<DocumentPhase, string> = {
+      pre_contract: 'PRE-CONTRACT',
+      under_contract: 'UNDER CONTRACT',
+      closing: 'CLOSING',
+    }
+    const grouped: Record<DocumentPhase, TransactionDocumentRow[]> = {
+      pre_contract: [],
+      under_contract: [],
+      closing: [],
+    }
+    for (const d of txDocs) {
+      grouped[documentPhase(d.document_type)].push(d)
+    }
+    const hasImpact = txDocs.some((d) => d.deal_impact && Object.keys(d.deal_impact).length > 0)
+    const timelineLines =
+      hasImpact || txDocs.some((d) => d.document_type === 'rf401_psa')
+        ? buildDealTimeline(tx, txDocs)
+        : []
+
+    const renderDocCard = (d: TransactionDocumentRow) => {
+      const counts = brokerIssueCounts(d)
+      const issueLine =
+        counts.critical + counts.warning + counts.info > 0
+          ? `${counts.critical} critical, ${counts.warning} warnings, ${counts.info} info`
+          : 'no issues flagged'
+
+      return (
+        <div
+          key={d.id}
+          className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-[#0A1022] p-4"
+        >
+          <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0 flex items-start gap-2">
+              <FileText size={18} className="mt-0.5 shrink-0 text-orange-200" />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-white">{d.display_name}</div>
+                <div className="text-xs text-slate-400">{d.document_type.replace(/_/g, ' ')}</div>
+                <div className="mt-1 text-xs text-slate-300">
+                  {d.is_executed ? (
+                    <span className="text-emerald-300">Executed ✓</span>
+                  ) : (
+                    <span className="text-slate-400">Not marked executed</span>
+                  )}
+                  <span className="mx-2 text-slate-600">•</span>
+                  <span className="uppercase tracking-wide text-slate-500">{d.status || '—'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-sm text-slate-200">
+            <span className="font-semibold text-orange-200">Reva:</span> {summarizeTxDoc(d)}{' '}
+            <span className="text-slate-400">({issueLine})</span>
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!d.signed_url}
+              onClick={() => d.signed_url && window.open(d.signed_url, '_blank', 'noopener,noreferrer')}
+              className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-40"
+            >
+              View
+            </button>
+            <button
+              type="button"
+              onClick={() => setReviewDoc(d)}
+              className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
+            >
+              Broker Review
+            </button>
+            <button
+              type="button"
+              onClick={() => void deleteTxDoc(d.id)}
+              className="rounded-lg border border-red-500/30 bg-red-950/30 px-3 py-2 text-xs font-semibold text-red-200 hover:border-red-500/50 transition"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="space-y-4">
         {contractMissing ? (
           <div className="rounded-xl border border-dashed border-orange-500/60 bg-[#0A1022] p-5">
             <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
               <div>
-                <h3 className="text-sm font-semibold text-white">Contract upload</h3>
-                <p className="mt-1 text-sm text-slate-200">Upload the contract document so Reva can extract key details.</p>
+                <h3 className="text-sm font-semibold text-white">Contract upload (legacy)</h3>
+                <p className="mt-1 text-sm text-slate-200">
+                  Upload the RF401 PDF so Reva can populate the deal (legacy pipeline).
+                </p>
                 <p className="mt-1 text-xs text-slate-400">Supports PDF files</p>
               </div>
               <button
@@ -461,39 +722,185 @@ export default function TransactionDetailPage() {
           </div>
         ) : null}
 
+        {timelineLines.length ? (
+          <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
+            <h3 className="text-sm font-semibold text-orange-100">Reva&apos;s Deal Timeline</h3>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-200">
+              {timelineLines.map((line, i) => (
+                <li key={`${i}-${line.slice(0, 12)}`}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-white">Documents</h2>
-            <span className="text-xs text-slate-400">{documents.length} total</span>
+          <h2 className="text-sm font-semibold text-white">Upload a document</h2>
+          <p className="mt-1 text-xs text-slate-400">PDF only. Reva extracts fields and runs broker review in the background.</p>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <label className="block text-xs font-medium text-slate-300">
+              Document type
+              <select
+                value={docTypePick}
+                onChange={(e) => setDocTypePick(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+              >
+                {DOCUMENT_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-300 mt-6 md:mt-0">
+              <input
+                type="checkbox"
+                checked={isExecutedToggle}
+                onChange={(e) => setIsExecutedToggle(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-600"
+              />
+              <span>Is this document executed/signed?</span>
+            </label>
           </div>
 
-          {!documents.length ? <p className="mt-3 text-sm text-slate-400">No documents uploaded yet.</p> : null}
+          {docTypePick === 'other' ? (
+            <label className="mt-3 block text-xs font-medium text-slate-300">
+              Custom name
+              <input
+                value={customDocName}
+                onChange={(e) => setCustomDocName(e.target.value)}
+                placeholder="e.g. HOA resale certificate"
+                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+              />
+            </label>
+          ) : null}
 
-          <div className="mt-3 space-y-2">
-            {documents.map((d) => (
-              <div key={d.id} className="flex flex-col gap-2 rounded-lg border border-slate-700 bg-[#0A1022] p-3 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <FileText size={16} className="text-orange-200" />
-                    <div className="truncate text-sm font-semibold text-white">{d.name}</div>
-                  </div>
-                  <div className="mt-1 text-xs text-slate-400">
-                    Uploaded: {formatDate(d.uploaded_at)} {d.status_label ? `• ${d.status_label}` : null}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    void sendRevaMessage(`Open and summarize "${d.name}" for this transaction. Tell me what's relevant and the next action.`);
-                  }}
-                  className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
-                >
-                  Ask Reva
-                </button>
-              </div>
-            ))}
+          <div
+            {...getRootProps()}
+            className={classNames(
+              'mt-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 transition',
+              isDragActive ? 'border-orange-400 bg-orange-500/10' : 'border-slate-600 bg-[#0A1022]',
+              txDocUploadBusy ? 'pointer-events-none opacity-60' : ''
+            )}
+          >
+            <input {...getInputProps()} />
+            <Upload className="text-orange-300" size={28} />
+            <p className="mt-2 text-sm font-semibold text-white">Drag & drop PDF here</p>
+            <p className="mt-1 text-xs text-slate-400">or click to browse</p>
+            {txDocUploadBusy ? (
+              <p className="mt-2 inline-flex items-center gap-2 text-xs text-orange-200">
+                <Loader2 size={14} className="animate-spin" /> Uploading…
+              </p>
+            ) : null}
           </div>
         </div>
+
+        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-white">Transaction documents</h2>
+            <span className="text-xs text-slate-400">{txDocs.length} total</span>
+          </div>
+
+          {!txDocs.length ? (
+            <p className="mt-3 text-sm text-slate-400">No transaction documents yet. Upload above.</p>
+          ) : null}
+
+          {(['pre_contract', 'under_contract', 'closing'] as DocumentPhase[]).map((phase) => (
+            <div key={phase} className="mt-4">
+              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Phase: {PHASE_LABEL[phase]}
+              </div>
+              <div className="mt-2 space-y-2">
+                {grouped[phase].length ? grouped[phase].map(renderDocCard) : (
+                  <p className="text-xs text-slate-500">No documents in this phase.</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {documents.length ? (
+          <div className="rounded-xl border border-slate-700 bg-slate-900/20 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Legacy file list</div>
+            <div className="mt-2 space-y-2">
+              {documents.map((d) => (
+                <div
+                  key={d.id}
+                  className="flex flex-col gap-2 rounded-lg border border-slate-800 bg-[#0A1022]/80 p-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <FileText size={16} className="text-slate-400" />
+                      <div className="truncate text-sm font-semibold text-slate-200">{d.name}</div>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      Uploaded: {formatDate(d.uploaded_at)} {d.status_label ? `• ${d.status_label}` : null}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      void sendRevaMessage(
+                        `Open and summarize "${d.name}" for this transaction. Tell me what's relevant and the next action.`
+                      )
+                    }}
+                    className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
+                  >
+                    Ask Reva
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {reviewDoc ? (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Broker review</h3>
+                  <p className="text-xs text-slate-400">{reviewDoc.display_name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReviewDoc(null)}
+                  className="rounded-lg border border-slate-600 px-2 py-1 text-xs text-slate-200 hover:border-orange-500/40"
+                >
+                  Close
+                </button>
+              </div>
+              <p className="mt-4 text-sm text-slate-200">
+                {reviewDoc.broker_review?.natural_language_summary || 'No summary available.'}
+              </p>
+              {reviewDoc.deal_impact && Object.keys(reviewDoc.deal_impact).length > 0 ? (
+                <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/50 p-3">
+                  <div className="text-xs font-semibold uppercase text-slate-400">Deal impact</div>
+                  <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-200">
+                    {JSON.stringify(reviewDoc.deal_impact, null, 2)}
+                  </pre>
+                </div>
+              ) : null}
+              <div className="mt-4 space-y-2">
+                {(reviewDoc.broker_review?.issues || []).map((issue, idx) => (
+                  <div
+                    key={`${issue.message}-${idx}`}
+                    className={classNames(
+                      'rounded-lg border px-3 py-2 text-sm',
+                      issue.severity === 'critical'
+                        ? 'border-red-500/40 bg-red-950/40 text-red-100'
+                        : issue.severity === 'warning'
+                          ? 'border-orange-500/40 bg-orange-950/30 text-orange-100'
+                          : 'border-slate-600 bg-slate-900/60 text-slate-200'
+                    )}
+                  >
+                    <span className="text-xs font-bold uppercase text-slate-400">{issue.severity}</span>
+                    <div className="mt-1">{issue.message}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
   }
@@ -722,6 +1129,17 @@ export default function TransactionDetailPage() {
     )
   }
 
+  const airdropWatchDoc = useMemo(
+    () => (airdropWatchId != null ? txDocs.find((d) => d.id === airdropWatchId) : undefined),
+    [airdropWatchId, txDocs]
+  )
+  const airdropStatusForUi: 'processing' | 'reviewed' | 'error' =
+    airdropWatchDoc?.status === 'reviewed'
+      ? 'reviewed'
+      : airdropWatchDoc?.status === 'error'
+        ? 'error'
+        : 'processing'
+
   if (loading) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-6 text-slate-300">
@@ -907,6 +1325,16 @@ export default function TransactionDetailPage() {
           </div>
         </aside>
       </div>
+
+      <DocumentAirDrop
+        isVisible={airdropVisible}
+        documentName={airdropName}
+        status={airdropStatusForUi}
+        onComplete={() => {
+          setAirdropVisible(false)
+          setAirdropWatchId(null)
+        }}
+      />
     </main>
   )
 }

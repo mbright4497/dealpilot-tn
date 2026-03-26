@@ -21,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!transaction) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const [deadlinesRes, contactsRes, milestonesRes, documentsRes] = await Promise.all([
+    const [deadlinesRes, contactsRes, milestonesRes, documentsRes, txDocsRes] = await Promise.all([
       supabase
         .from('deadlines')
         .select('*')
@@ -30,7 +30,29 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       supabase.from('contacts').select('*').eq('transaction_id', id),
       supabase.from('deal_milestones').select('*').eq('transaction_id', id),
       supabase.from('documents').select('*').eq('transaction_id', id).order('created_at', { ascending: false }),
+      supabase
+        .from('transaction_documents')
+        .select('*')
+        .eq('transaction_id', id)
+        .eq('user_id', user.id)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
     ])
+
+    const txDocsWithUrls: Record<string, unknown>[] = []
+    if (!txDocsRes.error && txDocsRes.data) {
+      for (const d of txDocsRes.data as Record<string, unknown>[]) {
+        const path = d.file_url as string | null
+        let signed_url: string | null = null
+        if (path) {
+          const { data: s } = await supabase.storage.from('transactions').createSignedUrl(path, 3600)
+          signed_url = s?.signedUrl ?? null
+        }
+        txDocsWithUrls.push({ ...d, signed_url })
+      }
+    } else if (txDocsRes.error) {
+      console.warn('transaction_documents load:', txDocsRes.error.message)
+    }
 
     return NextResponse.json({
       transaction,
@@ -38,6 +60,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       contacts: contactsRes.data ?? [],
       milestones: milestonesRes.data ?? [],
       documents: documentsRes.data ?? [],
+      transaction_documents: txDocsWithUrls,
     })
   } catch (e: any) {
     console.error('transactions/id error', e)

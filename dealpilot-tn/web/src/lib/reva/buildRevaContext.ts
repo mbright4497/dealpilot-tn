@@ -186,6 +186,69 @@ export async function buildRevaContext(
       } else {
         lines.push('Contacts: None linked to this deal')
       }
+
+      let docs: any[] = []
+      const docsRes = await supabase
+        .from('transaction_documents')
+        .select('*')
+        .eq('transaction_id', dealId)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true })
+
+      if (!docsRes.error && docsRes.data) {
+        docs = docsRes.data
+      }
+
+      if (docs.length > 0) {
+        lines.push('')
+        lines.push(`TRANSACTION DOCUMENTS (${docs.length} total):`)
+        for (const d of docs) {
+          const ex = d.extracted_data
+          const br = d.broker_review
+          const di = d.deal_impact
+          const exec = d.is_executed ? 'yes' : 'no'
+          lines.push(
+            `- ${d.display_name} | Type: ${d.document_type} | Status: ${d.status} | Executed: ${exec}`
+          )
+          if (ex && typeof ex === 'object') {
+            if (ex.fields?.purchasePrice != null) {
+              lines.push(`  Extracted: purchase price ${ex.fields.purchasePrice}`)
+            }
+            if (ex.new_purchase_price != null) {
+              lines.push(`  Extracted: new purchase price ${ex.new_purchase_price}`)
+            }
+            if (ex.new_closing_date) {
+              lines.push(`  Extracted: new closing ${ex.new_closing_date}`)
+            }
+          }
+          if (br?.issues?.length) {
+            lines.push(`  Broker review issues: ${br.issues.length}`)
+          }
+          if (di && typeof di === 'object' && Object.keys(di).length) {
+            lines.push(`  Deal impact: ${JSON.stringify(di)}`)
+          }
+        }
+
+        lines.push('')
+        lines.push('MASTER DEAL TIMELINE (from all docs combined):')
+        const psa = docs.find((x: any) => x.document_type === 'rf401_psa')
+        const psaEx = psa?.extracted_data
+        const basePrice =
+          psaEx?.fields?.purchasePrice ?? deal?.purchase_price ?? 'unknown'
+        const baseClose = psaEx?.fields?.closingDate ?? deal?.closing_date ?? 'unknown'
+        lines.push(`Original PSA (baseline): price ${basePrice}, closing ${baseClose}`)
+        for (const d of docs) {
+          if (d.document_type === 'rf406_counter' && d.deal_impact) {
+            lines.push(`Counter ${d.display_name}: ${JSON.stringify(d.deal_impact)}`)
+          }
+          if (d.document_type === 'rf407_amendment' && d.deal_impact) {
+            lines.push(`Amendment ${d.display_name}: ${JSON.stringify(d.deal_impact)}`)
+          }
+        }
+        lines.push(
+          `Current (transaction row): price ${deal?.purchase_price ?? 'unknown'}, closing ${deal?.closing_date ?? 'unknown'}`
+        )
+      }
     } catch {
       lines.push('(deal details unavailable)')
     }

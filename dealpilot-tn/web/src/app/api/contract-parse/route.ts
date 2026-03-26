@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 
 type Severity = "error" | "warning" | "info"
 
-type ParsedPayload = {
+export type ParsedContractPayload = {
   fields: {
     propertyAddress: string | null
     buyerNames: string[]
@@ -145,43 +145,34 @@ async function extractVisualTextFromPdf(pdfBuffer: Buffer): Promise<string> {
   return pageTexts.join("\n\n")
 }
 
-export async function POST(req: Request) {
-  try {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "Missing OPENAI_API_KEY" },
-        { status: 500 }
-      )
-    }
+/** Raw PDF text in visual reading order (for generic / non-RF401 extraction). */
+export async function extractPdfTextFromBase64(fileBase64: string): Promise<string> {
+  const pdfBuffer = base64ToBuffer(fileBase64)
+  return extractVisualTextFromPdf(pdfBuffer)
+}
 
-    const body = await req.json()
-    const fileBase64 = body?.file
-    if (!fileBase64) {
-      return NextResponse.json(
-        { error: "No PDF provided in body.file" },
-        { status: 400 }
-      )
-    }
+/** Full RF401-style structured extraction (same logic as POST /api/contract-parse). */
+export async function parseContractPdfFromBase64(fileBase64: string): Promise<ParsedContractPayload> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error("Missing OPENAI_API_KEY")
+  }
 
-    const pdfBuffer = base64ToBuffer(fileBase64)
+  const pdfBuffer = base64ToBuffer(fileBase64)
 
-    /* ---------------- PDF TEXT EXTRACTION (visual order) ---------------- */
-    const contractText = await extractVisualTextFromPdf(pdfBuffer)
+  /* ---------------- PDF TEXT EXTRACTION (visual order) ---------------- */
+  const contractText = await extractVisualTextFromPdf(pdfBuffer)
 
-    if (!contractText || contractText.trim().length < 50) {
-      return NextResponse.json(
-        { error: "Could not extract text from PDF. The file may be scanned/image-only." },
-        { status: 400 }
-      )
-    }
+  if (!contractText || contractText.trim().length < 50) {
+    throw new Error("Could not extract text from PDF. The file may be scanned/image-only.")
+  }
 
-    // Add line numbers for GPT reference
-    const lines = contractText.split('\n')
-    const numberedText = lines.map((line: string, i: number) => `L${i + 1}: ${line}`).join('\n')
+  // Add line numbers for GPT reference
+  const lines = contractText.split('\n')
+  const numberedText = lines.map((line: string, i: number) => `L${i + 1}: ${line}`).join('\n')
 
-    /* ---------------- SYSTEM PROMPT ---------------- */
-    const systemPrompt = [
+  /* ---------------- SYSTEM PROMPT ---------------- */
+  const systemPrompt = [
       "You are REVA, a Tennessee real estate transaction coordinator assistant.",
       "You extract structured data from Tennessee REALTORS contracts. You can parse: RF401 (Purchase & Sale), RF403 (New Construction), RF404 (Lot/Land), RF651 (Counter Offer), RF653 (Amendment), RF621 (Addendum). Auto-detect the form type from the PDF header. For RF401/RF403/RF404 extract all fields. For RF651/RF653/RF621 extract only modified fields.",
       "",
@@ -210,10 +201,10 @@ export async function POST(req: Request) {
       "",
       "Dates must be formatted YYYY-MM-DD when possible.",
       "Currency must be numbers without dollar signs."
-    ].join("\n")
+  ].join("\n")
 
-    /* ---------------- USER PROMPT ---------------- */
-    const userPrompt = [
+  /* ---------------- USER PROMPT ---------------- */
+  const userPrompt = [
       "Analyze this Tennessee REALTORS contract. First identify the form type, then extract fields.",
 
       "",
@@ -251,66 +242,73 @@ export async function POST(req: Request) {
       "",
       "Return JSON exactly like:",
       "{ fields:{...}, issues:[...], timeline:[...] }"
-    ].join("\n")
+  ].join("\n")
 
-    /* ---------------- OPENAI CALL ---------------- */
-    const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: userPrompt
-          }
-        ]
-      })
-    })
+  /* ---------------- OPENAI CALL ---------------- */
+  const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+    }),
+  })
 
-    if (!openaiRes.ok) {
-      const err = await openaiRes.text()
+  if (!openaiRes.ok) {
+    const err = await openaiRes.text()
+    throw new Error(`OpenAI request failed: ${err}`)
+  }
+
+  const completion = await openaiRes.json()
+  const raw = completion?.choices?.[0]?.message?.content
+  if (!raw) {
+    throw new Error("OpenAI returned empty response")
+  }
+
+  let parsed: ParsedContractPayload
+  try {
+    parsed = JSON.parse(cleanJsonFromText(raw))
+  } catch {
+    throw new Error("Failed to parse AI JSON")
+  }
+
+  return parsed
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+    const fileBase64 = body?.file
+    if (!fileBase64) {
       return NextResponse.json(
-        { error: "OpenAI request failed", details: err },
-        { status: 500 }
+        { error: "No PDF provided in body.file" },
+        { status: 400 }
       )
     }
 
-    const completion = await openaiRes.json()
-    const raw = completion?.choices?.[0]?.message?.content
-    if (!raw) {
-      return NextResponse.json(
-        { error: "OpenAI returned empty response" },
-        { status: 500 }
-      )
-    }
-
-    let parsed: ParsedPayload
-    try {
-      parsed = JSON.parse(cleanJsonFromText(raw))
-    } catch {
-      return NextResponse.json(
-        { error: "Failed to parse AI JSON", raw },
-        { status: 500 }
-      )
-    }
-
+    const parsed = await parseContractPdfFromBase64(fileBase64)
     return NextResponse.json(parsed)
-
   } catch (error: any) {
     console.error("Contract parse error:", error?.message, error?.stack)
+    const msg = error?.message || "Contract parsing failed"
+    const status = msg.includes("Missing OPENAI_API_KEY") ? 500 : 500
     return NextResponse.json(
-      { error: "Contract parsing failed", details: error?.message },
-      { status: 500 }
+      { error: msg.includes("parse") ? msg : "Contract parsing failed", details: msg },
+      { status: status }
     )
   }
 }
