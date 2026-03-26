@@ -97,12 +97,10 @@ async function insertChecklist(
   supabase: SupabaseClient,
   txId: string
 ): Promise<number> {
-  const checklistRows = STANDARD_CHECKLIST_ITEMS.map((label, idx) => ({
+  const checklistRows = STANDARD_CHECKLIST_ITEMS.map((label) => ({
     transaction_id: txId,
     title: label,
     status: 'todo',
-    due_date: null,
-    order_index: idx + 1,
   }))
 
   const { error } = await supabase.from('deal_milestones').insert(checklistRows)
@@ -120,8 +118,6 @@ async function insertMissingBindingFlag(
     transaction_id: txId,
     title: 'Binding date needed to generate deadlines',
     status: 'todo',
-    due_date: null,
-    order_index: 999,
   })
 
   if (error) throw error
