@@ -36,15 +36,15 @@ export async function POST(req: Request){
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     const id = data.id
     try {
-      const setup = await autoSetupTransaction(supabase, data)
-      return NextResponse.json({ ok: true, id, url: `/deal/${id}`, setup })
+      await autoSetupTransaction(data, supabase)
+      return NextResponse.json({ ok: true, id, url: `/deal/${id}` })
     } catch (setupError) {
       console.error('autoSetupTransaction failed (create)', setupError)
       return NextResponse.json({
         ok: true,
         id,
         url: `/deal/${id}`,
-        setup: { deadlinesCreated: 0, checklistCreated: 0, error: 'Auto-setup failed' },
+        setup: { error: 'Auto-setup failed' },
       })
     }
   }catch(error){
