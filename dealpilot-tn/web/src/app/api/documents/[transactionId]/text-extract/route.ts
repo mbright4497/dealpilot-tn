@@ -2,17 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-const getSupabase = () => {
+export async function GET(request: Request, { params }: { params: { transactionId: string } }) {
   const cookieStore = cookies()
-  return createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { cookies: { get: (name) => cookieStore.get(name)?.value } }
   )
-}
-const supabase = getSupabase()
 
-export async function GET(request: Request, { params }: { params: { transactionId: string } }) {
   try {
     // dynamic import to avoid bundling pdf-parse test assets during build
     const pdfParse = (await import('pdf-parse'))?.default || (await import('pdf-parse'))
@@ -22,7 +19,7 @@ export async function GET(request: Request, { params }: { params: { transactionI
     if (!docId) return NextResponse.json({ ok: false, error: 'docId required' }, { status: 400 })
 
     // fetch document row
-    const { data: docRow, error: docErr } = await getSupabase().from('documents').select('*').eq('id', docId).single()
+    const { data: docRow, error: docErr } = await supabase.from('documents').select('*').eq('id', docId).single()
     if (docErr) return NextResponse.json({ ok: false, error: docErr.message }, { status: 500 })
     if (!docRow) return NextResponse.json({ ok: false, error: 'document not found' }, { status: 404 })
     if (Number(docRow.transaction_id) !== transactionId) return NextResponse.json({ ok: false, error: 'document does not belong to transaction' }, { status: 403 })
@@ -31,7 +28,7 @@ export async function GET(request: Request, { params }: { params: { transactionI
     if (!storagePath) return NextResponse.json({ ok: false, error: 'document missing storage path' }, { status: 500 })
 
     // create signed url and fetch bytes
-    const { data: signed, error: signedErr } = await getSupabase().storage.from('deal-documents').createSignedUrl(storagePath, 3600)
+    const { data: signed, error: signedErr } = await supabase.storage.from('deal-documents').createSignedUrl(storagePath, 3600)
     if (signedErr) return NextResponse.json({ ok: false, error: signedErr.message }, { status: 500 })
     const signedUrl = signed?.signedUrl
     if (!signedUrl) return NextResponse.json({ ok: false, error: 'failed to create signed url' }, { status: 500 })
