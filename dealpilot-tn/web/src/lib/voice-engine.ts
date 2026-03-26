@@ -15,8 +15,14 @@ export async function speakAPI(
       currentAudio = null
     }
     // Stream via browser by pointing audio.src at GET endpoint so playback starts immediately
-    const url = '/api/tts?text=' + encodeURIComponent(text)
-    const audio = new Audio(url)
+    const res = await fetch('/api/reva/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    if (!res.ok) throw new Error('reva speak request failed')
+    const blob = await res.blob()
+    const audio = new Audio(URL.createObjectURL(blob))
     currentAudio = audio
     audio.onplay = () => { speakingState = true; if (onStart) onStart() }
     audio.onended = () => { speakingState = false; currentAudio = null; if (onEnd) onEnd() }

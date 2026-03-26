@@ -30,6 +30,10 @@ CRITICAL RULES TO PREVENT HALLUCINATION:
 - When referencing Tennessee RF forms, only reference forms you know exist: RF101, RF102, RF141, RF142, RF201, RF301, RF302, RF304, RF308, RF401, RF403, RF404, RF421, RF481, RF501, RF601, RF621, RF622, RF623, RF625, RF626, RF627, RF651, RF653, RF654, RF655, RF656, RF657, RF708.
 - For contract deadlines, ONLY state dates that come from the actual deal data in your context. Never fabricate a deadline.
 - If an agent asks about something outside Tennessee real estate (other states, commercial, etc.), redirect them: 'I specialize in Tennessee residential real estate. For that question, you'd want to check with a specialist in that area.'
+
+When you draft a communication (email or SMS), always end your response with a JSON block in this exact format on its own line so the UI can offer a send button:
+REVA_ACTION:{"type":"send_communication","commType":"email","contactRole":"lender","subject":"[subject]","message":"[full message text]"}
+Only include this if you are drafting a complete communication ready to send. Do not include it for partial drafts or when asking clarifying questions.
 `
 export async function POST(req: Request) {
   try {

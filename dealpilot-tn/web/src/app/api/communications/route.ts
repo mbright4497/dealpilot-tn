@@ -12,13 +12,9 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url)
     const dealId = searchParams.get('deal_id')
-    if (!dealId) return NextResponse.json({ error: 'deal_id required' }, { status: 400 })
-
-    const { data, error } = await supabase
-      .from('deal_communications')
-      .select('*')
-      .eq('deal_id', dealId)
-      .order('created_at', { ascending: false })
+    let query = supabase.from('communications').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+    if (dealId) query = query.eq('deal_id', dealId)
+    const { data, error } = await query
 
     if (error) throw error
     return NextResponse.json({ communications: data || [] })

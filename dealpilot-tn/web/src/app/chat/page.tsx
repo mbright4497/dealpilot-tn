@@ -145,11 +145,12 @@ export default function ChatPage() {
 
   // conversation state for dashboard chat
   const [chatMode, setChatMode] = useState(false)
-  const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string, attachments?:any, showUpload?:boolean, parsed?:any}[]>([])
+  const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string, attachments?:any, showUpload?:boolean, parsed?:any, revaAction?:any}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
   const chatRef = React.useRef<HTMLDivElement|null>(null)
 
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
+  const [alerts, setAlerts] = useState<any[]>([])
   const [toasts, setToasts] = useState<{id:string,msg:string}[]>([])
   const addToast = (msg:string)=>{ const id = String(Date.now()) ; setToasts(t=>[...t,{id,msg}]); setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),4000) }
 
@@ -175,6 +176,8 @@ export default function ChatPage() {
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
       const d = await fetch('/api/deal-state/all')
       if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj)?dj:[]) }
+      const a = await fetch('/api/reva/alerts', { method: 'POST' })
+      if(a.ok){ const aj = await a.json(); setAlerts(Array.isArray(aj.alerts) ? aj.alerts : []) }
       setLastUpdated(new Date())
     }catch(e){ console.warn('command center load',e) }
     setLoading(false)
@@ -233,8 +236,11 @@ export default function ChatPage() {
       // build full conversation payload from chatMessages + new user message
       const history = [...chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content } )), { role: 'user', content: val }]
       const res = await fetch('/api/eva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: history, dealId: selectedTxId }) })
-      if(res.ok){ const j = await res.json(); const reply = j.reply || j.message || j.summary || '';
-        setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()) }])
+      if(res.ok){ const j = await res.json(); const rawReply = j.reply || j.message || j.summary || '';
+        const actionMatch = String(rawReply).match(/REVA_ACTION:(\{[\s\S]*\})/m)
+        const parsedAction = actionMatch ? (() => { try { return JSON.parse(actionMatch[1]) } catch { return null } })() : null
+        const reply = String(rawReply).replace(/REVA_ACTION:(\{[\s\S]*\})/m, '').trim()
+        setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()), revaAction: parsedAction }])
         // handle actionable response to open wizard
         if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
         if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva', e) } }
@@ -507,7 +513,7 @@ export default function ChatPage() {
               <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">{unreadCount}</span>
             )}
           </a>
-          <a href="/settings/ghl" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
+          <a href="/settings" className="w-full block flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-all">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15v2m0-6v2m0-6v2M4 7h16M4 11h16M4 15h10"/></svg>
             Settings
           </a>
@@ -534,6 +540,18 @@ export default function ChatPage() {
           })
           return (
             <div className="min-h-[80vh] flex flex-col">
+              {alerts.length > 0 && (
+                <div className="mb-3 rounded border border-red-500/40 bg-red-500/10 p-3">
+                  <div className="mb-2 text-sm font-semibold text-red-200">Alerts ({alerts.length})</div>
+                  <div className="flex flex-wrap gap-2">
+                    {alerts.slice(0, 6).map((a:any, i:number)=>(
+                      <button key={i} onClick={()=>a.dealId && openDeal(Number(a.dealId))} className="rounded bg-[#0f1c2e] px-2 py-1 text-xs text-white">
+                        {a.message}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* TOP HALF - Eva's Zone */}
 <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
  {/* Avatar + glow + talking animation */}
@@ -607,7 +625,29 @@ export default function ChatPage() {
              <div key={idx} className={`mb-3 flex ${m.role==='user' ? 'justify-end' : 'justify-start'}`}>
                <div className="flex flex-col items-start">
                  <div className={`text-xs text-gray-400 mb-1 ${m.role==='user' ? 'text-right' : 'text-left'}`}>{m.role==='user' ? 'You' : 'Reva'}</div>
-                 <div className={`${m.role==='user' ? 'bg-[#0b1a2b] text-white' : 'bg-[#081827] text-white'} px-3 py-2 rounded-lg max-w-[80%]`}>{m.content}</div>
+                <div className={`${m.role==='user' ? 'bg-[#0b1a2b] text-white' : 'bg-[#081827] text-white'} px-3 py-2 rounded-lg max-w-[80%]`}>{m.content}</div>
+                {m.revaAction?.type === 'send_communication' && (
+                  <button
+                    className="mt-2 rounded bg-orange-500 px-3 py-1 text-xs font-semibold text-black"
+                    onClick={async ()=>{
+                      await fetch('/api/communications/send', {
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({
+                          type: m.revaAction.commType,
+                          dealId: selectedTxId,
+                          contactRole: m.revaAction.contactRole,
+                          subject: m.revaAction.subject,
+                          message: m.revaAction.message,
+                          triggeredByReva: true,
+                        })
+                      })
+                      addToast('Sent via GHL')
+                    }}
+                  >
+                    Send via GHL ▶
+                  </button>
+                )}
                  {m.showUpload && (
                    <div className="mt-2">
                      <button onClick={()=>{ const el = document.getElementById('inline-upload') as HTMLInputElement|null; if(el) el.click() }} className="mt-2 px-3 py-1 rounded bg-orange-500 text-black">Upload Contract PDF</button>
@@ -663,8 +703,9 @@ export default function ChatPage() {
  setEvaSpeaking(false);
  return;
  }
- if (!briefing) return;
- await speakText(briefing, "friendly-tn", () => setEvaSpeaking(true), () =>
+ const speakSource = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1].content : briefing
+ if (!speakSource) return;
+ await speakText(speakSource, "friendly-tn", () => setEvaSpeaking(true), () =>
  setEvaSpeaking(false)
  );
  } catch (e) {
@@ -680,7 +721,7 @@ export default function ChatPage() {
  }
  title={evaSpeaking ? "Stop Reva" : "Play Reva briefing"}
  >
- {evaSpeaking ? "⏹" : "▶️"}
+ {evaSpeaking ? "⏸" : "▶"}
  </button>
  <form
  onSubmit={async (e) => {
@@ -701,8 +742,11 @@ export default function ChatPage() {
  });
  if (res.ok) {
  const j = await res.json();
- const reply = j.reply || j.message || j.summary || '';
- setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()) }])
+ const rawReply = j.reply || j.message || j.summary || '';
+ const actionMatch = String(rawReply).match(/REVA_ACTION:(\{[\s\S]*\})/m)
+ const parsedAction = actionMatch ? (() => { try { return JSON.parse(actionMatch[1]) } catch { return null } })() : null
+ const reply = String(rawReply).replace(/REVA_ACTION:(\{[\s\S]*\})/m, '').trim()
+ setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()), revaAction: parsedAction }])
  addToast("Reva replied");
  }
         // create_transaction action from Reva (dashboard form)
@@ -745,6 +789,7 @@ export default function ChatPage() {
  Refresh
  </button>
  </div>
+{evaSpeaking && <div className="mt-2 text-xs text-orange-300">Reva is speaking...</div>}
 
  {/* Local keyframes */}
  <style jsx>{`
@@ -883,6 +928,7 @@ export default function ChatPage() {
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
         <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
+        {alerts.length > 0 && <span className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-500" />}
       </button>
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
     </div>

@@ -28,7 +28,12 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data, error } = await supabase.from('profiles').select('id,email,full_name,brokerage,phone,license_number,notification_prefs,subscription_tier,created_at,updated_at').eq('id', user.id).limit(1).single()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id,full_name,brokerage,phone,license_number,state,user_type,ghl_api_key,ghl_location_id,notification_prefs,notification_email,subscription_tier,created_at,updated_at')
+      .eq('id', user.id)
+      .limit(1)
+      .single()
     if (error && error.code === 'PGRST116') {
       // table not found
       return NextResponse.json({ profile: null })
@@ -47,7 +52,18 @@ export async function PATCH(req: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json().catch(() => ({}))
-    const { full_name, phone, brokerage, license_number, notification_prefs } = body as any
+    const {
+      full_name,
+      phone,
+      brokerage,
+      license_number,
+      notification_prefs,
+      state,
+      user_type,
+      ghl_api_key,
+      ghl_location_id,
+      notification_email,
+    } = body as any
 
     // try update existing
     const updates: any = { updated_at: new Date().toISOString() }
@@ -56,6 +72,11 @@ export async function PATCH(req: Request) {
     if (brokerage !== undefined) updates.brokerage = brokerage
     if (license_number !== undefined) updates.license_number = license_number
     if (notification_prefs !== undefined) updates.notification_prefs = notification_prefs
+    if (state !== undefined) updates.state = state
+    if (user_type !== undefined) updates.user_type = user_type
+    if (ghl_api_key !== undefined) updates.ghl_api_key = ghl_api_key
+    if (ghl_location_id !== undefined) updates.ghl_location_id = ghl_location_id
+    if (notification_email !== undefined) updates.notification_email = notification_email
 
     // attempt update
     const { data, error } = await supabase.from('profiles').upsert({ id: user.id, ...updates }).select().single()
