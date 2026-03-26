@@ -1,7 +1,8 @@
 export async function buildRevaContext(
   supabase: any,
   userId: string,
-  dealId?: string | number
+  dealId?: string | number,
+  userEmail?: string
 ): Promise<string> {
   const lines: string[] = []
   const today = new Date().toLocaleDateString('en-US', {
@@ -17,17 +18,33 @@ export async function buildRevaContext(
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, brokerage, state, user_type')
+      .select('full_name, brokerage, state, user_type, email')
       .eq('id', userId)
       .single()
 
     if (profile) {
+      const emailForName = profile.email || userEmail || ''
+      const emailUsername = String(emailForName).split('@')[0]?.trim()
+      const fallbackName = emailUsername || 'there'
+      const fullName = profile.full_name || fallbackName
+      const brokerage = profile.brokerage || 'Independent'
+      const state = profile.state || 'TN'
       lines.push(
-        `COORDINATOR: ${profile.full_name || 'Unknown'} | ${profile.brokerage || 'Unknown Brokerage'} | ${profile.state || 'TN'}`
+        `COORDINATOR: ${fullName} | ${brokerage} | ${state}`
       )
+    } else {
+      const emailUsername = String(userEmail || '')
+        .split('@')[0]
+        ?.trim()
+      const fallbackName = emailUsername || 'there'
+      lines.push(`COORDINATOR: ${fallbackName} | Independent | TN`)
     }
   } catch {
-    lines.push('COORDINATOR: (profile unavailable)')
+    const emailUsername = String(userEmail || '')
+      .split('@')[0]
+      ?.trim()
+    const fallbackName = emailUsername || 'there'
+    lines.push(`COORDINATOR: ${fallbackName} | Independent | TN`)
   }
 
   lines.push('')

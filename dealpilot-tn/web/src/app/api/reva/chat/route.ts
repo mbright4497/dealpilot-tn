@@ -52,6 +52,8 @@ export async function POST(request: Request) {
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const userId = user.id
+    const userEmail = user.email
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const assistantId = process.env.REVA_ASSISTANT_ID_TN
@@ -63,7 +65,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const context = await buildRevaContext(supabase, user.id, dealId)
+    const context = await buildRevaContext(supabase, userId, dealId, userEmail)
 
     let threadId: string
     if (requestThreadId) {

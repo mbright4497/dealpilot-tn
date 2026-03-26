@@ -45,8 +45,16 @@ export async function POST() {
     if (!user) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const userId = user.id
+    const userEmail = user.email
 
-    const context = await buildRevaContext(supabase, user.id)
+    const { count: activeTransactionCount } = await supabase
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    const hasNoActiveTransactions = (activeTransactionCount ?? 0) === 0
+    const context = await buildRevaContext(supabase, userId, undefined, userEmail)
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -60,11 +68,20 @@ based on the live data provided. Be specific with
 addresses and dates. Under 150 words. No generic
 statements. If nothing is urgent, say so plainly.
 
+If this user has no active transactions, generate a warm welcome briefing that:
+- Greets them by name
+- Explains what ClosingPilot can do for them
+- Tells them their first step is to add a transaction
+- Mentions they can ask Reva anything about TN real estate
+- Is under 100 words and encouraging in tone
+
 ${context}`,
         },
         {
           role: 'user',
-          content: 'Generate my morning briefing for today.',
+          content: hasNoActiveTransactions
+            ? 'Generate my onboarding morning briefing for today.'
+            : 'Generate my morning briefing for today.',
         },
       ],
     })
