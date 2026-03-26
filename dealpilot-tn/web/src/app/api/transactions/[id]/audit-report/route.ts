@@ -7,7 +7,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 
@@ -17,22 +17,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Missing transaction ID' }, { status: 400 })
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !anonKey) {
     return NextResponse.json({
       error: 'Supabase configuration is incomplete',
       supabaseUrl: supabaseUrl ? supabaseUrl.slice(0, 20) : 'not set',
-      serviceRoleKey: serviceRoleKey ? 'set' : 'not set',
       anonKey: anonKey ? 'set' : 'not set',
     }, { status: 500 })
   }
 
-  const supabase = getSupabase() =>
-          fetch(url, { ...options, cache: 'no-store' }),
-      },
-    }
-  )
+  const supabase = getSupabase()
 
   const safeQuery = async (query: () => Promise<{ data: any; error: any }>) => {
     try {
@@ -45,14 +41,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   try {
-    const dealState = await safeQuery(() => getSupabase().from('deal_state').select('*').eq('deal_id', id).maybeSingle())
-    const events = await safeQuery(() => getSupabase().from('deal_events').select('*').eq('deal_id', id))
-    const comms = await safeQuery(() => getSupabase().from('communications').select('*').eq('deal_id', id))
-    const checklist = await safeQuery(() => getSupabase().from('deal_checklist').select('*').eq('deal_id', id))
-    const documents = await safeQuery(() => getSupabase().from('deal_documents').select('*').eq('deal_id', id))
-    const auditLogs = await safeQuery(() => getSupabase().from('audit_logs').select('*').eq('deal_id', id))
+    const dealState = await safeQuery(() => supabase.from('deal_state').select('*').eq('deal_id', id).maybeSingle())
+    const events = await safeQuery(() => supabase.from('deal_events').select('*').eq('deal_id', id))
+    const comms = await safeQuery(() => supabase.from('communications').select('*').eq('deal_id', id))
+    const checklist = await safeQuery(() => supabase.from('deal_checklist').select('*').eq('deal_id', id))
+    const documents = await safeQuery(() => supabase.from('deal_documents').select('*').eq('deal_id', id))
+    const auditLogs = await safeQuery(() => supabase.from('audit_logs').select('*').eq('deal_id', id))
 
-    const debugBlock = `<div style="font-size:12px;color:#666;margin-bottom:10px">Supabase URL: ${supabaseUrl.slice(0, 20)}${supabaseUrl.length > 20 ? '...' : ''}<br/>Service Role Key: set<br/>Anon Key: ${anonKey ? 'set' : 'not set'}</div>`
+    const debugBlock = `<div style="font-size:12px;color:#666;margin-bottom:10px">Supabase URL: ${supabaseUrl.slice(0, 20)}${supabaseUrl.length > 20 ? '...' : ''}<br/>Anon Key: ${anonKey ? 'set' : 'not set'}</div>`
 
     const html = `<!doctype html>
     <html>

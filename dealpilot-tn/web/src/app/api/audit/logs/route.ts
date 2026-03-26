@@ -7,7 +7,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 export const dynamic = 'force-dynamic'
@@ -19,6 +19,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Missing dealId' }, { status: 400 })
   }
   try {
+    const supabase = getSupabase()
     const { data, error } = await supabase
       .from('audit_logs')
       .select('*')

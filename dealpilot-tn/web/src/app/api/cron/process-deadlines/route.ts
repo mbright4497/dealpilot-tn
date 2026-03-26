@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase";
+import { getSupabaseSafe } from "@/lib/supabase";
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = getSupabaseSafe();
   const { data: deals } = await supabase.from("deals").select("*");
 
   for (const deal of deals ?? []) {

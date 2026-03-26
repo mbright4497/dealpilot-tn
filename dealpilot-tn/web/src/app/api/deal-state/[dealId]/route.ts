@@ -7,7 +7,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 
@@ -89,6 +89,7 @@ function buildTimeline(row: {
 
 async function resolveAgentName(userId?: string | null) {
   if (!userId) return null
+  const supabase = getSupabase()
   const { data: profile, error: profileErr } = await supabase
     .from('agent_profiles')
     .select('full_name')
@@ -113,6 +114,7 @@ export async function GET(
   req: Request,
   { params }: { params: { dealId: string } }
 ) {
+  const supabase = getSupabase()
   const dealId = parseInt(params.dealId, 10)
   if (isNaN(dealId)) {
     return NextResponse.json(

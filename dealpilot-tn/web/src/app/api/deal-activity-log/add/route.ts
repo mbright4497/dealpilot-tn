@@ -7,7 +7,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 
@@ -16,7 +16,6 @@ export async function POST(req: Request){
     const body = await req.json().catch(()=>({})) as any
     const { dealId, recipient, message } = body || {}
     if(!dealId || !recipient || !message) return NextResponse.json({ error: 'dealId, recipient, message required' }, { status: 400 })
-    if(!supabaseUrl || !serviceKey) return NextResponse.json({ error: 'supabase not configured' }, { status: 500 })
     const sb = getSupabase()
     const now = new Date().toISOString()
     const payload = { deal_id: dealId, message: message, recipient: recipient, created_at: now }

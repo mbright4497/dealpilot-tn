@@ -7,7 +7,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 
@@ -16,6 +16,7 @@ export const revalidate = 0
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
+    const supabase = getSupabase()
     const dealId = params.id
     if (!dealId) {
       return NextResponse.json({ error: 'Invalid deal ID' }, { status: 400 })
@@ -46,6 +47,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
+    const supabase = getSupabase()
     const dealId = params.id
     if (!dealId) {
       return NextResponse.json({ error: 'Invalid deal ID' }, { status: 400 })
@@ -72,12 +74,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
-    const { data: urlData, error: urlError } = getSupabase().storage
+    const { data: urlData } = getSupabase().storage
       .from('contracts')
       .getPublicUrl(storagePath)
 
-    if (urlError || !urlData?.publicUrl) {
-      console.error('Failed to generate public URL:', urlError)
+    if (!urlData?.publicUrl) {
+      console.error('Failed to generate public URL')
       return NextResponse.json({ error: 'Unable to get public URL' }, { status: 500 })
     }
 
@@ -105,6 +107,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
+    const supabase = getSupabase()
     const body = await req.json()
     const { extracted, pdfUrl } = body
     const dealId = params.id
@@ -137,6 +140,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
+    const supabase = getSupabase()
     const dealId = params.id
     if (!dealId) {
       return NextResponse.json({ error: 'Invalid deal ID' }, { status: 400 })
@@ -161,7 +165,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         .list(`deals/${dealId}`)
 
       if (files && files.length > 0) {
-        const filePaths = files.map(f => `deals/${dealId}/${f.name}`)
+        const filePaths = files.map((f: { name: string }) => `deals/${dealId}/${f.name}`)
         await getSupabase().storage.from('contracts').remove(filePaths)
       }
     } catch (_e) {

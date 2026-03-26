@@ -8,7 +8,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 
@@ -92,17 +92,10 @@ export async function GET(req: Request, { params }: { params: { dealId: string }
     signals.push('Checklist under 60% complete')
   }
 
-  if (deal.status === 'Closed' || current_state === 'closed') {
-    score = 100
-    signals = ['Deal closed successfully']
-  }
-
   if (score < 0) score = 0
 
   let status: 'healthy' | 'attention' | 'at_risk'
-  if (deal.status === 'Closed' || current_state === 'closed') {
-    status = 'healthy'
-  } else if (score >= 80) {
+  if (score >= 80) {
     status = 'healthy'
   } else if (score >= 55) {
     status = 'attention'

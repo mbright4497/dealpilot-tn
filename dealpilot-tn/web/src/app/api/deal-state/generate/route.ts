@@ -7,7 +7,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 
@@ -21,6 +21,7 @@ function addDays(dateStr: string, days: number): string {
 
 export async function POST(req: Request) {
   try {
+    const supabase = getSupabase()
     const { deal_id } = await req.json()
     if (!deal_id) {
       return NextResponse.json(

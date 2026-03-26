@@ -7,7 +7,7 @@ const getSupabase = () => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
   )
 }
 
@@ -21,6 +21,7 @@ function normalizeDocumentsReceived(value: unknown): Record<string, boolean> {
 }
 
 export async function GET(_: Request, { params }: Params) {
+  const supabase = getSupabase()
   const id = Number(params.id)
   if (!id) return NextResponse.json({ error: 'invalid id' }, { status: 400 })
 
@@ -35,6 +36,7 @@ export async function GET(_: Request, { params }: Params) {
 }
 
 export async function PATCH(req: Request, { params }: Params) {
+  const supabase = getSupabase()
   const id = Number(params.id)
   if (!id) return NextResponse.json({ error: 'invalid id' }, { status: 400 })
 

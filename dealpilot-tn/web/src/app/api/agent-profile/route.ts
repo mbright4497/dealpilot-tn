@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase";
+import { getSupabaseSafe } from "@/lib/supabase";
 
 type AgentRole = "agent" | "broker" | "tc";
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = getSupabaseSafe();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const supabase = createClient();
+  const supabase = getSupabaseSafe();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
