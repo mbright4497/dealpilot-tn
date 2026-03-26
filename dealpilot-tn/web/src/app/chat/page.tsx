@@ -26,6 +26,7 @@ import ContractWatch from '@/components/ContractWatch'
 import SmartIntakeCard from '@/components/SmartIntakeCard'
 import DealPickerModal from '@/components/DealPickerModal'
 import RookWizard from '@/components/RookWizard'
+import DriveMode from '@/components/reva/DriveMode'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -119,6 +120,7 @@ export default function ChatPage() {
   const [rookWizardOpen, setRookWizardOpen] = useState(false)
   const [showDealPicker, setShowDealPicker] = useState(false)
   const [dealTickerEvents, setDealTickerEvents] = useState<any[]>([])
+  const [driveModeOpen, setDriveModeOpen] = useState(false)
 
   // load existing ticker events and subscribe to updates from document classifier
   useEffect(()=>{
@@ -175,8 +177,8 @@ export default function ChatPage() {
       if(b.ok){ const bj=await b.json(); setBriefing(bj.briefing||bj.summary||bj.message||null) }
       const r = await fetch('/api/eva/actions')
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
-      const d = await fetch('/api/deal-state/all')
-      if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj)?dj:[]) }
+      const d = await fetch('/api/transactions')
+      if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj?.transactions)?dj.transactions:[]) }
       const a = await fetch('/api/reva/alerts', { method: 'POST' })
       if(a.ok){ const aj = await a.json(); setAlerts(Array.isArray(aj.alerts) ? aj.alerts : []) }
       setLastUpdated(new Date())
@@ -250,7 +252,7 @@ export default function ChatPage() {
         setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()), revaAction: parsedAction }])
         // handle actionable response to open wizard
         if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
-        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva', e) } }
+        if(j.transaction){ setTransactions(prev=>[j.transaction, ...prev]); addToast('Transaction Created!') }
       }
     }catch(e){ console.error(e); addToast('Chat failed') }
     finally{ setChatLoading(false) }
@@ -757,7 +759,7 @@ if (res.ok) {
  setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()), revaAction: parsedAction }])
  addToast("Reva replied");
         // create_transaction action from Reva (dashboard form)
-        if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva form', e) } }
+        if(j.transaction){ setTransactions(prev=>[j.transaction, ...prev]); addToast('Transaction Created!') }
 }
  } catch (err) {
  console.error(err);
@@ -933,12 +935,29 @@ if (res.ok) {
       {rookWizardOpen && selectedTxId && (
         <RookWizard transactionId={String(selectedTxId)} onClose={() => setRookWizardOpen(false)} />
       )}
+      {/* Floating drive mode button */}
+      <button
+        onClick={() => setDriveModeOpen(true)}
+        className="fixed bottom-24 right-24 z-40 h-14 w-14 rounded-full bg-orange-500 text-3xl font-semibold text-black shadow-lg hover:bg-orange-400"
+        title="Start Drive Mode"
+      >
+        +
+      </button>
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
         <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
         {alerts.length > 0 && <span className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-500" />}
       </button>
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
+      <DriveMode
+        open={driveModeOpen}
+        onClose={() => setDriveModeOpen(false)}
+        onTransactionCreated={(transaction) => {
+          setDriveModeOpen(false)
+          setTransactions((prev) => [transaction, ...prev])
+          addToast('Transaction Created!')
+        }}
+      />
     </div>
   )
 }
