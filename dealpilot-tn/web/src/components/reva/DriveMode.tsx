@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Props = {
   open: boolean
@@ -10,11 +10,46 @@ type Props = {
 
 export default function DriveMode({ open, onClose, onTransactionCreated }: Props) {
   const [threadId, setThreadId] = useState<string | null>(null)
-  const [currentPrompt, setCurrentPrompt] = useState('Tell me the property address (street number and name).')
+  const [currentPrompt, setCurrentPrompt] = useState('Starting Drive Mode...')
   const [answer, setAnswer] = useState('')
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
   const [listening, setListening] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+
+    let isActive = true
+    const startFreshIntake = async () => {
+      setThreadId(null)
+      setStep(0)
+      setAnswer('')
+      setCurrentPrompt('Starting Drive Mode...')
+      setBusy(true)
+      try {
+        const res = await fetch('/api/reva/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message:
+              "You are now in Drive Mode. Start a new transaction intake. Ask ONLY this first question and nothing else:\n'What is the property street address?'",
+            threadId: null,
+          }),
+        })
+        const json = await res.json()
+        if (!isActive) return
+        if (json.threadId) setThreadId(json.threadId)
+        if (json.reply) setCurrentPrompt(json.reply)
+      } finally {
+        if (isActive) setBusy(false)
+      }
+    }
+
+    void startFreshIntake()
+    return () => {
+      isActive = false
+    }
+  }, [open])
   async function finishLater() {
     try {
       if (threadId) {
@@ -24,7 +59,6 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
           body: JSON.stringify({
             message: "I'll finish later. Please save my progress for this intake.",
             threadId,
-            context: 'drive_mode',
           }),
         })
       }
@@ -54,16 +88,29 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
 
   if (!open) return null
 
+  const nextTriggerByStep: Record<number, string> = {
+    0: "Got it. Now ask ONLY:\n'What city is the property in?'",
+    1: "Got it. Now ask ONLY:\n'What is the zip code?'",
+    2: "Got it. Now ask ONLY:\n'Is this a buyer or seller transaction?'",
+    3: "Got it. Now ask ONLY:\n'What is the client name or names?'",
+    4:
+      "Got it. Now ask ONLY:\n'Do you have a closing date? If yes what is it? If no just say not yet.'",
+    5:
+      'Got it. Now create the transaction and output ONLY the REVA_ACTION block for create_transaction with the collected intake data.',
+  }
+
   async function submitAnswer() {
     if (!answer.trim()) return
     setBusy(true)
+    const answerText = answer.trim()
+    const nextTrigger = nextTriggerByStep[step] || ''
+    const message = nextTrigger ? `${answerText}\n\n${nextTrigger}` : answerText
     const res = await fetch('/api/reva/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: answer,
+        message,
         threadId,
-        context: 'drive_mode',
       }),
     })
     const json = await res.json()
@@ -82,7 +129,7 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
           <img src="/avatar-pilot.png" alt="Reva" className="h-14 w-14 rounded-full" />
           <div>
             <div className="text-lg font-semibold text-white">Reva Drive Mode</div>
-            <div className="text-sm text-gray-400">Step {step} of 6</div>
+            <div className="text-sm text-gray-400">Step {Math.min(6, step + 1)} of 6</div>
           </div>
         </div>
 
@@ -94,7 +141,10 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
           className="h-32 w-full rounded-xl bg-gray-900 p-3 text-white outline-none ring-1 ring-gray-700"
         />
         <div className="mt-3 h-2 rounded-full bg-gray-800">
-          <div className="h-2 rounded-full bg-orange-500" style={{ width: `${(step / 6) * 100}%` }} />
+          <div
+            className="h-2 rounded-full bg-orange-500"
+            style={{ width: `${(Math.min(6, step + 1) / 6) * 100}%` }}
+          />
         </div>
 
         <div className="mt-4 flex items-center justify-between">
