@@ -8,6 +8,8 @@ const REVA_ACTION_INSTRUCTION =
   'When you draft a communication (email or SMS), always end your response with a JSON block exactly like: REVA_ACTION:{"type":"send_communication","commType":"email","contactRole":"lender","subject":"[subject]","message":"[full message text]"} . Only include this for complete ready-to-send drafts.'
 const REVA_FILE_SEARCH_PREFIX =
   'Search your knowledge base documents to answer this question. Cite the specific document and section. Do not answer from general knowledge alone.\n\nQuestion: '
+const REVA_SEARCH_FALLBACK_REPLY =
+  "I'm having trouble searching right now. Please try again in a moment."
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -78,7 +80,6 @@ export async function POST(req: Request) {
 
     const run = await openai.beta.threads.runs.create(thread.id, {
       assistant_id: process.env.REVA_ASSISTANT_ID_TN!,
-      tool_choice: { type: 'file_search' },
       additional_instructions: `${REVA_ACTION_INSTRUCTION}${dealId ? `\nCurrent deal id: ${dealId}` : ''}`,
     })
 
@@ -91,14 +92,25 @@ export async function POST(req: Request) {
 
       if (runState.status === 'completed') break
       if (runState.status === 'failed' || runState.status === 'cancelled' || runState.status === 'expired') {
-        return NextResponse.json({ error: `Assistant run ${runState.status}.` }, { status: 500 })
+        console.error('Reva run ended before completion', {
+          status: runState.status,
+          last_error: runState.last_error,
+          run_id: runState.id,
+          thread_id: thread.id,
+        })
+        return NextResponse.json({ reply: REVA_SEARCH_FALLBACK_REPLY })
       }
 
       await sleep(1200)
     }
 
     if (runState.status !== 'completed') {
-      return NextResponse.json({ error: 'Assistant run timed out.' }, { status: 504 })
+      console.error('Reva run timed out', {
+        status: runState.status,
+        run_id: runState.id,
+        thread_id: thread.id,
+      })
+      return NextResponse.json({ reply: REVA_SEARCH_FALLBACK_REPLY })
     }
 
     const messages = await openai.beta.threads.messages.list(thread.id, { limit: 20 })
@@ -108,6 +120,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ reply })
   } catch (err: any) {
     console.error('REVA chat error', err)
-    return NextResponse.json({ error: err.message || String(err) }, { status: 500 })
+    return NextResponse.json({ reply: REVA_SEARCH_FALLBACK_REPLY })
   }
 }
