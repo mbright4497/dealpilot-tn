@@ -5,6 +5,16 @@ import { buildRevaContext } from '@/lib/reva/buildRevaContext'
 
 export const maxDuration = 60
 
+function stripCitations(text: string): string {
+  return text
+    .replace(/【[^】]*】/g, '')
+    .replace(/^\[RF FORM\]\s*/i, '')
+    .replace(/^\[TN LAW\]\s*/i, '')
+    .replace(/^\[BEST PRACTICE\]\s*/i, '')
+    .replace(/^\[MLS RULE\]\s*/i, '')
+    .trim()
+}
+
 export async function POST(request: Request) {
   try {
     console.log('Assistant ID:', process.env.REVA_ASSISTANT_ID_TN)
@@ -124,7 +134,9 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         .join('\n')
 
       return Response.json({
-        reply: reply || 'I could not find an answer. Please try again.',
+        reply: stripCitations(
+          reply || 'I could not find an answer. Please try again.'
+        ),
         threadId,
       })
     } catch (err: any) {

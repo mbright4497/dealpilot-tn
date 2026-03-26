@@ -5,6 +5,16 @@ import { buildRevaContext } from '@/lib/reva/buildRevaContext'
 
 export const maxDuration = 60
 
+function stripCitations(text: string): string {
+  return text
+    .replace(/【[^】]*】/g, '')
+    .replace(/^\[RF FORM\]\s*/i, '')
+    .replace(/^\[TN LAW\]\s*/i, '')
+    .replace(/^\[BEST PRACTICE\]\s*/i, '')
+    .replace(/^\[MLS RULE\]\s*/i, '')
+    .trim()
+}
+
 export async function POST() {
   try {
     const cookieStore = cookies()
@@ -60,7 +70,7 @@ ${context}`,
     })
 
     return Response.json({
-      briefing: completion.choices[0].message.content,
+      briefing: stripCitations(completion.choices[0].message.content ?? ''),
     })
   } catch (err) {
     console.error('Reva briefing error:', err)
