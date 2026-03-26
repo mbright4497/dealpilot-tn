@@ -75,52 +75,63 @@ Instructions: Search your knowledge base documents to answer this question. Cite
       content: fullMessage,
     })
 
-    console.log('runStream starts: switching to polling via runs.create')
-    console.log('textDelta events fire: polling mode, no textDelta events expected')
-    const run = await openai.beta.threads.runs.create(thread.id, {
-      assistant_id: assistantId,
-    })
+    try {
+      console.log('runStream starts: switching to polling via runs.create')
+      console.log('textDelta events fire: polling mode, no textDelta events expected')
+      const run = await openai.beta.threads.runs.create(thread.id, {
+        assistant_id: assistantId,
+      })
 
-    const startTime = Date.now()
-    let status = run.status
+      const startTime = Date.now()
+      let status = run.status
 
-    while (
-      status !== 'completed' &&
-      status !== 'failed' &&
-      status !== 'cancelled' &&
-      status !== 'expired'
-    ) {
-      if (Date.now() - startTime > 45000) {
+      while (
+        status !== 'completed' &&
+        status !== 'failed' &&
+        status !== 'cancelled' &&
+        status !== 'expired'
+      ) {
+        if (Date.now() - startTime > 45000) {
+          return Response.json({
+            reply: 'Reva is taking too long. Please try again.',
+            threadId: thread.id,
+          })
+        }
+
+        await new Promise((r) => setTimeout(r, 1500))
+        const updated = await openai.beta.threads.runs.retrieve(
+          thread.id,
+          run.id
+        )
+        status = updated.status
+        console.log('Run status:', status, 'elapsed:', Date.now() - startTime)
+      }
+
+      if (status !== 'completed') {
         return Response.json({
-          reply: 'Reva is taking too long. Please try again.',
+          reply: 'I could not complete that request. Please try again.',
           threadId: thread.id,
         })
       }
 
-      await new Promise((r) => setTimeout(r, 1500))
-      const updated = await openai.beta.threads.runs.retrieve(thread.id, run.id)
-      status = updated.status
-      console.log('Run status:', status, 'elapsed:', Date.now() - startTime)
-    }
+      const messages = await openai.beta.threads.messages.list(thread.id)
+      const latest = messages.data[0]
+      const reply = latest.content
+        .filter((c: any) => c.type === 'text')
+        .map((c: any) => c.text.value)
+        .join('\n')
 
-    if (status !== 'completed') {
       return Response.json({
-        reply: 'I could not complete that request. Please try again.',
+        reply: reply || 'I could not find an answer. Please try again.',
+        threadId: thread.id,
+      })
+    } catch (err: any) {
+      console.error('Run error full:', JSON.stringify(err))
+      return Response.json({
+        reply: 'Error: ' + err.message,
         threadId: thread.id,
       })
     }
-
-    const messages = await openai.beta.threads.messages.list(thread.id)
-    const latest = messages.data[0]
-    const reply = latest.content
-      .filter((c: any) => c.type === 'text')
-      .map((c: any) => c.text.value)
-      .join('\n')
-
-    return Response.json({
-      reply: reply || 'I could not find an answer. Please try again.',
-      threadId: thread.id,
-    })
   } catch (err: any) {
     console.error('Error caught in reva chat route:', err)
     console.error('Reva chat error:', err)
