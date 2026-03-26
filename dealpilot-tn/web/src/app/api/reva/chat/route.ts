@@ -8,7 +8,7 @@ export const maxDuration = 60
 export async function POST(request: Request) {
   try {
     console.log('Assistant ID:', process.env.REVA_ASSISTANT_ID_TN)
-    const { message, dealId, threadId } = await request.json()
+    const { message, dealId, threadId: requestThreadId } = await request.json()
 
     if (!message) {
       return Response.json({ error: 'Message required' }, { status: 400 })
@@ -55,13 +55,15 @@ export async function POST(request: Request) {
 
     const context = await buildRevaContext(supabase, user.id, dealId)
 
-    let thread
-    if (threadId) {
-      thread = { id: threadId }
+    let threadId: string
+    if (requestThreadId) {
+      threadId = requestThreadId
     } else {
-      thread = await openai.beta.threads.create()
+      const threadObj = await openai.beta.threads.create()
+      console.log('Thread created:', JSON.stringify(threadObj))
+      threadId = threadObj.id
     }
-    console.log('thread.id created:', thread.id)
+    console.log('threadId created:', threadId)
 
     const fullMessage = `LIVE SYSTEM CONTEXT (use this for all deal questions):
 ${context}
@@ -70,7 +72,7 @@ USER QUESTION: ${message}
 
 Instructions: Search your knowledge base documents to answer this question. Cite the specific document and section. Use the live context above for any deal-specific questions.`
 
-    await openai.beta.threads.messages.create(thread.id, {
+    await openai.beta.threads.messages.create(threadId, {
       role: 'user',
       content: fullMessage,
     })
@@ -78,7 +80,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
     try {
       console.log('runStream starts: switching to polling via runs.create')
       console.log('textDelta events fire: polling mode, no textDelta events expected')
-      const run = await openai.beta.threads.runs.create(thread.id, {
+      const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId,
       })
 
@@ -94,13 +96,13 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         if (Date.now() - startTime > 45000) {
           return Response.json({
             reply: 'Reva is taking too long. Please try again.',
-            threadId: thread.id,
+            threadId,
           })
         }
 
         await new Promise((r) => setTimeout(r, 1500))
         const updated = await openai.beta.threads.runs.retrieve(
-          thread.id,
+          threadId,
           run.id
         )
         status = updated.status
@@ -110,11 +112,11 @@ Instructions: Search your knowledge base documents to answer this question. Cite
       if (status !== 'completed') {
         return Response.json({
           reply: 'I could not complete that request. Please try again.',
-          threadId: thread.id,
+          threadId,
         })
       }
 
-      const messages = await openai.beta.threads.messages.list(thread.id)
+      const messages = await openai.beta.threads.messages.list(threadId)
       const latest = messages.data[0]
       const reply = latest.content
         .filter((c: any) => c.type === 'text')
@@ -123,13 +125,13 @@ Instructions: Search your knowledge base documents to answer this question. Cite
 
       return Response.json({
         reply: reply || 'I could not find an answer. Please try again.',
-        threadId: thread.id,
+        threadId,
       })
     } catch (err: any) {
       console.error('Run error full:', JSON.stringify(err))
       return Response.json({
         reply: 'Error: ' + err.message,
-        threadId: thread.id,
+        threadId,
       })
     }
   } catch (err: any) {
