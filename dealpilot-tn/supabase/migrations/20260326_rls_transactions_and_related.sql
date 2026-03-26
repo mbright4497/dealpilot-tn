@@ -41,7 +41,10 @@ begin
 
     execute format('alter table public.%I enable row level security', t);
     policy_name := format('Users can only see their own %s', t);
-    execute format('drop policy if exists %L on public.%I', policy_name, t);
+    execute format(
+      'drop policy if exists "Users can only see their own %s" on public.%I',
+      t, t
+    );
 
     if exists (
       select 1
