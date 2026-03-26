@@ -1,105 +1,126 @@
 import OpenAI from 'openai'
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { buildRevaContext } from '@/lib/reva/buildRevaContext'
 
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const REVA_ACTION_INSTRUCTION =
-  'When you draft a communication (email or SMS), always end your response with a JSON block exactly like: REVA_ACTION:{"type":"send_communication","commType":"email","contactRole":"lender","subject":"[subject]","message":"[full message text]"} . Only include this for complete ready-to-send drafts.'
-const REVA_FILE_SEARCH_PREFIX =
-  'Search your knowledge base documents to answer this question. Cite the specific document and section. Do not answer from general knowledge alone.\n\nQuestion: '
-const REVA_SEARCH_FALLBACK_REPLY =
-  "I'm having trouble searching right now. Please try again in a moment."
-
-async function buildRevaContext(supabase: any, userId: string) {
-  const { data: deals } = await supabase
-    .from('deal_state')
-    .select('id,address,current_state,binding_date,closing_date,created_at,documents')
-    .eq('user_id', userId)
-  const { data: deadlines } = await supabase
-    .from('deal_deadlines')
-    .select('deal_id,milestone_name,deadline_date,status')
-    .eq('user_id', userId)
-  const { data: checklist } = await supabase
-    .from('checklist_items')
-    .select('transaction_id,status')
-    .eq('user_id', userId)
-  return { deals: deals || [], deadlines: deadlines || [], checklist: checklist || [] }
-}
-
-function extractSystemMessages(messages: any[]): string {
-  return messages
-    .filter((m) => String(m?.role || '').toLowerCase() === 'system')
-    .map((m) => String(m?.content || '').trim())
-    .filter(Boolean)
-    .join('\n\n')
-}
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    console.log('[REVA_CHAT] Route hit')
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('[REVA_CHAT] Missing OPENAI_API_KEY')
-      return NextResponse.json({ error: 'OPENAI_API_KEY is not configured.' }, { status: 500 })
+    const { message, dealId, threadId } = await request.json()
+
+    if (!message) {
+      return Response.json({ error: 'Message required' }, { status: 400 })
     }
 
-    const body = await req.json().catch(() => ({}))
-    const rawMessages = Array.isArray(body?.messages) ? body.messages : []
-    const dealId = body?.dealId
-    const userMessages = rawMessages.filter(
-      (m: any) => String(m?.role || 'user').toLowerCase() === 'user'
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch {
+              // no-op in read-only server contexts
+            }
+          },
+        },
+      }
     )
-    const lastUserMessage = userMessages.length
-      ? String(userMessages[userMessages.length - 1]?.content || '').trim()
-      : ''
-    console.log('[REVA_CHAT] Request payload parsed', {
-      messageCount: rawMessages.length,
-      dealId: dealId ?? null,
-      userMessage: lastUserMessage,
-    })
 
-    if (!lastUserMessage) {
-      return NextResponse.json({ reply: 'Please share a question for Reva.' }, { status: 400 })
-    }
-
-    const supabase = createServerSupabaseClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const ctx = await buildRevaContext(supabase, user.id)
-    const contextJson = JSON.stringify(ctx)
-    const systemFromRequest = extractSystemMessages(rawMessages)
-    const systemPrompt = `${REVA_ACTION_INSTRUCTION}${dealId ? `\nCurrent deal id: ${dealId}` : ''}\n\nLive Reva context:\n${contextJson}${systemFromRequest ? `\n\nAdditional system context:\n${systemFromRequest}` : ''}`
-    const userMessage = `${REVA_FILE_SEARCH_PREFIX}${lastUserMessage}`
+    if (!user) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        {
-          role: 'user',
-          content: userMessage,
-        },
-      ],
-      max_tokens: 1000,
+    const assistantId = process.env.REVA_ASSISTANT_ID_TN
+
+    if (!assistantId) {
+      return Response.json({
+        reply: 'Reva is not configured yet. Please contact support.',
+      })
+    }
+
+    const context = await buildRevaContext(supabase, user.id, dealId)
+
+    let thread
+    if (threadId) {
+      thread = { id: threadId }
+    } else {
+      thread = await openai.beta.threads.create()
+    }
+
+    const fullMessage = `LIVE SYSTEM CONTEXT (use this for all deal questions):
+${context}
+
+USER QUESTION: ${message}
+
+Instructions: Search your knowledge base documents to answer this question. Cite the specific document and section. Use the live context above for any deal-specific questions.`
+
+    await openai.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: fullMessage,
     })
 
-    const reply = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.'
-    console.log('[REVA_CHAT] Final reply before return', {
-      replyPreview: reply.slice(0, 500),
-      replyLength: reply.length,
+    const encoder = new TextEncoder()
+    let reply = ''
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const runStream = openai.beta.threads.runs.stream(thread.id, {
+            assistant_id: assistantId,
+          })
+
+          runStream.on('textDelta', (delta) => {
+            if (delta.value) {
+              reply += delta.value
+            }
+          })
+
+          await runStream.finalRun()
+
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({
+                reply: reply || 'I could not find an answer. Please try again.',
+                threadId: thread.id,
+              })
+            )
+          )
+          controller.close()
+        } catch {
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({
+                reply: 'I ran into an issue. Please try again.',
+                threadId: thread.id,
+              })
+            )
+          )
+          controller.close()
+        }
+      },
     })
 
-    return NextResponse.json({ reply })
+    return new Response(stream, {
+      headers: { 'Content-Type': 'application/json' },
+    })
   } catch (err: any) {
-    console.error('REVA chat error', err)
-    return NextResponse.json({ reply: REVA_SEARCH_FALLBACK_REPLY })
+    console.error('Reva chat error:', err)
+    return Response.json({
+      reply: 'Something went wrong. Please try again.',
+      threadId: null,
+    })
   }
 }

@@ -147,6 +147,7 @@ export default function ChatPage() {
   const [chatMode, setChatMode] = useState(false)
   const [chatMessages, setChatMessages] = useState<{role:'user'|'assistant',content:string, attachments?:any, showUpload?:boolean, parsed?:any, revaAction?:any}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
+  const [threadId, setThreadId] = useState<string | null>(null)
   const chatRef = React.useRef<HTMLDivElement|null>(null)
 
   const [lastUpdated, setLastUpdated] = useState<Date| null>(null)
@@ -170,8 +171,8 @@ export default function ChatPage() {
 
   const loadCommandCenter = async ()=>{
     try{
-      const b = await fetch('/api/eva/briefing', { method:'POST' })
-      if(b.ok){ const bj=await b.json(); setBriefing(bj.summary||bj.message||null) }
+      const b = await fetch('/api/reva/briefing', { method:'POST' })
+      if(b.ok){ const bj=await b.json(); setBriefing(bj.briefing||bj.summary||bj.message||null) }
       const r = await fetch('/api/eva/actions')
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
       const d = await fetch('/api/deal-state/all')
@@ -233,13 +234,19 @@ export default function ChatPage() {
     }catch(_){ }
     setChatLoading(true)
     try{
-      // build full conversation payload from chatMessages + new user message
-      const history = [...chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content } )), { role: 'user', content: val }]
-      const res = await fetch('/api/reva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: history, dealId: selectedTxId }) })
-      if(res.ok){ const j = await res.json(); const rawReply = j.reply || j.response || j.message || j.summary || '';
+      const res = await fetch('/api/reva/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: val, dealId: selectedTxId, threadId }),
+      })
+      if(res.ok){
+        const text = await res.text()
+        const j = JSON.parse(text || '{}')
+        const rawReply = j.reply || j.response || j.message || j.summary || '';
         const actionMatch = String(rawReply).match(/REVA_ACTION:(\{[\s\S]*\})/m)
         const parsedAction = actionMatch ? (() => { try { return JSON.parse(actionMatch[1]) } catch { return null } })() : null
         const reply = String(rawReply).replace(/REVA_ACTION:(\{[\s\S]*\})/m, '').trim()
+        if (j.threadId) setThreadId(j.threadId)
         setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()), revaAction: parsedAction }])
         // handle actionable response to open wizard
         if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
@@ -734,23 +741,24 @@ export default function ChatPage() {
  try { (e.target as any).elements.ask.value = '' }catch(_){ }
  setChatLoading(true)
  try {
- const payload = { messages: chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content })).concat([{ role: 'user', content: val }]) }
 const res = await fetch("/api/reva/chat", {
  method: "POST",
  headers: { "Content-Type": "application/json" },
- body: JSON.stringify(payload),
- });
- if (res.ok) {
- const j = await res.json();
+ body: JSON.stringify({ message: val, dealId: selectedTxId, threadId }),
+});
+if (res.ok) {
+ const text = await res.text()
+ const j = JSON.parse(text || '{}')
  const rawReply = j.reply || j.response || j.message || j.summary || '';
  const actionMatch = String(rawReply).match(/REVA_ACTION:(\{[\s\S]*\})/m)
  const parsedAction = actionMatch ? (() => { try { return JSON.parse(actionMatch[1]) } catch { return null } })() : null
  const reply = String(rawReply).replace(/REVA_ACTION:(\{[\s\S]*\})/m, '').trim()
+ if (j.threadId) setThreadId(j.threadId)
  setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()), revaAction: parsedAction }])
  addToast("Reva replied");
- }
         // create_transaction action from Reva (dashboard form)
         if(j.action && j.action.type === 'create_transaction' && j.action.data){ try{ await addTransaction(j.action.data); setChatMessages(m=>[...m, { role: 'assistant', content: 'Transaction created and added to your pipeline.' }]); pushUrlFor('transactions'); }catch(e){ console.error('failed to add transaction from Reva form', e) } }
+}
  } catch (err) {
  console.error(err);
  addToast("Chat failed");
