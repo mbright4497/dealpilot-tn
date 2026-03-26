@@ -364,7 +364,6 @@ export default function ChatPage() {
       if(viewName === 'dashboard') window.history.pushState({}, '', '/chat')
       else if(viewName === 'transactions') window.history.pushState({}, '', '/chat?view=transactions')
       else if(viewName === 'deadlines') window.history.pushState({}, '', '/chat?view=deadlines')
-      else if(viewName === 'deal' && txId) window.history.pushState({}, '', `/chat?deal=${txId}`)
       else window.history.pushState({}, '', '/chat')
     }catch(e){ }
   }
@@ -372,13 +371,13 @@ export default function ChatPage() {
   function openDeal(txId: number) {
     setSelectedTxId(txId)
     setView('deal')
-    pushUrlFor('deal', txId)
+    router.push(`/transactions/${txId}`)
   }
 
   function openChecklist(txId: number) {
     setSelectedTxId(txId)
     setView('deal')
-    pushUrlFor('deal', txId)
+    router.push(`/transactions/${txId}`)
   }
 
   async function deleteTransaction(txId: number) {
