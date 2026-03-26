@@ -58,6 +58,6 @@ export async function createTransactionWithSetup(
     .single()
   if (error) throw error
 
-  await autoSetupTransaction(supabase, data as any)
+  await autoSetupTransaction(data as any, supabase)
   return data as TransactionRecord
 }

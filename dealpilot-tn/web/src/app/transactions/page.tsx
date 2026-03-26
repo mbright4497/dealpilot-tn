@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import DriveMode from '@/components/reva/DriveMode'
 
 type Transaction = {
   id: number
@@ -30,7 +29,6 @@ export default function TransactionsPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'pending' | 'closed'>('all')
   const [query, setQuery] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('closing_date')
-  const [driveModeOpen, setDriveModeOpen] = useState(false)
 
   async function loadTransactions() {
     setLoading(true)
@@ -142,21 +140,6 @@ export default function TransactionsPage() {
         Back to dashboard
       </Link>
 
-      <button
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-orange-500 text-3xl font-semibold text-black shadow-lg"
-        onClick={() => setDriveModeOpen(true)}
-      >
-        +
-      </button>
-
-      <DriveMode
-        open={driveModeOpen}
-        onClose={() => setDriveModeOpen(false)}
-        onTransactionCreated={() => {
-          setDriveModeOpen(false)
-          loadTransactions()
-        }}
-      />
     </main>
   )
 }

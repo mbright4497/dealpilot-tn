@@ -5,6 +5,23 @@ import { buildRevaContext } from '@/lib/reva/buildRevaContext'
 import { createTransactionWithSetup } from '@/lib/transactions/service'
 
 export const maxDuration = 60
+const driveModeKeywords = [
+  'start a transaction',
+  'new transaction',
+  'start a deal',
+  'i am driving',
+  "i'm driving",
+  'drive mode',
+  'start a purchase',
+  'start a psa',
+  'purchase and sale',
+  'new psa',
+  'add a transaction',
+  'create a transaction',
+  'hey reva start',
+  'lets start a deal',
+  "let's start a deal",
+]
 const styleInstructions: Record<string, string> = {
   joyful: 'Communicate in an upbeat, energetic, encouraging tone. Use enthusiasm.',
   straight: 'Communicate in a concise, no-frills, direct tone. No fluff.',
@@ -49,6 +66,9 @@ export async function POST(request: Request) {
     if (!message) {
       return Response.json({ error: 'Message required' }, { status: 400 })
     }
+    const isDriveMode = driveModeKeywords.some((kw) =>
+      String(message).toLowerCase().includes(kw)
+    )
 
     const cookieStore = cookies()
     const supabase = createServerClient(
@@ -206,12 +226,14 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         reply: stripCitations(cleanedReply || 'I could not find an answer. Please try again.'),
         threadId,
         transaction,
+        triggerDriveMode: isDriveMode,
       })
     } catch (err: any) {
       console.error('Run error full:', JSON.stringify(err))
       return Response.json({
         reply: 'Error: ' + err.message,
         threadId,
+        triggerDriveMode: isDriveMode,
       })
     }
   } catch (err: any) {
@@ -220,6 +242,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
     return Response.json({
       reply: 'Something went wrong. Please try again.',
       threadId: null,
+      triggerDriveMode: false,
     })
   }
 }

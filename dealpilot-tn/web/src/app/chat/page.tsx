@@ -250,6 +250,7 @@ export default function ChatPage() {
         const reply = String(rawReply).replace(/REVA_ACTION:(\{[\s\S]*\})/m, '').trim()
         if (j.threadId) setThreadId(j.threadId)
         setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(String(reply).toLowerCase()), revaAction: parsedAction }])
+        if (j.triggerDriveMode === true) setDriveModeOpen(true)
         // handle actionable response to open wizard
         if(j.action && j.action.type === 'open_wizard' && j.action.dealId){ setSelectedTxId(j.action.dealId); setRookWizardOpen(true) }
         if(j.transaction){ setTransactions(prev=>[j.transaction, ...prev]); addToast('Transaction Created!') }
@@ -757,6 +758,7 @@ if (res.ok) {
  const reply = String(rawReply).replace(/REVA_ACTION:(\{[\s\S]*\})/m, '').trim()
  if (j.threadId) setThreadId(j.threadId)
  setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()), revaAction: parsedAction }])
+ if (j.triggerDriveMode === true) setDriveModeOpen(true)
  addToast("Reva replied");
         // create_transaction action from Reva (dashboard form)
         if(j.transaction){ setTransactions(prev=>[j.transaction, ...prev]); addToast('Transaction Created!') }
@@ -935,14 +937,6 @@ if (res.ok) {
       {rookWizardOpen && selectedTxId && (
         <RookWizard transactionId={String(selectedTxId)} onClose={() => setRookWizardOpen(false)} />
       )}
-      {/* Floating drive mode button */}
-      <button
-        onClick={() => setDriveModeOpen(true)}
-        className="fixed bottom-24 right-24 z-40 h-14 w-14 rounded-full bg-orange-500 text-3xl font-semibold text-black shadow-lg hover:bg-orange-400"
-        title="Start Drive Mode"
-      >
-        +
-      </button>
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
         <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
