@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { passwordResetCallbackRedirectTo } from "@/lib/auth-constants";
 import { createBrowserClient } from "@/lib/supabase-browser";
 
 export default function ForgotPassword() {
@@ -16,9 +17,10 @@ export default function ForgotPassword() {
     setMsg(null);
     setLoading(true);
     try {
-      const redirectTo = `${window.location.origin}/api/auth/callback`;
+      const redirectTo = passwordResetCallbackRedirectTo();
       const isHttps = window.location.protocol === "https:";
-      document.cookie = `dp_auth_flow=reset; path=/; max-age=600; samesite=lax;${isHttps ? " secure;" : ""}`;
+      // Backup if Supabase omits `next` on redirect; keep long enough for email delay.
+      document.cookie = `dp_auth_flow=reset; path=/; max-age=86400; samesite=lax;${isHttps ? " secure;" : ""}`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) setErr(error.message);
       else setMsg("Check your email for password reset instructions");

@@ -36,6 +36,14 @@ export function forwardCookies(from: NextResponse, to: NextResponse) {
  * Uses `getUser()` instead of `getClaims()` for compatibility with this repo's `@supabase/ssr` version.
  */
 export async function updateSession(request: NextRequest) {
+  const pathname = normalizePathname(request.nextUrl.pathname);
+
+  // Do not touch Supabase on the OAuth / PKCE callback: getUser() can rewrite auth
+  // cookies before the route handler runs exchangeCodeForSession (breaks reset + OAuth).
+  if (pathname === "/api/auth/callback") {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -65,12 +73,6 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const pathname = normalizePathname(request.nextUrl.pathname);
-
-  if (pathname === "/api/auth/callback") {
-    return supabaseResponse;
-  }
 
   if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();

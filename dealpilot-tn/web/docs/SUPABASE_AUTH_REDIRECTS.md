@@ -15,14 +15,15 @@ Under **Redirect URLs**, include (one per line):
 1. `https://dealpilot-tn.vercel.app/api/auth/callback`
 2. `https://dealpilot-tn.vercel.app/api/auth/callback?next=%2Fchat` (login → Google)
 3. `https://dealpilot-tn.vercel.app/api/auth/callback?next=%2Fonboarding` (signup → Google)
+4. `https://dealpilot-tn.vercel.app/api/auth/callback?next=%2Freset-password` (forgot password → email link)
 
 Optional (Vercel preview deploys, if your project allows wildcards):
 
-4. `https://*.vercel.app/api/auth/callback`
+5. `https://*.vercel.app/api/auth/callback` (and matching `?next=...` variants if you use previews)
 
-**Code:** `oauthRedirectTo()` in `src/lib/auth-constants.ts` (alias: `googleOAuthRedirectTo`) builds these URLs.
+**Code:** `oauthRedirectTo()` and `passwordResetCallbackRedirectTo()` in `src/lib/auth-constants.ts` build these URLs.
 
-**Middleware:** `/api/auth/callback` is excluded from Supabase session refresh in `middleware.ts` so PKCE cookies are not altered before `exchangeCodeForSession` runs.
+**Middleware:** `/api/auth/callback` returns immediately without calling `getUser()` so auth cookies are not rewritten before `exchangeCodeForSession` runs in the route handler.
 
 ## Google Cloud OAuth client
 
