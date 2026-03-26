@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { autoSetupTransaction } from '@/lib/reva/autoSetupTransaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,7 +105,16 @@ export async function POST(req: Request) {
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data)
+  try {
+    const setup = await autoSetupTransaction(authSupabase, data as any)
+    return NextResponse.json({ ...data, setup })
+  } catch (setupError) {
+    console.error('autoSetupTransaction failed (transactions POST)', setupError)
+    return NextResponse.json({
+      ...data,
+      setup: { deadlinesCreated: 0, checklistCreated: 0, error: 'Auto-setup failed' },
+    })
+  }
 }
 
 export async function DELETE(req: Request) {

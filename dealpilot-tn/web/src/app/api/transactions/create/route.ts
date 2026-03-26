@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { autoSetupTransaction } from '@/lib/reva/autoSetupTransaction'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,10 +32,21 @@ export async function POST(req: Request){
       created_at: new Date().toISOString()
     }
 
-    const { data, error } = await supabase.from('transactions').insert(insert).select('id').single()
+    const { data, error } = await supabase.from('transactions').insert(insert).select('*').single()
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     const id = data.id
-    return NextResponse.json({ ok: true, id, url: `/deal/${id}` })
+    try {
+      const setup = await autoSetupTransaction(supabase, data)
+      return NextResponse.json({ ok: true, id, url: `/deal/${id}`, setup })
+    } catch (setupError) {
+      console.error('autoSetupTransaction failed (create)', setupError)
+      return NextResponse.json({
+        ok: true,
+        id,
+        url: `/deal/${id}`,
+        setup: { deadlinesCreated: 0, checklistCreated: 0, error: 'Auto-setup failed' },
+      })
+    }
   }catch(error){
     console.error('POST /api/transactions/create error', error)
     const message = error instanceof Error ? error.message : String(error)
