@@ -33,14 +33,14 @@ export async function buildRevaContext(
   lines.push('')
 
   try {
-    console.log('Fetching deals for userId:', userId)
+    console.log('Fetching transactions for userId:', userId)
     const { data: deals, error } = await supabase
-      .from('deals')
+      .from('transactions')
       .select('*')
-      .eq('agent_id', userId)
-      .order('created_at', { ascending: false })
-    console.log('Deals result:', JSON.stringify(deals))
-    console.log('Deals error:', JSON.stringify(error))
+      .eq('user_id', userId)
+      .order('id', { ascending: false })
+    console.log('Transactions result:', JSON.stringify(deals))
+    console.log('Transactions error:', JSON.stringify(error))
 
     if (error) {
       lines.push('DEALS: (error loading deals)')
@@ -50,7 +50,7 @@ export async function buildRevaContext(
       lines.push(`ACTIVE PORTFOLIO: ${deals.length} deal(s)`)
       for (const deal of deals) {
         lines.push(
-          `- ${deal.address || 'Unknown address'} | Status: ${deal.status || 'unknown'} | Closing: ${deal.closing_date || 'NOT SET'} | Client: ${deal.client_name || 'Unknown'}`
+          `- ${deal.address || 'Unknown address'} | Status: ${deal.status || 'unknown'} | Closing: ${deal.closing_date || 'NOT SET'} | Client: ${deal.client || 'Unknown'}`
         )
       }
     }
@@ -61,30 +61,59 @@ export async function buildRevaContext(
   lines.push('')
 
   try {
-    const { data: deadlines } = await supabase
+    const { data: transactions, error: txError } = await supabase
+      .from('transactions')
+      .select('id, address, user_id')
+      .eq('user_id', userId)
+      .order('id', { ascending: false })
+
+    if (txError || !transactions || transactions.length === 0) {
+      throw new Error('transactions unavailable for deadline lookup')
+    }
+
+    const txIds = transactions.map((t: any) => t.id)
+    const txAddressById = new Map(transactions.map((t: any) => [String(t.id), t.address]))
+
+    let deadlines: any[] | null = null
+    const byTransaction = await supabase
       .from('deadlines')
-      .select('*, deals(address)')
-      .eq('deals.agent_id', userId)
-      .order('due_date', { ascending: true })
+      .select('*')
+      .in('transaction_id', txIds)
+      .order('due_at', { ascending: true })
       .limit(10)
+
+    if (!byTransaction.error) {
+      deadlines = byTransaction.data
+    } else {
+      const byDeal = await supabase
+        .from('deadlines')
+        .select('*')
+        .in('deal_id', txIds)
+        .order('due_at', { ascending: true })
+        .limit(10)
+      if (byDeal.error) throw byDeal.error
+      deadlines = byDeal.data
+    }
 
     if (deadlines && deadlines.length > 0) {
       const now = new Date()
       const overdue = deadlines.filter(
-        (d: any) => new Date(d.due_date) < now && d.status !== 'completed'
+        (d: any) => new Date(d.due_at || d.due_date) < now && d.status !== 'completed'
       )
       const upcoming = deadlines.filter(
-        (d: any) => new Date(d.due_date) >= now && d.status !== 'completed'
+        (d: any) => new Date(d.due_at || d.due_date) >= now && d.status !== 'completed'
       )
 
       if (overdue.length > 0) {
         lines.push('OVERDUE DEADLINES:')
         for (const d of overdue) {
+          const relatedId = d.transaction_id ?? d.deal_id
+          const address = txAddressById.get(String(relatedId)) || 'Unknown'
           const days = Math.floor(
-            (now.getTime() - new Date(d.due_date).getTime()) / 86400000
+            (now.getTime() - new Date(d.due_at || d.due_date).getTime()) / 86400000
           )
           lines.push(
-            `- ${d.type} - ${d.deals?.address || 'Unknown'} - ${days} days overdue`
+            `- ${d.type || d.label || 'Deadline'} - ${address} - ${days} days overdue`
           )
         }
         lines.push('')
@@ -93,11 +122,13 @@ export async function buildRevaContext(
       if (upcoming.length > 0) {
         lines.push('UPCOMING DEADLINES:')
         for (const d of upcoming) {
+          const relatedId = d.transaction_id ?? d.deal_id
+          const address = txAddressById.get(String(relatedId)) || 'Unknown'
           const days = Math.floor(
-            (new Date(d.due_date).getTime() - now.getTime()) / 86400000
+            (new Date(d.due_at || d.due_date).getTime() - now.getTime()) / 86400000
           )
           lines.push(
-            `- ${d.type} - ${d.deals?.address || 'Unknown'} - due in ${days} days`
+            `- ${d.type || d.label || 'Deadline'} - ${address} - due in ${days} days`
           )
         }
       }
@@ -111,14 +142,15 @@ export async function buildRevaContext(
     lines.push('━━━ CURRENT DEAL FOCUS ━━━')
     try {
       const { data: deal } = await supabase
-        .from('deals')
-        .select('*')
+        .from('transactions')
+        .select('id, address, status, client, type, closing_date, binding_date, purchase_price')
         .eq('id', dealId)
         .single()
 
       if (deal) {
         lines.push(`Address: ${deal.address}`)
         lines.push(`Status: ${deal.status}`)
+        lines.push(`Client: ${deal.client || 'Unknown'}`)
         lines.push(`Binding date: ${deal.binding_date || 'NOT SET - CRITICAL'}`)
         lines.push(`Closing date: ${deal.closing_date || 'NOT SET'}`)
         lines.push(`Purchase price: ${deal.purchase_price || 'not extracted yet'}`)
