@@ -235,7 +235,7 @@ export default function ChatPage() {
     try{
       // build full conversation payload from chatMessages + new user message
       const history = [...chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content } )), { role: 'user', content: val }]
-      const res = await fetch('/api/eva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: history, dealId: selectedTxId }) })
+      const res = await fetch('/api/reva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: history, dealId: selectedTxId }) })
       if(res.ok){ const j = await res.json(); const rawReply = j.reply || j.message || j.summary || '';
         const actionMatch = String(rawReply).match(/REVA_ACTION:(\{[\s\S]*\})/m)
         const parsedAction = actionMatch ? (() => { try { return JSON.parse(actionMatch[1]) } catch { return null } })() : null
@@ -735,7 +735,7 @@ export default function ChatPage() {
  setChatLoading(true)
  try {
  const payload = { messages: chatMessages.map(c=> ({ role: c.role==='assistant'?'assistant':'user', content: c.content })).concat([{ role: 'user', content: val }]) }
- const res = await fetch("/api/eva/chat", {
+const res = await fetch("/api/reva/chat", {
  method: "POST",
  headers: { "Content-Type": "application/json" },
  body: JSON.stringify(payload),
