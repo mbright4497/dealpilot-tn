@@ -1,14 +1,19 @@
-export const dynamic = 'force-dynamic'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { v4 as uuidv4 } from 'uuid'
-import { createClient } from '@supabase/supabase-js'
+
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
+export const dynamic = 'force-dynamic'
 
 export const runtime = 'nodejs'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function GET(request: Request, { params }: { params: { transactionId: string } }) {
   const transactionId = Number(params.transactionId)
@@ -57,7 +62,7 @@ export async function POST(request: Request, { params }: { params: { transaction
       const arrayBuffer = await file.arrayBuffer()
       const buffer = new Uint8Array(arrayBuffer)
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await getSupabase().storage
         .from('deal-documents')
         .upload(storagePath, buffer, { contentType: file.type, upsert: false })
 
@@ -65,7 +70,7 @@ export async function POST(request: Request, { params }: { params: { transaction
 
       // create short-lived signed url
       let signedUrl: string | null = null
-      try{ const { data: signed } = await supabase.storage.from('deal-documents').createSignedUrl(storagePath, 60); signedUrl = signed?.signedUrl || null }catch(e){}
+      try{ const { data: signed } = await getSupabase().storage.from('deal-documents').createSignedUrl(storagePath, 60); signedUrl = signed?.signedUrl || null }catch(e){}
 
       const { data: insertData, error: insertError } = await supabase
         .from('documents')
@@ -98,13 +103,13 @@ export async function POST(request: Request, { params }: { params: { transaction
       const storagePath = `deal-${transactionId}/${id}.${ext}`
       const buffer = Buffer.from(base64, 'base64')
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await getSupabase().storage
         .from('deal-documents')
         .upload(storagePath, buffer, { contentType: body.contentType || 'application/pdf', upsert: false })
 
       if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
 
-      const { data: publicData } = supabase.storage.from('deal-documents').getPublicUrl(storagePath)
+      const { data: publicData } = getSupabase().storage.from('deal-documents').getPublicUrl(storagePath)
       const publicUrl = publicData.publicUrl
 
       const { data: insertData, error: insertError } = await supabase
@@ -145,16 +150,16 @@ export async function DELETE(request: Request) {
     if (!docId) return NextResponse.json({ error: 'doc_id required' }, { status: 400 })
 
     // fetch document row
-    const { data, error: fetchError } = await supabase.from('documents').select('*').eq('id', docId).single()
+    const { data, error: fetchError } = await getSupabase().from('documents').select('*').eq('id', docId).single()
     if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
     const storagePath = data.storage_path
 
     if (storagePath) {
-      const { error: delError } = await supabase.storage.from('deal-documents').remove([storagePath])
+      const { error: delError } = await getSupabase().storage.from('deal-documents').remove([storagePath])
       if (delError) return NextResponse.json({ error: delError.message }, { status: 500 })
     }
 
-    const { error: delRowError } = await supabase.from('documents').delete().eq('id', docId)
+    const { error: delRowError } = await getSupabase().from('documents').delete().eq('id', docId)
     if (delRowError) return NextResponse.json({ error: delRowError.message }, { status: 500 })
 
     return NextResponse.json({ success: true })

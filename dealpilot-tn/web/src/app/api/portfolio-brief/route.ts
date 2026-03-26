@@ -1,17 +1,16 @@
-export const dynamic = 'force-dynamic'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  {
-    global: {
-      fetch: (url: any, options: any = {}) =>
-        fetch(url, { ...options, cache: 'no-store' }),
-    },
-  }
-)
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const { data: states, error: statesErr } = await supabase
@@ -27,7 +26,7 @@ export async function GET() {
   }
 
   // Fetch transactions and only count those with a non-empty address or client
-  const { data: txns, error: txErr } = await supabase.from('transactions').select('id,address,client').in('id', dealIds)
+  const { data: txns, error: txErr } = await getSupabase().from('transactions').select('id,address,client').in('id', dealIds)
   if (txErr) return NextResponse.json({ error: txErr.message }, { status: 500 })
 
   const filteredTxns = (txns || []).filter(t => (t.address && String(t.address).trim()) || (t.client && String(t.client).trim()))

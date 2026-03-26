@@ -1,9 +1,19 @@
-export const dynamic = 'force-dynamic'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
+export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const supabase = getSupabase()
 
 export async function POST(request: Request) {
   try{
@@ -12,7 +22,7 @@ export async function POST(request: Request) {
     const bucket = body?.bucket || 'deal-documents'
     if(!path) return NextResponse.json({ error: 'path required' }, { status: 400 })
 
-    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 300)
+    const { data, error } = await getSupabase().storage.from(bucket).createSignedUrl(path, 300)
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ signedUrl: data?.signedUrl || null })
   }catch(e:any){

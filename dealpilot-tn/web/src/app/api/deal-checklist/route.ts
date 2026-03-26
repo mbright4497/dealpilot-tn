@@ -1,12 +1,16 @@
-export const dynamic = "force-dynamic"
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  { global: { fetch: (url:any, opts:any={}) => fetch(url, { ...opts, cache:'no-store' }) } }
-)
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
+export const dynamic = "force-dynamic"
 
 export async function GET(req: Request){
   const params = new URL(req.url).searchParams
@@ -29,7 +33,7 @@ export async function POST(req: Request){
 
     // upsert into checklists table
     const payload = { deal_id: dealId, title: String(key), status: String(status), metadata: {} }
-    const { data, error } = await supabase.from('checklists').upsert(payload, { onConflict: 'deal_id,title' }).select().single()
+    const { data, error } = await getSupabase().from('checklists').upsert(payload, { onConflict: 'deal_id,title' }).select().single()
     if(error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true, row: data })
   }catch(e:any){ return NextResponse.json({ error: String(e) }, { status: 500 }) }

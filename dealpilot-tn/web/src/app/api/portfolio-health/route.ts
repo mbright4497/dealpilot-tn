@@ -1,19 +1,18 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { computeLifecycleState, validateLifecycleIntegrity } from '@/lib/deal-lifecycle'
 
-export const dynamic = 'force-dynamic'
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  {
-    global: {
-      fetch: (url: any, options: any = {}) =>
-        fetch(url, { ...options, cache: 'no-store' }),
-    },
-  }
-)
+export const dynamic = 'force-dynamic'
 
 function computeDealHealth(row: any): { status: string; score: number; signals: { label: string; impact: string }[]; closing_soon: boolean; inspection_expiring: boolean } {
   const current_state = computeLifecycleState(row)
@@ -54,14 +53,14 @@ function computeDealHealth(row: any): { status: string; score: number; signals: 
 }
 
 export async function GET() {
-  const { data, error } = await supabase.from('deal_state').select('*')
+  const { data, error } = await getSupabase().from('deal_state').select('*')
   if (error || !data) {
     return NextResponse.json({ error: 'Failed to fetch deals', details: error?.message }, { status: 500 })
   }
 
   // Fetch transactions to resolve address and client info
   const dealIds = (data || []).map((r:any) => r.deal_id || r.id).filter(Boolean)
-  const { data: txns } = await supabase.from('transactions').select('id,address,client,type').in('id', dealIds)
+  const { data: txns } = await getSupabase().from('transactions').select('id,address,client,type').in('id', dealIds)
   const txMap = new Map((txns || []).map((t:any) => [t.id, t]))
 
   // Filter out closed deals using computed lifecycle state and also remove ghost transactions (no address and no client)

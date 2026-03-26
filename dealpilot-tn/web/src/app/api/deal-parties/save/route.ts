@@ -1,5 +1,16 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
+;
 
 export async function POST(req: Request){
   try{
@@ -7,13 +18,9 @@ export async function POST(req: Request){
     const { transactionId, contacts } = body || {};
     if(!transactionId || !Array.isArray(contacts)) return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
     if(!supabaseUrl || !serviceKey) return NextResponse.json({ error: 'supabase not configured' }, { status: 500 });
 
-    const sb = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false }
-    });
+    const sb = getSupabase();
 
     // insert contacts and link to deal via deal_contacts
     const insertedContacts: any[] = [];

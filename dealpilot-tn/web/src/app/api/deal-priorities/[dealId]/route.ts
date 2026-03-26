@@ -1,25 +1,24 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { computeLifecycleState, validateLifecycleIntegrity } from '@/lib/deal-lifecycle'
 
-export const dynamic = 'force-dynamic'
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  {
-    global: {
-      fetch: (url: any, options: any = {}) =>
-        fetch(url, { ...options, cache: 'no-store' }),
-    },
-  }
-)
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request, { params }: { params: { dealId: string } }) {
   const dealId = parseInt(params.dealId, 10)
   if (isNaN(dealId)) return NextResponse.json({ error: 'Invalid deal_id' }, { status: 400 })
 
-  const { data, error } = await supabase.from('deal_state').select('*').eq('deal_id', dealId).single()
+  const { data, error } = await getSupabase().from('deal_state').select('*').eq('deal_id', dealId).single()
   if (error || !data) return NextResponse.json({ error: 'Deal state not found', details: error?.message }, { status: 404 })
 
   const row = data as any

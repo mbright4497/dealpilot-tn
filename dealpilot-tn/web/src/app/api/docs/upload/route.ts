@@ -1,14 +1,19 @@
-export const dynamic = 'force-dynamic'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { v4 as uuidv4 } from 'uuid'
 
-export const runtime = 'nodejs'
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
+export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
   try {
@@ -26,22 +31,22 @@ export async function POST(req: Request) {
 
     // ensure bucket exists (create if missing)
     try{
-      const { data: bucketList } = await supabase.storage.listBuckets()
+      const { data: bucketList } = await getSupabase().storage.listBuckets()
       const has = (bucketList || []).find((b:any)=>b.name===bucketName)
       if(!has){
-        await supabase.storage.createBucket(bucketName, { public: false })
+        await getSupabase().storage.createBucket(bucketName, { public: false })
       }
     }catch(e){
       // if listing/creation not supported in this SDK/env, continue — upload may still fail and return a clear error
     }
 
-    const { error: uploadErr } = await supabase.storage.from(bucketName).upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
+    const { error: uploadErr } = await getSupabase().storage.from(bucketName).upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
     if (uploadErr) return NextResponse.json({ error: uploadErr.message }, { status: 500 })
 
     // create a signed URL (private bucket) for immediate download preview (short-lived)
     let signedUrl: string | null = null
     try{
-      const { data: signed } = await supabase.storage.from(bucketName).createSignedUrl(storagePath, 60)
+      const { data: signed } = await getSupabase().storage.from(bucketName).createSignedUrl(storagePath, 60)
       signedUrl = signed?.signedUrl || null
     }catch(e){ /* ignore signed url failures */ }
 
@@ -49,7 +54,7 @@ export async function POST(req: Request) {
     const classification = form.get('classification') as string | null
 
     // insert into canonical documents table (server-side service role; user_id set to null)
-    const { data, error } = await supabase.from('documents').insert([{
+    const { data, error } = await getSupabase().from('documents').insert([{
       deal_id: null,
       transaction_id: transaction_id ? Number(transaction_id) : null,
       name: filename,

@@ -1,19 +1,18 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  {
-    global: {
-      fetch: (url: any, options: any = {}) =>
-        fetch(url, { ...options, cache: 'no-store' }),
-    },
-  }
-)
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
@@ -45,7 +44,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
     const dealId = params.id
@@ -62,7 +60,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const buffer = Buffer.from(await file.arrayBuffer())
     const storagePath = `deals/${dealId}/contract.pdf`
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await getSupabase().storage
       .from('contracts')
       .upload(storagePath, buffer, {
         contentType: file.type || 'application/pdf',
@@ -74,7 +72,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
-    const { data: urlData, error: urlError } = supabase.storage
+    const { data: urlData, error: urlError } = getSupabase().storage
       .from('contracts')
       .getPublicUrl(storagePath)
 
@@ -164,7 +162,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
       if (files && files.length > 0) {
         const filePaths = files.map(f => `deals/${dealId}/${f.name}`)
-        await supabase.storage.from('contracts').remove(filePaths)
+        await getSupabase().storage.from('contracts').remove(filePaths)
       }
     } catch (_e) {
       // Storage cleanup is best-effort

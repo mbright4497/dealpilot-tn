@@ -1,18 +1,17 @@
-export const dynamic = 'force-dynamic'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-  {
-    global: {
-      fetch: (url: any, options: any = {}) =>
-        fetch(url, { ...options, cache: 'no-store' }),
-    },
-  }
-)
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
+export const dynamic = 'force-dynamic'
 
 function maskKey(key?: string) {
   if (!key) return null
@@ -35,7 +34,7 @@ export async function GET(req: Request) {
     if (!id && !user_id) return NextResponse.json({ error: 'id or user_id required' }, { status: 400 })
 
     if (id) {
-      const { data, error } = await supabase.from('tenants').select('*').eq('id', id).limit(1).single()
+      const { data, error } = await getSupabase().from('tenants').select('*').eq('id', id).limit(1).single()
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       data.ghl_api_key = maskKey(data.ghl_api_key)
@@ -52,7 +51,7 @@ export async function GET(req: Request) {
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       if (!data || data.length === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       const tenantId = data[0].tenant_id
-      const { data: t, error: terr } = await supabase.from('tenants').select('*').eq('id', tenantId).limit(1).single()
+      const { data: t, error: terr } = await getSupabase().from('tenants').select('*').eq('id', tenantId).limit(1).single()
       if (terr) return NextResponse.json({ error: terr.message }, { status: 500 })
       if (!t) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       t.ghl_api_key = maskKey(t.ghl_api_key)
@@ -84,13 +83,13 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     }
 
-    const { data, error } = await supabase.from('tenants').insert(insert).select().single()
+    const { data, error } = await getSupabase().from('tenants').insert(insert).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     data.ghl_api_key = maskKey(data.ghl_api_key)
 
     // if user exists, upsert tenant_users
     if (user && data && data.id) {
-      await supabase.from('tenant_users').insert({ tenant_id: data.id, user_id: user.id }).onConflict('tenant_id,user_id').ignore()
+      await getSupabase().from('tenant_users').insert({ tenant_id: data.id, user_id: user.id }).onConflict('tenant_id,user_id').ignore()
     }
 
     return NextResponse.json({ tenant: data }, { status: 201 })
@@ -114,7 +113,7 @@ export async function PATCH(req: Request) {
     if (messages_limit !== undefined) { updates.comms_email_limit = messages_limit; updates.comms_sms_limit = messages_limit }
     if (name !== undefined) updates.name = name
 
-    const { data, error } = await supabase.from('tenants').update(updates).eq('id', id).select().single()
+    const { data, error } = await getSupabase().from('tenants').update(updates).eq('id', id).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     data.ghl_api_key = maskKey(data.ghl_api_key)
     return NextResponse.json({ tenant: data })

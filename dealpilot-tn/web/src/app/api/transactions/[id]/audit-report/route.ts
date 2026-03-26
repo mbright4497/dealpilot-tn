@@ -1,5 +1,15 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+
+const getSupabase = () => {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  )
+}
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const id = params.id
@@ -7,8 +17,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Missing transaction ID' }, { status: 400 })
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
   if (!supabaseUrl || !serviceRoleKey) {
@@ -20,12 +28,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }, { status: 500 })
   }
 
-  const supabase = createClient(
-    supabaseUrl,
-    serviceRoleKey,
-    {
-      global: {
-        fetch: (url: any, options: any = {}) =>
+  const supabase = getSupabase() =>
           fetch(url, { ...options, cache: 'no-store' }),
       },
     }
@@ -42,12 +45,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   try {
-    const dealState = await safeQuery(() => supabase.from('deal_state').select('*').eq('deal_id', id).maybeSingle())
-    const events = await safeQuery(() => supabase.from('deal_events').select('*').eq('deal_id', id))
-    const comms = await safeQuery(() => supabase.from('communications').select('*').eq('deal_id', id))
-    const checklist = await safeQuery(() => supabase.from('deal_checklist').select('*').eq('deal_id', id))
-    const documents = await safeQuery(() => supabase.from('deal_documents').select('*').eq('deal_id', id))
-    const auditLogs = await safeQuery(() => supabase.from('audit_logs').select('*').eq('deal_id', id))
+    const dealState = await safeQuery(() => getSupabase().from('deal_state').select('*').eq('deal_id', id).maybeSingle())
+    const events = await safeQuery(() => getSupabase().from('deal_events').select('*').eq('deal_id', id))
+    const comms = await safeQuery(() => getSupabase().from('communications').select('*').eq('deal_id', id))
+    const checklist = await safeQuery(() => getSupabase().from('deal_checklist').select('*').eq('deal_id', id))
+    const documents = await safeQuery(() => getSupabase().from('deal_documents').select('*').eq('deal_id', id))
+    const auditLogs = await safeQuery(() => getSupabase().from('audit_logs').select('*').eq('deal_id', id))
 
     const debugBlock = `<div style="font-size:12px;color:#666;margin-bottom:10px">Supabase URL: ${supabaseUrl.slice(0, 20)}${supabaseUrl.length > 20 ? '...' : ''}<br/>Service Role Key: set<br/>Anon Key: ${anonKey ? 'set' : 'not set'}</div>`
 
