@@ -6,6 +6,8 @@ export const runtime = 'nodejs'
 
 const REVA_ACTION_INSTRUCTION =
   'When you draft a communication (email or SMS), always end your response with a JSON block exactly like: REVA_ACTION:{"type":"send_communication","commType":"email","contactRole":"lender","subject":"[subject]","message":"[full message text]"} . Only include this for complete ready-to-send drafts.'
+const REVA_FILE_SEARCH_PREFIX =
+  'Search your knowledge base documents to answer this question. Cite the specific document and section. Do not answer from general knowledge alone.\n\nQuestion: '
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -39,6 +41,21 @@ export async function POST(req: Request) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const thread = await openai.beta.threads.create()
+    const assistant = await openai.beta.assistants.retrieve(assistantId)
+    const hasFileSearchTool = assistant.tools?.some((tool: any) => tool?.type === 'file_search')
+
+    console.log('Reva assistant config', {
+      assistantId,
+      tools: assistant.tools,
+      tool_resources: assistant.tool_resources,
+    })
+
+    if (!hasFileSearchTool) {
+      return NextResponse.json(
+        { error: 'Reva assistant is missing file_search tool. Re-run assistant setup.' },
+        { status: 500 }
+      )
+    }
 
     for (const m of rawMessages) {
       const rawRole = String(m?.role || 'user')
@@ -49,7 +66,9 @@ export async function POST(req: Request) {
       const content =
         rawRole === 'system'
           ? `System context:\n${rawContent}`
-          : rawContent
+          : normalizedRole === 'user'
+            ? `${REVA_FILE_SEARCH_PREFIX}${rawContent}`
+            : rawContent
 
       await openai.beta.threads.messages.create(thread.id, {
         role: normalizedRole,
@@ -58,7 +77,8 @@ export async function POST(req: Request) {
     }
 
     const run = await openai.beta.threads.runs.create(thread.id, {
-      assistant_id: assistantId,
+      assistant_id: process.env.REVA_ASSISTANT_ID_TN!,
+      tool_choice: { type: 'file_search' },
       additional_instructions: `${REVA_ACTION_INSTRUCTION}${dealId ? `\nCurrent deal id: ${dealId}` : ''}`,
     })
 
