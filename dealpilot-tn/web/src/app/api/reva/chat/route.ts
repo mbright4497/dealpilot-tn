@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { NextResponse } from 'next/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -12,19 +13,28 @@ const REVA_FILE_SEARCH_PREFIX =
 const REVA_SEARCH_FALLBACK_REPLY =
   "I'm having trouble searching right now. Please try again in a moment."
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+async function buildRevaContext(supabase: any, userId: string) {
+  const { data: deals } = await supabase
+    .from('deal_state')
+    .select('id,address,current_state,binding_date,closing_date,created_at,documents')
+    .eq('user_id', userId)
+  const { data: deadlines } = await supabase
+    .from('deal_deadlines')
+    .select('deal_id,milestone_name,deadline_date,status')
+    .eq('user_id', userId)
+  const { data: checklist } = await supabase
+    .from('checklist_items')
+    .select('transaction_id,status')
+    .eq('user_id', userId)
+  return { deals: deals || [], deadlines: deadlines || [], checklist: checklist || [] }
 }
 
-function getTextFromAssistantMessage(content: any[] | undefined): string {
-  if (!Array.isArray(content)) return ''
-  return content
-    .map((part: any) => {
-      if (part?.type === 'text' && part?.text?.value) return String(part.text.value)
-      return ''
-    })
-    .join('\n')
-    .trim()
+function extractSystemMessages(messages: any[]): string {
+  return messages
+    .filter((m) => String(m?.role || '').toLowerCase() === 'system')
+    .map((m) => String(m?.content || '').trim())
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export async function POST(req: Request) {
@@ -35,16 +45,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'OPENAI_API_KEY is not configured.' }, { status: 500 })
     }
 
-    const assistantId = process.env.REVA_ASSISTANT_ID_TN
-    if (!assistantId) {
-      console.error('[REVA_CHAT] Missing REVA_ASSISTANT_ID_TN')
-      return NextResponse.json({ error: 'REVA_ASSISTANT_ID_TN is not configured.' }, { status: 500 })
-    }
-
     const body = await req.json().catch(() => ({}))
     const rawMessages = Array.isArray(body?.messages) ? body.messages : []
     const dealId = body?.dealId
-    const userMessages = rawMessages.filter((m: any) => String(m?.role || 'user') !== 'assistant')
+    const userMessages = rawMessages.filter(
+      (m: any) => String(m?.role || 'user').toLowerCase() === 'user'
+    )
     const lastUserMessage = userMessages.length
       ? String(userMessages[userMessages.length - 1]?.content || '').trim()
       : ''
@@ -54,104 +60,44 @@ export async function POST(req: Request) {
       userMessage: lastUserMessage,
     })
 
+    if (!lastUserMessage) {
+      return NextResponse.json({ reply: 'Please share a question for Reva.' }, { status: 400 })
+    }
+
+    const supabase = createServerSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const ctx = await buildRevaContext(supabase, user.id)
+    const contextJson = JSON.stringify(ctx)
+    const systemFromRequest = extractSystemMessages(rawMessages)
+    const systemPrompt = `${REVA_ACTION_INSTRUCTION}${dealId ? `\nCurrent deal id: ${dealId}` : ''}\n\nLive Reva context:\n${contextJson}${systemFromRequest ? `\n\nAdditional system context:\n${systemFromRequest}` : ''}`
+    const userMessage = `${REVA_FILE_SEARCH_PREFIX}${lastUserMessage}`
+
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    console.log('[REVA_CHAT] Creating thread')
-    const thread = await openai.beta.threads.create()
-    console.log('[REVA_CHAT] Thread created', { threadId: thread.id })
-    const assistant = await openai.beta.assistants.retrieve(assistantId)
-    const hasFileSearchTool = assistant.tools?.some((tool: any) => tool?.type === 'file_search')
-
-    console.log('Reva assistant config', {
-      assistantId,
-      tools: assistant.tools,
-      tool_resources: assistant.tool_resources,
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userMessage,
+        },
+      ],
+      max_tokens: 1000,
     })
 
-    if (!hasFileSearchTool) {
-      return NextResponse.json(
-        { error: 'Reva assistant is missing file_search tool. Re-run assistant setup.' },
-        { status: 500 }
-      )
-    }
-
-    for (const m of rawMessages) {
-      const rawRole = String(m?.role || 'user')
-      const normalizedRole = rawRole === 'assistant' ? 'assistant' : 'user'
-      const rawContent = String(m?.content || '').trim()
-      if (!rawContent) continue
-
-      const content =
-        rawRole === 'system'
-          ? `System context:\n${rawContent}`
-          : normalizedRole === 'user'
-            ? `${REVA_FILE_SEARCH_PREFIX}${rawContent}`
-            : rawContent
-
-      console.log('[REVA_CHAT] Adding message to thread', {
-        role: normalizedRole,
-        preview: rawContent.slice(0, 200),
-      })
-      await openai.beta.threads.messages.create(thread.id, {
-        role: normalizedRole,
-        content,
-      })
-    }
-
-    console.log('[REVA_CHAT] Creating run')
-    const run = await openai.beta.threads.runs.create(thread.id, {
-      assistant_id: process.env.REVA_ASSISTANT_ID_TN!,
-      additional_instructions: `${REVA_ACTION_INSTRUCTION}${dealId ? `\nCurrent deal id: ${dealId}` : ''}`,
-    })
-    console.log('[REVA_CHAT] Run created', { runId: run.id, threadId: thread.id })
-
-    const startedAt = Date.now()
-    const maxWaitMs = 90_000
-    let runState = run
-    let pollAttempt = 0
-
-    while (Date.now() - startedAt < maxWaitMs) {
-      pollAttempt += 1
-      runState = await openai.beta.threads.runs.retrieve(thread.id, run.id)
-      console.log('[REVA_CHAT] Poll run status', {
-        attempt: pollAttempt,
-        runId: run.id,
-        status: runState.status,
-        elapsedMs: Date.now() - startedAt,
-      })
-
-      if (runState.status === 'completed') break
-      if (runState.status === 'failed' || runState.status === 'cancelled' || runState.status === 'expired') {
-        console.error('Reva run ended before completion', {
-          status: runState.status,
-          last_error: runState.last_error,
-          run_id: runState.id,
-          thread_id: thread.id,
-        })
-        return NextResponse.json({ reply: REVA_SEARCH_FALLBACK_REPLY })
-      }
-
-      await sleep(1200)
-    }
-
-    if (runState.status !== 'completed') {
-      console.error('Reva run timed out', {
-        status: runState.status,
-        run_id: runState.id,
-        thread_id: thread.id,
-      })
-      return NextResponse.json({ reply: REVA_SEARCH_FALLBACK_REPLY })
-    }
-
-    console.log('[REVA_CHAT] Retrieving thread messages', { threadId: thread.id })
-    const messages = await openai.beta.threads.messages.list(thread.id, { limit: 20 })
-    const assistantMessage = messages.data.find((m: any) => m.role === 'assistant')
-    const reply = getTextFromAssistantMessage(assistantMessage?.content) || 'Sorry, I could not generate a response.'
+    const reply = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.'
     console.log('[REVA_CHAT] Final reply before return', {
       replyPreview: reply.slice(0, 500),
       replyLength: reply.length,
     })
 
-    return NextResponse.json({ reply, response: reply })
+    return NextResponse.json({ reply })
   } catch (err: any) {
     console.error('REVA chat error', err)
     return NextResponse.json({ reply: REVA_SEARCH_FALLBACK_REPLY })
