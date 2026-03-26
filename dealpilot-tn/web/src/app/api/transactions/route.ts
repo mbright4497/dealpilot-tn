@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { autoSetupTransaction } from '@/lib/reva/autoSetupTransaction'
 
@@ -35,25 +34,18 @@ type TransactionInsertPayload = {
   documents?: unknown[]
 }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    global: {
-      fetch: (url: RequestInfo, options?: RequestInit) =>
-        fetch(url, { ...options, cache: 'no-store' }),
-    },
-  }
-)
-
 export async function GET() {
-  // check authenticated user (optional)
-  const authSupabase = createServerSupabaseClient()
-  const { data: userData } = await authSupabase.auth.getUser()
+  const supabase = createServerSupabaseClient()
+  const { data: userData } = await supabase.auth.getUser()
   const user = userData?.user || null
-
-  let q = supabase.from('transactions').select('*').order('id', { ascending: true })
-  if (user) q = q.eq('user_id', user.id)
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const q = supabase
+    .from('transactions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('id', { ascending: true })
 
   const { data, error } = await q
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -74,9 +66,13 @@ export async function GET() {
 export async function POST(req: Request) {
   const body = (await req.json()) as TransactionInsertPayload
 
-  // get auth user
-  const authSupabase = createServerSupabaseClient()
-  const { data: { user } } = await authSupabase.auth.getUser()
+  const supabase = createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const { data, error } = await supabase
     .from('transactions')
@@ -106,7 +102,7 @@ export async function POST(req: Request) {
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   try {
-    const setup = await autoSetupTransaction(authSupabase, data as any)
+    const setup = await autoSetupTransaction(supabase, data as any)
     return NextResponse.json({ ...data, setup })
   } catch (setupError) {
     console.error('autoSetupTransaction failed (transactions POST)', setupError)
@@ -118,11 +114,19 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const supabase = createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   const { id } = await req.json()
   const { error } = await supabase
     .from('transactions')
     .delete()
     .eq('id', id)
+    .eq('user_id', user.id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

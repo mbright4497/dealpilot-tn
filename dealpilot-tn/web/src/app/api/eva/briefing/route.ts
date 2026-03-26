@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { createClient } from '@supabase/supabase-js'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
@@ -9,18 +9,23 @@ const BASE_PROMPT = `You are Eva, an expert Tennessee Transaction Coordinator at
 
 export async function POST(req: Request){
   try{
-    // Server-side DB access to compute playbook gaps directly (no internal fetch)
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
-    if(!SUPABASE_URL || !SUPABASE_KEY) return NextResponse.json({ message: 'No briefing available', chips: [] })
-    const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
+    const sb = createServerSupabaseClient()
+    const {
+      data: { user },
+    } = await sb.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // fetch rules
     const { data: rulesData } = await sb.from('deal_playbook_rules').select('*').order('sort_order', { ascending: true })
     const rules = Array.isArray(rulesData) ? rulesData : []
 
     // fetch active deals
-    const { data: allDeals } = await sb.from('transactions').select('*').neq('status','Closed').neq('status','Cancelled')
+    const { data: allDeals } = await sb
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .neq('status','Closed')
+      .neq('status','Cancelled')
     const deals = Array.isArray(allDeals) ? allDeals : []
 
     // fetch progress rows

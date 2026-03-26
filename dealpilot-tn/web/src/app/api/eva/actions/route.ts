@@ -1,17 +1,23 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function GET(req: Request){
   try{
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
-    if(!SUPABASE_URL || !SUPABASE_KEY) return NextResponse.json({ actions: [] })
-    const sb = createClient(SUPABASE_URL, SUPABASE_KEY)
+    const sb = createServerSupabaseClient()
+    const {
+      data: { user },
+    } = await sb.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     // load rules and active deals
     const { data: rules } = await sb.from('deal_playbook_rules').select('*')
-    const { data: deals } = await sb.from('transactions').select('*').neq('status','Closed').neq('status','Cancelled')
+    const { data: deals } = await sb
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .neq('status','Closed')
+      .neq('status','Cancelled')
     const dealIds = (deals||[]).map((d:any)=>d.id)
     const { data: progress } = await sb.from('deal_playbook_progress').select('*').in('deal_id', dealIds)
 
