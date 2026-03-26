@@ -33,11 +33,14 @@ export async function buildRevaContext(
   lines.push('')
 
   try {
+    console.log('Fetching deals for userId:', userId)
     const { data: deals, error } = await supabase
       .from('deals')
       .select('*')
-      .eq('user_id', userId)
+      .eq('agent_id', userId)
       .order('created_at', { ascending: false })
+    console.log('Deals result:', JSON.stringify(deals))
+    console.log('Deals error:', JSON.stringify(error))
 
     if (error) {
       lines.push('DEALS: (error loading deals)')
@@ -61,7 +64,7 @@ export async function buildRevaContext(
     const { data: deadlines } = await supabase
       .from('deadlines')
       .select('*, deals(address)')
-      .eq('deals.user_id', userId)
+      .eq('deals.agent_id', userId)
       .order('due_date', { ascending: true })
       .limit(10)
 
