@@ -18,7 +18,7 @@ export async function buildRevaContext(
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, brokerage, state, user_type, email')
+      .select('full_name, brokerage, state, user_type, assistant_style, email')
       .eq('id', userId)
       .single()
 
@@ -29,9 +29,11 @@ export async function buildRevaContext(
       const fullName = profile.full_name || fallbackName
       const brokerage = profile.brokerage || 'Independent'
       const state = profile.state || 'TN'
+      const assistantStyle = profile.assistant_style || 'friendly_tn'
       lines.push(
         `COORDINATOR: ${fullName} | ${brokerage} | ${state}`
       )
+      lines.push(`ASSISTANT_STYLE: ${assistantStyle}`)
     } else {
       const emailUsername = String(userEmail || '')
         .split('@')[0]

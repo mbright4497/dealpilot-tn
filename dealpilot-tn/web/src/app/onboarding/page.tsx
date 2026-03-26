@@ -3,32 +3,77 @@ import React, { useEffect, useState } from 'react'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import PersonalitySelector from '@/components/PersonalitySelector'
 import { useRouter } from 'next/navigation'
+import type { AssistantStyle } from '@/lib/assistant-personality'
 
 export default function OnboardingPage(){
   const supabase = createBrowserClient()
   const router = useRouter()
   const [name, setName] = useState('')
   const [firm, setFirm] = useState('')
-  const [style, setStyle] = useState<any>(null)
+  const [style, setStyle] = useState<AssistantStyle>('friendly_tn')
   const [saving, setSaving] = useState(false)
+  const [checkingProfile, setCheckingProfile] = useState(true)
 
   useEffect(()=>{
     (async ()=>{
       const { data } = await supabase.auth.getUser()
       const user = data.user
+      if (!user) {
+        router.replace('/login')
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, brokerage, assistant_style, onboarding_complete')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile?.onboarding_complete) {
+        router.replace('/chat')
+        return
+      }
+
       const full = (user?.user_metadata as any)?.full_name || user?.email || ''
-      setName(full)
+      setName(profile?.full_name || full)
+      setFirm(profile?.brokerage && profile.brokerage !== 'Independent' ? profile.brokerage : '')
+      setStyle((profile?.assistant_style || 'friendly_tn') as AssistantStyle)
+      setCheckingProfile(false)
     })()
-  },[])
+  },[router, supabase])
 
   async function handleStart(){
     setSaving(true)
     try{
-      const updates:any = { user_metadata: { onboarded: true, assistant_style: style || 'friendly-tn', firm: firm || null } }
-      await supabase.auth.updateUser(updates)
+      const { data } = await supabase.auth.getUser()
+      const user = data.user
+      if (!user) throw new Error('User not found')
+
+      const brokerage = firm.trim() || 'Independent'
+      const selectedStyle = style || 'friendly_tn'
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: name.trim(),
+          brokerage,
+          assistant_style: selectedStyle,
+          onboarding_complete: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
       router.replace('/chat')
     }catch(e){ console.error(e) }
     setSaving(false)
+  }
+
+  if (checkingProfile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black p-8">
+        <div className="max-w-3xl mx-auto text-gray-300">Loading onboarding...</div>
+      </div>
+    )
   }
 
   return (
@@ -51,7 +96,7 @@ export default function OnboardingPage(){
           </div>
           <div className="mb-4">
             <label className="block text-sm text-gray-300 mb-2">Choose your assistant style</label>
-            <PersonalitySelector currentStyle={style || 'friendly-tn'} onSelect={(s:any)=>setStyle(s)} />
+            <PersonalitySelector currentStyle={style || 'friendly_tn'} onSelect={(s)=>setStyle(s)} />
           </div>
           <div className="flex justify-end">
             <button onClick={handleStart} disabled={saving} className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white rounded-lg">{saving? 'Saving...':'Get Started'}</button>

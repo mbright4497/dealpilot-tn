@@ -4,6 +4,14 @@ import { cookies } from 'next/headers'
 import { buildRevaContext } from '@/lib/reva/buildRevaContext'
 
 export const maxDuration = 60
+const styleInstructions: Record<string, string> = {
+  joyful: 'Communicate in an upbeat, energetic, encouraging tone. Use enthusiasm.',
+  straight: 'Communicate in a concise, no-frills, direct tone. No fluff.',
+  calm: 'Communicate in a measured, reassuring, professional tone.',
+  executive: 'Communicate in a strategic, advisory tone focused on high-level impact.',
+  friendly_tn:
+    'Communicate in a warm, conversational, Tennessee-style friendly tone. Occasional Southern warmth is welcome.',
+}
 
 function stripCitations(text: string): string {
   return text
@@ -65,6 +73,15 @@ export async function POST(request: Request) {
       })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('assistant_style')
+      .eq('id', userId)
+      .maybeSingle()
+
+    const selectedStyle = String(profile?.assistant_style || 'friendly_tn').replace('-', '_')
+    const styleContext =
+      styleInstructions[selectedStyle] || styleInstructions.friendly_tn
     const context = await buildRevaContext(supabase, userId, dealId, userEmail)
 
     let threadId: string
@@ -79,6 +96,8 @@ export async function POST(request: Request) {
 
     const fullMessage = `LIVE SYSTEM CONTEXT (use this for all deal questions):
 ${context}
+
+COMMUNICATION STYLE: ${styleContext}
 
 USER QUESTION: ${message}
 

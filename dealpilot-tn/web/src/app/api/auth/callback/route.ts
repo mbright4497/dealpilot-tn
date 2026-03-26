@@ -68,16 +68,21 @@ export async function GET(request: NextRequest) {
     return redirectToLogin(origin);
   }
 
-  const onboarded = !!(user.user_metadata as { onboarded?: boolean })?.onboarded;
+  let onboardingComplete = false;
 
   try {
     const fullName =
       (user.user_metadata as { full_name?: string })?.full_name ||
       (user.user_metadata as { name?: string })?.name ||
       null;
-    if (fullName) {
-      await supabase.from("profiles").upsert({ id: user.id, full_name: fullName });
-    }
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_complete")
+      .eq("id", user.id)
+      .maybeSingle();
+    onboardingComplete = !!profile?.onboarding_complete;
+
+    await supabase.from("profiles").upsert({ id: user.id, ...(fullName ? { full_name: fullName } : {}) });
   } catch {
     /* non-fatal */
   }
@@ -94,7 +99,7 @@ export async function GET(request: NextRequest) {
 
   const target = isPasswordRecovery
     ? "/reset-password"
-    : !onboarded
+    : !onboardingComplete
       ? ONBOARDING_PATH
       : nextPath;
 

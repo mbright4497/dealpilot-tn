@@ -90,5 +90,21 @@ export async function updateSession(request: NextRequest) {
     return redirect;
   }
 
+  if (user && pathname === "/onboarding") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_complete")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.onboarding_complete) {
+      const url = request.nextUrl.clone();
+      url.pathname = DASHBOARD_PATH;
+      const redirect = NextResponse.redirect(url);
+      forwardCookies(supabaseResponse, redirect);
+      return redirect;
+    }
+  }
+
   return supabaseResponse;
 }
