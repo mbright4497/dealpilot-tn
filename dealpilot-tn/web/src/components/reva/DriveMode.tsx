@@ -8,6 +8,56 @@ type Props = {
   onTransactionCreated?: (transaction: any) => void
 }
 
+function parseRelativeDate(input: string): string {
+  const today = new Date()
+  const lower = input.toLowerCase().trim()
+
+  // "X days from today" or "in X days"
+  const daysMatch = lower.match(/(\d+)\s*days?/)
+  if (daysMatch) {
+    const days = parseInt(daysMatch[1], 10)
+    const result = new Date(today)
+    result.setDate(result.getDate() + days)
+    return result.toISOString().split('T')[0]
+  }
+
+  // "X weeks from today" or "in X weeks"
+  const weeksMatch = lower.match(/(\d+)\s*weeks?/)
+  if (weeksMatch) {
+    const weeks = parseInt(weeksMatch[1], 10)
+    const result = new Date(today)
+    result.setDate(result.getDate() + weeks * 7)
+    return result.toISOString().split('T')[0]
+  }
+
+  // "next month"
+  if (lower.includes('next month')) {
+    const result = new Date(today)
+    result.setMonth(result.getMonth() + 1)
+    return result.toISOString().split('T')[0]
+  }
+
+  // "end of month"
+  if (lower.includes('end of month')) {
+    const result = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    return result.toISOString().split('T')[0]
+  }
+
+  // "not yet" or "no" or "tbd"
+  if (
+    lower.includes('not yet') ||
+    lower === 'no' ||
+    lower === 'tbd' ||
+    lower.includes('dont have') ||
+    lower.includes("don't have")
+  ) {
+    return 'null'
+  }
+
+  // Already an ISO date or month/day/year format
+  return input
+}
+
 export default function DriveMode({ open, onClose, onTransactionCreated }: Props) {
   const [threadId, setThreadId] = useState<string | null>(null)
   const [currentPrompt, setCurrentPrompt] = useState('Starting Drive Mode...')
@@ -103,8 +153,14 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
     if (!answer.trim()) return
     setBusy(true)
     const answerText = answer.trim()
-    const nextTrigger = nextTriggerByStep[step] || ''
-    const message = nextTrigger ? `${answerText}\n\n${nextTrigger}` : answerText
+    let message = answerText
+    if (step === 5) {
+      const processedAnswer = parseRelativeDate(answerText)
+      message = `The closing date is: ${processedAnswer}. Now create the transaction.`
+    } else {
+      const nextTrigger = nextTriggerByStep[step] || ''
+      message = nextTrigger ? `${answerText}\n\n${nextTrigger}` : answerText
+    }
     const res = await fetch('/api/reva/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

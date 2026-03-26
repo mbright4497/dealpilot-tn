@@ -5,14 +5,10 @@ export async function buildRevaContext(
   userEmail?: string
 ): Promise<string> {
   const lines: string[] = []
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const today = new Date().toISOString().split('T')[0]
 
-  lines.push(`TODAY: ${today}`)
+  lines.push(`TODAY IS: ${today}`)
+  lines.push(`When calculating dates, use ${today} as today.`)
   lines.push('')
 
   try {

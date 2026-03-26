@@ -41,7 +41,13 @@ export async function POST(req: Request){
     if (Array.isArray(timeline)){
       for (const item of timeline){
         try{
-          await supabase.from('deal_milestones').insert({ deal_id: transactionId, milestone_key: item.key || null, label: item.label || null, due_date: item.dueDate || null, status: item.completedAt ? 'completed' : 'pending' })
+          await supabase.from('deal_milestones').insert({
+            transaction_id: transactionId,
+            title: item.label || item.key || 'Milestone',
+            status: item.completedAt ? 'completed' : 'todo',
+            due_date: item.dueDate || null,
+            order_index: null,
+          })
         }catch(_){ }
       }
     }

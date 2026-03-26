@@ -95,59 +95,36 @@ async function insertDeadlines(
 
 async function insertChecklist(
   supabase: SupabaseClient,
-  txId: string,
-  userId: string | null
+  txId: string
 ): Promise<number> {
-  const primaryShape = STANDARD_CHECKLIST_ITEMS.map((label, idx) => ({
-    deal_id: txId,
-    milestone_key: `reva-standard-${idx + 1}`,
-    label,
-    status: 'pending',
-    ...(userId ? { user_id: userId } : {}),
-  }))
-  const { error: primaryError } = await supabase.from('deal_milestones').insert(primaryShape)
-  if (!primaryError) return primaryShape.length
-
-  const fallbackShape = STANDARD_CHECKLIST_ITEMS.map((label, idx) => ({
+  const checklistRows = STANDARD_CHECKLIST_ITEMS.map((label, idx) => ({
     transaction_id: txId,
     title: label,
     status: 'todo',
-    priority: 2,
-    created_by: 'system',
-    ...(userId ? { owner_id: userId } : {}),
-    derived_from: { generated_by: 'reva_auto_setup', order: idx + 1 },
+    due_date: null,
+    order_index: idx + 1,
   }))
-  const { error: fallbackError } = await supabase.from('deal_milestones').insert(fallbackShape)
-  if (fallbackError) {
-    throw fallbackError
+
+  const { error } = await supabase.from('deal_milestones').insert(checklistRows)
+  if (error) {
+    throw error
   }
-  return fallbackShape.length
+  return checklistRows.length
 }
 
 async function insertMissingBindingFlag(
   supabase: SupabaseClient,
-  txId: string,
-  userId: string | null
+  txId: string
 ): Promise<void> {
-  const primary = {
-    deal_id: txId,
-    milestone_key: 'binding-date-needed',
-    label: 'Binding date needed to generate deadlines',
-    status: 'pending',
-    ...(userId ? { user_id: userId } : {}),
-  }
-  const { error } = await supabase.from('deal_milestones').insert(primary)
-  if (!error) return
-
-  await supabase.from('deal_milestones').insert({
+  const { error } = await supabase.from('deal_milestones').insert({
     transaction_id: txId,
     title: 'Binding date needed to generate deadlines',
     status: 'todo',
-    priority: 1,
-    created_by: 'system',
-    ...(userId ? { owner_id: userId } : {}),
-    derived_from: { generated_by: 'reva_auto_setup', flag: true },
+    due_date: null,
+    order_index: 999,
   })
+
+  if (error) throw error
 }
 
 export async function autoSetupTransaction(
@@ -159,14 +136,14 @@ export async function autoSetupTransaction(
   const bindingDate = toDateOnly(transaction.binding_date ?? transaction.binding ?? null)
   const closingDate = toDateOnly(transaction.closing_date ?? transaction.closing ?? null)
 
-  const checklistCreated = await insertChecklist(supabase, txId, userId)
+  const checklistCreated = await insertChecklist(supabase, txId)
   let deadlinesCreated = 0
 
   if (closingDate) {
     deadlinesCreated = await insertDeadlines(supabase, txId, userId, closingDate)
   }
   if (!bindingDate) {
-    await insertMissingBindingFlag(supabase, txId, userId)
+    await insertMissingBindingFlag(supabase, txId)
   }
 
   return { deadlinesCreated, checklistCreated }
