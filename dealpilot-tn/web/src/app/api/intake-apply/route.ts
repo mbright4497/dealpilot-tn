@@ -45,8 +45,6 @@ export async function POST(req: Request){
             transaction_id: transactionId,
             title: item.label || item.key || 'Milestone',
             status: item.completedAt ? 'completed' : 'todo',
-            due_date: item.dueDate || null,
-            order_index: null,
           })
         }catch(_){ }
       }

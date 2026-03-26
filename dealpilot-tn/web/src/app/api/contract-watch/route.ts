@@ -10,7 +10,7 @@ export async function GET() {
       .from('deal_milestones')
       .select('*')
       .neq('status', 'completed')
-      .order('due_date', { ascending: true })
+      .order('id', { ascending: true })
 
     if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 })
 
@@ -31,17 +31,12 @@ export async function GET() {
     const grouped: Record<string, any> = {}
 
     for (const m of milestones || []) {
-      const dealId = m.deal_id
-      const addr = txMap[dealId] || 'Unknown Address'
-
-      const dueDate = m.due_date ? new Date(m.due_date) : null
-      const daysRemaining = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / 86400000) : null
-
-      // Filter out milestones too far in the past (e.g., >30 days past)
-      if (daysRemaining !== null && daysRemaining < -30) continue
+      const txId = m.transaction_id
+      const addr = txMap[txId] || 'Unknown Address'
+      const daysRemaining = null
 
       if (!grouped[addr]) grouped[addr] = { address: addr, milestones: [] }
-      grouped[addr].milestones.push({ label: m.label, dueDate: m.due_date, daysRemaining, status: m.status })
+      grouped[addr].milestones.push({ label: m.title, dueDate: null, daysRemaining, status: m.status })
     }
 
     const results = Object.values(grouped).map((g: any) => ({

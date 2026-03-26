@@ -28,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         .or(`transaction_id.eq.${id},deal_id.eq.${id}`)
         .order('due_date', { ascending: true }),
       supabase.from('contacts').select('*').eq('transaction_id', id),
-      supabase.from('deal_milestones').select('*').or(`transaction_id.eq.${id},deal_id.eq.${id}`),
+      supabase.from('deal_milestones').select('*').eq('transaction_id', id),
       supabase.from('documents').select('*').eq('transaction_id', id).order('created_at', { ascending: false }),
     ])
 
