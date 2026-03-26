@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import ClosingPilotLogo from '@/components/ClosingPilotLogo'
-import { signOutAndRedirectToLogin } from '@/lib/auth-client'
+import SidebarUserFooter from '@/components/SidebarUserFooter'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', href: '/chat' },
@@ -109,10 +109,6 @@ export default function Sidebar() {
     router.push('/chat?view=ai')
   }
 
-  const handleSignOut = () => {
-    void signOutAndRedirectToLogin()
-  }
-
   return (
     <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
       <div className="p-4 flex items-center gap-3">
@@ -175,24 +171,7 @@ export default function Sidebar() {
           Settings
         </Link>
       </nav>
-      <div className="p-4 border-t border-gray-800 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold">MB</div>
-        <div className="flex-1">
-          <p className="text-white text-sm font-medium">Matt Bright</p>
-          <p className="text-gray-400 text-xs">iHome-KW Kingsport</p>
-        </div>
-        <button
-          onClick={handleSignOut}
-          className="text-sm text-gray-400 hover:text-white p-1 rounded"
-          title="Logout"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
-      </div>
+      <SidebarUserFooter />
     </aside>
   )
 }
