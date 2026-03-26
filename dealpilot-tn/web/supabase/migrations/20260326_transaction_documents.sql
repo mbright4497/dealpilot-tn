@@ -47,7 +47,7 @@ VALUES (
   'transactions',
   'transactions',
   false,
-  52428800,
+  26214400,
   ARRAY['application/pdf']::text[]
 )
 ON CONFLICT (id) DO UPDATE SET

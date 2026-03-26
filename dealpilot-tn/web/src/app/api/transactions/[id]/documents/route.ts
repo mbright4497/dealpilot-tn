@@ -7,6 +7,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const BUCKET = 'transactions'
+/** 25MB — must stay aligned with Supabase bucket file_size_limit */
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
 
 function safeFileName(name: string) {
   const base = name.replace(/[^a-zA-Z0-9._-]+/g, '_')
@@ -94,11 +96,32 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const storagePath = `${user.id}/${transactionId}/${Date.now()}_${filename}`
 
     const buf = Buffer.from(await file.arrayBuffer())
+    if (buf.length > MAX_UPLOAD_BYTES) {
+      const mb = (buf.length / (1024 * 1024)).toFixed(1)
+      return NextResponse.json(
+        {
+          error: `This PDF is ${mb}MB. Maximum is 25MB. Try splitting the contract from the addenda.`,
+        },
+        { status: 413 }
+      )
+    }
     const { error: upErr } = await supabase.storage
       .from(BUCKET)
       .upload(storagePath, buf, { contentType: file.type || 'application/pdf', upsert: false })
 
-    if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
+    if (upErr) {
+      const msg = String(upErr.message || '')
+      if (/too large|maximum|size|413/i.test(msg)) {
+        const mb = (buf.length / (1024 * 1024)).toFixed(1)
+        return NextResponse.json(
+          {
+            error: `This PDF is ${mb}MB. Maximum is 25MB. Try splitting the contract from the addenda.`,
+          },
+          { status: 413 }
+        )
+      }
+      return NextResponse.json({ error: upErr.message }, { status: 500 })
+    }
 
     const { count } = await supabase
       .from('transaction_documents')

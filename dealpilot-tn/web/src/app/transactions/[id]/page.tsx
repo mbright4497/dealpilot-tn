@@ -72,7 +72,14 @@ type TransactionDocumentRow = {
     checks?: { id?: string; name?: string; status?: string; detail?: string }[]
   } | null
   extracted_data?: Record<string, unknown> | null
-  deal_impact?: Record<string, unknown> | null
+  deal_impact?: {
+    address_mismatch?: {
+      contract_address: string
+      transaction_address: string
+      mismatch: true
+    }
+    [key: string]: unknown
+  } | null
 }
 
 function summarizeTxDoc(d: TransactionDocumentRow): string {
@@ -249,6 +256,14 @@ export default function TransactionDetailPage() {
   const [airdropName, setAirdropName] = useState('')
   const [airdropWatchId, setAirdropWatchId] = useState<number | null>(null)
   const [reviewDoc, setReviewDoc] = useState<TransactionDocumentRow | null>(null)
+  const [addressMismatch, setAddressMismatch] = useState<{
+    docId: number
+    contract_address: string
+    transaction_address: string
+  } | null>(null)
+  const [addressMismatchBusy, setAddressMismatchBusy] = useState(false)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
+  const addressMismatchDismissed = useRef<Set<number>>(new Set())
 
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'checklist' | 'deadlines' | 'contacts' | 'comms'>(
     'overview'
@@ -358,6 +373,22 @@ export default function TransactionDetailPage() {
     return () => clearInterval(t)
   }, [txDocs, txId])
 
+  useEffect(() => {
+    if (addressMismatch) return
+    for (const d of txDocs) {
+      if (String(d.status || '') !== 'reviewed') continue
+      const am = d.deal_impact?.address_mismatch
+      if (am?.mismatch === true && !addressMismatchDismissed.current.has(d.id)) {
+        setAddressMismatch({
+          docId: d.id,
+          contract_address: am.contract_address,
+          transaction_address: am.transaction_address,
+        })
+        break
+      }
+    }
+  }, [txDocs, addressMismatch])
+
   const uploadTxDoc = useCallback(
     async (file: File) => {
       if (!Number.isFinite(txId)) return
@@ -377,13 +408,22 @@ export default function TransactionDetailPage() {
         fd.append('display_name', displayName)
         fd.append('is_executed', String(isExecutedToggle))
         const res = await fetch(`/api/transactions/${txId}/documents`, { method: 'POST', body: fd })
-        if (!res.ok) throw new Error('upload failed')
+        if (!res.ok) {
+          let msg = 'Upload failed.'
+          try {
+            const j = await res.json()
+            if (typeof j?.error === 'string') msg = j.error
+          } catch {
+            // ignore
+          }
+          throw new Error(msg)
+        }
         const j = await res.json()
         if (j.document?.id) setAirdropWatchId(Number(j.document.id))
         await loadPageData()
-      } catch {
+      } catch (e: unknown) {
         setAirdropVisible(false)
-        window.alert('Upload failed.')
+        window.alert(e instanceof Error ? e.message : 'Upload failed.')
       } finally {
         setTxDocUploadBusy(false)
       }
@@ -403,6 +443,7 @@ export default function TransactionDetailPage() {
     onDrop: onDropTx,
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: 1,
+    maxSize: 25 * 1024 * 1024,
     disabled: txDocUploadBusy,
   })
 
@@ -429,6 +470,45 @@ export default function TransactionDetailPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
+  }
+
+  async function applyContractAddressToDeal() {
+    if (!addressMismatch || !Number.isFinite(txId)) return
+    setAddressMismatchBusy(true)
+    try {
+      const res = await fetch(`/api/transactions/${txId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: addressMismatch.contract_address }),
+      })
+      if (!res.ok) throw new Error('update failed')
+      await fetch(`/api/transactions/${txId}/documents/${addressMismatch.docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clear_address_mismatch: true }),
+      })
+      addressMismatchDismissed.current.add(addressMismatch.docId)
+      setAddressMismatch(null)
+      setToastMsg('Deal address updated')
+      window.setTimeout(() => setToastMsg(null), 3500)
+      await loadPageData()
+    } catch {
+      window.alert('Could not update address.')
+    } finally {
+      setAddressMismatchBusy(false)
+    }
+  }
+
+  function keepDealAddressDismissMismatch() {
+    if (!addressMismatch || !Number.isFinite(txId)) return
+    const docId = addressMismatch.docId
+    addressMismatchDismissed.current.add(docId)
+    setAddressMismatch(null)
+    void fetch(`/api/transactions/${txId}/documents/${docId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clear_address_mismatch: true }),
+    }).then(() => loadPageData())
   }
 
   async function generateIntelligence() {
@@ -708,7 +788,7 @@ export default function TransactionDetailPage() {
                 <p className="mt-1 text-sm text-slate-200">
                   Upload the RF401 PDF so Reva can populate the deal (legacy pipeline).
                 </p>
-                <p className="mt-1 text-xs text-slate-400">Supports PDF files</p>
+                <p className="mt-1 text-xs text-slate-400">Supports PDF files up to 25MB</p>
               </div>
               <button
                 onClick={() => contractUploadRef.current?.click()}
@@ -735,7 +815,9 @@ export default function TransactionDetailPage() {
 
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <h2 className="text-sm font-semibold text-white">Upload a document</h2>
-          <p className="mt-1 text-xs text-slate-400">PDF only. Reva extracts fields and runs broker review in the background.</p>
+          <p className="mt-1 text-xs text-slate-400">
+            PDF only. Supports PDF files up to 25MB. Reva extracts fields and runs broker review in the background.
+          </p>
 
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="block text-xs font-medium text-slate-300">
@@ -786,7 +868,7 @@ export default function TransactionDetailPage() {
             <input {...getInputProps()} />
             <Upload className="text-orange-300" size={28} />
             <p className="mt-2 text-sm font-semibold text-white">Drag & drop PDF here</p>
-            <p className="mt-1 text-xs text-slate-400">or click to browse</p>
+            <p className="mt-1 text-xs text-slate-400">or click to browse • max 25MB</p>
             {txDocUploadBusy ? (
               <p className="mt-2 inline-flex items-center gap-2 text-xs text-orange-200">
                 <Loader2 size={14} className="animate-spin" /> Uploading…
@@ -1283,7 +1365,22 @@ export default function TransactionDetailPage() {
         <aside className="min-w-0">
           <div className="sticky top-4 rounded-2xl border border-slate-700 bg-[#0B1530] p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-white">Reva</h2>
+              <div className="flex min-w-0 items-center gap-2">
+                <img
+                  src="/avatar-pilot.png"
+                  alt="Reva"
+                  width={36}
+                  height={36}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid #F97316',
+                  }}
+                />
+                <h2 className="text-sm font-semibold text-white">Reva</h2>
+              </div>
               <span className="text-xs text-slate-400">{revaSending ? 'Sending…' : 'Ready'}</span>
             </div>
 
@@ -1335,6 +1432,45 @@ export default function TransactionDetailPage() {
           setAirdropWatchId(null)
         }}
       />
+
+      {addressMismatch ? (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-600 bg-[#0B1530] p-6 shadow-xl">
+            <div className="text-lg font-semibold text-white">📍 Address Mismatch</div>
+            <p className="mt-4 text-sm text-slate-300">This contract is for:</p>
+            <p className="mt-1 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-white">
+              {addressMismatch.contract_address}
+            </p>
+            <p className="mt-4 text-sm text-slate-300">This deal is labeled:</p>
+            <p className="mt-1 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-white">
+              {addressMismatch.transaction_address}
+            </p>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => keepDealAddressDismissMismatch()}
+                className="rounded-lg border border-slate-600 bg-slate-900/60 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
+              >
+                Keep current address
+              </button>
+              <button
+                type="button"
+                disabled={addressMismatchBusy}
+                onClick={() => void applyContractAddressToDeal()}
+                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
+              >
+                Update deal to contract address
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {toastMsg ? (
+        <div className="fixed bottom-6 left-1/2 z-[96] -translate-x-1/2 rounded-lg border border-orange-500/40 bg-[#0B1530] px-4 py-2 text-sm font-medium text-orange-100 shadow-lg">
+          {toastMsg}
+        </div>
+      ) : null}
     </main>
   )
 }

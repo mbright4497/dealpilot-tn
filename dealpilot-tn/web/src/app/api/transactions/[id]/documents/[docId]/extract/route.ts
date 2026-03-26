@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOptionalServiceSupabase } from '@/lib/supabase/serviceRole'
 import { runDocumentExtraction } from '@/lib/reva/runDocumentExtraction'
+import type { AddressMismatchPayload } from '@/lib/reva/addressMismatch'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -39,7 +40,13 @@ export async function POST(_req: Request, { params }: { params: { id: string; do
       .eq('id', documentId)
       .single()
 
-    return NextResponse.json({ document: updated })
+    let address_mismatch: AddressMismatchPayload | undefined
+    const di = updated?.deal_impact as { address_mismatch?: AddressMismatchPayload } | null
+    if (di?.address_mismatch?.mismatch === true) {
+      address_mismatch = di.address_mismatch
+    }
+
+    return NextResponse.json({ document: updated, ...(address_mismatch ? { address_mismatch } : {}) })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Unknown error' }, { status: 500 })
   }

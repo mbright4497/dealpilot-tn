@@ -1,7 +1,25 @@
 'use client'
-import React, {useState, useEffect} from 'react'
+import React, {useState, useEffect, useRef, useCallback, Suspense} from 'react'
 import { speakAPI as speakText, stopSpeaking, isSpeaking } from '@/lib/voice-engine'
-import {useRouter} from 'next/navigation'
+import {useRouter, useSearchParams} from 'next/navigation'
+
+/** Isolated so `useSearchParams` sits under Suspense (Next.js CSR bailout). */
+function StartNewTransactionListener({ onFire }: { onFire: () => void }) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const doneRef = useRef(false)
+  useEffect(() => {
+    if (searchParams.get('start') !== 'new-transaction') {
+      doneRef.current = false
+      return
+    }
+    if (doneRef.current) return
+    doneRef.current = true
+    onFire()
+    router.replace('/chat')
+  }, [searchParams, onFire, router])
+  return null
+}
 
 import TCDashboard from '@/components/TCDashboard'
 import TransactionList from '@/components/TransactionList'
@@ -16,7 +34,6 @@ import VoiceSettings from '@/components/VoiceSettings'
 import { previewVoice } from '@/lib/voice-engine'
 
 import ContractViewer from '@/components/ContractViewer'
-import ContractIntake from '@/components/ContractIntake'
 import MobileSidebar from '@/components/MobileSidebar'
 import EvaMainView from '@/components/eva/EvaMainView'
 import { EvaProvider } from '@/components/eva/EvaProvider'
@@ -106,7 +123,7 @@ const NAV_ITEMS = [
 
 export const dynamic = 'force-dynamic'
 
-export default function ChatPage() {
+function ChatPageInner() {
   const router = useRouter()
 
   // Command Center state
@@ -258,6 +275,14 @@ export default function ChatPage() {
     }catch(e){ console.error(e); addToast('Chat failed') }
     finally{ setChatLoading(false) }
   }
+
+  const sendDashboardMessageRef = useRef(sendDashboardMessage)
+  sendDashboardMessageRef.current = sendDashboardMessage
+  const fireStartNewTransaction = useCallback(() => {
+    setView('dashboard')
+    setSelectedTxId(null)
+    void sendDashboardMessageRef.current('Start a new transaction')
+  }, [])
 
   // inline upload handler used when Reva asks user to upload a contract
   async function handleInlineUpload(ev:any){
@@ -441,7 +466,7 @@ export default function ChatPage() {
   // Listen to Eva events for conversation-driven actions
   useEffect(()=>{
     const onViewDeal = (e:any) => { try{ const id = e.detail?.id; if(id) openDeal(Number(id)) }catch(_){ } }
-    const onUpload = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('add-transaction') } }catch(_){ } }
+    const onUpload = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); router.push('/chat?start=new-transaction') } }catch(_){ } }
     const onViewParties = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
     const onEditDeal = (e:any) => { try{ const id = e.detail?.dealId; if(id){ setSelectedTxId(Number(id)); setView('deal') } }catch(_){ } }
     const onDoAction = async (e:any) => { try{ const detail = e.detail; if(!detail) return; if(detail.id === 'remind-inspector'){ // draft email to inspector
@@ -478,6 +503,9 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-dp-bg-dark">
+      <Suspense fallback={null}>
+        <StartNewTransactionListener onFire={fireStartNewTransaction} />
+      </Suspense>
       <style>{`@keyframes pulseRing{0%{transform:scale(1);opacity:0.9}50%{transform:scale(1.06);opacity:0.5}100%{transform:scale(1);opacity:0.9}}@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {/* Mobile hamburger */}
       <button onClick={()=>setSidebarOpen(true)} className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-lg">
@@ -892,7 +920,7 @@ if (res.ok) {
         })()}
         {view === 'transactions' && (<>
             <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
-            <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => setView('add-transaction')} onDeleteTransaction={deleteTransaction} /></>)}
+            <TransactionList transactions={transactions} onViewChecklist={openChecklist} onOpenDeal={openDeal} onAddTransaction={addTransaction} onStartAdd={() => router.push('/chat?start=new-transaction')} onDeleteTransaction={deleteTransaction} /></>)}
         {view === 'deal' && selectedTx && <DealErrorBoundary><TransactionDetail transaction={selectedTx} dealId={selectedTxId || undefined} onBack={() => { setView('transactions'); pushUrlFor('transactions') }} onUpdateContacts={updateTransactionContacts} /></DealErrorBoundary>}
         {view === 'forms' && (<>
           <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
@@ -905,21 +933,6 @@ if (res.ok) {
           <button onClick={() => setView('dashboard')} className="mb-4 flex items-center gap-2 text-gray-400 hover:text-white text-sm"> <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Back to Dashboard </button>
           <div className="grid lg:grid-cols-2 gap-6"><ContractViewer contract={{propertyAddress:'123 Maple St, Johnson City TN',buyers:'John Smith, Jane Smith',sellers:'Bob Johnson',purchasePrice:425000,earnestMoney:5000,closingDate:'2026-05-30',inspectionStart:'2026-03-01',inspectionEnd:'2026-03-10',financingDate:'2026-04-15',specialStipulations:'Seller to repair roof prior to closing.'}} /></div></>) }
         {view === 'personality' && <><PersonalitySelector currentStyle={assistantStyle} onSelect={(style)=>setAssistantStyle(style)} /><div className="mt-6"><VoiceSettings voiceEnabled={voiceEnabled} onToggle={setVoiceEnabled} currentStyle={assistantStyle} onPreview={previewVoice} /></div></>}
-              {view === 'add-transaction' && <ContractIntake onConfirm={async (data: any) => {
-                try{
-                  const res = await fetch('/api/transactions/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) })
-                  const j = await res.json()
-                  if (!res.ok) { const msg = j?.error || 'Failed to create transaction'; alert(msg); return }
-                  const newId = j.id
-                  if (newId) {
-                    // refresh deal-state or optimistically add
-                    const txRes = await fetch(`/api/deal-state/${newId}`)
-                    if (txRes.ok){ const tx = await txRes.json(); setTransactions(prev=>[...prev, tx]) }
-                    setView('transactions')
-                    alert('Transaction created')
-                  }
-                }catch(e:any){ console.error(e); alert('Error creating transaction: '+String(e)) }
-              }} onCancel={() => setView('transactions')} />}
         <DealPickerModal
           open={showDealPicker}
           selectedDealId={selectedTxId}
@@ -952,5 +965,17 @@ if (res.ok) {
         }}
       />
     </div>
+  )
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-dp-bg-dark text-slate-400">Loading…</div>
+      }
+    >
+      <ChatPageInner />
+    </Suspense>
   )
 }

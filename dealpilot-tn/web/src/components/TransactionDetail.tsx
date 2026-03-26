@@ -18,11 +18,10 @@ function handleRevaIntent(intent: any, setMode: any, setActiveDocument: any) {
 // and refresh local state via fetches. Inline helpers will be used instead of these globals.
 
 import { parseRevaIntent } from '@/lib/revaIntentParser'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import { createChecklistInstance, checklistProgress } from '@/lib/tc-checklist'
 import ContractUpload from './ContractUpload'
-import ContractIntake from './ContractIntake'
 import DocumentChecklist from './DocumentChecklist'
 import DocumentComplianceBar from './DocumentComplianceBar'
 import EditTransactionModal from './EditTransactionModal'
@@ -143,6 +142,7 @@ function StackedDocsViewer({ orderedDocs, contractData, urlTransactionId, storag
 }
 
 export default function TransactionDetail({transaction, dealId, onBack, onUpdateContacts}:{transaction:Transaction, dealId?:number | undefined, onBack:()=>void,onUpdateContacts?:(txId:number,contacts:Contact[])=>void}){
+  const router = useRouter()
   // URL-derived transaction id (source of truth for this component). Fallback to prop.dealId when URL param missing.
   const searchParams = useSearchParams()
   const urlDealParam = (typeof searchParams?.get === 'function') ? searchParams.get('deal') : null
@@ -702,7 +702,6 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
     return ()=>{ mounted=false }
   },[urlTransactionId])
 
-  const [showIntake, setShowIntake] = useState(false)
   const [extractionPreview, setExtractionPreview] = useState<any|null>(null)
   const [mobileRevaOpen, setMobileRevaOpen] = useState(false)
   // file inputs helper (kept from previous implementation)
@@ -1457,7 +1456,13 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                   <div />
                   <div className="flex gap-2">
                     <button onClick={()=>setMode('documents')} className="px-3 py-1 rounded-lg bg-[#0f3460] border border-white/10 text-sm text-gray-200">Open Contract</button>
-                    <button onClick={()=>setShowIntake(true)} className="px-3 py-1 rounded-lg bg-[#16213e] border border-white/10 text-sm text-gray-200">Upload Contract (AI)</button>
+                    <button
+                      type="button"
+                      onClick={() => router.push('/chat?start=new-transaction')}
+                      className="px-3 py-1 rounded-lg bg-[#16213e] border border-white/10 text-sm text-gray-200"
+                    >
+                      Upload Contract (AI)
+                    </button>
                   </div>
                 </div>
                 <ContractUpload dealId={String(urlTransactionId)} onSave={(data)=>{ setContractData(data); if((data as any)?.__remote){ const r=(data as any).__remote; setRemote(r); setMergedTx(prev=>({ ...prev, ...(r||{}) })); if(r.contacts) setLocalContacts(r.contacts) } }} onDelete={()=>setContractData(null)} />
@@ -1790,25 +1795,6 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
     </div>
   )}
 
-      {showIntake && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="w-full max-w-5xl mx-4">
-            <ContractIntake onCancel={()=>setShowIntake(false)} onConfirm={async (parsed:any)=>{
-              try{
-                // save extracted to contract_store for this deal
-                await fetch(`/api/deals/${urlTransactionId}/contract`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ extracted: parsed, pdfUrl: null }) })
-                setContractData(parsed)
-                // refresh docs and deal-state
-                const ref = await fetch(`/api/documents/${urlTransactionId}`)
-                if(ref.ok){ const rj = await ref.json(); setDocs(rj || []) }
-                const res = await fetch(`/api/deal-state/${urlTransactionId}`)
-                if(res.ok){ const j = await res.json(); setRemote(j); setMergedTx({...mergedTx, ...j}) }
-              }catch(e){ console.error(e) }
-              setShowIntake(false)
-            }} />
-          </div>
-        </div>
-      )}
     </div>
   )
 }

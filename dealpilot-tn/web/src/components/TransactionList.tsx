@@ -5,7 +5,6 @@ function formatDate(d: string): string {
   const [y, m, day] = d.split('-')
   return new Date(Number(y), Number(m) - 1, Number(day)).toLocaleDateString()
 }
-import ContractIntake from './ContractIntake'
 import { computeDealHealth } from '@/lib/deal-health'
 interface Transaction {
   id: number
@@ -45,7 +44,6 @@ export default function TransactionList({ transactions, onViewChecklist, onOpenD
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ address: '', client: '', type: 'Buyer', status: 'Active', binding: '', closing: '' })
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
-  const [showIntake, setShowIntake] = useState(false)
   const showSkeleton = shouldShowTransactionSkeleton(transactions, loading)
   const showEmptyState = shouldShowTransactionEmptyState(transactions, loading)
 

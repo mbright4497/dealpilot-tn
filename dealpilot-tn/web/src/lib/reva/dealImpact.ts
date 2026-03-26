@@ -9,6 +9,11 @@ export type DealImpact = {
   earnest_money_change?: number | null
   new_conditions?: string[]
   notes?: string
+  address_mismatch?: {
+    contract_address: string
+    transaction_address: string
+    mismatch: true
+  }
 }
 
 function asRecord(v: unknown): Record<string, unknown> | null {

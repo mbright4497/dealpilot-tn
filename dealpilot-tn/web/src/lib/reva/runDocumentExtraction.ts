@@ -9,6 +9,7 @@ import { computeDealImpact } from '@/lib/reva/dealImpact'
 import { brokerReview } from '@/lib/reva/brokerReview'
 import { applyDealImpactToTransaction } from '@/lib/reva/applyDealImpactToTransaction'
 import { cleanJsonFromText } from '@/lib/reva/jsonUtils'
+import { computeAddressMismatch } from '@/lib/reva/addressMismatch'
 import type { TransactionDocumentType } from '@/lib/documents/transactionDocumentTypes'
 import { isTransactionDocumentType } from '@/lib/documents/transactionDocumentTypes'
 
@@ -79,7 +80,7 @@ export async function runDocumentExtraction(
 
   const { data: tx, error: txErr } = await supabase
     .from('transactions')
-    .select('id, user_id')
+    .select('id, user_id, address')
     .eq('id', doc.transaction_id)
     .maybeSingle()
 
@@ -132,7 +133,11 @@ export async function runDocumentExtraction(
       extracted = await extractJsonWithGpt(instruction, numberedText)
     }
 
-    const dealImpact = computeDealImpact(typed as TransactionDocumentType, extracted)
+    let dealImpact = computeDealImpact(typed as TransactionDocumentType, extracted)
+    const addrMismatch = computeAddressMismatch(extracted, tx?.address ?? null)
+    if (addrMismatch) {
+      dealImpact = { ...dealImpact, address_mismatch: addrMismatch }
+    }
 
     const review = await brokerReview({
       documentType: docType,

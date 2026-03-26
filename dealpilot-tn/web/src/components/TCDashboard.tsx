@@ -78,7 +78,7 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
     fetch('/api/notification-preferences').then(r=>r.json()).then(d=>{ if(!mounted) return; setNotifPrefs(d.prefs) }).catch(()=>{});
   }catch(e){} })(); return ()=>{ mounted=false } },[])
 
-  // load pending parsed deal from localStorage (ContractIntake persistence)
+  // load pending parsed deal from localStorage (legacy intake persistence)
   React.useEffect(()=>{
     try{
       const raw = localStorage.getItem('pending_parsed_deal')
