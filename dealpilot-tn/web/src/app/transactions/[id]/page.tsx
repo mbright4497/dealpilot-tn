@@ -290,6 +290,39 @@ function phaseTitle(phase: DocPhase): string {
   return 'CLOSING'
 }
 
+function labelForDeadlineStatus(status: DeadlineStatus): string {
+  if (status === 'overdue') return 'OVERDUE'
+  if (status === 'due_soon') return 'DUE SOON'
+  if (status === 'complete') return 'COMPLETE'
+  return 'ON TRACK'
+}
+
+function dueBadgeText(dueDate: string | null | undefined): string | null {
+  if (!dueDate) return null
+  const days = daysUntil(dueDate)
+  if (days === null) return null
+  if (days < 0) return `OVERDUE ${Math.abs(days)}D`
+  if (days === 0) return 'DUE TODAY'
+  if (days <= 3) return `DUE IN ${days}D`
+  return null
+}
+
+function inferChecklistPhase(item: ChecklistItem, fallback: DocPhase): DocPhase {
+  const text = `${item.title || ''} ${item.category || ''} ${item.type || ''}`.toLowerCase()
+  if (text.includes('close') || text.includes('walkthrough') || text.includes('final')) return 'closing'
+  if (
+    text.includes('inspection')
+    || text.includes('contract')
+    || text.includes('amendment')
+    || text.includes('contingency')
+    || text.includes('earnest')
+  ) {
+    return 'under_contract'
+  }
+  if (text.includes('listing') || text.includes('intake') || text.includes('onboard')) return 'pre_contract'
+  return fallback
+}
+
 export default function TransactionDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -1287,201 +1320,213 @@ export default function TransactionDetailPage() {
   }
 
   function checklistTab() {
-    const total = checklistItemsForTab.length
-    const done = checklistItemsForTab.filter((i) => Boolean(i.completed)).length
-    const pct = total ? Math.round((done / total) * 100) : 0
-    const byPriority = {
-      critical: checklistItemsForTab.filter((i) => String(i.priority || '').toLowerCase() === 'critical'),
-      high: checklistItemsForTab.filter((i) => String(i.priority || '').toLowerCase() === 'high'),
-      mediumLow: checklistItemsForTab.filter((i) => {
-        const p = String(i.priority || 'medium').toLowerCase()
-        return p !== 'critical' && p !== 'high'
-      }),
-    }
-
     const requiredSlots = TN_DOCUMENT_CHECKLIST.filter((s) => s.requirement === 'required')
-    const optionalSlots = TN_DOCUMENT_CHECKLIST.filter((s) => s.requirement === 'optional')
     const uploadedByType = new Map<string, TransactionDocumentRow>()
     for (const d of txDocuments) {
       const existing = uploadedByType.get(d.document_type)
       if (!existing) {
         uploadedByType.set(d.document_type, d)
-      } else if (
-        new Date(d.created_at || 0).getTime() > new Date(existing.created_at || 0).getTime()
-      ) {
+      } else if (new Date(d.created_at || 0).getTime() > new Date(existing.created_at || 0).getTime()) {
         uploadedByType.set(d.document_type, d)
       }
     }
 
-    const loanType = String(tx?.loan_type || '').toLowerCase()
-    const fhaVaLoan = loanType.includes('fha') || loanType.includes('va') || loanType.includes('thda')
-    const psaDoc = txDocuments.find((d) => d.document_type === 'rf401_psa')
-    const extractedSource = (psaDoc?.extracted_data || {}) as Record<string, unknown>
-    const extractedText = JSON.stringify(extractedSource).toLowerCase()
-    const yearBuiltRaw = [
-      extractedSource.year_built,
-      extractedSource.yearBuilt,
-      extractedSource.built_year,
-      extractedSource.property_year_built,
-    ].find((v) => v !== undefined && v !== null)
-    const yearBuiltValue = Number(yearBuiltRaw)
-    const pre1978Property = Number.isFinite(yearBuiltValue) ? yearBuiltValue < 1978 : extractedText.includes('pre-1978')
-    const hasSepticProperty =
-      extractedText.includes('septic') ||
-      String(extractedSource.waste_disposal || '').toLowerCase().includes('septic') ||
-      String(extractedSource.wastewater || '').toLowerCase().includes('septic') ||
-      Boolean(extractedSource.has_septic)
+    const currentPhaseSlots = getSlotsByPhase(currentDocPhase)
+    const otherPhases: DocPhase[] = ['pre_contract', 'under_contract', 'closing'].filter((p) => p !== currentDocPhase) as DocPhase[]
+    const prioritizedRequiredSlots = [
+      ...currentPhaseSlots.filter((s) => s.requirement === 'required'),
+      ...otherPhases.flatMap((phase) => getSlotsByPhase(phase).filter((s) => s.requirement === 'required')),
+    ]
+    const firstMissingRequiredSlot = prioritizedRequiredSlots.find((slot) => !uploadedByType.has(slot.document_type))
 
-    const triggeredBadgeBySlotId = new Map<string, string>()
-    const triggeredTypeBySlotId = new Map<string, 'FHA/VA' | 'pre-1978' | 'septic'>()
-    if (fhaVaLoan) triggeredBadgeBySlotId.set('fha_va_addendum', 'NEEDED FOR YOUR LOAN TYPE')
-    if (fhaVaLoan) triggeredTypeBySlotId.set('fha_va_addendum', 'FHA/VA')
-    if (pre1978Property) triggeredBadgeBySlotId.set('lead_paint', 'REQUIRED - PRE-1978 PROPERTY')
-    if (pre1978Property) triggeredTypeBySlotId.set('lead_paint', 'pre-1978')
-    if (hasSepticProperty) {
-      triggeredBadgeBySlotId.set('septic_importance', 'NEEDED FOR THIS PROPERTY')
-      triggeredBadgeBySlotId.set('subsurface_sewage', 'NEEDED FOR THIS PROPERTY')
-      triggeredBadgeBySlotId.set('water_waste', 'NEEDED FOR THIS PROPERTY')
-      triggeredTypeBySlotId.set('septic_importance', 'septic')
-      triggeredTypeBySlotId.set('subsurface_sewage', 'septic')
-      triggeredTypeBySlotId.set('water_waste', 'septic')
+    const firstUrgentDeadline = mergedDeadlines.find((deadline) => {
+      const status = deriveDeadlineStatus(deadline.dueDate, deadline.completed)
+      return status === 'overdue' || status === 'due_soon'
+    })
+
+    const firstCriticalItem = checklistItemsForTab.find(
+      (item) => !item.completed && String(item.priority || '').toLowerCase() === 'critical'
+    )
+
+    const nextAction = (() => {
+      if (firstUrgentDeadline) {
+        const status = deriveDeadlineStatus(firstUrgentDeadline.dueDate, firstUrgentDeadline.completed)
+        return {
+          title: `Deadline: ${firstUrgentDeadline.name}`,
+          detail:
+            status === 'overdue'
+              ? `This deadline is overdue. Handle it now to protect the contract timeline.`
+              : `This deadline is due soon. Resolve it now to stay ahead of the timeline.`,
+          ctaLabel: 'Open Deadlines',
+          onCta: () => setActiveTab('deadlines'),
+          askPrompt: `Help me handle this deadline now: ${firstUrgentDeadline.name}.`,
+        }
+      }
+      if (firstMissingRequiredSlot) {
+        return {
+          title: `Missing document: ${firstMissingRequiredSlot.display_name}`,
+          detail: `Upload this now so your file is compliant for the ${phaseTitle(firstMissingRequiredSlot.phase)} phase.`,
+          ctaLabel: `Upload ${firstMissingRequiredSlot.display_name}`,
+          onCta: () => setActiveTab('documents'),
+          askPrompt: `I am missing ${firstMissingRequiredSlot.display_name}. What should I do right now?`,
+        }
+      }
+      if (firstCriticalItem) {
+        return {
+          title: firstCriticalItem.title || 'Critical checklist item',
+          detail: firstCriticalItem.notes || 'This is a critical item that should be completed now.',
+          ctaLabel: 'Mark Done',
+          onCta: () => {
+            const idx = aiChecklist.findIndex((x) => x === firstCriticalItem)
+            if (idx >= 0) void toggleChecklistItem(idx)
+          },
+          askPrompt: `Walk me through this critical checklist item: ${firstCriticalItem.title || 'critical item'}.`,
+        }
+      }
+      return {
+        title: 'You are on track',
+        detail: 'No urgent deadlines, missing required docs, or critical checklist blockers were found.',
+        ctaLabel: 'Review Documents',
+        onCta: () => setActiveTab('documents'),
+        askPrompt: 'What should I proactively do next on this deal?',
+      }
+    })()
+
+    const checklistByPhase: Record<DocPhase, ChecklistItem[]> = {
+      pre_contract: [],
+      under_contract: [],
+      closing: [],
+    }
+    for (const item of checklistItemsForTab) {
+      const phase = inferChecklistPhase(item, currentDocPhase)
+      checklistByPhase[phase].push(item)
     }
 
-    const missingRequiredSlots = requiredSlots.filter((s) => !uploadedByType.has(s.document_type))
-    const triggeredConditionalSlots = TN_DOCUMENT_CHECKLIST.filter(
-      (s) => s.requirement === 'conditional' && triggeredBadgeBySlotId.has(s.id) && !uploadedByType.has(s.document_type)
-    )
-    const missingOptionalSlots = optionalSlots.filter((s) => !uploadedByType.has(s.document_type))
-    const issueCount = txDocuments.reduce((acc, d) => acc + (d.broker_review?.issues?.length || 0), 0)
-    const totalMissing = missingRequiredSlots.length + triggeredConditionalSlots.length
+    const orderedPhases: DocPhase[] = [currentDocPhase, ...(['pre_contract', 'under_contract', 'closing'].filter((p) => p !== currentDocPhase) as DocPhase[])]
+
+    const requiredDocPct = requiredSlots.length
+      ? Math.round((requiredSlots.filter((slot) => uploadedByType.has(slot.document_type)).length / requiredSlots.length) * 100)
+      : 100
+    const criticalItems = checklistItemsForTab.filter((item) => String(item.priority || '').toLowerCase() === 'critical')
+    const criticalPct = criticalItems.length
+      ? Math.round((criticalItems.filter((item) => Boolean(item.completed)).length / criticalItems.length) * 100)
+      : 100
+    const hasOverdueDeadline = mergedDeadlines.some((d) => deriveDeadlineStatus(d.dueDate, d.completed) === 'overdue')
+    const healthScore = Math.min(100, Math.round(requiredDocPct * 0.5 + criticalPct * 0.4 + (hasOverdueDeadline ? 0 : 10)))
+    const healthClass =
+      healthScore < 50
+        ? 'border-red-500/40 bg-red-950/30 text-red-100'
+        : healthScore <= 80
+          ? 'border-yellow-500/40 bg-yellow-950/30 text-yellow-100'
+          : 'border-emerald-500/40 bg-emerald-950/30 text-emerald-100'
 
     return (
       <div className="space-y-4">
-        <div className="rounded-xl border border-slate-700 bg-[#111B36] p-4">
-          <h3 className="text-sm font-semibold text-white">📋 Reva&apos;s Deal Health View</h3>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-sm text-red-100">
-              <div className="text-xs uppercase tracking-wide text-red-200">Required Missing</div>
-              <div className="mt-1 text-lg font-semibold">{missingRequiredSlots.length}</div>
-            </div>
-            <div className="rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-sm text-orange-100">
-              <div className="text-xs uppercase tracking-wide text-orange-200">Conditional Missing</div>
-              <div className="mt-1 text-lg font-semibold">{triggeredConditionalSlots.length}</div>
-            </div>
-            <div className="rounded-lg border border-slate-600 bg-slate-900/70 px-3 py-2 text-sm text-slate-100">
-              <div className="text-xs uppercase tracking-wide text-slate-300">Issues in Reviewed Docs</div>
-              <div className="mt-1 text-lg font-semibold">{issueCount}</div>
-            </div>
-          </div>
-          <div className="mt-3 space-y-1 text-xs text-slate-300">
-            {missingRequiredSlots.slice(0, 2).map((slot) => (
-              <div key={`required-${slot.id}`}>- Missing required: {slot.display_name}</div>
-            ))}
-            {triggeredConditionalSlots.slice(0, 2).map((slot) => (
-              <div key={`triggered-${slot.id}`}>
-                - Missing conditional ({triggeredTypeBySlotId.get(slot.id) || 'deal type'}): {slot.display_name}
-              </div>
-            ))}
-            {missingOptionalSlots.length > 0 ? <div>- {missingOptionalSlots.length} optional docs recommended</div> : null}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm text-slate-200">
-              <span className="font-semibold text-white">{done}</span> of <span className="font-semibold text-white">{total}</span> complete
-            </div>
-            <div className="text-xs text-slate-400">Progress: {pct}%</div>
-          </div>
-          <div className="mt-3 h-2 rounded-full bg-slate-800">
-            <div className="h-2 rounded-full bg-orange-500" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {[
-            { key: 'critical', label: '🔴 CRITICAL', open: true, items: byPriority.critical },
-            { key: 'high', label: '🟡 HIGH', open: true, items: byPriority.high },
-            { key: 'mediumLow', label: '🟢 MEDIUM / LOW', open: false, items: byPriority.mediumLow },
-          ].map((group) => (
-            <details
-              key={group.key}
-              open={group.open}
-              className="rounded-xl border border-slate-700 bg-slate-900/30 p-4"
-            >
-              <summary className="cursor-pointer text-sm font-semibold text-white">
-                {group.label} <span className="text-slate-400 font-normal">({group.items.length})</span>
-              </summary>
-              <div className="mt-3 space-y-2">
-                {!group.items.length ? (
-                  <p className="text-sm text-slate-500">No items in this priority band.</p>
-                ) : (
-                  group.items.map((item) => {
-                    const idx = aiChecklist.findIndex((x) => x === item)
-                    const p = priorityPill(item.priority || 'medium')
-                    return (
-                      <div
-                        key={`${item.id || item.title || idx}-${String(item.category || 'General')}`}
-                        className="rounded-lg border border-slate-700 bg-[#0A1022] p-3"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="flex items-start gap-3">
-                            <input
-                              type="checkbox"
-                              className="mt-1"
-                              checked={Boolean(item.completed)}
-                              onChange={() => void toggleChecklistItem(idx)}
-                            />
-                            <div>
-                              <div className="text-sm font-semibold text-white">{item.title || 'Checklist item'}</div>
-                              <div className="mt-1 text-xs text-slate-300">
-                                {item.notes || 'No additional notes.'}
-                              </div>
-                            </div>
-                          </div>
-                          <span className={classNames('rounded-full px-2 py-0.5 text-xs font-semibold border', p.className)}>
-                            {item.priority || p.label}
-                          </span>
-                        </div>
-                        <div className="mt-2 text-xs text-slate-300">Due: {formatDate(item.due_date || null)}</div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void toggleChecklistItem(idx)}
-                            className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
-                          >
-                            {item.completed ? 'Mark Incomplete' : 'Mark Complete'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => askRevaAboutChecklistItem(item.title)}
-                            className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-100 hover:bg-orange-500/20 transition"
-                          >
-                            Ask Reva
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            </details>
-          ))}
-        </div>
-
-        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-slate-200">
-              <span className="font-semibold text-white">{totalMissing}</span> required documents missing
-            </div>
+        <div className="rounded-xl border border-orange-500/40 bg-[#111B36] p-5">
+          <div className="text-xs font-semibold uppercase tracking-wide text-orange-200">Reva&apos;s Next Action</div>
+          <h3 className="mt-2 text-lg font-semibold text-white">🤖 {nextAction.title}</h3>
+          <p className="mt-3 max-w-3xl text-sm text-slate-200">{nextAction.detail}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setActiveTab('documents')}
-              className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
+              onClick={nextAction.onCta}
+              className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-black hover:bg-orange-600 transition"
             >
-              View in Documents tab →
+              {nextAction.ctaLabel}
+            </button>
+            <button
+              type="button"
+              onClick={() => void sendRevaMessage(nextAction.askPrompt)}
+              className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-100 hover:bg-orange-500/20 transition"
+            >
+              Ask Reva about this
             </button>
           </div>
+        </div>
+
+        {orderedPhases.map((phase) => (
+          <details
+            key={phase}
+            open={phase === currentDocPhase}
+            className="rounded-xl border border-slate-700 bg-slate-900/30 p-4"
+          >
+            <summary className="cursor-pointer text-sm font-semibold text-white">
+              {phaseTitle(phase)}
+              <span className="ml-2 text-slate-400 font-normal">({checklistByPhase[phase].length})</span>
+              {phase === currentDocPhase ? <span className="ml-2 text-xs text-orange-200">(current)</span> : null}
+            </summary>
+            <div className="mt-3 space-y-2">
+              {!checklistByPhase[phase].length ? (
+                <p className="text-sm text-slate-500">No checklist items in this phase.</p>
+              ) : (
+                checklistByPhase[phase].map((item) => {
+                  const idx = aiChecklist.findIndex((x) => x === item)
+                  const dueTag = dueBadgeText(item.due_date || null)
+                  return (
+                    <div
+                      key={`${item.id || item.title || idx}-${String(item.category || 'General')}`}
+                      className="rounded-lg border border-slate-700 bg-[#0A1022] p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={Boolean(item.completed)}
+                            onChange={() => void toggleChecklistItem(idx)}
+                          />
+                          <div>
+                            <div className="text-sm font-semibold text-white">{item.title || 'Checklist item'}</div>
+                            <div className="mt-1 text-xs text-slate-300">
+                              {item.notes || 'Reva guidance pending: ask Reva for the exact next move on this item.'}
+                            </div>
+                          </div>
+                        </div>
+                        {dueTag ? (
+                          <span className="rounded-full border border-red-500/40 bg-red-500/20 px-2 py-0.5 text-[11px] font-semibold text-red-100">
+                            🔴 {dueTag}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void toggleChecklistItem(idx)}
+                          className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
+                        >
+                          {item.completed ? 'Mark Undone' : 'Mark Done'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => askRevaAboutChecklistItem(item.title)}
+                          className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-100 hover:bg-orange-500/20 transition"
+                        >
+                          Ask Reva
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </details>
+        ))}
+
+        <div className={classNames('rounded-xl border p-4', healthClass)}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-sm font-semibold">Deal Health: {healthScore}%</div>
+            <div className="text-xs opacity-90">
+              Docs {requiredDocPct}% · Critical {criticalPct}% · {hasOverdueDeadline ? 'Overdue deadlines present' : 'No overdue deadlines (+bonus)'}
+            </div>
+          </div>
+          <div className="mt-3 h-2 rounded-full bg-black/30">
+            <div className="h-2 rounded-full bg-current" style={{ width: `${healthScore}%` }} />
+          </div>
+          {firstUrgentDeadline ? (
+            <p className="mt-3 text-xs opacity-90">
+              Most urgent deadline: {firstUrgentDeadline.name} ({labelForDeadlineStatus(deriveDeadlineStatus(firstUrgentDeadline.dueDate, firstUrgentDeadline.completed))})
+            </p>
+          ) : null}
         </div>
       </div>
     )
