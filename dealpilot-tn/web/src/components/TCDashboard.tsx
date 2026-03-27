@@ -4,11 +4,23 @@ import React from 'react'
 import GhlWidget from './GhlWidget'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import type { Transaction as ChatTransaction } from '@/app/chat/page'
+export type RevaDealHealth = {
+  id: number
+  address: string | null
+  client: string | null
+  status: string | null
+  daysToClose: number | null
+  isOverdue: boolean
+  hasBinding: boolean
+}
+
 interface Props {
   transactions?: ChatTransaction[]
   onOpenDeal?: (txId: number) => void
   onViewChecklist?: (txId: number) => void
   onNavigate?: (view: string) => void
+  /** Structured deal metrics from /api/reva/briefing for dashboard widgets */
+  dealHealth?: RevaDealHealth[]
 }
 const PROGRESS_MAP: Record<string, number> = {
   draft: 10,
@@ -31,7 +43,21 @@ const BADGE_COLORS: Record<string, string> = {
   post_inspection: 'bg-yellow-50 text-yellow-700',
   closed: 'bg-gray-100 text-gray-600',
 }
-export default function TCDashboard({ transactions = [], onOpenDeal, onViewChecklist, onNavigate, userName: userNameProp }: Props & { userName?: string }) {
+function dealHealthTone(d: RevaDealHealth): 'red' | 'yellow' | 'green' | 'muted' {
+  if (d.isOverdue || (d.daysToClose !== null && d.daysToClose < 0)) return 'red'
+  if (d.daysToClose === null) return 'muted'
+  if (d.daysToClose <= 7) return 'yellow'
+  return 'green'
+}
+
+export default function TCDashboard({
+  transactions = [],
+  onOpenDeal,
+  onViewChecklist,
+  onNavigate,
+  userName: userNameProp,
+  dealHealth,
+}: Props & { userName?: string }) {
   const total = transactions.length
   const [portfolio, setPortfolio] = React.useState<any|null>(null)
   const [portfolioDeadlines, setPortfolioDeadlines] = React.useState<any|null>(null)
@@ -94,7 +120,12 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
   const activeCount = activeDeals.length
   // next closing deal (consider active deals)
   const withClosing = activeDeals.filter(t=> t.closing || t.closing_date)
-  const nextClosing = withClosing.map(t=>({ tx: t, date: new Date(t.closing || t.closing_date) })).sort((a,b)=>a.date.getTime()-b.date.getTime())[0]
+  const nextClosing = withClosing
+    .map((t) => ({
+      tx: t,
+      date: new Date(String(t.closing || t.closing_date)),
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
   // documents needed heuristic: active tx with no binding or no purchase_price
   const docsNeeded = activeDeals.filter(t=> !t.binding || (!((t as any).purchase_price) ) ).length
   // time-aware greeting for evaBrief (America/New_York)
@@ -108,6 +139,80 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
 
   return (
     <div className="space-y-6">
+      {dealHealth && dealHealth.length > 0 && (
+        <div className="rounded-2xl border border-cyan-500/25 bg-[#071224] p-4">
+          <div className="text-sm font-semibold text-cyan-200 mb-3">
+            Reva — deal health
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {dealHealth.map((d) => {
+              const tone = dealHealthTone(d)
+              const border =
+                tone === 'red'
+                  ? 'border-red-500/50'
+                  : tone === 'yellow'
+                    ? 'border-amber-500/50'
+                    : tone === 'green'
+                      ? 'border-emerald-500/40'
+                      : 'border-white/15'
+              const daysLabel =
+                d.daysToClose === null
+                  ? 'No closing date'
+                  : d.daysToClose < 0
+                    ? `${Math.abs(d.daysToClose)} days overdue`
+                    : `${d.daysToClose} days to close`
+              const daysClass =
+                tone === 'red'
+                  ? 'text-red-400'
+                  : tone === 'yellow'
+                    ? 'text-amber-300'
+                    : tone === 'green'
+                      ? 'text-emerald-300'
+                      : 'text-gray-400'
+              return (
+                <div
+                  key={d.id}
+                  className={`rounded-xl border ${border} bg-white/5 p-4 flex flex-col gap-2`}
+                >
+                  <div>
+                    <p className="font-medium text-white text-sm leading-snug">
+                      {d.address || 'Address TBD'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {d.client || 'Client —'}
+                    </p>
+                  </div>
+                  <p className={`text-sm font-medium ${daysClass}`}>{daysLabel}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        d.hasBinding
+                          ? 'bg-emerald-500/20 text-emerald-200'
+                          : 'bg-red-600/30 text-red-200'
+                      }`}
+                    >
+                      {d.hasBinding ? 'Binding set' : 'No binding — CRITICAL'}
+                    </span>
+                    {d.status && (
+                      <span className="text-xs text-gray-500">{d.status}</span>
+                    )}
+                  </div>
+                  {onOpenDeal && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenDeal(d.id)}
+                      className="mt-1 text-left text-sm text-orange-400 hover:text-orange-300 font-medium"
+                    >
+                      Open deal →
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* EVA Briefing (computed) */}
       <div className="rounded-2xl border border-blue-500/20 bg-blue-500/8 p-4">
         <div className="text-sm text-blue-200 font-semibold">EVA Briefing</div>
@@ -240,9 +345,6 @@ export default function TCDashboard({ transactions = [], onOpenDeal, onViewCheck
               >View All →</button>
             </div>
             <div className="p-4">
-            <div className="mb-4">
-              <import-placeholder />
-            </div>
             <div className="divide-y divide-white/5">
               {upcomingDeadlines.length === 0 && (
                 <div className="p-4 text-sm text-cyan-300/70 text-center">

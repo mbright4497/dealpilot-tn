@@ -21,7 +21,7 @@ function StartNewTransactionListener({ onFire }: { onFire: () => void }) {
   return null
 }
 
-import TCDashboard from '@/components/TCDashboard'
+import TCDashboard, { type RevaDealHealth } from '@/components/TCDashboard'
 import TransactionList from '@/components/TransactionList'
 import FormsFillView from '@/components/FormsFillView'
 import DeadlineCalculator from '@/components/DeadlineCalculator'
@@ -130,6 +130,7 @@ function ChatPageInner() {
 
   // Command Center state
   const [briefing, setBriefing] = useState<string|null>(null)
+  const [dealHealth, setDealHealth] = useState<RevaDealHealth[]>([])
   const [dashboardWeather, setDashboardWeather] = useState<WeatherSnapshot | null>(null)
   const [actions, setActions] = useState<any[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -200,7 +201,11 @@ function ChatPageInner() {
         fetch('/api/reva/alerts', { method: 'POST' }),
         fetch('/api/weather'),
       ])
-      if(b.ok){ const bj=await b.json(); setBriefing(bj.briefing||bj.summary||bj.message||null) }
+      if(b.ok){
+        const bj = await b.json()
+        setBriefing(bj.briefing ?? bj.summary ?? bj.message ?? null)
+        setDealHealth(Array.isArray(bj.dealHealth) ? bj.dealHealth : [])
+      }
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
       if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj?.transactions)?dj.transactions:[]) }
       if(a.ok){ const aj = await a.json(); setAlerts(Array.isArray(aj.alerts) ? aj.alerts : []) }
@@ -869,6 +874,14 @@ if (res.ok) {
  }
  `}</style>
 </div>
+
+              <TCDashboard
+                transactions={transactions}
+                onOpenDeal={openDeal}
+                onViewChecklist={openChecklist}
+                onNavigate={handleNavigate}
+                dealHealth={dealHealth}
+              />
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-[#071224] p-5 shadow-lg">
                 <div className="flex items-center justify-between gap-3">

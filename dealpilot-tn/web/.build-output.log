@@ -1,0 +1,32 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> web@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local, .env.production
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+Error: `cookies` was called outside a request scope. Read more: https://nextjs.org/docs/messages/next-dynamic-api-wrong-context
+    at getExpectedRequestStore (/Users/Tango/dealpilot-tn/dealpilot-tn/web/node_modules/next/dist/client/components/request-async-storage.external.js:28:11)
+    at f (/Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/app/api/admin/backfill-user/route.js:1:3763)
+    at c (/Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/app/api/docs/signed-url/route.js:1:864)
+    at 58811 (/Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/app/api/docs/signed-url/route.js:1:1448)
+    at t (/Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/webpack-runtime.js:1:143)
+    at r (/Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/app/api/docs/signed-url/route.js:1:8067)
+    at /Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/app/api/docs/signed-url/route.js:1:8110
+    at t.X (/Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/webpack-runtime.js:1:2214)
+    at /Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/app/api/docs/signed-url/route.js:1:8080
+    at Object.<anonymous> (/Users/Tango/dealpilot-tn/dealpilot-tn/web/.next/server/app/api/docs/signed-url/route.js:1:8138)
+
+> Build error occurred
+Error: Failed to collect page data for /api/docs/signed-url
+    at /Users/Tango/dealpilot-tn/dealpilot-tn/web/node_modules/next/dist/build/utils.js:1269:15
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  type: 'Error'
+}

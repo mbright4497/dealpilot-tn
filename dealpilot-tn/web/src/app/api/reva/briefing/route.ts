@@ -90,12 +90,35 @@ export async function POST() {
           .split('@')[0]
           ?.trim() || 'there'
 
+    const today = now.toISOString().split('T')[0]
+
     let weatherBlock = ''
     const wx = await fetchWeatherForZip(zipForWeather)
     if (wx) {
       weatherBlock = `Current weather in agent's area: ${wx.tempF}°F, ${wx.condition}
 Reference location for small talk: ${wx.locationLabel}.`
     }
+
+    const systemPrompt = `You are Reva, an expert Tennessee real estate transaction coordinator AI powered by GPT-4o with full access to TN real estate law via your vector store.
+
+CRITICAL DATE AWARENESS:
+- Today is ${todayLong} (${today}).
+- ANY closing_date, binding_date, or deadline that is BEFORE today is OVERDUE. Flag it immediately.
+- Calculate exact days overdue or days remaining for every date you mention.
+- NEVER say a past date is "ahead" or "coming up." If it's past, it's OVERDUE.
+
+BRIEFING RULES:
+- Start with "${greeting}, ${firstName}."
+- Lead with the most urgent item (overdue deadlines first, then upcoming within 7 days).
+- For each active deal, state: address, client, days to close (or days overdue), and the #1 action needed.
+- If documents are missing, state how many required docs are missing out of total.
+- If binding date is NOT SET, flag it as CRITICAL — no contract is enforceable without it.
+- Reference weather briefly only if relevant to showings or inspections.
+- Under 150 words. No generic filler. Be specific with addresses and numbers.
+- If no active transactions, give a warm onboarding welcome under 100 words.
+
+${weatherBlock ? `Weather: ${weatherBlock}\n` : ''}
+${context}`
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const completion = await openai.chat.completions.create({
@@ -104,24 +127,7 @@ Reference location for small talk: ${wx.locationLabel}.`
       messages: [
         {
           role: 'system',
-          content: `You are Reva, an expert Tennessee real estate
-transaction coordinator AI. Generate a concise briefing
-based on the live data provided. Be specific with
-addresses and dates. Under 150 words. No generic
-statements. If nothing is urgent, say so plainly.
-
-Start with "${greeting}, ${firstName}." based on the current time. Today is ${todayLong}.
-
-${weatherBlock ? `${weatherBlock}\n` : ''}You may briefly reference the weather when it helps set context (e.g. showing houses).
-
-If this user has no active transactions, generate a warm welcome briefing that:
-- Greets them by name (using the time-appropriate greeting above)
-- Explains what ClosingPilot can do for them
-- Tells them their first step is to add a transaction
-- Mentions they can ask Reva anything about TN real estate
-- Is under 100 words and encouraging in tone
-
-${context}`,
+          content: systemPrompt,
         },
         {
           role: 'user',
@@ -132,13 +138,51 @@ ${context}`,
       ],
     })
 
+    const { data: allDeals } = await supabase
+      .from('transactions')
+      .select('id, address, client, status, closing_date, binding_date')
+      .eq('user_id', userId)
+
+    const dealNow = new Date()
+    const dealHealth = (allDeals || []).map((d: {
+      id: number
+      address: string | null
+      client: string | null
+      status: string | null
+      closing_date: string | null
+      binding_date: string | null
+    }) => {
+      const closing = d.closing_date ? new Date(d.closing_date) : null
+      const daysToClose =
+        closing && !isNaN(closing.getTime())
+          ? Math.floor((closing.getTime() - dealNow.getTime()) / 86400000)
+          : null
+      return {
+        id: d.id,
+        address: d.address,
+        client: d.client,
+        status: d.status,
+        daysToClose,
+        isOverdue: daysToClose !== null && daysToClose < 0,
+        hasBinding: !!d.binding_date,
+      }
+    })
+
     return Response.json({
       briefing: stripCitations(completion.choices[0].message.content ?? ''),
+      dealHealth,
+      weather: wx
+        ? { tempF: wx.tempF, condition: wx.condition, location: wx.locationLabel }
+        : null,
     })
   } catch (err) {
     console.error('Reva briefing error:', err)
     return Response.json(
-      { briefing: 'Unable to generate briefing right now. Please try again.' },
+      {
+        briefing: 'Unable to generate briefing right now. Please try again.',
+        dealHealth: [],
+        weather: null,
+      },
       { status: 500 }
     )
   }

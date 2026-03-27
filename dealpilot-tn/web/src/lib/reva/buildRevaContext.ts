@@ -65,9 +65,44 @@ export async function buildRevaContext(
       lines.push('DEALS: No active deals found for this user.')
     } else {
       lines.push(`ACTIVE PORTFOLIO: ${deals.length} deal(s)`)
+      const now = new Date()
+      const totalRequired = TN_DOCUMENT_CHECKLIST.filter(
+        (s) => s.requirement === 'required'
+      ).length
       for (const deal of deals) {
         lines.push(
           `- ${deal.address || 'Unknown address'} | Status: ${deal.status || 'unknown'} | Closing: ${deal.closing_date || 'NOT SET'} | Client: ${deal.client || 'Unknown'}`
+        )
+        const closingDate = deal.closing_date ? new Date(deal.closing_date) : null
+        if (closingDate && !isNaN(closingDate.getTime())) {
+          const diffDays = Math.floor(
+            (closingDate.getTime() - now.getTime()) / 86400000
+          )
+          if (diffDays < 0) {
+            lines.push(
+              `  ⚠️ OVERDUE: Closing was ${Math.abs(diffDays)} days ago!`
+            )
+          } else if (diffDays <= 7) {
+            lines.push(`  🔴 URGENT: Closing in ${diffDays} days`)
+          } else if (diffDays <= 30) {
+            lines.push(`  🟡 Closing in ${diffDays} days`)
+          }
+        }
+        if (!deal.binding_date) {
+          lines.push(
+            `  ⚠️ CRITICAL: No binding agreement date set — contract not enforceable`
+          )
+        }
+      }
+      lines.push('')
+      lines.push('DOCUMENT COMPLIANCE (required uploads):')
+      for (const deal of deals) {
+        const { count: docCount } = await supabase
+          .from('transaction_documents')
+          .select('id', { count: 'exact', head: true })
+          .eq('transaction_id', deal.id)
+        lines.push(
+          `- ${deal.address || 'Unknown address'}: ${docCount ?? 0}/${totalRequired} required docs uploaded`
         )
       }
     }

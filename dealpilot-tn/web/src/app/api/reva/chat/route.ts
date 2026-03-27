@@ -122,6 +122,22 @@ export async function POST(request: Request) {
       styleInstructions[selectedStyle] || styleInstructions.friendly_tn
     const context = await buildRevaContext(supabase, userId, dealId, userEmail)
 
+    const nowChat = new Date()
+    const todayLongChat = nowChat.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    })
+    const todayIsoChat = nowChat.toISOString().split('T')[0]
+    const dateAwarenessBlock = `CRITICAL DATE AWARENESS:
+- Today is ${todayLongChat} (${todayIsoChat}).
+- ANY closing_date, binding_date, or deadline that is BEFORE today is OVERDUE. Flag it immediately.
+- Calculate exact days overdue or days remaining for every date you mention.
+- NEVER say a past date is "ahead" or "coming up." If it's past, it's OVERDUE.
+- Do not invent dates; use only dates from LIVE SYSTEM CONTEXT below.
+
+`
+
     let threadId: string
     if (requestThreadId) {
       threadId = requestThreadId
@@ -132,7 +148,7 @@ export async function POST(request: Request) {
     }
     console.log('threadId created:', threadId)
 
-    const fullMessage = `LIVE SYSTEM CONTEXT (use this for all deal questions):
+    const fullMessage = `${dateAwarenessBlock}LIVE SYSTEM CONTEXT (use this for all deal questions):
 ${context}
 
 COMMUNICATION STYLE: ${styleContext}
