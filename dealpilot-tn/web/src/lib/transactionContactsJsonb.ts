@@ -132,10 +132,7 @@ export async function saveTransactionContacts(
 ): Promise<{ error: string | null }> {
   const { error } = await supabase
     .from('transactions')
-    .update({
-      contacts,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ contacts })
     .eq('id', transactionId)
     .eq('user_id', userId)
 
