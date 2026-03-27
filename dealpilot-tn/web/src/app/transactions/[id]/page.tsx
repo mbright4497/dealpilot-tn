@@ -2,7 +2,22 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { CircleHelp, Loader2, Mail, Phone, Trash2, Upload, User } from 'lucide-react'
+import {
+  Bell,
+  Bot,
+  CheckCircle2,
+  CircleHelp,
+  FileText,
+  Loader2,
+  Mail,
+  Phone,
+  PhoneCall,
+  Plus,
+  Trash2,
+  Upload,
+  User,
+  AlertTriangle,
+} from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
 import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
 import {
@@ -100,11 +115,18 @@ type TxRow = {
   updated_at?: string | null
 }
 
+type ActivityType = 'document' | 'checklist' | 'reva' | 'communication' | 'system' | 'warning' | 'call'
+
 type ActivityItem = {
-  icon?: string
-  description: string
-  timestamp: string
+  id: string
+  activity_type: ActivityType
+  title: string
+  description: string | null
+  created_at: string
+  source: 'manual' | 'documents' | 'checklist' | 'communication' | 'transaction'
 }
+
+type ManualActivityFormType = 'call' | 'email' | 'note' | 'meeting'
 
 type RevaChatLine = {
   id: string
@@ -375,7 +397,19 @@ export default function TransactionDetailPage() {
 
   const [commHistoryLoading, setCommHistoryLoading] = useState(false)
   const [commsHistory, setCommsHistory] = useState<any[]>([])
-  const [activityNote, setActivityNote] = useState('')
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([])
+  const [showActivityModal, setShowActivityModal] = useState(false)
+  const [activitySaving, setActivitySaving] = useState(false)
+  const [activityForm, setActivityForm] = useState<{
+    type: ManualActivityFormType
+    note: string
+    dateTime: string
+  }>({
+    type: 'note',
+    note: '',
+    dateTime: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+  })
 
   // Reva panel state (permanent on right)
   const [threadId, setThreadId] = useState<string | null>(null)
@@ -458,8 +492,23 @@ export default function TransactionDetailPage() {
     }
   }
 
+  async function loadActivity() {
+    if (!Number.isFinite(txId)) return
+    setActivityLoading(true)
+    try {
+      const res = await fetch(`/api/transactions/${txId}/activity`, { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Failed activity load (${res.status})`)
+      const json = await res.json()
+      setActivityFeed(Array.isArray(json?.events) ? (json.events as ActivityItem[]) : [])
+    } catch {
+      setActivityFeed([])
+    } finally {
+      setActivityLoading(false)
+    }
+  }
+
   useEffect(() => {
-    void loadPageData().then(() => Promise.all([loadCommsHistory(), loadContacts()]))
+    void loadPageData().then(() => Promise.all([loadCommsHistory(), loadContacts(), loadActivity()]))
   }, [txId, loadPageData, loadContacts])
 
   useEffect(() => {
@@ -1990,81 +2039,208 @@ export default function TransactionDetailPage() {
     )
   }
 
+  function formatTimelineTimestamp(value: string): string {
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return value
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    if (dStart.getTime() === today.getTime()) return `Today, ${time}`
+    if (dStart.getTime() === yesterday.getTime()) return `Yesterday, ${time}`
+    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  }
+
+  function activityMeta(type: ActivityType): { icon: React.ReactNode; dotClass: string } {
+    if (type === 'document') {
+      return { icon: <FileText size={14} className="text-blue-200" />, dotClass: 'border-blue-400 bg-blue-500/20' }
+    }
+    if (type === 'checklist') {
+      return { icon: <CheckCircle2 size={14} className="text-emerald-200" />, dotClass: 'border-emerald-400 bg-emerald-500/20' }
+    }
+    if (type === 'reva') {
+      return { icon: <Bot size={14} className="text-purple-200" />, dotClass: 'border-purple-400 bg-purple-500/20' }
+    }
+    if (type === 'communication') {
+      return { icon: <Mail size={14} className="text-teal-200" />, dotClass: 'border-teal-400 bg-teal-500/20' }
+    }
+    if (type === 'warning') {
+      return { icon: <AlertTriangle size={14} className="text-orange-200" />, dotClass: 'border-orange-400 bg-orange-500/20' }
+    }
+    if (type === 'call') {
+      return { icon: <PhoneCall size={14} className="text-blue-200" />, dotClass: 'border-blue-400 bg-blue-500/20' }
+    }
+    return { icon: <Bell size={14} className="text-slate-200" />, dotClass: 'border-slate-400 bg-slate-500/20' }
+  }
+
   function activityTab() {
-    const txActivity = Array.isArray(tx?.activity_log) ? tx.activity_log : []
-    const docEvents = txDocuments.map((d) => ({
-      icon: '📄',
-      description: `${d.display_name} uploaded${String(d.status || '') === 'reviewed' ? ' and reviewed by Reva' : ''}`,
-      timestamp: d.created_at || new Date().toISOString(),
-    }))
-    const commEvents = commsHistory.map((h) => ({
-      icon: '💬',
-      description: `Message sent via GHL (${String(h.channel || h.commType || 'message')})`,
-      timestamp: String(h.created_at || new Date().toISOString()),
-    }))
-    const updatedEvent = tx?.updated_at
-      ? [{ icon: '✅', description: 'Transaction updated', timestamp: String(tx.updated_at) }]
-      : []
-    const feed = [...txActivity, ...docEvents, ...commEvents, ...updatedEvent]
-      .filter((x) => x?.description && x?.timestamp)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    async function submitManualActivity() {
+      const note = activityForm.note.trim()
+      if (!note) {
+        window.alert('Note text is required.')
+        return
+      }
+      if (!Number.isFinite(txId)) return
+
+      const label =
+        activityForm.type === 'call'
+          ? 'Call logged'
+          : activityForm.type === 'email'
+            ? 'Email logged'
+            : activityForm.type === 'meeting'
+              ? 'Meeting logged'
+              : 'Note added'
+
+      setActivitySaving(true)
+      try {
+        const res = await fetch(`/api/transactions/${txId}/activity`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: activityForm.type,
+            title: label,
+            note,
+            date_time: new Date(activityForm.dateTime).toISOString(),
+          }),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          throw new Error(String(j?.error || 'Could not save activity'))
+        }
+        setShowActivityModal(false)
+        setActivityForm({
+          type: 'note',
+          note: '',
+          dateTime: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+        })
+        await loadActivity()
+      } catch (e: unknown) {
+        window.alert(e instanceof Error ? e.message : 'Could not save activity')
+      } finally {
+        setActivitySaving(false)
+      }
+    }
 
     return (
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-white">Activity</h2>
-            <button
-              onClick={() => void loadCommsHistory()}
-              className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-60"
-              disabled={commHistoryLoading}
-            >
-              {commHistoryLoading ? <Loader2 size={16} className="animate-spin" /> : 'Refresh'}
-            </button>
+            <h2 className="text-sm font-semibold text-white">Transaction Timeline</h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => void loadActivity()}
+                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-60"
+                disabled={activityLoading}
+              >
+                {activityLoading ? <Loader2 size={16} className="animate-spin" /> : 'Refresh'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowActivityModal(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition"
+              >
+                <Plus size={16} />
+                Log Activity
+              </button>
+            </div>
           </div>
 
-          <div className="mt-3 flex gap-2">
-            <input
-              value={activityNote}
-              onChange={(e) => setActivityNote(e.target.value)}
-              placeholder="Add note to activity"
-              className="w-full rounded-lg bg-slate-900/60 px-3 py-2 text-sm text-white outline-none ring-1 ring-slate-700"
-            />
-            <button
-              type="button"
-              onClick={async () => {
-                const note = activityNote.trim()
-                if (!note) return
-                const current = Array.isArray(tx?.activity_log) ? tx.activity_log : []
-                const next = [...current, { icon: '📝', description: note, timestamp: new Date().toISOString() }]
-                await patchTransaction({ activity_log: next })
-                setActivityNote('')
-                await loadPageData()
-              }}
-              className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600"
-            >
-              Add
-            </button>
-          </div>
-
-          {!feed.length ? (
-            <p className="mt-3 text-sm text-slate-400">{commHistoryLoading ? 'Loading…' : 'No activity yet.'}</p>
+          {!activityFeed.length ? (
+            <p className="mt-3 text-sm text-slate-400">{activityLoading ? 'Loading…' : 'No activity yet.'}</p>
           ) : (
-            <div className="mt-3 space-y-2">
-              {feed.map((h, idx) => (
-                <div key={`${h.timestamp}-${idx}`} className="rounded-lg border border-slate-700 bg-[#0A1022] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="text-sm text-slate-100">
-                      <span className="mr-2">{h.icon || '•'}</span>
-                      {h.description}
+            <div className="mt-4 space-y-4">
+              {activityFeed.map((item) => {
+                const meta = activityMeta(item.activity_type)
+                return (
+                  <div key={item.id} className="relative pl-10">
+                    <div className="absolute left-[17px] top-8 h-[calc(100%+16px)] w-px bg-slate-700" />
+                    <div className={classNames('absolute left-0 top-1 flex h-9 w-9 items-center justify-center rounded-full border', meta.dotClass)}>
+                      {meta.icon}
                     </div>
-                    <div className="text-xs text-slate-400">{new Date(h.timestamp).toLocaleString()}</div>
+                    <div className="rounded-lg border border-slate-700 bg-[#0A1022] p-4">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {formatTimelineTimestamp(item.created_at)}
+                      </div>
+                      <div className="mt-2 text-sm font-semibold text-white">{item.title}</div>
+                      {item.description ? <div className="mt-1 text-sm text-slate-300">{item.description}</div> : null}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
+
+        {showActivityModal ? (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-white">Log Activity</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowActivityModal(false)}
+                  className="rounded-lg border border-slate-600 px-2 py-1 text-xs text-slate-200 hover:border-orange-500/40"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <label className="text-xs font-medium text-slate-300">
+                  Type
+                  <select
+                    value={activityForm.type}
+                    onChange={(e) => setActivityForm((prev) => ({ ...prev, type: e.target.value as ManualActivityFormType }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  >
+                    <option value="call">Call</option>
+                    <option value="email">Email</option>
+                    <option value="note">Note</option>
+                    <option value="meeting">Meeting</option>
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Note
+                  <textarea
+                    value={activityForm.note}
+                    onChange={(e) => setActivityForm((prev) => ({ ...prev, note: e.target.value }))}
+                    className="mt-1 min-h-24 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="What happened?"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Date/Time
+                  <input
+                    type="datetime-local"
+                    value={activityForm.dateTime}
+                    onChange={(e) => setActivityForm((prev) => ({ ...prev, dateTime: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowActivityModal(false)}
+                  className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void submitManualActivity()}
+                  disabled={activitySaving}
+                  className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
+                >
+                  {activitySaving ? 'Saving…' : 'Save Activity'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
   }
