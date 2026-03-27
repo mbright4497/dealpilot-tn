@@ -67,26 +67,6 @@ export function contactDisplayName(c: Record<string, unknown> | null | undefined
   return combined || 'Unknown'
 }
 
-function splitFullName(full: string): { first: string; last: string | null } {
-  const parts = full.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return { first: 'Contact', last: null }
-  if (parts.length === 1) return { first: parts[0], last: null }
-  return { first: parts[0], last: parts.slice(1).join(' ') }
-}
-
-/** Maps UI role labels to contacts.type (v2 schema). */
-export function roleLabelToContactType(roleLabel: string): string {
-  const r = roleLabel.trim().toLowerCase()
-  if (r.includes('buyer') && !r.includes('agent')) return 'buyer'
-  if (r.includes('seller') && !r.includes('agent')) return 'seller'
-  if (r.includes('lender') || r.includes('loan')) return 'lender'
-  if (r.includes('title') || r.includes('closing attorney')) return 'title'
-  if (r.includes('inspector')) return 'inspector'
-  if (r.includes('transaction coordinator') || r === 'tc') return 'agent'
-  if (r.includes('agent')) return 'agent'
-  return 'other'
-}
-
 export async function insertContactForOwner(
   supabase: SupabaseClient,
   ownerId: string,
@@ -99,47 +79,22 @@ export async function insertContactForOwner(
     roleLabel: string
   }
 ): Promise<{ id: string } | { error: string }> {
-  const { first, last } = splitFullName(input.name)
-  const contactType = roleLabelToContactType(input.roleLabel)
+  const { data, error } = await supabase
+    .from('contacts')
+    .insert({
+      name: input.name.trim(),
+      email: input.email,
+      phone: input.phone,
+      company: input.company,
+      role_type: input.roleLabel,
+    })
+    .select('id')
+    .single()
 
-  const tryV2 = {
-    owner_id: ownerId,
-    type: contactType,
-    first_name: first,
-    last_name: last,
-    email: input.email,
-    phone: input.phone,
-    company: input.company,
-    notes: input.notes,
+  if (error || !data?.id) {
+    return { error: error?.message || 'Could not create contact' }
   }
-
-  const r1 = await supabase.from('contacts').insert(tryV2).select('id').single()
-  if (!r1.error && r1.data?.id) return { id: r1.data.id as string }
-
-  const tryName = {
-    owner_id: ownerId,
-    name: input.name.trim(),
-    email: input.email,
-    phone: input.phone,
-    company: input.company,
-    notes: input.notes,
-  }
-  const r2 = await supabase.from('contacts').insert(tryName).select('id').single()
-  if (!r2.error && r2.data?.id) return { id: r2.data.id as string }
-
-  const tryLegacyUser = {
-    user_id: ownerId,
-    name: input.name.trim(),
-    email: input.email,
-    phone: input.phone,
-    company: input.company,
-    notes: input.notes,
-  }
-  const r3 = await supabase.from('contacts').insert(tryLegacyUser).select('id').single()
-  if (!r3.error && r3.data?.id) return { id: r3.data.id as string }
-
-  const msg = r1.error?.message || r2.error?.message || r3.error?.message || 'Could not create contact'
-  return { error: msg }
+  return { id: data.id as string }
 }
 
 export async function updateContactFields(
@@ -153,21 +108,15 @@ export async function updateContactFields(
     notes: string | null
   }
 ): Promise<{ error: string | null }> {
-  const { first, last } = splitFullName(input.name)
-  const base = {
-    email: input.email,
-    phone: input.phone,
-    company: input.company,
-    notes: input.notes,
-  }
+  const { error } = await supabase
+    .from('contacts')
+    .update({
+      name: input.name.trim(),
+      email: input.email,
+      phone: input.phone,
+      company: input.company,
+    })
+    .eq('id', contactId)
 
-  const withName = { ...base, name: input.name.trim() }
-  const u1 = await supabase.from('contacts').update(withName).eq('id', contactId)
-  if (!u1.error) return { error: null }
-
-  const withParts = { ...base, first_name: first, last_name: last }
-  const u2 = await supabase.from('contacts').update(withParts).eq('id', contactId)
-  if (!u2.error) return { error: null }
-
-  return { error: u1.error?.message || u2.error?.message || 'Could not update contact' }
+  return { error: error?.message || null }
 }
