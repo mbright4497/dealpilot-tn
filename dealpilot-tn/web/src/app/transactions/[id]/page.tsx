@@ -2,12 +2,18 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { FileText, Loader2, Phone, Trash2, Upload } from 'lucide-react'
+import { Loader2, Phone, Trash2, Upload } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
 import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
 import {
   DOCUMENT_TYPE_OPTIONS,
 } from '@/lib/documents/transactionDocumentTypes'
+import {
+  DocPhase,
+  TN_DOCUMENT_CHECKLIST,
+  TNDocumentSlot,
+  getSlotsByPhase,
+} from '@/lib/documents/tnDocumentChecklist'
 
 type AiSummary = {
   deal_overview?: string | null
@@ -70,64 +76,6 @@ type TransactionDocumentRow = {
   } | null
 }
 
-function summarizeTxDoc(d: TransactionDocumentRow): string {
-  const br = d.broker_review
-  if (br?.natural_language_summary) {
-    const s = br.natural_language_summary.trim()
-    return s.length > 200 ? `${s.slice(0, 200)}…` : s
-  }
-  const ex = d.extracted_data as Record<string, unknown> | undefined
-  if (d.document_type === 'rf401_psa' && ex?.fields && typeof ex.fields === 'object') {
-    const f = ex.fields as Record<string, unknown>
-    const p = f.purchasePrice
-    const c = f.closingDate
-    return `Purchase price ${p != null ? String(p) : '—'}, closing ${c != null ? String(c) : '—'}.`
-  }
-  if (d.status === 'reviewed') return 'Processed.'
-  if (d.status === 'error') return 'Extraction error — re-upload or retry.'
-  return 'Processing…'
-}
-
-function brokerIssueCounts(d: TransactionDocumentRow): { critical: number; warning: number; info: number } {
-  const issues = d.broker_review?.issues || []
-  let critical = 0
-  let warning = 0
-  let info = 0
-  for (const i of issues) {
-    const s = String(i.severity || '').toLowerCase()
-    if (s === 'critical') critical++
-    else if (s === 'warning') warning++
-    else info++
-  }
-  return { critical, warning, info }
-}
-
-function buildDealTimeline(tx: TxRow | null, docs: TransactionDocumentRow[]): string[] {
-  const lines: string[] = []
-  const psa = docs.find((d) => d.document_type === 'rf401_psa')
-  const psaEx = psa?.extracted_data as { fields?: Record<string, unknown> } | undefined
-  const p0 = psaEx?.fields?.purchasePrice ?? tx?.purchase_price
-  const c0 = psaEx?.fields?.closingDate ?? tx?.closing_date
-  lines.push(`Original PSA: ${p0 != null ? String(p0) : '—'}, closing ${c0 ? String(c0) : '—'}`)
-  const ordered = [...docs].sort(
-    (a, b) =>
-      new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
-  )
-  for (const d of ordered) {
-    if (d.document_type === 'rf406_counter' && d.deal_impact) {
-      const di = d.deal_impact
-      const np = di.new_purchase_price
-      lines.push(`${d.display_name}: price → ${np != null ? String(np) : '—'}`)
-    }
-    if (d.document_type === 'rf407_amendment' && d.deal_impact?.closing_date_change) {
-      lines.push(`${d.display_name}: closing → ${String(d.deal_impact.closing_date_change)}`)
-    }
-  }
-  lines.push(
-    `Current: ${tx?.purchase_price != null ? String(tx.purchase_price) : '—'}, closing ${tx?.closing_date || '—'}`
-  )
-  return lines
-}
 
 type TxRow = {
   id: number | string
@@ -149,6 +97,7 @@ type TxRow = {
   ai_deadlines?: DeadlineItem[] | null
   ai_contacts?: AiContact[] | null
   activity_log?: ActivityItem[] | null
+  updated_at?: string | null
 }
 
 type ActivityItem = {
@@ -223,6 +172,19 @@ function priorityPill(priority?: string | null): { label: string; className: str
   return { label: p, className: 'bg-slate-500/20 text-slate-200 border border-slate-500/30' }
 }
 
+function normalizePhase(raw?: string | null): DocPhase {
+  const phase = String(raw || '').toLowerCase()
+  if (phase.includes('closing')) return 'closing'
+  if (phase.includes('contract') || phase.includes('under')) return 'under_contract'
+  return 'pre_contract'
+}
+
+function phaseTitle(phase: DocPhase): string {
+  if (phase === 'pre_contract') return 'PRE-CONTRACT'
+  if (phase === 'under_contract') return 'UNDER CONTRACT'
+  return 'CLOSING'
+}
+
 export default function TransactionDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -236,6 +198,7 @@ export default function TransactionDetailPage() {
   const [customDocName, setCustomDocName] = useState('')
   const [isExecutedToggle, setIsExecutedToggle] = useState(false)
   const [txDocUploadBusy, setTxDocUploadBusy] = useState(false)
+  const [rowUploadingSlotId, setRowUploadingSlotId] = useState<string | null>(null)
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null)
   const [airdropVisible, setAirdropVisible] = useState(false)
   const [animationComplete, setAnimationComplete] = useState(true)
@@ -251,6 +214,7 @@ export default function TransactionDetailPage() {
   const [showAddressMismatchModal, setShowAddressMismatchModal] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const addressMismatchDismissed = useRef<Set<number>>(new Set())
+  const rowUploadInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'checklist' | 'deadlines' | 'contacts' | 'activity'>(
     'overview'
@@ -288,6 +252,12 @@ export default function TransactionDetailPage() {
   const dealType = tx?.type || '—'
   const bindingLabel = formatDate(tx?.binding_date)
   const closingLabel = formatDate(tx?.closing_date)
+  const currentDocPhase = useMemo(() => normalizePhase(tx?.phase), [tx?.phase])
+  const [expandedPhases, setExpandedPhases] = useState<Record<DocPhase, boolean>>({
+    pre_contract: true,
+    under_contract: false,
+    closing: false,
+  })
 
   const loadPageData = useCallback(async () => {
     if (!Number.isFinite(txId)) return
@@ -386,25 +356,44 @@ export default function TransactionDetailPage() {
     }
   }, [searchParams, router, txId])
 
+  useEffect(() => {
+    setExpandedPhases({
+      pre_contract: currentDocPhase === 'pre_contract',
+      under_contract: currentDocPhase === 'under_contract',
+      closing: currentDocPhase === 'closing',
+    })
+  }, [currentDocPhase])
+
   const uploadTxDoc = useCallback(
-    async (file: File) => {
+    async (
+      file: File,
+      options?: {
+        documentType?: string
+        displayName?: string
+        isExecuted?: boolean
+        rowSlotId?: string
+      }
+    ) => {
       if (!Number.isFinite(txId)) return
       if (txDocUploadBusy) return
-      const opt = DOCUMENT_TYPE_OPTIONS.find((o) => o.value === docTypePick)
-      const displayName =
-        docTypePick === 'other'
+      const effectiveType = options?.documentType || docTypePick
+      const opt = DOCUMENT_TYPE_OPTIONS.find((o) => o.value === effectiveType)
+      const displayName = options?.displayName
+        || (effectiveType === 'other'
           ? customDocName.trim() || 'Custom document'
-          : opt?.label || 'Document'
+          : opt?.label || 'Document')
+      const isExecuted = options?.isExecuted ?? isExecutedToggle
       setTxDocUploadBusy(true)
+      if (options?.rowSlotId) setRowUploadingSlotId(options.rowSlotId)
       setAnimationComplete(false)
       setAirdropName(displayName)
       setAirdropVisible(true)
       try {
         const fd = new FormData()
         fd.append('file', file)
-        fd.append('document_type', docTypePick)
+        fd.append('document_type', effectiveType)
         fd.append('display_name', displayName)
-        fd.append('is_executed', String(isExecutedToggle))
+        fd.append('is_executed', String(isExecuted))
         const res = await fetch(`/api/transactions/${txId}/documents`, { method: 'POST', body: fd })
         if (!res.ok) {
           let msg = 'Upload failed.'
@@ -426,6 +415,7 @@ export default function TransactionDetailPage() {
         window.alert(e instanceof Error ? e.message : 'Upload failed.')
       } finally {
         setTxDocUploadBusy(false)
+        setRowUploadingSlotId(null)
       }
     },
     [txId, txDocUploadBusy, docTypePick, customDocName, isExecutedToggle, loadPageData]
@@ -692,151 +682,105 @@ export default function TransactionDetailPage() {
     )
   }
 
-  async function deleteTxDoc(docId: number) {
-    const ok = window.confirm('Delete this document?')
-    if (!ok) return
-    const res = await fetch(`/api/transactions/${txId}/documents/${docId}`, { method: 'DELETE' })
-    if (!res.ok) {
-      window.alert('Delete failed.')
-      return
-    }
-    await loadPageData()
-  }
-
   function documentsTab() {
-    const sortedDocs = [...txDocuments].sort(
-      (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
-    )
-    const hasImpact = txDocuments.some((d) => d.deal_impact && Object.keys(d.deal_impact).length > 0)
-    const timelineLines =
-      hasImpact || txDocuments.some((d) => d.document_type === 'rf401_psa')
-        ? buildDealTimeline(tx, txDocuments)
-        : []
-
-    const renderDocCard = (d: TransactionDocumentRow) => {
-      const counts = brokerIssueCounts(d)
-      const issueLine =
-        counts.critical + counts.warning + counts.info > 0
-          ? `${counts.critical} critical, ${counts.warning} warnings, ${counts.info} info`
-          : 'no issues flagged'
-
-      return (
-        <div
-          key={d.id}
-          className="flex flex-col gap-3 rounded-lg border border-slate-700 bg-[#0A1022] p-4"
-        >
-          <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0 flex items-start gap-2">
-              <FileText size={18} className="mt-0.5 shrink-0 text-orange-200" />
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-white">{d.display_name}</div>
-                <div className="text-xs text-slate-400">
-                  Uploaded {formatDate(d.created_at)} {d.is_executed ? '· Executed ✅' : ''}
-                </div>
-                <div className="mt-1 text-xs text-slate-300">
-                  {String(d.status || '') === 'reviewed' ? (
-                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-emerald-200">
-                      Reviewed ✅
-                    </span>
-                  ) : String(d.status || '') === 'error' ? (
-                    <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-red-200">
-                      Error ❌
-                    </span>
-                  ) : (
-                    <span className="animate-pulse rounded-full border border-orange-500/30 bg-orange-500/15 px-2 py-0.5 text-orange-200">
-                      Reading...
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-sm text-slate-200">
-            <span className="font-semibold text-orange-200">Reva:</span> {summarizeTxDoc(d)}{' '}
-            <span className="text-slate-400">({issueLine})</span>
-          </p>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={!d.signed_url}
-              onClick={() => d.signed_url && window.open(d.signed_url, '_blank', 'noopener,noreferrer')}
-              className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-40"
-            >
-              View PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => setReviewDoc(d)}
-              disabled={String(d.status || '') !== 'reviewed'}
-              className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
-            >
-              Broker Review
-            </button>
-            {String(d.status || '') === 'error' ? (
-              <button
-                type="button"
-                onClick={() => void loadPageData()}
-                className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-200 hover:bg-orange-500/20 transition"
-              >
-                Retry
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void deleteTxDoc(d.id)}
-              className="rounded-lg border border-red-500/30 bg-red-950/30 px-3 py-2 text-xs font-semibold text-red-200 hover:border-red-500/50 transition"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      )
+    const requiredSlots = TN_DOCUMENT_CHECKLIST.filter((s) => s.requirement === 'required')
+    const uploadedByType = new Map<string, TransactionDocumentRow>()
+    for (const d of txDocuments) {
+      const existing = uploadedByType.get(d.document_type)
+      if (!existing) {
+        uploadedByType.set(d.document_type, d)
+      } else if (
+        new Date(d.created_at || 0).getTime() > new Date(existing.created_at || 0).getTime()
+      ) {
+        uploadedByType.set(d.document_type, d)
+      }
     }
+    const uploadedRequiredCount = requiredSlots.filter((s) => uploadedByType.has(s.document_type)).length
+    const requiredTotal = requiredSlots.length
+    const requiredPct = requiredTotal ? Math.round((uploadedRequiredCount / requiredTotal) * 100) : 0
+    const missingRequiredCount = requiredTotal - uploadedRequiredCount
+
+    const loanType = String(tx?.loan_type || '').toLowerCase()
+    const fhaVaLoan = loanType.includes('fha') || loanType.includes('va')
+    const conditionalNeeded = TN_DOCUMENT_CHECKLIST.filter((s) => {
+      if (s.requirement !== 'conditional') return false
+      const condition = String(s.condition || '').toLowerCase()
+      if (condition.includes('fha') || condition.includes('va')) return fhaVaLoan && !uploadedByType.has(s.document_type)
+      return false
+    })
+    const issueCount = txDocuments.reduce((acc, d) => acc + (d.broker_review?.issues?.length || 0), 0)
+
+    const renderStatus = (slot: TNDocumentSlot, doc: TransactionDocumentRow | undefined) => {
+      if (rowUploadingSlotId === slot.id) {
+        return <span className="text-orange-200 animate-pulse">⏳ Processing</span>
+      }
+      if (!doc) return <span className="text-slate-400">⬜ Not uploaded</span>
+      const status = String(doc.status || '').toLowerCase()
+      if (status === 'reviewed') return <span className="text-emerald-300">✅ Reviewed</span>
+      if (status === 'error') return <span className="text-red-300">❌ Error</span>
+      if (status === 'processing' || status === 'uploading') return <span className="text-orange-200 animate-pulse">⏳ Processing</span>
+      return <span className="text-blue-300">📤 Uploaded</span>
+    }
+
+    const renderRequirement = (slot: TNDocumentSlot) => {
+      if (slot.requirement === 'required') {
+        return <span className="rounded-full border border-red-500/40 bg-red-500/20 px-2 py-0.5 text-[11px] font-semibold text-red-200">🔴 Required</span>
+      }
+      if (slot.requirement === 'conditional') {
+        return <span className="rounded-full border border-yellow-500/40 bg-yellow-500/20 px-2 py-0.5 text-[11px] font-semibold text-yellow-200">🟡 Conditional</span>
+      }
+      return <span className="rounded-full border border-slate-500/40 bg-slate-500/20 px-2 py-0.5 text-[11px] font-semibold text-slate-200">⚪ Optional</span>
+    }
+
+    const phaseSections: DocPhase[] = ['pre_contract', 'under_contract', 'closing']
 
     return (
       <div className="space-y-4">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+          <h3 className="text-sm font-semibold text-white">📋 Reva&apos;s Document Check</h3>
+          <div className="mt-3 space-y-1 text-sm text-slate-200">
+            <div>{missingRequiredCount} required docs missing</div>
+            <div>{conditionalNeeded.length} conditional doc needed{conditionalNeeded.length === 1 ? '' : 's'}{fhaVaLoan ? ' (FHA/VA loan)' : ''}</div>
+            <div>{issueCount} issues found in uploaded docs</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReviewDoc(txDocuments.find((d) => (d.broker_review?.issues?.length || 0) > 0) || null)}
+            className="mt-3 rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
+          >
+            See Details
+          </button>
+        </div>
+
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div
             {...getRootProps()}
             className={classNames(
-              'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 transition',
+              'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 transition',
               isDragActive ? 'border-orange-400 bg-orange-500/10' : 'border-slate-600 bg-[#0A1022]'
             )}
           >
             <input {...getInputProps()} />
-            <Upload className="text-orange-300" size={28} />
-            <p className="mt-2 text-sm font-semibold text-white">Drop documents here</p>
-            <p className="mt-1 text-xs text-slate-400">or click to browse</p>
-            <p className="text-xs text-slate-500">PDF files · max 25MB</p>
-            {selectedUploadFile ? (
-              <p className="mt-2 text-xs text-slate-300">Selected: {selectedUploadFile.name}</p>
-            ) : null}
+            <Upload className="text-orange-300" size={24} />
+            <p className="mt-2 text-sm font-semibold text-white">Upload other documents not listed below</p>
+            <p className="mt-1 text-xs text-slate-400">PDF files only · max 25MB</p>
+            {selectedUploadFile ? <p className="mt-2 text-xs text-slate-300">Selected: {selectedUploadFile.name}</p> : null}
           </div>
 
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="block text-xs font-medium text-slate-300">
               Document type
-              <div className="mt-1 flex items-center gap-2">
-                <select
-                  value={docTypePick}
-                  onChange={(e) => setDocTypePick(e.target.value)}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
-                >
-                  {DOCUMENT_TYPE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <span
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-600 text-xs text-slate-300"
-                  title="Select the type so Reva knows what fields to extract"
-                >
-                  ?
-                </span>
-              </div>
+              <select
+                value={docTypePick}
+                onChange={(e) => setDocTypePick(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+              >
+                {DOCUMENT_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="flex items-center gap-2 text-xs font-medium text-slate-300 mt-6 md:mt-0">
               <input
@@ -867,29 +811,117 @@ export default function TransactionDetailPage() {
             disabled={txDocUploadBusy || !selectedUploadFile}
             className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-50"
           >
-            {txDocUploadBusy ? 'Uploading...' : 'Upload & Let Reva Read It'}
+            {txDocUploadBusy ? 'Uploading...' : 'Upload'}
           </button>
         </div>
 
-        {!!txDocuments.length ? (
-          <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-white">Transaction Documents</h2>
-              <span className="text-xs text-slate-400">{txDocuments.length} total</span>
+        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+          <div className="flex items-center justify-between gap-3 text-sm text-slate-200">
+            <div>
+              <span className="font-semibold text-white">{uploadedRequiredCount}</span> of{' '}
+              <span className="font-semibold text-white">{requiredTotal}</span> required documents uploaded
             </div>
-            {timelineLines.length ? (
-              <div className="mt-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
-                <h3 className="text-sm font-semibold text-orange-100">Reva&apos;s Deal Timeline</h3>
-                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-200">
-                  {timelineLines.map((line, i) => (
-                    <li key={`${i}-${line.slice(0, 12)}`}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            <div className="mt-3 space-y-2">{sortedDocs.map(renderDocCard)}</div>
+            <div className="text-xs text-slate-400">{requiredPct}%</div>
           </div>
-        ) : null}
+          <div className="mt-3 h-2 rounded-full bg-slate-800">
+            <div className="h-2 rounded-full bg-orange-500" style={{ width: `${requiredPct}%` }} />
+          </div>
+        </div>
+
+        {phaseSections.map((phase) => {
+          const slots = getSlotsByPhase(phase)
+          const uploadedInPhase = slots.filter((s) => uploadedByType.has(s.document_type)).length
+          const isOpen = expandedPhases[phase]
+          return (
+            <div key={phase} className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between text-left"
+                onClick={() => setExpandedPhases((prev) => ({ ...prev, [phase]: !prev[phase] }))}
+              >
+                <div className="text-sm font-semibold text-white">
+                  {isOpen ? '▼' : '▶'} {phaseTitle(phase)} <span className="text-slate-400 font-normal">({uploadedInPhase} of {slots.length} uploaded)</span>
+                </div>
+              </button>
+
+              {isOpen ? (
+                <div className="mt-3 space-y-2">
+                  {slots.map((slot) => {
+                    const doc = uploadedByType.get(slot.document_type)
+                    const docReady = !!doc
+                    return (
+                      <div
+                        key={slot.id}
+                        className="grid gap-2 rounded-lg border border-slate-700 bg-[#0A1022] p-3 md:grid-cols-[170px_140px_1fr_auto] md:items-center"
+                      >
+                        <div className="text-xs font-semibold">{renderStatus(slot, doc)}</div>
+                        <div>{renderRequirement(slot)}</div>
+                        <div className={classNames('text-sm text-white', slot.requirement === 'required' && 'font-semibold')} title={slot.requirement === 'conditional' ? `Required when: ${slot.condition || ''}` : undefined}>
+                          {slot.display_name}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            ref={(el) => {
+                              rowUploadInputRefs.current[slot.id] = el
+                            }}
+                            type="file"
+                            accept="application/pdf,.pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (!file) return
+                              void uploadTxDoc(file, {
+                                documentType: slot.document_type,
+                                displayName: slot.display_name,
+                                rowSlotId: slot.id,
+                              })
+                              e.currentTarget.value = ''
+                            }}
+                          />
+                          {!docReady ? (
+                            <button
+                              type="button"
+                              onClick={() => rowUploadInputRefs.current[slot.id]?.click()}
+                              className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
+                            >
+                              ⬆ Upload
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                disabled={!doc?.signed_url}
+                                onClick={() => doc?.signed_url && window.open(doc.signed_url, '_blank', 'noopener,noreferrer')}
+                                className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-40"
+                              >
+                                View
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setReviewDoc(doc)}
+                                disabled={String(doc?.status || '') !== 'reviewed'}
+                                className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-40"
+                              >
+                                Broker Review
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => rowUploadInputRefs.current[slot.id]?.click()}
+                                className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-200 hover:bg-orange-500/20 transition"
+                              >
+                                Replace
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
 
         {reviewDoc ? (
           <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4">

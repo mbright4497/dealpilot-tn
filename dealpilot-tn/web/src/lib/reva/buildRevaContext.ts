@@ -1,3 +1,5 @@
+import { TN_DOCUMENT_CHECKLIST } from '@/lib/documents/tnDocumentChecklist'
+
 export async function buildRevaContext(
   supabase: any,
   userId: string,
@@ -248,6 +250,22 @@ export async function buildRevaContext(
         lines.push(
           `Current (transaction row): price ${deal?.purchase_price ?? 'unknown'}, closing ${deal?.closing_date ?? 'unknown'}`
         )
+      }
+
+      const uploadedTypes = docs.map((d) => String(d.document_type || ''))
+      const missingRequired = TN_DOCUMENT_CHECKLIST.filter(
+        (slot) =>
+          slot.requirement === 'required' &&
+          !uploadedTypes.includes(slot.document_type)
+      )
+      lines.push('')
+      lines.push('MISSING REQUIRED DOCUMENTS:')
+      if (missingRequired.length === 0) {
+        lines.push('- None')
+      } else {
+        missingRequired.forEach((slot) => {
+          lines.push(`- ${slot.display_name} (${slot.phase})`)
+        })
       }
     } catch {
       lines.push('(deal details unavailable)')
