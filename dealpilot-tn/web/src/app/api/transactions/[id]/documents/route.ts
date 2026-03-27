@@ -178,6 +178,26 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 3600)
+    const { data: txRow } = await supabase
+      .from('transactions')
+      .select('activity_log')
+      .eq('id', transactionId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    const existingLog = Array.isArray(txRow?.activity_log) ? txRow.activity_log : []
+    const nextLog = [
+      ...existingLog,
+      {
+        icon: '📄',
+        description: `${display_name} uploaded`,
+        timestamp: new Date().toISOString(),
+      },
+    ]
+    await supabase
+      .from('transactions')
+      .update({ activity_log: nextLog, updated_at: new Date().toISOString() })
+      .eq('id', transactionId)
+      .eq('user_id', user.id)
 
     return NextResponse.json({
       document: { ...inserted, signed_url: signed?.signedUrl ?? null },

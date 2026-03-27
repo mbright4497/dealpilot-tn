@@ -29,6 +29,15 @@ export default function TransactionsPage() {
   const [filter, setFilter] = useState<'all' | 'active' | 'pending' | 'closed'>('all')
   const [query, setQuery] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('closing_date')
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    address: '',
+    city: '',
+    client: '',
+    side: 'buyer',
+    closing_date: '',
+  })
 
   async function loadTransactions() {
     setLoading(true)
@@ -71,7 +80,16 @@ export default function TransactionsPage() {
           <h1 className="text-3xl font-bold text-white">Your Transactions</h1>
           <p className="mt-1 text-sm text-gray-400">Manage every deal through Reva and API routes.</p>
         </div>
-        <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-300">{visible.length}</span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-300">{visible.length}</span>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition"
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -139,6 +157,103 @@ export default function TransactionsPage() {
       <Link href="/chat" className="mt-6 inline-block text-sm text-gray-400 hover:text-white">
         Back to dashboard
       </Link>
+
+      {showCreateModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-xl border border-gray-700 bg-gray-950 p-5">
+            <h2 className="text-lg font-semibold text-white">New Transaction</h2>
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm text-gray-300">
+                Property Address
+                <input
+                  value={createForm.address}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, address: e.target.value }))}
+                  className="mt-1 w-full rounded-lg bg-gray-900 px-3 py-2 text-sm text-white ring-1 ring-gray-700 outline-none"
+                />
+              </label>
+              <label className="block text-sm text-gray-300">
+                City
+                <input
+                  value={createForm.city}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, city: e.target.value }))}
+                  className="mt-1 w-full rounded-lg bg-gray-900 px-3 py-2 text-sm text-white ring-1 ring-gray-700 outline-none"
+                />
+              </label>
+              <label className="block text-sm text-gray-300">
+                Client Name
+                <input
+                  value={createForm.client}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, client: e.target.value }))}
+                  className="mt-1 w-full rounded-lg bg-gray-900 px-3 py-2 text-sm text-white ring-1 ring-gray-700 outline-none"
+                />
+              </label>
+              <label className="block text-sm text-gray-300">
+                Buyer or Seller?
+                <select
+                  value={createForm.side}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, side: e.target.value }))}
+                  className="mt-1 w-full rounded-lg bg-gray-900 px-3 py-2 text-sm text-white ring-1 ring-gray-700 outline-none"
+                >
+                  <option value="buyer">Buyer</option>
+                  <option value="seller">Seller</option>
+                </select>
+              </label>
+              <label className="block text-sm text-gray-300">
+                Closing Date (optional)
+                <input
+                  type="date"
+                  value={createForm.closing_date}
+                  onChange={(e) => setCreateForm((prev) => ({ ...prev, closing_date: e.target.value }))}
+                  className="mt-1 w-full rounded-lg bg-gray-900 px-3 py-2 text-sm text-white ring-1 ring-gray-700 outline-none"
+                />
+              </label>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-900"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={creating || !createForm.address.trim() || !createForm.city.trim() || !createForm.client.trim()}
+                onClick={async () => {
+                  setCreating(true)
+                  try {
+                    const res = await fetch('/api/transactions', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        address: createForm.address.trim(),
+                        city: createForm.city.trim(),
+                        client: createForm.client.trim(),
+                        type: createForm.side,
+                        closing_date: createForm.closing_date || null,
+                      }),
+                    })
+                    const json = await res.json()
+                    if (!res.ok || !json?.transaction?.id) {
+                      throw new Error(json?.error || 'Failed to create transaction')
+                    }
+                    setShowCreateModal(false)
+                    router.push(`/transactions/${json.transaction.id}?created=1`)
+                  } catch (e) {
+                    const message = e instanceof Error ? e.message : 'Failed to create transaction'
+                    window.alert(message)
+                  } finally {
+                    setCreating(false)
+                  }
+                }}
+                className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-50"
+              >
+                {creating ? 'Creating...' : 'Create with Reva'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
     </main>
   )

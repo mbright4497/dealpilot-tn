@@ -181,12 +181,22 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
       <div className="w-full max-w-2xl rounded-2xl bg-gray-950 p-6">
-        <div className="mb-4 flex items-center gap-3">
-          <img src="/avatar-pilot.png" alt="Reva" className="h-14 w-14 rounded-full" />
-          <div>
-            <div className="text-lg font-semibold text-white">Reva Drive Mode</div>
-            <div className="text-sm text-gray-400">Step {Math.min(6, step + 1)} of 6</div>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <img src="/avatar-pilot.png" alt="Reva" className="h-14 w-14 rounded-full" />
+            <div>
+              <div className="text-lg font-semibold text-white">Reva Drive Mode</div>
+              <div className="text-sm text-gray-400">Step {Math.min(6, step + 1)} of 6</div>
+            </div>
           </div>
+          <button
+            type="button"
+            aria-label="Close Drive Mode"
+            onClick={onClose}
+            className="rounded-md px-2 py-1 text-sm text-gray-400 transition hover:bg-gray-900 hover:text-gray-200"
+          >
+            X
+          </button>
         </div>
 
         <div className="mb-4 rounded-xl bg-gray-900 p-4 text-white">{currentPrompt}</div>

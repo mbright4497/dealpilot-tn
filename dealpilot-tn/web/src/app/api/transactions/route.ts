@@ -47,6 +47,18 @@ export async function POST(req: Request) {
 
   try {
     const transaction = await createTransactionWithSetup(supabase, user.id, body)
+    const initialActivity = [
+      {
+        icon: '🆕',
+        description: 'Transaction created',
+        timestamp: new Date().toISOString(),
+      },
+    ]
+    await supabase
+      .from('transactions')
+      .update({ activity_log: initialActivity, updated_at: new Date().toISOString() })
+      .eq('id', transaction.id)
+      .eq('user_id', user.id)
     return NextResponse.json({ transaction })
   } catch (error: any) {
     return NextResponse.json({ error: error?.message ?? 'Unable to create transaction' }, { status: 500 })

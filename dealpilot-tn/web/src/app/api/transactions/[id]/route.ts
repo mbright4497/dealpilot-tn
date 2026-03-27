@@ -21,14 +21,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!transaction) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const [deadlinesRes, contactsRes, milestonesRes, documentsRes, txDocsRes] = await Promise.all([
-      supabase
-        .from('deadlines')
-        .select('*')
-        .or(`transaction_id.eq.${id},deal_id.eq.${id}`)
-        .order('due_date', { ascending: true }),
-      supabase.from('contacts').select('*').eq('transaction_id', id),
-      supabase.from('deal_milestones').select('*').eq('transaction_id', id),
+    const [documentsRes, txDocsRes] = await Promise.all([
       supabase.from('documents').select('*').eq('transaction_id', id).order('created_at', { ascending: false }),
       supabase
         .from('transaction_documents')
@@ -56,9 +49,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
     return NextResponse.json({
       transaction,
-      deadlines: deadlinesRes.data ?? [],
-      contacts: contactsRes.data ?? [],
-      milestones: milestonesRes.data ?? [],
+      deadlines: Array.isArray(transaction.ai_deadlines) ? transaction.ai_deadlines : [],
+      contacts: Array.isArray(transaction.ai_contacts) ? transaction.ai_contacts : [],
+      milestones: [],
       documents: documentsRes.data ?? [],
       transaction_documents: txDocsWithUrls,
     })
@@ -106,7 +99,35 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const update = { ...(body || {}), updated_at: new Date().toISOString() }
+    const incoming = { ...(body || {}) } as Record<string, unknown>
+    const activityEvent = incoming.activity_event as
+      | { icon?: string; description?: string; timestamp?: string }
+      | undefined
+    delete incoming.activity_event
+    let existingLog: unknown[] = Array.isArray((body || {}).activity_log)
+      ? ((body || {}).activity_log as unknown[])
+      : []
+    if (!existingLog.length && activityEvent?.description) {
+      const { data: row } = await supabase
+        .from('transactions')
+        .select('activity_log')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+      existingLog = Array.isArray(row?.activity_log) ? (row.activity_log as unknown[]) : []
+    }
+    const nextLog =
+      activityEvent && activityEvent.description
+        ? [
+            ...existingLog,
+            {
+              icon: activityEvent.icon || '•',
+              description: activityEvent.description,
+              timestamp: activityEvent.timestamp || new Date().toISOString(),
+            },
+          ]
+        : existingLog
+    const update = { ...incoming, ...(activityEvent ? { activity_log: nextLog } : {}), updated_at: new Date().toISOString() }
     delete (update as Record<string, unknown>).id
     delete (update as Record<string, unknown>).user_id
 

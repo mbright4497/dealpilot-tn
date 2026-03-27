@@ -1,14 +1,12 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { FileText, Loader2, Phone, Trash2, Upload } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
 import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
 import {
   DOCUMENT_TYPE_OPTIONS,
-  documentPhase,
-  type DocumentPhase,
 } from '@/lib/documents/transactionDocumentTypes'
 
 type AiSummary = {
@@ -45,16 +43,6 @@ type AiContact = {
   phone?: string | null
   ghl_contact_id?: string | null
   initials?: string | null
-}
-
-type TxDocument = {
-  id: string
-  name: string
-  storage_path?: string | null
-  status_label?: string | null
-  rf_number?: string | null
-  category?: string | null
-  uploaded_at?: string | null
 }
 
 type TransactionDocumentRow = {
@@ -160,6 +148,13 @@ type TxRow = {
   ai_checklist?: ChecklistItem[] | null
   ai_deadlines?: DeadlineItem[] | null
   ai_contacts?: AiContact[] | null
+  activity_log?: ActivityItem[] | null
+}
+
+type ActivityItem = {
+  icon?: string
+  description: string
+  timestamp: string
 }
 
 type RevaChatLine = {
@@ -228,31 +223,22 @@ function priorityPill(priority?: string | null): { label: string; className: str
   return { label: p, className: 'bg-slate-500/20 text-slate-200 border border-slate-500/30' }
 }
 
-function findDocMatch(documents: TxDocument[], keywords: string[]): TxDocument | null {
-  const all = documents || []
-  const normalized = keywords.map((k) => k.toLowerCase())
-  return (
-    all.find((d) => {
-      const hay = `${d.name || ''} ${(d.status_label || '')} ${(d.category || '')} ${(d.rf_number || '')}`.toLowerCase()
-      return normalized.some((k) => hay.includes(k))
-    }) || null
-  )
-}
-
 export default function TransactionDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const txId = params?.id ? Number(params.id) : NaN
 
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null>(null)
-  const [documents, setDocuments] = useState<TxDocument[]>([])
   const [txDocs, setTxDocs] = useState<TransactionDocumentRow[]>([])
   const [docTypePick, setDocTypePick] = useState('rf401_psa')
   const [customDocName, setCustomDocName] = useState('')
   const [isExecutedToggle, setIsExecutedToggle] = useState(false)
   const [txDocUploadBusy, setTxDocUploadBusy] = useState(false)
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null)
   const [airdropVisible, setAirdropVisible] = useState(false)
+  const [animationComplete, setAnimationComplete] = useState(true)
   const [airdropName, setAirdropName] = useState('')
   const [airdropWatchId, setAirdropWatchId] = useState<number | null>(null)
   const [reviewDoc, setReviewDoc] = useState<TransactionDocumentRow | null>(null)
@@ -262,10 +248,11 @@ export default function TransactionDetailPage() {
     transaction_address: string
   } | null>(null)
   const [addressMismatchBusy, setAddressMismatchBusy] = useState(false)
+  const [showAddressMismatchModal, setShowAddressMismatchModal] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const addressMismatchDismissed = useRef<Set<number>>(new Set())
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'checklist' | 'deadlines' | 'contacts' | 'comms'>(
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'checklist' | 'deadlines' | 'contacts' | 'activity'>(
     'overview'
   )
 
@@ -277,6 +264,7 @@ export default function TransactionDetailPage() {
 
   const [commHistoryLoading, setCommHistoryLoading] = useState(false)
   const [commsHistory, setCommsHistory] = useState<any[]>([])
+  const [activityNote, setActivityNote] = useState('')
 
   // Reva panel state (permanent on right)
   const [threadId, setThreadId] = useState<string | null>(null)
@@ -285,17 +273,6 @@ export default function TransactionDetailPage() {
   const [revaSending, setRevaSending] = useState(false)
   const revaInputRef = useRef<HTMLInputElement | null>(null)
   const revaScrollRef = useRef<HTMLDivElement | null>(null)
-
-  const [contractUploading, setContractUploading] = useState(false)
-  const contractUploadRef = useRef<HTMLInputElement | null>(null)
-
-  const contractMissing = useMemo(() => {
-    if (!tx) return true
-    if (tx.contract_pdf_url) return false
-    if (txDocs.some((d) => d.document_type === 'rf401_psa')) return false
-    // Best-effort: treat any "contract-ish" document name as present.
-    return !findDocMatch(documents, ['contract', 'agreement', 'purchase', 'sale', 'psa'])
-  }, [tx, documents, txDocs])
 
   const daysLeft = useMemo(() => daysUntil(tx?.closing_date || null), [tx?.closing_date])
   const daysLeftPillClass = useMemo(() => {
@@ -324,7 +301,6 @@ export default function TransactionDetailPage() {
       if (!res.ok) throw new Error(`Failed to load transaction (${res.status})`)
       const json = await res.json()
       setTx((json?.transaction as TxRow) || null)
-      setDocuments(Array.isArray(json?.documents) ? (json.documents as TxDocument[]) : [])
       setTxDocs(
         Array.isArray(json?.transaction_documents)
           ? (json.transaction_documents as TransactionDocumentRow[])
@@ -384,10 +360,31 @@ export default function TransactionDetailPage() {
           contract_address: am.contract_address,
           transaction_address: am.transaction_address,
         })
+        if (animationComplete && !airdropVisible) {
+          setShowAddressMismatchModal(true)
+        }
         break
       }
     }
-  }, [txDocs, addressMismatch])
+  }, [txDocs, addressMismatch, animationComplete, airdropVisible])
+
+  useEffect(() => {
+    if (animationComplete && !airdropVisible && addressMismatch) {
+      setShowAddressMismatchModal(true)
+    }
+  }, [animationComplete, airdropVisible, addressMismatch])
+
+  useEffect(() => {
+    if (!addressMismatch) setShowAddressMismatchModal(false)
+  }, [addressMismatch])
+
+  useEffect(() => {
+    if (searchParams.get('created') === '1') {
+      setToastMsg('Deal created! Reva is building your checklist...')
+      window.setTimeout(() => setToastMsg(null), 4000)
+      router.replace(`/transactions/${txId}`)
+    }
+  }, [searchParams, router, txId])
 
   const uploadTxDoc = useCallback(
     async (file: File) => {
@@ -399,6 +396,7 @@ export default function TransactionDetailPage() {
           ? customDocName.trim() || 'Custom document'
           : opt?.label || 'Document'
       setTxDocUploadBusy(true)
+      setAnimationComplete(false)
       setAirdropName(displayName)
       setAirdropVisible(true)
       try {
@@ -420,9 +418,11 @@ export default function TransactionDetailPage() {
         }
         const j = await res.json()
         if (j.document?.id) setAirdropWatchId(Number(j.document.id))
+        setSelectedUploadFile(null)
         await loadPageData()
       } catch (e: unknown) {
         setAirdropVisible(false)
+        setAnimationComplete(true)
         window.alert(e instanceof Error ? e.message : 'Upload failed.')
       } finally {
         setTxDocUploadBusy(false)
@@ -434,9 +434,9 @@ export default function TransactionDetailPage() {
   const onDropTx = useCallback(
     (accepted: File[]) => {
       const f = accepted[0]
-      if (f) void uploadTxDoc(f)
+      if (f) setSelectedUploadFile(f)
     },
-    [uploadTxDoc]
+    []
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -450,8 +450,22 @@ export default function TransactionDetailPage() {
   // Prime AI state after tx load
   useEffect(() => {
     setAiChecklist(Array.isArray(tx?.ai_checklist) ? (tx.ai_checklist as ChecklistItem[]) : [])
-    setAiDeadlines(Array.isArray(tx?.ai_deadlines) ? (tx.ai_deadlines as DeadlineItem[]) : [])
-    setAiContacts(Array.isArray(tx?.ai_contacts) ? (tx.ai_contacts as AiContact[]) : [])
+    const rawDeadlines = tx?.ai_deadlines
+    if (Array.isArray(rawDeadlines)) {
+      setAiDeadlines(rawDeadlines as DeadlineItem[])
+    } else if (rawDeadlines && typeof rawDeadlines === 'object' && Array.isArray((rawDeadlines as any).deadlines)) {
+      setAiDeadlines((rawDeadlines as any).deadlines as DeadlineItem[])
+    } else {
+      setAiDeadlines([])
+    }
+    const rawContacts = tx?.ai_contacts
+    if (Array.isArray(rawContacts)) {
+      setAiContacts(rawContacts as AiContact[])
+    } else if (rawContacts && typeof rawContacts === 'object' && Array.isArray((rawContacts as any).contacts)) {
+      setAiContacts((rawContacts as any).contacts as AiContact[])
+    } else {
+      setAiContacts([])
+    }
   }, [tx])
 
   useEffect(() => {
@@ -479,7 +493,13 @@ export default function TransactionDetailPage() {
       const res = await fetch(`/api/transactions/${txId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: addressMismatch.contract_address }),
+        body: JSON.stringify({
+          address: addressMismatch.contract_address,
+          activity_event: {
+            icon: '✅',
+            description: `Deal address updated to ${addressMismatch.contract_address}`,
+          },
+        }),
       })
       if (!res.ok) throw new Error('update failed')
       await fetch(`/api/transactions/${txId}/documents/${addressMismatch.docId}`, {
@@ -514,6 +534,12 @@ export default function TransactionDetailPage() {
   async function generateIntelligence() {
     if (!Number.isFinite(txId)) return
     await fetch(`/api/transactions/${txId}/analyze`, { method: 'POST' })
+    await patchTransaction({
+      activity_event: {
+        icon: '📋',
+        description: 'Checklist generated by Reva',
+      },
+    })
     await loadPageData()
     await loadCommsHistory()
   }
@@ -527,23 +553,6 @@ export default function TransactionDetailPage() {
       await patchTransaction({ ai_checklist: next })
     } catch {
       await loadPageData()
-    }
-  }
-
-  async function uploadContractToReva(file: File) {
-    if (!Number.isFinite(txId)) return
-    if (contractUploading) return
-    setContractUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('transactionId', String(txId))
-      const res = await fetch('/api/reva/extract-contract', { method: 'POST', body: fd })
-      if (!res.ok) throw new Error('extract-contract failed')
-      await loadPageData()
-      await loadCommsHistory()
-    } finally {
-      setContractUploading(false)
     }
   }
 
@@ -695,19 +704,9 @@ export default function TransactionDetailPage() {
   }
 
   function documentsTab() {
-    const PHASE_LABEL: Record<DocumentPhase, string> = {
-      pre_contract: 'PRE-CONTRACT',
-      under_contract: 'UNDER CONTRACT',
-      closing: 'CLOSING',
-    }
-    const grouped: Record<DocumentPhase, TransactionDocumentRow[]> = {
-      pre_contract: [],
-      under_contract: [],
-      closing: [],
-    }
-    for (const d of txDocs) {
-      grouped[documentPhase(d.document_type)].push(d)
-    }
+    const sortedDocs = [...txDocs].sort(
+      (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+    )
     const hasImpact = txDocs.some((d) => d.deal_impact && Object.keys(d.deal_impact).length > 0)
     const timelineLines =
       hasImpact || txDocs.some((d) => d.document_type === 'rf401_psa')
@@ -731,15 +730,23 @@ export default function TransactionDetailPage() {
               <FileText size={18} className="mt-0.5 shrink-0 text-orange-200" />
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-white">{d.display_name}</div>
-                <div className="text-xs text-slate-400">{d.document_type.replace(/_/g, ' ')}</div>
+                <div className="text-xs text-slate-400">
+                  Uploaded {formatDate(d.created_at)} {d.is_executed ? '· Executed ✅' : ''}
+                </div>
                 <div className="mt-1 text-xs text-slate-300">
-                  {d.is_executed ? (
-                    <span className="text-emerald-300">Executed ✓</span>
+                  {String(d.status || '') === 'reviewed' ? (
+                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-emerald-200">
+                      Reviewed ✅
+                    </span>
+                  ) : String(d.status || '') === 'error' ? (
+                    <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-red-200">
+                      Error ❌
+                    </span>
                   ) : (
-                    <span className="text-slate-400">Not marked executed</span>
+                    <span className="animate-pulse rounded-full border border-orange-500/30 bg-orange-500/15 px-2 py-0.5 text-orange-200">
+                      Reading...
+                    </span>
                   )}
-                  <span className="mx-2 text-slate-600">•</span>
-                  <span className="uppercase tracking-wide text-slate-500">{d.status || '—'}</span>
                 </div>
               </div>
             </div>
@@ -757,15 +764,25 @@ export default function TransactionDetailPage() {
               onClick={() => d.signed_url && window.open(d.signed_url, '_blank', 'noopener,noreferrer')}
               className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-40"
             >
-              View
+              View PDF
             </button>
             <button
               type="button"
               onClick={() => setReviewDoc(d)}
+              disabled={String(d.status || '') !== 'reviewed'}
               className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
             >
               Broker Review
             </button>
+            {String(d.status || '') === 'error' ? (
+              <button
+                type="button"
+                onClick={() => void loadPageData()}
+                className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-200 hover:bg-orange-500/20 transition"
+              >
+                Retry
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => void deleteTxDoc(d.id)}
@@ -780,59 +797,46 @@ export default function TransactionDetailPage() {
 
     return (
       <div className="space-y-4">
-        {contractMissing ? (
-          <div className="rounded-xl border border-dashed border-orange-500/60 bg-[#0A1022] p-5">
-            <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
-              <div>
-                <h3 className="text-sm font-semibold text-white">Contract upload (legacy)</h3>
-                <p className="mt-1 text-sm text-slate-200">
-                  Upload the RF401 PDF so Reva can populate the deal (legacy pipeline).
-                </p>
-                <p className="mt-1 text-xs text-slate-400">Supports PDF files up to 25MB</p>
-              </div>
-              <button
-                onClick={() => contractUploadRef.current?.click()}
-                disabled={contractUploading}
-                className="inline-flex items-center gap-2 rounded-lg border border-orange-500/40 bg-orange-500/15 px-3 py-2 text-sm font-semibold text-orange-200 hover:bg-orange-500/25 transition disabled:opacity-60"
-              >
-                {contractUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                Upload Contract
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {timelineLines.length ? (
-          <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
-            <h3 className="text-sm font-semibold text-orange-100">Reva&apos;s Deal Timeline</h3>
-            <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-200">
-              {timelineLines.map((line, i) => (
-                <li key={`${i}-${line.slice(0, 12)}`}>{line}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-          <h2 className="text-sm font-semibold text-white">Upload a document</h2>
-          <p className="mt-1 text-xs text-slate-400">
-            PDF only. Supports PDF files up to 25MB. Reva extracts fields and runs broker review in the background.
-          </p>
+          <div
+            {...getRootProps()}
+            className={classNames(
+              'flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 transition',
+              isDragActive ? 'border-orange-400 bg-orange-500/10' : 'border-slate-600 bg-[#0A1022]'
+            )}
+          >
+            <input {...getInputProps()} />
+            <Upload className="text-orange-300" size={28} />
+            <p className="mt-2 text-sm font-semibold text-white">Drop documents here</p>
+            <p className="mt-1 text-xs text-slate-400">or click to browse</p>
+            <p className="text-xs text-slate-500">PDF files · max 25MB</p>
+            {selectedUploadFile ? (
+              <p className="mt-2 text-xs text-slate-300">Selected: {selectedUploadFile.name}</p>
+            ) : null}
+          </div>
 
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="block text-xs font-medium text-slate-300">
               Document type
-              <select
-                value={docTypePick}
-                onChange={(e) => setDocTypePick(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
-              >
-                {DOCUMENT_TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1 flex items-center gap-2">
+                <select
+                  value={docTypePick}
+                  onChange={(e) => setDocTypePick(e.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                >
+                  {DOCUMENT_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-600 text-xs text-slate-300"
+                  title="Select the type so Reva knows what fields to extract"
+                >
+                  ?
+                </span>
+              </div>
             </label>
             <label className="flex items-center gap-2 text-xs font-medium text-slate-300 mt-6 md:mt-0">
               <input
@@ -841,7 +845,7 @@ export default function TransactionDetailPage() {
                 onChange={(e) => setIsExecutedToggle(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-600"
               />
-              <span>Is this document executed/signed?</span>
+              <span>Executed/Signed</span>
             </label>
           </div>
 
@@ -857,81 +861,33 @@ export default function TransactionDetailPage() {
             </label>
           ) : null}
 
-          <div
-            {...getRootProps()}
-            className={classNames(
-              'mt-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 transition',
-              isDragActive ? 'border-orange-400 bg-orange-500/10' : 'border-slate-600 bg-[#0A1022]',
-              txDocUploadBusy ? 'pointer-events-none opacity-60' : ''
-            )}
+          <button
+            type="button"
+            onClick={() => selectedUploadFile && void uploadTxDoc(selectedUploadFile)}
+            disabled={txDocUploadBusy || !selectedUploadFile}
+            className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-50"
           >
-            <input {...getInputProps()} />
-            <Upload className="text-orange-300" size={28} />
-            <p className="mt-2 text-sm font-semibold text-white">Drag & drop PDF here</p>
-            <p className="mt-1 text-xs text-slate-400">or click to browse • max 25MB</p>
-            {txDocUploadBusy ? (
-              <p className="mt-2 inline-flex items-center gap-2 text-xs text-orange-200">
-                <Loader2 size={14} className="animate-spin" /> Uploading…
-              </p>
+            {txDocUploadBusy ? 'Uploading...' : 'Upload & Let Reva Read It'}
+          </button>
+        </div>
+
+        {!!txDocs.length ? (
+          <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-white">Transaction Documents</h2>
+              <span className="text-xs text-slate-400">{txDocs.length} total</span>
+            </div>
+            {timelineLines.length ? (
+              <div className="mt-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
+                <h3 className="text-sm font-semibold text-orange-100">Reva&apos;s Deal Timeline</h3>
+                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-200">
+                  {timelineLines.map((line, i) => (
+                    <li key={`${i}-${line.slice(0, 12)}`}>{line}</li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-white">Transaction documents</h2>
-            <span className="text-xs text-slate-400">{txDocs.length} total</span>
-          </div>
-
-          {!txDocs.length ? (
-            <p className="mt-3 text-sm text-slate-400">No transaction documents yet. Upload above.</p>
-          ) : null}
-
-          {(['pre_contract', 'under_contract', 'closing'] as DocumentPhase[]).map((phase) => (
-            <div key={phase} className="mt-4">
-              <div className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Phase: {PHASE_LABEL[phase]}
-              </div>
-              <div className="mt-2 space-y-2">
-                {grouped[phase].length ? grouped[phase].map(renderDocCard) : (
-                  <p className="text-xs text-slate-500">No documents in this phase.</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {documents.length ? (
-          <div className="rounded-xl border border-slate-700 bg-slate-900/20 p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Legacy file list</div>
-            <div className="mt-2 space-y-2">
-              {documents.map((d) => (
-                <div
-                  key={d.id}
-                  className="flex flex-col gap-2 rounded-lg border border-slate-800 bg-[#0A1022]/80 p-3 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <FileText size={16} className="text-slate-400" />
-                      <div className="truncate text-sm font-semibold text-slate-200">{d.name}</div>
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      Uploaded: {formatDate(d.uploaded_at)} {d.status_label ? `• ${d.status_label}` : null}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      void sendRevaMessage(
-                        `Open and summarize "${d.name}" for this transaction. Tell me what's relevant and the next action.`
-                      )
-                    }}
-                    className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
-                  >
-                    Ask Reva
-                  </button>
-                </div>
-              ))}
-            </div>
+            <div className="mt-3 space-y-2">{sortedDocs.map(renderDocCard)}</div>
           </div>
         ) : null}
 
@@ -1059,28 +1015,27 @@ export default function TransactionDetailPage() {
           <div className="mt-3 space-y-2">
             {aiDeadlines.map((d, idx) => {
               const delta = daysUntil(d.due_date || null)
-              const isOverdue = delta !== null && delta < 0
-              const isDueSoon = delta !== null && delta >= 0 && delta <= 7
-              const daysText = delta === null ? '—' : isOverdue ? `${Math.abs(delta)} days overdue` : delta === 0 ? 'Due today' : `${delta} days remaining`
+              const done = String(d.status || '').toLowerCase() === 'completed'
+              const isOverdue = !done && delta !== null && delta < 0
+              const within3 = !done && delta !== null && delta >= 0 && delta <= 3
+              const within7 = !done && delta !== null && delta > 3 && delta <= 7
+              const daysText = delta === null ? '—' : isOverdue ? `${Math.abs(delta)} days overdue` : delta === 0 ? 'Due today' : `${delta} days away`
+              const urgencyClass = done
+                ? 'border-slate-600 bg-slate-900/60 text-slate-200'
+                : isOverdue || within3
+                  ? 'border-red-500/40 bg-red-950/40 text-red-100'
+                  : within7
+                    ? 'border-orange-500/40 bg-orange-950/30 text-orange-100'
+                    : 'border-green-500/40 bg-green-950/30 text-green-100'
 
               return (
-                <div key={`${d.id || idx}-${d.title || 'deadline'}`} className="rounded-lg border border-slate-700 bg-[#0A1022] p-4">
+                <div key={`${d.id || idx}-${d.title || 'deadline'}`} className={classNames('rounded-lg border p-4', urgencyClass)}>
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
                       <div className="font-semibold text-white">{d.title || 'Deadline item'}</div>
-                      <div className="mt-1 text-xs text-slate-300">Due: {formatDate(d.due_date || null)}</div>
-                      <div className={classNames('mt-1 text-xs font-semibold', isOverdue ? 'text-red-200' : isDueSoon ? 'text-orange-200' : 'text-slate-200')}>{daysText}</div>
-                      {d.tca_reference ? <div className="mt-1 text-xs text-slate-400">TCA: {d.tca_reference}</div> : null}
+                      <div className="mt-1 text-xs text-slate-200">{formatDate(d.due_date || null)} · {daysText}</div>
+                      {d.tca_reference ? <div className="mt-1 text-xs text-slate-300">TCA Reference: {d.tca_reference}</div> : null}
                     </div>
-                    <button
-                      onClick={() => {
-                        const prompt = `For this transaction, what is the next best action for the deadline "${d.title || 'deadline'}" and why? Include suggested follow-ups.`
-                        void sendRevaMessage(prompt)
-                      }}
-                      className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
-                    >
-                      Ask Reva
-                    </button>
                   </div>
                 </div>
               )
@@ -1149,13 +1104,13 @@ export default function TransactionDetailPage() {
                         onClick={() => void sendRevaMessage(`Draft a text message to ${name} (${role}) with the next step and relevant dates for this transaction.`)}
                         className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
                       >
-                        Text via Reva
+                        Text via GHL
                       </button>
                       <button
                         onClick={() => void sendRevaMessage(`Draft an email to ${name} (${role}) about this transaction. Include the key next step and dates.`)}
                         className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
                       >
-                        Email via Reva
+                        Email
                       </button>
                     </div>
                   </div>
@@ -1168,12 +1123,30 @@ export default function TransactionDetailPage() {
     )
   }
 
-  function commsTab() {
+  function activityTab() {
+    const txActivity = Array.isArray(tx?.activity_log) ? tx.activity_log : []
+    const docEvents = txDocs.map((d) => ({
+      icon: '📄',
+      description: `${d.display_name} uploaded${String(d.status || '') === 'reviewed' ? ' and reviewed by Reva' : ''}`,
+      timestamp: d.created_at || new Date().toISOString(),
+    }))
+    const commEvents = commsHistory.map((h) => ({
+      icon: '💬',
+      description: `Message sent via GHL (${String(h.channel || h.commType || 'message')})`,
+      timestamp: String(h.created_at || new Date().toISOString()),
+    }))
+    const updatedEvent = tx?.updated_at
+      ? [{ icon: '✅', description: 'Transaction updated', timestamp: String(tx.updated_at) }]
+      : []
+    const feed = [...txActivity, ...docEvents, ...commEvents, ...updatedEvent]
+      .filter((x) => x?.description && x?.timestamp)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
     return (
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-white">Comms</h2>
+            <h2 className="text-sm font-semibold text-white">Activity</h2>
             <button
               onClick={() => void loadCommsHistory()}
               className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-60"
@@ -1183,25 +1156,43 @@ export default function TransactionDetailPage() {
             </button>
           </div>
 
-          {!commsHistory.length ? (
-            <p className="mt-3 text-sm text-slate-400">{commHistoryLoading ? 'Loading…' : 'No communication history yet.'}</p>
+          <div className="mt-3 flex gap-2">
+            <input
+              value={activityNote}
+              onChange={(e) => setActivityNote(e.target.value)}
+              placeholder="Add note to activity"
+              className="w-full rounded-lg bg-slate-900/60 px-3 py-2 text-sm text-white outline-none ring-1 ring-slate-700"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                const note = activityNote.trim()
+                if (!note) return
+                const current = Array.isArray(tx?.activity_log) ? tx.activity_log : []
+                const next = [...current, { icon: '📝', description: note, timestamp: new Date().toISOString() }]
+                await patchTransaction({ activity_log: next })
+                setActivityNote('')
+                await loadPageData()
+              }}
+              className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600"
+            >
+              Add
+            </button>
+          </div>
+
+          {!feed.length ? (
+            <p className="mt-3 text-sm text-slate-400">{commHistoryLoading ? 'Loading…' : 'No activity yet.'}</p>
           ) : (
             <div className="mt-3 space-y-2">
-              {commsHistory.map((h) => (
-                <div key={String(h.id)} className="rounded-lg border border-slate-700 bg-[#0A1022] p-4">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-xs uppercase tracking-wide text-slate-400">
-                      {String(h.channel || h.commType || '—').toUpperCase()}
-                      {h.contactRole ? ` • ${String(h.contactRole)}` : null}
+              {feed.map((h, idx) => (
+                <div key={`${h.timestamp}-${idx}`} className="rounded-lg border border-slate-700 bg-[#0A1022] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-sm text-slate-100">
+                      <span className="mr-2">{h.icon || '•'}</span>
+                      {h.description}
                     </div>
-                    <div className="text-xs text-slate-400">{formatDate(h.created_at)}</div>
+                    <div className="text-xs text-slate-400">{new Date(h.timestamp).toLocaleString()}</div>
                   </div>
-                  {h.subject ? <div className="mt-2 text-sm font-semibold text-white">{h.subject}</div> : null}
-                  {h.body || h.message ? (
-                    <div className="mt-2 text-sm text-slate-200 whitespace-pre-wrap">
-                      {String(h.body || h.message)}
-                    </div>
-                  ) : null}
                 </div>
               ))}
             </div>
@@ -1243,18 +1234,6 @@ export default function TransactionDetailPage() {
     <main className="mx-auto max-w-7xl px-4 py-6">
       <div className="grid gap-6 lg:grid-cols-[70%_30%]">
         <section className="min-w-0">
-          <input
-            ref={contractUploadRef}
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) void uploadContractToReva(file)
-              e.currentTarget.value = ''
-            }}
-          />
-
           {/* Top bar */}
           <div className="rounded-2xl border border-slate-700 bg-[#0B1530] p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1306,13 +1285,6 @@ export default function TransactionDetailPage() {
                     Edit Deal
                   </button>
                   <button
-                    onClick={() => contractUploadRef.current?.click()}
-                    disabled={contractUploading}
-                    className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition disabled:opacity-60"
-                  >
-                    {contractUploading ? 'Reading…' : 'Upload Contract'}
-                  </button>
-                  <button
                     onClick={() => void deleteTransaction()}
                     className="rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm font-medium text-red-200 hover:border-red-500/40 transition"
                     aria-label="Delete transaction"
@@ -1334,7 +1306,7 @@ export default function TransactionDetailPage() {
                 { key: 'checklist', label: 'Checklist' },
                 { key: 'deadlines', label: 'Deadlines' },
                 { key: 'contacts', label: 'Contacts' },
-                { key: 'comms', label: 'Comms' },
+                { key: 'activity', label: 'Activity' },
               ] as const
             ).map((t) => (
               <button
@@ -1357,7 +1329,7 @@ export default function TransactionDetailPage() {
             {activeTab === 'checklist' ? checklistTab() : null}
             {activeTab === 'deadlines' ? deadlinesTab() : null}
             {activeTab === 'contacts' ? contactsTab() : null}
-            {activeTab === 'comms' ? commsTab() : null}
+            {activeTab === 'activity' ? activityTab() : null}
           </div>
         </section>
 
@@ -1429,11 +1401,12 @@ export default function TransactionDetailPage() {
         status={airdropStatusForUi}
         onComplete={() => {
           setAirdropVisible(false)
+          setAnimationComplete(true)
           setAirdropWatchId(null)
         }}
       />
 
-      {addressMismatch ? (
+      {showAddressMismatchModal && addressMismatch ? (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
           <div className="w-full max-w-md rounded-2xl border border-slate-600 bg-[#0B1530] p-6 shadow-xl">
             <div className="text-lg font-semibold text-white">📍 Address Mismatch</div>
@@ -1448,7 +1421,10 @@ export default function TransactionDetailPage() {
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
-                onClick={() => keepDealAddressDismissMismatch()}
+                onClick={() => {
+                  keepDealAddressDismissMismatch()
+                  setShowAddressMismatchModal(false)
+                }}
                 className="rounded-lg border border-slate-600 bg-slate-900/60 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
               >
                 Keep current address
@@ -1456,7 +1432,10 @@ export default function TransactionDetailPage() {
               <button
                 type="button"
                 disabled={addressMismatchBusy}
-                onClick={() => void applyContractAddressToDeal()}
+                onClick={async () => {
+                  await applyContractAddressToDeal()
+                  setShowAddressMismatchModal(false)
+                }}
                 className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
               >
                 Update deal to contract address

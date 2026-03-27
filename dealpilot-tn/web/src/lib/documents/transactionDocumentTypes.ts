@@ -20,15 +20,15 @@ export const DOCUMENT_TYPE_OPTIONS: { value: TransactionDocumentType; label: str
   { value: 'rf407_amendment', label: 'Amendment (RF407)' },
   { value: 'fha_addendum', label: 'FHA Addendum' },
   { value: 'va_addendum', label: 'VA Addendum' },
-  { value: 'lead_paint', label: 'Lead Based Paint Disclosure' },
+  { value: 'lead_paint', label: 'Lead Paint Disclosure' },
   { value: 'property_condition', label: 'Property Condition Disclosure' },
-  { value: 'rf621_buyer_rep', label: 'Buyer Representation (RF621)' },
+  { value: 'rf621_buyer_rep', label: 'Buyer Rep Agreement (RF621)' },
   { value: 'inspection_report', label: 'Inspection Report' },
-  { value: 'appraisal', label: 'Appraisal' },
+  { value: 'appraisal', label: 'Appraisal Report' },
   { value: 'title_commitment', label: 'Title Commitment' },
   { value: 'closing_disclosure', label: 'Closing Disclosure' },
   { value: 'settlement_statement', label: 'Settlement Statement' },
-  { value: 'other', label: 'Other (custom name)' },
+  { value: 'other', label: 'Other' },
 ]
 
 export type DocumentPhase = 'pre_contract' | 'under_contract' | 'closing'
