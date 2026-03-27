@@ -21,7 +21,7 @@ function StartNewTransactionListener({ onFire }: { onFire: () => void }) {
   return null
 }
 
-import TCDashboard, { type RevaDealHealth } from '@/components/TCDashboard'
+import type { RevaDealHealth } from '@/components/TCDashboard'
 import TransactionList from '@/components/TransactionList'
 import FormsFillView from '@/components/FormsFillView'
 import DeadlineCalculator from '@/components/DeadlineCalculator'
@@ -34,13 +34,8 @@ import VoiceSettings from '@/components/VoiceSettings'
 import { previewVoice } from '@/lib/voice-engine'
 
 import ContractViewer from '@/components/ContractViewer'
-import MobileSidebar from '@/components/MobileSidebar'
-import EvaMainView from '@/components/eva/EvaMainView'
-import { EvaProvider } from '@/components/eva/EvaProvider'
 import ClosingPilotLogo from '@/components/ClosingPilotLogo'
 import SidebarUserFooter from '@/components/SidebarUserFooter'
-import ContractWatch from '@/components/ContractWatch'
-import SmartIntakeCard from '@/components/SmartIntakeCard'
 import DealPickerModal from '@/components/DealPickerModal'
 import RookWizard from '@/components/RookWizard'
 import DriveMode from '@/components/reva/DriveMode'
@@ -187,9 +182,9 @@ function ChatPageInner() {
   const [playbookProgressMap, setPlaybookProgressMap] = useState<Record<number,number>>({})
   const [assistantStyle, setAssistantStyle] = useState<AssistantStyle>(getDefaultStyle())
   const [voiceEnabled, setVoiceEnabled] = useState(false)
-  const [evaSpeaking, setEvaSpeaking] = useState(false)
+  const [revaSpeaking, setRevaSpeaking] = useState(false)
   const [voiceAutoPlay, setVoiceAutoPlay] = useState(()=>{ try{ return typeof window !== 'undefined' ? localStorage.getItem('eva-voice-auto') !== 'false' : true }catch(e){ return true } })
-  // addMessage is used by some EVA event handlers — provide a no-op fallback here (real addMessage exists in EvaProvider consumer contexts)
+  // addMessage no-op fallback for legacy event handlers that expect a handler on window
   const addMessage = (m:any)=>{ /* noop fallback to avoid runtime errors when handlers fire outside provider */ }
 
   const loadCommandCenter = async ()=>{
@@ -344,18 +339,6 @@ function ChatPageInner() {
     })()
     return ()=>{ mounted = false }
   },[transactions])
-
-
-  // helper to execute action
-  const executeAction = async (a:any)=>{
-    try{
-      const res = await fetch('/api/eva/execute-action', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) })
-      if(res.ok){ // refresh actions
-        const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) }
-        alert(`Done - ${a.action} marked complete for ${a.address}`)
-      } else { alert('Failed to execute action') }
-    }catch(e){ console.error('execute action error', e); alert('Failed to execute') }
-  }
 
 
   async function addTransaction(tx: any) {
@@ -585,7 +568,7 @@ function ChatPageInner() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && (()=>{
-          // EVA-first hero + ticker layout
+          // Reva-first hero + ticker layout
           const activeDeals = transactions.filter(t=>{ const s = ((t as any).current_state || (t as any).state_label || t.status || '').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
           activeDeals.sort((a:any,b:any)=>{
             const ad = (a.closing_date || a.closing) ? new Date(a.closing_date || a.closing).getTime() : Infinity
@@ -594,37 +577,24 @@ function ChatPageInner() {
           })
           return (
             <div className="min-h-[80vh] flex flex-col">
-              {alerts.length > 0 && (
-                <div className="mb-3 rounded border border-red-500/40 bg-red-500/10 p-3">
-                  <div className="mb-2 text-sm font-semibold text-red-200">Alerts ({alerts.length})</div>
-                  <div className="flex flex-wrap gap-2">
-                    {alerts.slice(0, 6).map((a:any, i:number)=>(
-                      <button key={i} onClick={()=>a.dealId && openDeal(Number(a.dealId))} className="rounded bg-[#0f1c2e] px-2 py-1 text-xs text-white">
-                        {a.message}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* TOP HALF - Eva's Zone */}
+              {/* TOP HALF — Reva */}
 <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
  {/* Avatar + glow + talking animation */}
  <div className="relative flex flex-col items-center">
  <div
  className={
  "absolute -inset-2 rounded-full bg-gradient-to-r from-orange-400/30 via-pink-400/20 to-indigo-400/10 blur-xl " +
- (evaSpeaking ? "animate-pulse-slow" : "")
+ (revaSpeaking ? "animate-pulse-slow" : "")
  }
  style={{ width: 220, height: 220 }}
  />
- <ClosingPilotLogo size="lg" />
  <img
  src="/avatar-pilot.png"
  alt="Reva"
  className="w-56 h-56 rounded-full relative z-10 shadow-2xl"
- style={evaSpeaking ? { animation: "evaTalk 0.9s ease-in-out infinite" } : {}}
+ style={revaSpeaking ? { animation: "revaTalk 0.9s ease-in-out infinite" } : {}}
  />
- {evaSpeaking && (
+ {revaSpeaking && (
  <div className="mt-3 flex items-end gap-1 justify-center h-6">
  <div
  style={{
@@ -753,30 +723,30 @@ function ChatPageInner() {
  const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
  const val = inp?.value?.trim()
  if(val){ await sendDashboardMessage(val); return }
- if (evaSpeaking) {
+ if (revaSpeaking) {
  stopSpeaking();
- setEvaSpeaking(false);
+ setRevaSpeaking(false);
  return;
  }
  const speakSource = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1].content : briefing
  if (!speakSource) return;
- await speakText(speakSource, "friendly-tn", () => setEvaSpeaking(true), () =>
- setEvaSpeaking(false)
+ await speakText(speakSource, "friendly-tn", () => setRevaSpeaking(true), () =>
+ setRevaSpeaking(false)
  );
  } catch (e) {
  console.error(e);
- setEvaSpeaking(false);
+ setRevaSpeaking(false);
  }
  }}
  className={
  "w-12 h-12 rounded-full flex items-center justify-center text-white " +
- (evaSpeaking
+ (revaSpeaking
  ? "bg-orange-500 animate-pulse"
  : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
  }
- title={evaSpeaking ? "Stop Reva" : "Play Reva briefing"}
+ title={revaSpeaking ? "Stop Reva" : "Play Reva briefing"}
  >
- {evaSpeaking ? "⏸" : "▶"}
+ {revaSpeaking ? "⏸" : "▶"}
  </button>
  <form
  onSubmit={async (e) => {
@@ -834,7 +804,7 @@ if (res.ok) {
  onClick={async () => {
  try {
  stopSpeaking();
- setEvaSpeaking(false);
+ setRevaSpeaking(false);
  setChatMode(false);
  await loadCommandCenter();
  } catch (e) {
@@ -846,11 +816,11 @@ if (res.ok) {
  Refresh
  </button>
  </div>
-{evaSpeaking && <div className="mt-2 text-xs text-orange-300">Reva is speaking...</div>}
+{revaSpeaking && <div className="mt-2 text-xs text-orange-300">Reva is speaking...</div>}
 
  {/* Local keyframes */}
  <style jsx>{`
- @keyframes evaTalk {
+ @keyframes revaTalk {
  0% {
  transform: scale(1);
  }
@@ -874,14 +844,6 @@ if (res.ok) {
  }
  `}</style>
 </div>
-
-              <TCDashboard
-                transactions={transactions}
-                onOpenDeal={openDeal}
-                onViewChecklist={openChecklist}
-                onNavigate={handleNavigate}
-                dealHealth={dealHealth}
-              />
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-[#071224] p-5 shadow-lg">
                 <div className="flex items-center justify-between gap-3">
