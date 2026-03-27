@@ -23,23 +23,54 @@ export default function SettingsPage() {
         })
       }
     })()
-    try {
-      const saved = localStorage.getItem('ghl_api_key')
-      if (saved) setProfile((p:any) => ({ ...p, ghl_api_key: saved }))
-    } catch {}
   }, [])
+
+  async function refreshProfile() {
+    const res = await fetch('/api/profile')
+    const json = await res.json()
+    if (json?.profile) {
+      setProfile({
+        ...json.profile,
+        state: json.profile.state || 'TN',
+        user_type: json.profile.user_type || 'Agent',
+        notification_email: json.profile.notification_email || json.profile.email || '',
+      })
+    }
+  }
 
   async function saveProfile() {
     setStatus('Saving profile...')
     const res = await fetch('/api/profile', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profile),
+      body: JSON.stringify({
+        full_name: profile.full_name,
+        phone: profile.phone,
+        brokerage: profile.brokerage,
+        license_number: profile.license_number,
+        state: profile.state,
+        user_type: profile.user_type,
+      }),
+    })
+    setStatus(res.ok ? 'Profile saved' : 'Failed to save profile')
+    if (res.ok) await refreshProfile()
+  }
+
+  async function saveGhlIntegration() {
+    setStatus('Saving GHL integration...')
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ghl_api_key: profile.ghl_api_key ?? null,
+        ghl_location_id: profile.ghl_location_id ?? null,
+      }),
     })
     try {
-      if (profile.ghl_api_key) localStorage.setItem('ghl_api_key', profile.ghl_api_key)
+      if (res.ok && profile.ghl_api_key) localStorage.setItem('ghl_api_key', profile.ghl_api_key)
     } catch {}
-    setStatus(res.ok ? 'Profile saved' : 'Failed to save profile')
+    setStatus(res.ok ? 'GHL integration saved' : 'Failed to save GHL integration')
+    if (res.ok) await refreshProfile()
   }
 
   async function saveNotifications() {
@@ -60,12 +91,13 @@ export default function SettingsPage() {
       body: JSON.stringify({ ghl_api_key: profile.ghl_api_key || '', ghl_location_id: profile.ghl_location_id || '' }),
     })
     const json = await res.json().catch(() => ({}))
-    if (res.ok && (json.connected || json.ok)) {
+    if (res.ok && json.success === true) {
       setGhlStatus('connected')
-      setGhlMessage(`Connected to ${json.accountName || json.locationName || 'GHL account'}`)
+      const label = json.location_name || json.accountName || json.locationName || 'GHL account'
+      setGhlMessage(`Connected to ${label}`)
     } else {
       setGhlStatus('not_connected')
-      setGhlMessage('Connection failed — check your API key')
+      setGhlMessage(typeof json.error === 'string' ? json.error : 'Connection failed — check your API key and Location ID')
     }
   }
 
@@ -103,7 +135,7 @@ export default function SettingsPage() {
         </div>
         <div className="mt-3 flex gap-2">
           <button onClick={testConnection} className="rounded bg-cyan-500 px-4 py-2 text-black">Test Connection</button>
-          <button onClick={saveProfile} className="rounded bg-emerald-500 px-4 py-2 text-black">Save</button>
+          <button onClick={saveGhlIntegration} className="rounded bg-emerald-500 px-4 py-2 text-black">Save</button>
           <button onClick={() => setProfile({ ...profile, ghl_api_key: '', ghl_location_id: '' })} className="rounded bg-gray-700 px-4 py-2">Clear</button>
         </div>
         {ghlMessage && <div className="mt-2 text-sm text-gray-300">{ghlMessage}</div>}

@@ -78,9 +78,26 @@ export async function PATCH(req: Request) {
     if (ghl_location_id !== undefined) updates.ghl_location_id = ghl_location_id
     if (notification_email !== undefined) updates.notification_email = notification_email
 
-    // attempt update
-    const { data, error } = await supabase.from('profiles').upsert({ id: user.id, ...updates }).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    // Prefer UPDATE so partial patches never rely on INSERT upsert quirks (RLS / defaults).
+    const { data: updated, error: updateErr } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id)
+      .select()
+      .maybeSingle()
+
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+
+    let data = updated
+    if (!data) {
+      const { data: inserted, error: insertErr } = await supabase
+        .from('profiles')
+        .insert({ id: user.id, ...updates })
+        .select()
+        .single()
+      if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
+      data = inserted
+    }
 
     // also update auth user_metadata full_name if provided
     if (full_name) {
