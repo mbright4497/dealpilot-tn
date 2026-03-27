@@ -231,7 +231,7 @@ export default function TransactionDetailPage() {
 
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null>(null)
-  const [txDocs, setTxDocs] = useState<TransactionDocumentRow[]>([])
+  const [txDocuments, setTxDocuments] = useState<TransactionDocumentRow[]>([])
   const [docTypePick, setDocTypePick] = useState('rf401_psa')
   const [customDocName, setCustomDocName] = useState('')
   const [isExecutedToggle, setIsExecutedToggle] = useState(false)
@@ -301,7 +301,7 @@ export default function TransactionDetailPage() {
       if (!res.ok) throw new Error(`Failed to load transaction (${res.status})`)
       const json = await res.json()
       setTx((json?.transaction as TxRow) || null)
-      setTxDocs(
+      setTxDocuments(
         Array.isArray(json?.transaction_documents)
           ? (json.transaction_documents as TransactionDocumentRow[])
           : []
@@ -332,7 +332,7 @@ export default function TransactionDetailPage() {
 
   useEffect(() => {
     if (!Number.isFinite(txId)) return
-    const pending = txDocs.some((d) =>
+    const pending = txDocuments.some((d) =>
       ['uploading', 'uploaded', 'processing'].includes(String(d.status || ''))
     )
     if (!pending) return
@@ -341,17 +341,17 @@ export default function TransactionDetailPage() {
         const res = await fetch(`/api/transactions/${txId}/documents`, { cache: 'no-store' })
         if (!res.ok) return
         const j = await res.json()
-        setTxDocs(Array.isArray(j.documents) ? j.documents : [])
+        setTxDocuments(Array.isArray(j.documents) ? j.documents : [])
       } catch {
         // ignore
       }
     }, 2200)
     return () => clearInterval(t)
-  }, [txDocs, txId])
+  }, [txDocuments, txId])
 
   useEffect(() => {
     if (addressMismatch) return
-    for (const d of txDocs) {
+    for (const d of txDocuments) {
       if (String(d.status || '') !== 'reviewed') continue
       const am = d.deal_impact?.address_mismatch
       if (am?.mismatch === true && !addressMismatchDismissed.current.has(d.id)) {
@@ -366,7 +366,7 @@ export default function TransactionDetailPage() {
         break
       }
     }
-  }, [txDocs, addressMismatch, animationComplete, airdropVisible])
+  }, [txDocuments, addressMismatch, animationComplete, airdropVisible])
 
   useEffect(() => {
     if (animationComplete && !airdropVisible && addressMismatch) {
@@ -671,7 +671,7 @@ export default function TransactionDetailPage() {
             </div>
             <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
               <div className="text-xs uppercase tracking-wide text-slate-400">Documents count</div>
-              <div className="mt-1 text-sm font-semibold text-white">{txDocs.length || documents.length}</div>
+              <div className="mt-1 text-sm font-semibold text-white">{txDocuments.length}</div>
             </div>
           </div>
         </div>
@@ -704,13 +704,13 @@ export default function TransactionDetailPage() {
   }
 
   function documentsTab() {
-    const sortedDocs = [...txDocs].sort(
+    const sortedDocs = [...txDocuments].sort(
       (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
     )
-    const hasImpact = txDocs.some((d) => d.deal_impact && Object.keys(d.deal_impact).length > 0)
+    const hasImpact = txDocuments.some((d) => d.deal_impact && Object.keys(d.deal_impact).length > 0)
     const timelineLines =
-      hasImpact || txDocs.some((d) => d.document_type === 'rf401_psa')
-        ? buildDealTimeline(tx, txDocs)
+      hasImpact || txDocuments.some((d) => d.document_type === 'rf401_psa')
+        ? buildDealTimeline(tx, txDocuments)
         : []
 
     const renderDocCard = (d: TransactionDocumentRow) => {
@@ -871,11 +871,11 @@ export default function TransactionDetailPage() {
           </button>
         </div>
 
-        {!!txDocs.length ? (
+        {!!txDocuments.length ? (
           <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold text-white">Transaction Documents</h2>
-              <span className="text-xs text-slate-400">{txDocs.length} total</span>
+              <span className="text-xs text-slate-400">{txDocuments.length} total</span>
             </div>
             {timelineLines.length ? (
               <div className="mt-3 rounded-xl border border-orange-500/30 bg-orange-500/10 p-4">
@@ -1125,7 +1125,7 @@ export default function TransactionDetailPage() {
 
   function activityTab() {
     const txActivity = Array.isArray(tx?.activity_log) ? tx.activity_log : []
-    const docEvents = txDocs.map((d) => ({
+    const docEvents = txDocuments.map((d) => ({
       icon: '📄',
       description: `${d.display_name} uploaded${String(d.status || '') === 'reviewed' ? ' and reviewed by Reva' : ''}`,
       timestamp: d.created_at || new Date().toISOString(),
@@ -1203,8 +1203,8 @@ export default function TransactionDetailPage() {
   }
 
   const airdropWatchDoc = useMemo(
-    () => (airdropWatchId != null ? txDocs.find((d) => d.id === airdropWatchId) : undefined),
-    [airdropWatchId, txDocs]
+    () => (airdropWatchId != null ? txDocuments.find((d) => d.id === airdropWatchId) : undefined),
+    [airdropWatchId, txDocuments]
   )
   const airdropStatusForUi: 'processing' | 'reviewed' | 'error' =
     airdropWatchDoc?.status === 'reviewed'
