@@ -13,7 +13,7 @@ async function assertTransactionOwnership(transactionId: string, userId: string)
     .from('transactions')
     .select('id')
     .eq('id', transactionId)
-    .eq('agent_id', userId)
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (error) {
