@@ -25,6 +25,7 @@ type AiSummary = {
 type ChecklistItem = {
   id?: string | number
   title?: string
+  type?: string
   category?: string
   priority?: string
   due_date?: string | null
@@ -91,6 +92,7 @@ type TxRow = {
   county?: string | null
   contract_pdf_url?: string | null
   ai_summary?: AiSummary
+  key_dates?: Record<string, unknown> | null
   ai_checklist?: ChecklistItem[] | null
   ai_deadlines?: DeadlineItem[] | null
   ai_contacts?: AiContact[] | null
@@ -166,6 +168,68 @@ function daysUntil(dueDate: string | null | undefined): number | null {
   const due = new Date(dueDate)
   if (Number.isNaN(due.getTime())) return null
   return Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+}
+
+function dateOnlyIso(input: string | null | undefined): string | null {
+  if (!input) return null
+  const d = new Date(input)
+  if (Number.isNaN(d.getTime())) return null
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString()
+}
+
+function addDaysIso(input: string | null | undefined, days: number): string | null {
+  const base = dateOnlyIso(input)
+  if (!base) return null
+  const d = new Date(base)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString()
+}
+
+function startOfTodayLocal(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+type DeadlineStatus = 'overdue' | 'due_soon' | 'on_track' | 'complete'
+
+type DerivedDeadline = {
+  id: string
+  name: string
+  dueDate: string | null
+  completed: boolean
+  notes?: string | null
+}
+
+function normalizeDeadlineName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+function titleFromKey(key: string): string {
+  return key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase())
+}
+
+function parseDateLike(value: unknown): string | null {
+  if (typeof value === 'string') return dateOnlyIso(value)
+  if (value && typeof value === 'object') {
+    const maybeDate = (value as Record<string, unknown>).date
+    if (typeof maybeDate === 'string') return dateOnlyIso(maybeDate)
+  }
+  return null
+}
+
+function deriveDeadlineStatus(dueDate: string | null, completed: boolean): DeadlineStatus {
+  if (completed) return 'complete'
+  if (!dueDate) return 'on_track'
+  const due = new Date(dueDate)
+  if (Number.isNaN(due.getTime())) return 'on_track'
+  const diffDays = Math.ceil((due.getTime() - startOfTodayLocal().getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays < 0) return 'overdue'
+  if (diffDays <= 3) return 'due_soon'
+  return 'on_track'
 }
 
 function classNames(...xs: Array<string | false | null | undefined>) {
@@ -263,7 +327,9 @@ export default function TransactionDetailPage() {
   )
 
   const [aiChecklist, setAiChecklist] = useState<ChecklistItem[]>([])
-  const [aiDeadlines, setAiDeadlines] = useState<DeadlineItem[]>([])
+  const [showAddDeadlineModal, setShowAddDeadlineModal] = useState(false)
+  const [deadlineForm, setDeadlineForm] = useState({ name: '', dueDate: '', notes: '' })
+  const [deadlineSaving, setDeadlineSaving] = useState(false)
   const [contacts, setContacts] = useState<TransactionContact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
@@ -503,15 +569,91 @@ export default function TransactionDetailPage() {
   // Prime AI state after tx load
   useEffect(() => {
     setAiChecklist(Array.isArray(tx?.ai_checklist) ? (tx.ai_checklist as ChecklistItem[]) : [])
-    const rawDeadlines = tx?.ai_deadlines
-    if (Array.isArray(rawDeadlines)) {
-      setAiDeadlines(rawDeadlines as DeadlineItem[])
-    } else if (rawDeadlines && typeof rawDeadlines === 'object' && Array.isArray((rawDeadlines as any).deadlines)) {
-      setAiDeadlines((rawDeadlines as any).deadlines as DeadlineItem[])
-    } else {
-      setAiDeadlines([])
-    }
   }, [tx])
+
+  const checklistItemsForTab = useMemo(
+    () => aiChecklist.filter((item) => String(item.type || '').toLowerCase() !== 'deadline'),
+    [aiChecklist]
+  )
+
+  const mergedDeadlines = useMemo(() => {
+    const out: DerivedDeadline[] = []
+    const seen = new Set<string>()
+
+    for (const item of aiChecklist) {
+      if (!item?.due_date) continue
+      const name = item.title?.trim() || 'Checklist Deadline'
+      const key = normalizeDeadlineName(name)
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({
+        id: `checklist_${String(item.id || key)}`,
+        name,
+        dueDate: dateOnlyIso(item.due_date) || item.due_date || null,
+        completed: Boolean(item.completed),
+        notes: item.notes || null,
+      })
+    }
+
+    const rawKeyDates = tx?.key_dates
+    if (rawKeyDates && typeof rawKeyDates === 'object') {
+      for (const [rawKey, rawValue] of Object.entries(rawKeyDates)) {
+        if (rawValue === null || rawValue === undefined) continue
+        let name = titleFromKey(rawKey)
+        let dueDate = parseDateLike(rawValue)
+        if (rawValue && typeof rawValue === 'object') {
+          const obj = rawValue as Record<string, unknown>
+          if (typeof obj.name === 'string' && obj.name.trim()) name = obj.name.trim()
+          if (!dueDate) dueDate = parseDateLike(obj.value)
+        }
+        const key = normalizeDeadlineName(name)
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push({
+          id: `key_dates_${rawKey}`,
+          name,
+          dueDate,
+          completed: false,
+        })
+      }
+    }
+
+    const generatedKnown = [
+      { name: 'Inspection Period End', dueDate: addDaysIso(tx?.binding_date || null, 10) },
+      { name: 'Financing Contingency', dueDate: addDaysIso(tx?.binding_date || null, 21) },
+      { name: 'Appraisal Deadline', dueDate: addDaysIso(tx?.binding_date || null, 21) },
+      { name: 'Title Search', dueDate: addDaysIso(tx?.binding_date || null, 14) },
+      { name: 'Closing Date', dueDate: dateOnlyIso(tx?.closing_date || null) },
+    ]
+
+    for (const d of generatedKnown) {
+      const key = normalizeDeadlineName(d.name)
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({
+        id: `generated_${key}`,
+        name: d.name,
+        dueDate: d.dueDate,
+        completed: false,
+      })
+    }
+
+    const statusRank: Record<DeadlineStatus, number> = {
+      overdue: 0,
+      due_soon: 1,
+      on_track: 2,
+      complete: 3,
+    }
+
+    return out.sort((a, b) => {
+      const aStatus = deriveDeadlineStatus(a.dueDate, a.completed)
+      const bStatus = deriveDeadlineStatus(b.dueDate, b.completed)
+      if (statusRank[aStatus] !== statusRank[bStatus]) return statusRank[aStatus] - statusRank[bStatus]
+      const aTime = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER
+      const bTime = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER
+      return aTime - bTime
+    })
+  }, [aiChecklist, tx?.key_dates, tx?.binding_date, tx?.closing_date])
 
   useEffect(() => {
     // keep Reva scrolled to bottom as messages change
@@ -598,6 +740,37 @@ export default function TransactionDetailPage() {
       await patchTransaction({ ai_checklist: next })
     } catch {
       await loadPageData()
+    }
+  }
+
+  async function saveCustomDeadline() {
+    const name = deadlineForm.name.trim()
+    if (!name) {
+      window.alert('Deadline name is required.')
+      return
+    }
+    const nextItem: ChecklistItem = {
+      id: `deadline_${Date.now()}`,
+      title: name,
+      type: 'deadline',
+      due_date: deadlineForm.dueDate ? new Date(`${deadlineForm.dueDate}T00:00:00`).toISOString() : null,
+      completed: false,
+      notes: deadlineForm.notes.trim() || null,
+      category: 'deadline',
+      priority: 'medium',
+    }
+    const next = [...aiChecklist, nextItem]
+    setDeadlineSaving(true)
+    setAiChecklist(next)
+    try {
+      await patchTransaction({ ai_checklist: next })
+      setShowAddDeadlineModal(false)
+      setDeadlineForm({ name: '', dueDate: '', notes: '' })
+    } catch {
+      await loadPageData()
+      window.alert('Could not save deadline.')
+    } finally {
+      setDeadlineSaving(false)
     }
   }
 
@@ -1114,13 +1287,13 @@ export default function TransactionDetailPage() {
   }
 
   function checklistTab() {
-    const total = aiChecklist.length
-    const done = aiChecklist.filter((i) => Boolean(i.completed)).length
+    const total = checklistItemsForTab.length
+    const done = checklistItemsForTab.filter((i) => Boolean(i.completed)).length
     const pct = total ? Math.round((done / total) * 100) : 0
     const byPriority = {
-      critical: aiChecklist.filter((i) => String(i.priority || '').toLowerCase() === 'critical'),
-      high: aiChecklist.filter((i) => String(i.priority || '').toLowerCase() === 'high'),
-      mediumLow: aiChecklist.filter((i) => {
+      critical: checklistItemsForTab.filter((i) => String(i.priority || '').toLowerCase() === 'critical'),
+      high: checklistItemsForTab.filter((i) => String(i.priority || '').toLowerCase() === 'high'),
+      mediumLow: checklistItemsForTab.filter((i) => {
         const p = String(i.priority || 'medium').toLowerCase()
         return p !== 'critical' && p !== 'high'
       }),
@@ -1315,43 +1488,97 @@ export default function TransactionDetailPage() {
   }
 
   function deadlinesTab() {
+    function statusMeta(d: DerivedDeadline): {
+      label: string
+      icon: string
+      rowClass: string
+      badgeClass: string
+      daysClass: string
+    } {
+      const status = deriveDeadlineStatus(d.dueDate, d.completed)
+      if (status === 'complete') {
+        return {
+          label: 'Complete',
+          icon: '✅',
+          rowClass: 'border-emerald-500/40 bg-emerald-950/20',
+          badgeClass: 'border-emerald-500/40 bg-emerald-500/20 text-emerald-100',
+          daysClass: 'border-emerald-500/40 bg-emerald-500/20 text-emerald-100',
+        }
+      }
+      if (status === 'overdue') {
+        return {
+          label: 'Overdue',
+          icon: '🔴',
+          rowClass: 'border-red-500/40 bg-red-950/25',
+          badgeClass: 'border-red-500/40 bg-red-500/20 text-red-100',
+          daysClass: 'border-red-500/40 bg-red-500/20 text-red-100',
+        }
+      }
+      if (status === 'due_soon') {
+        return {
+          label: 'Due Soon',
+          icon: '🟡',
+          rowClass: 'border-yellow-500/40 bg-yellow-950/20',
+          badgeClass: 'border-yellow-500/40 bg-yellow-500/20 text-yellow-100',
+          daysClass: 'border-yellow-500/40 bg-yellow-500/20 text-yellow-100',
+        }
+      }
+      return {
+        label: 'On Track',
+        icon: '🟢',
+        rowClass: 'border-green-500/40 bg-green-950/20',
+        badgeClass: 'border-green-500/40 bg-green-500/20 text-green-100',
+        daysClass: 'border-green-500/40 bg-green-500/20 text-green-100',
+      }
+    }
+
+    function daysRemainingText(d: DerivedDeadline): string {
+      if (d.completed) return 'Complete'
+      if (!d.dueDate) return 'Date TBD'
+      const due = new Date(d.dueDate)
+      if (Number.isNaN(due.getTime())) return 'Date TBD'
+      const diffDays = Math.ceil((due.getTime() - startOfTodayLocal().getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays < 0) return `Overdue ${Math.abs(diffDays)} days`
+      if (diffDays === 0) return 'Today'
+      return `${diffDays} days`
+    }
+
     return (
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-white">Deadlines</h2>
-            {!aiDeadlines.length ? (
-              <button onClick={() => void generateIntelligence()} className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition">
-                Generate Intelligence
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={() => setShowAddDeadlineModal(true)}
+              className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition"
+            >
+              + Add Deadline
+            </button>
           </div>
 
-          {!aiDeadlines.length ? <p className="mt-3 text-sm text-slate-400">No deadlines yet.</p> : null}
+          {!mergedDeadlines.length ? <p className="mt-3 text-sm text-slate-400">No deadlines yet.</p> : null}
 
           <div className="mt-3 space-y-2">
-            {aiDeadlines.map((d, idx) => {
-              const delta = daysUntil(d.due_date || null)
-              const done = String(d.status || '').toLowerCase() === 'completed'
-              const isOverdue = !done && delta !== null && delta < 0
-              const within3 = !done && delta !== null && delta >= 0 && delta <= 3
-              const within7 = !done && delta !== null && delta > 3 && delta <= 7
-              const daysText = delta === null ? '—' : isOverdue ? `${Math.abs(delta)} days overdue` : delta === 0 ? 'Due today' : `${delta} days away`
-              const urgencyClass = done
-                ? 'border-slate-600 bg-slate-900/60 text-slate-200'
-                : isOverdue || within3
-                  ? 'border-red-500/40 bg-red-950/40 text-red-100'
-                  : within7
-                    ? 'border-orange-500/40 bg-orange-950/30 text-orange-100'
-                    : 'border-green-500/40 bg-green-950/30 text-green-100'
-
+            {mergedDeadlines.map((d) => {
+              const meta = statusMeta(d)
               return (
-                <div key={`${d.id || idx}-${d.title || 'deadline'}`} className={classNames('rounded-lg border p-4', urgencyClass)}>
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div key={d.id} className={classNames('rounded-lg border p-4', meta.rowClass)}>
+                  <div className="grid gap-2 md:grid-cols-[220px_130px_1fr_150px] md:items-center">
                     <div>
-                      <div className="font-semibold text-white">{d.title || 'Deadline item'}</div>
-                      <div className="mt-1 text-xs text-slate-200">{formatDate(d.due_date || null)} · {daysText}</div>
-                      {d.tca_reference ? <div className="mt-1 text-xs text-slate-300">TCA Reference: {d.tca_reference}</div> : null}
+                      <span className={classNames('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', meta.badgeClass)}>
+                        {meta.icon} {meta.label}
+                      </span>
+                    </div>
+                    <div className="text-sm font-semibold text-white">{d.dueDate ? formatDate(d.dueDate) : 'Date TBD'}</div>
+                    <div className="text-sm text-slate-100">
+                      {d.name}
+                      {d.notes ? <div className="mt-1 text-xs text-slate-300">{d.notes}</div> : null}
+                    </div>
+                    <div className="md:text-right">
+                      <span className={classNames('inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold', meta.daysClass)}>
+                        {daysRemainingText(d)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1359,6 +1586,71 @@ export default function TransactionDetailPage() {
             })}
           </div>
         </div>
+
+        {showAddDeadlineModal ? (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-white">Add Deadline</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAddDeadlineModal(false)}
+                  className="rounded-lg border border-slate-600 px-2 py-1 text-xs text-slate-200 hover:border-orange-500/40"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <label className="text-xs font-medium text-slate-300">
+                  Deadline name (required)
+                  <input
+                    value={deadlineForm.name}
+                    onChange={(e) => setDeadlineForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="e.g. HOA Review Deadline"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Date
+                  <input
+                    type="date"
+                    value={deadlineForm.dueDate}
+                    onChange={(e) => setDeadlineForm((prev) => ({ ...prev, dueDate: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Notes
+                  <textarea
+                    value={deadlineForm.notes}
+                    onChange={(e) => setDeadlineForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    className="mt-1 min-h-20 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="Optional notes..."
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDeadlineModal(false)}
+                  className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveCustomDeadline()}
+                  disabled={deadlineSaving}
+                  className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
+                >
+                  {deadlineSaving ? 'Saving…' : 'Save Deadline'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
   }
