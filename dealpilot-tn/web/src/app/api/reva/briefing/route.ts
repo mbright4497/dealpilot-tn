@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { buildRevaContext } from '@/lib/reva/buildRevaContext'
+import { DEFAULT_ZIP, fetchWeatherForZip } from '@/lib/weather/openMeteo'
 
 export const maxDuration = 60
 
@@ -55,6 +56,47 @@ export async function POST() {
 
     const hasNoActiveTransactions = (activeTransactionCount ?? 0) === 0
     const context = await buildRevaContext(supabase, userId, undefined, userEmail)
+
+    const now = new Date()
+    const hour = now.getHours()
+    const greeting =
+      hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+    const todayLong = now.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    })
+
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .maybeSingle()
+
+    let zipForWeather = DEFAULT_ZIP
+    const { data: zipRow, error: zipErr } = await supabase
+      .from('profiles')
+      .select('zip')
+      .eq('id', userId)
+      .maybeSingle()
+    if (!zipErr && typeof zipRow?.zip === 'string' && zipRow.zip.trim()) {
+      zipForWeather = zipRow.zip.trim()
+    }
+
+    const firstNameRaw = profileRow?.full_name?.trim()
+    const firstName = firstNameRaw
+      ? firstNameRaw.split(/\s+/)[0]
+      : String(userEmail || '')
+          .split('@')[0]
+          ?.trim() || 'there'
+
+    let weatherBlock = ''
+    const wx = await fetchWeatherForZip(zipForWeather)
+    if (wx) {
+      weatherBlock = `Current weather in agent's area: ${wx.tempF}°F, ${wx.condition}
+Reference location for small talk: ${wx.locationLabel}.`
+    }
+
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -63,13 +105,17 @@ export async function POST() {
         {
           role: 'system',
           content: `You are Reva, an expert Tennessee real estate
-transaction coordinator AI. Generate a morning briefing
+transaction coordinator AI. Generate a concise briefing
 based on the live data provided. Be specific with
 addresses and dates. Under 150 words. No generic
 statements. If nothing is urgent, say so plainly.
 
+Start with "${greeting}, ${firstName}." based on the current time. Today is ${todayLong}.
+
+${weatherBlock ? `${weatherBlock}\n` : ''}You may briefly reference the weather when it helps set context (e.g. showing houses).
+
 If this user has no active transactions, generate a warm welcome briefing that:
-- Greets them by name
+- Greets them by name (using the time-appropriate greeting above)
 - Explains what ClosingPilot can do for them
 - Tells them their first step is to add a transaction
 - Mentions they can ask Reva anything about TN real estate
@@ -80,8 +126,8 @@ ${context}`,
         {
           role: 'user',
           content: hasNoActiveTransactions
-            ? 'Generate my onboarding morning briefing for today.'
-            : 'Generate my morning briefing for today.',
+            ? 'Generate my onboarding briefing for today.'
+            : 'Generate my briefing for today.',
         },
       ],
     })

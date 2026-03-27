@@ -44,6 +44,8 @@ import SmartIntakeCard from '@/components/SmartIntakeCard'
 import DealPickerModal from '@/components/DealPickerModal'
 import RookWizard from '@/components/RookWizard'
 import DriveMode from '@/components/reva/DriveMode'
+import { DashboardWeatherCard } from '@/components/dashboard/DashboardWeatherCard'
+import type { WeatherSnapshot } from '@/lib/weather/openMeteo'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -128,6 +130,7 @@ function ChatPageInner() {
 
   // Command Center state
   const [briefing, setBriefing] = useState<string|null>(null)
+  const [dashboardWeather, setDashboardWeather] = useState<WeatherSnapshot | null>(null)
   const [actions, setActions] = useState<any[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -190,14 +193,23 @@ function ChatPageInner() {
 
   const loadCommandCenter = async ()=>{
     try{
-      const b = await fetch('/api/reva/briefing', { method:'POST' })
+      const [b, r, d, a, w] = await Promise.all([
+        fetch('/api/reva/briefing', { method:'POST' }),
+        fetch('/api/eva/actions'),
+        fetch('/api/transactions'),
+        fetch('/api/reva/alerts', { method: 'POST' }),
+        fetch('/api/weather'),
+      ])
       if(b.ok){ const bj=await b.json(); setBriefing(bj.briefing||bj.summary||bj.message||null) }
-      const r = await fetch('/api/eva/actions')
       if(r.ok){ const aj=await r.json(); setActions(aj.actions||[]) }
-      const d = await fetch('/api/transactions')
       if(d.ok){ const dj=await d.json(); setTransactions(Array.isArray(dj?.transactions)?dj.transactions:[]) }
-      const a = await fetch('/api/reva/alerts', { method: 'POST' })
       if(a.ok){ const aj = await a.json(); setAlerts(Array.isArray(aj.alerts) ? aj.alerts : []) }
+      if(w.ok){
+        const wj = await w.json()
+        setDashboardWeather(wj.weather ?? null)
+      } else {
+        setDashboardWeather(null)
+      }
       setLastUpdated(new Date())
     }catch(e){ console.warn('command center load',e) }
     setLoading(false)
@@ -639,6 +651,7 @@ function ChatPageInner() {
 
  {/* Briefing / Conversational area */}
  <div className="mt-6 max-w-3xl w-full">
+   {dashboardWeather && <DashboardWeatherCard weather={dashboardWeather} />}
    <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
      {(chatMessages.length === 0) && (
        <div>
