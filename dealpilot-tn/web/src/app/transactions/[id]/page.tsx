@@ -600,7 +600,7 @@ export default function TransactionDetailPage() {
         a.remove()
         await sleep(300)
       }
-      setToastMsg(`${docs.length} documents downloaded successfully`)
+      setToastMsg(`${docs.length} documents ready - downloading...`)
       window.setTimeout(() => setToastMsg(null), 3500)
     } catch (e: unknown) {
       window.alert(e instanceof Error ? e.message : 'Download failed.')
@@ -776,10 +776,11 @@ export default function TransactionDetailPage() {
     const downloadableDocumentsCount = txDocuments.filter((d) =>
       Boolean(d.file_url) && ['uploaded', 'reviewed'].includes(String(d.status || '').toLowerCase())
     ).length
+    const canDownloadPackage = downloadableDocumentsCount >= 1
 
     const renderStatus = (slot: TNDocumentSlot, doc: TransactionDocumentRow | undefined) => {
       if (rowUploadingSlotId === slot.id) {
-        return <span className="text-orange-200 animate-pulse">⏳ Processing</span>
+        return <span className="text-orange-200">⏳ Uploading...</span>
       }
       if (!doc) return <span className="text-slate-400">⬜ Not uploaded</span>
       const status = String(doc.status || '').toLowerCase()
@@ -874,16 +875,16 @@ export default function TransactionDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="text-xs text-slate-400">{requiredPct}%</div>
-              {downloadableDocumentsCount >= 3 ? (
-                <button
-                  type="button"
-                  onClick={() => void downloadClosingPackage()}
-                  disabled={bundleDownloading}
-                  className="rounded-lg border border-orange-500/40 bg-orange-500/10 px-3 py-1.5 text-xs font-semibold text-orange-100 hover:bg-orange-500/20 transition disabled:opacity-60"
-                >
-                  {bundleDownloading ? 'Reva is preparing your package...' : '📦 Download All Documents'}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => void downloadClosingPackage()}
+                disabled={!canDownloadPackage || bundleDownloading}
+                title={!canDownloadPackage ? 'Upload documents to enable' : undefined}
+                className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 transition disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {bundleDownloading ? <Loader2 size={14} className="animate-spin" /> : null}
+                {bundleDownloading ? 'Preparing package...' : '📦 Download Closing Package'}
+              </button>
             </div>
           </div>
           <div className="mt-3 h-2 rounded-full bg-slate-800">
@@ -906,6 +907,7 @@ export default function TransactionDetailPage() {
                   {isOpen ? '▼' : '▶'} {phaseTitle(phase)} <span className="text-slate-400 font-normal">({uploadedInPhase} of {slots.length} uploaded)</span>
                 </div>
               </button>
+              <p className="mt-2 text-xs text-slate-400">Click ⬆ Upload on any row to attach that document</p>
 
               {isOpen ? (
                 <div className="mt-3 space-y-2">
@@ -941,7 +943,7 @@ export default function TransactionDetailPage() {
                             ) : null}
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 md:justify-end">
                           <input
                             ref={(el) => {
                               rowUploadInputRefs.current[slot.id] = el
@@ -966,7 +968,7 @@ export default function TransactionDetailPage() {
                               onClick={() => rowUploadInputRefs.current[slot.id]?.click()}
                               className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
                             >
-                              ⬆ Upload
+                              ⬆ Upload PDF
                             </button>
                           ) : (
                             <>
@@ -995,6 +997,14 @@ export default function TransactionDetailPage() {
                               </button>
                             </>
                           )}
+                          {rowUploadingSlotId === slot.id ? (
+                            <div className="w-full">
+                              <div className="mb-1 text-[11px] font-medium text-orange-200">Uploading...</div>
+                              <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+                                <div className="h-full w-1/2 animate-pulse rounded-full bg-orange-500" />
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     )
