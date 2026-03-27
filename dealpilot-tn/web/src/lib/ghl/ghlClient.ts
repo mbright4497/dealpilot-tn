@@ -25,7 +25,7 @@ export async function sendGHLEmail(
   from: { email: string; name: string },
   subject: string,
   body: string
-): Promise<{ success: boolean; messageId?: string }> {
+): Promise<{ success: boolean; messageId?: string; fromEmail?: string }> {
   const res = await fetch(`${GHL_BASE_V1}/emails/`, {
     method: "POST",
     headers: authHeaders(apiKey),
@@ -33,7 +33,11 @@ export async function sendGHLEmail(
   });
   if (!res.ok) return { success: false };
   const json = await res.json().catch(() => ({}));
-  return { success: true, messageId: json?.id || json?.messageId };
+  return {
+    success: true,
+    messageId: json?.id || json?.messageId,
+    fromEmail: from.email,
+  };
 }
 
 export async function sendGHLSMS(
@@ -41,7 +45,7 @@ export async function sendGHLSMS(
   toPhone: string,
   fromPhone: string,
   message: string
-): Promise<{ success: boolean; messageId?: string }> {
+): Promise<{ success: boolean; messageId?: string; fromNumber?: string }> {
   const res = await fetch(`${GHL_BASE_V1}/sms/`, {
     method: "POST",
     headers: authHeaders(apiKey),
@@ -49,7 +53,11 @@ export async function sendGHLSMS(
   });
   if (!res.ok) return { success: false };
   const json = await res.json().catch(() => ({}));
-  return { success: true, messageId: json?.id || json?.messageId };
+  return {
+    success: true,
+    messageId: json?.id || json?.messageId,
+    fromNumber: String(json?.from || json?.fromNumber || fromPhone || "").trim() || fromPhone,
+  };
 }
 
 export async function getGHLContacts(apiKey: string, query?: string): Promise<GHLContact[]> {

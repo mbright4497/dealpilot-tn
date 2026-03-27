@@ -411,6 +411,15 @@ export default function TransactionDetailPage() {
     dateTime: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
   })
 
+  const [showSendMessageModal, setShowSendMessageModal] = useState(false)
+  const [sendChannel, setSendChannel] = useState<'sms' | 'email'>('sms')
+  const [sendContactId, setSendContactId] = useState('')
+  const [sendSubject, setSendSubject] = useState('')
+  const [sendBody, setSendBody] = useState('')
+  const [sendMessageBusy, setSendMessageBusy] = useState(false)
+  const [revaDraftBusy, setRevaDraftBusy] = useState(false)
+  const [sendDraftedByReva, setSendDraftedByReva] = useState(false)
+
   // Reva panel state (permanent on right)
   const [threadId, setThreadId] = useState<string | null>(null)
   const [revaMessages, setRevaMessages] = useState<RevaChatLine[]>([])
@@ -2076,6 +2085,127 @@ export default function TransactionDetailPage() {
   }
 
   function activityTab() {
+    async function letRevaDraftMessage() {
+      if (!Number.isFinite(txId)) return
+      const contact = contacts.find((c) => c.id === sendContactId)
+      if (!sendContactId || !contact) {
+        window.alert('Select a contact first.')
+        return
+      }
+      setRevaDraftBusy(true)
+      setSendDraftedByReva(false)
+      try {
+        const channelLabel = sendChannel === 'sms' ? 'SMS text message' : 'email'
+        const prompt = [
+          `You are Reva, a Tennessee transaction coordinator. Draft only the body of a ${channelLabel} to ${contact.name} (${contact.role}) for this deal.`,
+          sendChannel === 'email'
+            ? `If a subject line is needed, put it on the first line as "Subject: ..." then a blank line, then the body.`
+            : `Keep the SMS under 300 characters when possible. No greeting boilerplate unless appropriate.`,
+          `Property: ${propertyAddress}. Client: ${clientName}. Deal phase: ${tx?.phase || 'intake'}.`,
+          `Write the message only — no preamble or explanation.`,
+        ].join('\n')
+        const res = await fetch('/api/reva/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: prompt,
+            dealId: txId,
+            context: 'compose_message',
+          }),
+        })
+        const json = await res.json().catch(() => ({}))
+        const reply = String(json?.reply || '').trim()
+        if (!reply) {
+          window.alert('Reva did not return a draft. Try again.')
+          return
+        }
+        if (sendChannel === 'email') {
+          const m = reply.match(/^Subject:\s*(.+)$/im)
+          if (m) {
+            const subjectLine = m[1].trim()
+            const rest = reply.replace(/^Subject:\s*.+$/im, '').trim()
+            setSendSubject(subjectLine)
+            setSendBody(rest)
+          } else {
+            setSendBody(reply)
+          }
+        } else {
+          setSendBody(reply)
+        }
+        setSendDraftedByReva(true)
+      } catch {
+        window.alert('Could not get a draft from Reva.')
+      } finally {
+        setRevaDraftBusy(false)
+      }
+    }
+
+    async function sendGhlMessage() {
+      if (!Number.isFinite(txId)) return
+      const contact = contacts.find((c) => c.id === sendContactId)
+      if (!sendContactId || !contact) {
+        window.alert('Select a contact.')
+        return
+      }
+      const body = sendBody.trim()
+      if (!body) {
+        window.alert('Enter a message.')
+        return
+      }
+      if (sendChannel === 'email') {
+        const sub = sendSubject.trim()
+        if (!sub) {
+          window.alert('Subject is required for email.')
+          return
+        }
+        if (!contact.email?.trim()) {
+          window.alert('This contact has no email. Add one on the Contacts tab or choose another contact.')
+          return
+        }
+      } else if (!contact.phone?.trim()) {
+        window.alert('This contact has no phone number. Add one on the Contacts tab or choose another contact.')
+        return
+      }
+      setSendMessageBusy(true)
+      try {
+        const res = await fetch('/api/communications/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: sendChannel,
+            dealId: txId,
+            transactionContactId: sendContactId,
+            subject: sendChannel === 'email' ? sendSubject.trim() : '',
+            message: body,
+            triggeredByReva: sendDraftedByReva,
+          }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          throw new Error(String(json?.error || 'Send failed'))
+        }
+        const fromNum = json?.ghlFromNumber ? String(json.ghlFromNumber) : ''
+        const fromEmail = json?.sentFromEmail ? String(json.sentFromEmail) : ''
+        if (sendChannel === 'sms' && fromNum) {
+          setToastMsg(`Message sent from GHL number ${fromNum}`)
+        } else if (sendChannel === 'email' && fromEmail) {
+          setToastMsg(`Email sent from ${fromEmail}`)
+        } else {
+          setToastMsg('Message sent.')
+        }
+        window.setTimeout(() => setToastMsg(null), 5000)
+        setShowSendMessageModal(false)
+        setSendSubject('')
+        setSendBody('')
+        setSendDraftedByReva(false)
+        await loadActivity()
+      } catch (e: unknown) {
+        window.alert(e instanceof Error ? e.message : 'Send failed.')
+      } finally {
+        setSendMessageBusy(false)
+      }
+    }
+
     async function submitManualActivity() {
       const note = activityForm.note.trim()
       if (!note) {
@@ -2128,13 +2258,28 @@ export default function TransactionDetailPage() {
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-white">Transaction Timeline</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => void loadActivity()}
                 className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-60"
                 disabled={activityLoading}
               >
                 {activityLoading ? <Loader2 size={16} className="animate-spin" /> : 'Refresh'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSendChannel('sms')
+                  setSendContactId((prev) => prev || (contacts[0]?.id ?? ''))
+                  setSendSubject('')
+                  setSendBody('')
+                  setSendDraftedByReva(false)
+                  setShowSendMessageModal(true)
+                }}
+                className="inline-flex items-center gap-2 rounded-lg border border-teal-600/60 bg-teal-950/40 px-3 py-2 text-sm font-semibold text-teal-100 hover:border-teal-400/60 transition"
+              >
+                <Mail size={16} />
+                Send Message
               </button>
               <button
                 type="button"
@@ -2172,6 +2317,100 @@ export default function TransactionDetailPage() {
             </div>
           )}
         </div>
+
+        {showSendMessageModal ? (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-white">Send message (GHL)</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowSendMessageModal(false)}
+                  className="rounded-lg border border-slate-600 px-2 py-1 text-xs text-slate-200 hover:border-orange-500/40"
+                >
+                  Close
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                Uses your GHL API key from Settings. Recipients must match contacts on this transaction.
+              </p>
+              <div className="mt-4 grid gap-3">
+                <label className="text-xs font-medium text-slate-300">
+                  To
+                  <select
+                    value={sendContactId}
+                    onChange={(e) => setSendContactId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  >
+                    <option value="">Select contact…</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.role})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Channel
+                  <select
+                    value={sendChannel}
+                    onChange={(e) => setSendChannel(e.target.value as 'sms' | 'email')}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  >
+                    <option value="sms">SMS</option>
+                    <option value="email">Email</option>
+                  </select>
+                </label>
+                {sendChannel === 'email' ? (
+                  <label className="text-xs font-medium text-slate-300">
+                    Subject
+                    <input
+                      value={sendSubject}
+                      onChange={(e) => setSendSubject(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                      placeholder="Subject line"
+                    />
+                  </label>
+                ) : null}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-medium text-slate-300">Message</label>
+                  <textarea
+                    value={sendBody}
+                    onChange={(e) => setSendBody(e.target.value)}
+                    className="min-h-28 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder={sendChannel === 'sms' ? 'SMS body…' : 'Email body…'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void letRevaDraftMessage()}
+                    disabled={revaDraftBusy || !sendContactId}
+                    className="inline-flex items-center justify-center gap-2 self-start rounded-lg border border-purple-500/40 bg-purple-950/40 px-3 py-2 text-xs font-semibold text-purple-100 hover:border-purple-400/60 disabled:opacity-50"
+                  >
+                    {revaDraftBusy ? <Loader2 size={14} className="animate-spin" /> : <Bot size={14} />}
+                    Let Reva Draft It
+                  </button>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSendMessageModal(false)}
+                  className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void sendGhlMessage()}
+                  disabled={sendMessageBusy || contactsLoading || !contacts.length}
+                  className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
+                >
+                  {sendMessageBusy ? 'Sending…' : 'Send'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {showActivityModal ? (
           <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">

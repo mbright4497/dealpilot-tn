@@ -39,6 +39,7 @@ function mapManualTypeToActivityType(type: string): TimelineEventType {
   if (t === 'meeting') return 'system'
   if (t === 'warning') return 'warning'
   if (t === 'reva') return 'reva'
+  if (t === 'sms' || t === 'ghl_sms' || t === 'ghl_email' || t === 'communication') return 'communication'
   return 'system'
 }
 
