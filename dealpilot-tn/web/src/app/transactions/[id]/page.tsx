@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { CircleHelp, Loader2, Phone, Trash2, Upload } from 'lucide-react'
+import { CircleHelp, Loader2, Mail, Phone, Trash2, Upload, User } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
 import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
 import {
@@ -39,16 +39,6 @@ type DeadlineItem = {
   status?: 'upcoming' | 'overdue' | 'completed' | string
   critical?: boolean
   tca_reference?: string | null
-}
-
-type AiContact = {
-  id?: string | number
-  role?: string
-  name?: string
-  email?: string | null
-  phone?: string | null
-  ghl_contact_id?: string | null
-  initials?: string | null
 }
 
 type TransactionDocumentRow = {
@@ -119,6 +109,49 @@ type RevaChatLine = {
   role: 'user' | 'assistant'
   content: string
   at: string
+}
+
+type TransactionContact = {
+  id: string
+  transaction_id: number
+  user_id: string
+  role: string
+  name: string
+  phone: string | null
+  email: string | null
+  company: string | null
+  notes: string | null
+  created_at: string
+}
+
+type ContactFormState = {
+  name: string
+  role: string
+  phone: string
+  email: string
+  company: string
+  notes: string
+}
+
+const CONTACT_ROLES = [
+  'Buyer',
+  'Seller',
+  "Buyer's Agent",
+  'Listing Agent',
+  'Lender / Loan Officer',
+  'Title Company / Closing Attorney',
+  'Home Inspector',
+  'TC (Transaction Coordinator)',
+  'Other',
+] as const
+
+const EMPTY_CONTACT_FORM: ContactFormState = {
+  name: '',
+  role: CONTACT_ROLES[0],
+  phone: '',
+  email: '',
+  company: '',
+  notes: '',
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -231,7 +264,13 @@ export default function TransactionDetailPage() {
 
   const [aiChecklist, setAiChecklist] = useState<ChecklistItem[]>([])
   const [aiDeadlines, setAiDeadlines] = useState<DeadlineItem[]>([])
-  const [aiContacts, setAiContacts] = useState<AiContact[]>([])
+  const [contacts, setContacts] = useState<TransactionContact[]>([])
+  const [contactsLoading, setContactsLoading] = useState(false)
+  const [showContactModal, setShowContactModal] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
+  const [contactForm, setContactForm] = useState<ContactFormState>(EMPTY_CONTACT_FORM)
+  const [contactSaving, setContactSaving] = useState(false)
+  const [contactDeleteBusyId, setContactDeleteBusyId] = useState<string | null>(null)
 
   const summary = useMemo(() => (tx?.ai_summary ?? null) as AiSummary, [tx])
 
@@ -290,6 +329,21 @@ export default function TransactionDetailPage() {
     }
   }, [txId, router])
 
+  const loadContacts = useCallback(async () => {
+    if (!Number.isFinite(txId)) return
+    setContactsLoading(true)
+    try {
+      const res = await fetch(`/api/transactions/${txId}/contacts`, { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Failed contacts load (${res.status})`)
+      const json = await res.json()
+      setContacts(Array.isArray(json?.contacts) ? (json.contacts as TransactionContact[]) : [])
+    } catch {
+      setContacts([])
+    } finally {
+      setContactsLoading(false)
+    }
+  }, [txId])
+
   async function loadCommsHistory() {
     if (!Number.isFinite(txId)) return
     setCommHistoryLoading(true)
@@ -306,8 +360,8 @@ export default function TransactionDetailPage() {
   }
 
   useEffect(() => {
-    void loadPageData().then(() => loadCommsHistory())
-  }, [txId, loadPageData])
+    void loadPageData().then(() => Promise.all([loadCommsHistory(), loadContacts()]))
+  }, [txId, loadPageData, loadContacts])
 
   useEffect(() => {
     if (!Number.isFinite(txId)) return
@@ -456,14 +510,6 @@ export default function TransactionDetailPage() {
       setAiDeadlines((rawDeadlines as any).deadlines as DeadlineItem[])
     } else {
       setAiDeadlines([])
-    }
-    const rawContacts = tx?.ai_contacts
-    if (Array.isArray(rawContacts)) {
-      setAiContacts(rawContacts as AiContact[])
-    } else if (rawContacts && typeof rawContacts === 'object' && Array.isArray((rawContacts as any).contacts)) {
-      setAiContacts((rawContacts as any).contacts as AiContact[])
-    } else {
-      setAiContacts([])
     }
   }, [tx])
 
@@ -1318,67 +1364,175 @@ export default function TransactionDetailPage() {
   }
 
   function contactsTab() {
+    function openAddContactModal() {
+      setEditingContactId(null)
+      setContactForm(EMPTY_CONTACT_FORM)
+      setShowContactModal(true)
+    }
+
+    function openEditContactModal(contact: TransactionContact) {
+      setEditingContactId(contact.id)
+      setContactForm({
+        name: contact.name || '',
+        role: contact.role || CONTACT_ROLES[0],
+        phone: contact.phone || '',
+        email: contact.email || '',
+        company: contact.company || '',
+        notes: contact.notes || '',
+      })
+      setShowContactModal(true)
+    }
+
+    async function saveContact() {
+      const name = contactForm.name.trim()
+      const role = contactForm.role.trim()
+      if (!name) {
+        window.alert('Name is required.')
+        return
+      }
+      if (!role) {
+        window.alert('Role is required.')
+        return
+      }
+      if (!Number.isFinite(txId)) return
+
+      setContactSaving(true)
+      try {
+        const payload = {
+          name,
+          role,
+          phone: contactForm.phone.trim() || null,
+          email: contactForm.email.trim() || null,
+          company: contactForm.company.trim() || null,
+          notes: contactForm.notes.trim() || null,
+        }
+        const method = editingContactId ? 'PATCH' : 'POST'
+        const url = editingContactId
+          ? `/api/transactions/${txId}/contacts/${editingContactId}`
+          : `/api/transactions/${txId}/contacts`
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(String(json?.error || 'Could not save contact'))
+        }
+        setShowContactModal(false)
+        setEditingContactId(null)
+        setContactForm(EMPTY_CONTACT_FORM)
+        await loadContacts()
+      } catch (e: unknown) {
+        window.alert(e instanceof Error ? e.message : 'Could not save contact')
+      } finally {
+        setContactSaving(false)
+      }
+    }
+
+    async function deleteContact(contactId: string) {
+      if (!Number.isFinite(txId)) return
+      const ok = window.confirm('Delete this contact?')
+      if (!ok) return
+      setContactDeleteBusyId(contactId)
+      try {
+        const res = await fetch(`/api/transactions/${txId}/contacts/${contactId}`, {
+          method: 'DELETE',
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(String(json?.error || 'Could not delete contact'))
+        }
+        await loadContacts()
+      } catch (e: unknown) {
+        window.alert(e instanceof Error ? e.message : 'Could not delete contact')
+      } finally {
+        setContactDeleteBusyId(null)
+      }
+    }
+
     return (
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-white">Contacts</h2>
-            <span className="text-xs text-slate-400">{aiContacts.length} total</span>
+            <h2 className="text-sm font-semibold text-white">Transaction Contacts</h2>
+            <button
+              type="button"
+              onClick={openAddContactModal}
+              className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-black hover:bg-orange-600 transition"
+            >
+              + Add Contact
+            </button>
           </div>
 
-          {!aiContacts.length ? (
+          {contactsLoading ? (
+            <p className="mt-3 text-sm text-slate-400">Loading contacts…</p>
+          ) : !contacts.length ? (
             <p className="mt-3 text-sm text-slate-400">No contacts listed yet.</p>
           ) : (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {aiContacts.map((c, idx) => {
-                const role = c.role || 'Contact'
-                const name = c.name || 'Unnamed contact'
-                const initials =
-                  c.initials ||
-                  name
-                    .split(' ')
-                    .slice(0, 2)
-                    .map((s) => s[0]?.toUpperCase())
-                    .join('') ||
-                  '—'
-
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {contacts.map((contact) => {
                 return (
-                  <div key={`${c.id || name}-${idx}`} className="rounded-xl border border-slate-700 bg-[#0A1022] p-4">
+                  <div key={contact.id} className="rounded-xl border border-slate-700 bg-[#0A1022] p-4">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
-                          <span className="text-sm font-bold text-orange-200">{initials}</span>
+                        <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-slate-300">
+                          <User size={18} />
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-white">{name}</div>
-                          <div className="mt-1 text-xs uppercase tracking-wide text-orange-200">{role}</div>
+                          <div className="truncate text-sm font-semibold text-white">{contact.name}</div>
+                          <div className="mt-1 text-xs text-slate-300">
+                            {contact.role}
+                            {contact.company ? ` · ${contact.company}` : ''}
+                          </div>
                         </div>
                       </div>
-                      {c.phone ? (
-                        <a
-                          href={`tel:${c.phone}`}
-                          className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition inline-flex items-center gap-1"
-                        >
-                          <Phone size={14} />
-                          Call
-                        </a>
-                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => openEditContactModal(contact)}
+                        className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
+                      >
+                        Edit
+                      </button>
                     </div>
 
-                    <div className="mt-3 text-xs text-slate-300">
-                      <div>Email: <span className="text-slate-100">{c.email || '—'}</span></div>
-                      <div className="mt-1">Phone: <span className="text-slate-100">{c.phone || '—'}</span></div>
+                    <div className="mt-3 space-y-1 text-xs text-slate-300">
+                      {contact.phone ? (
+                        <div className="inline-flex items-center gap-2">
+                          <Phone size={13} className="text-slate-400" />
+                          <a href={`tel:${contact.phone}`} className="text-slate-100 hover:text-orange-200">
+                            {contact.phone}
+                          </a>
+                        </div>
+                      ) : null}
+                      {contact.email ? (
+                        <div className="inline-flex items-center gap-2">
+                          <Mail size={13} className="text-slate-400" />
+                          <a href={`mailto:${contact.email}`} className="text-slate-100 hover:text-orange-200">
+                            {contact.email}
+                          </a>
+                        </div>
+                      ) : null}
+                      {contact.notes ? <div className="pt-1 text-slate-400">{contact.notes}</div> : null}
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
-                        onClick={() => void sendRevaMessage(`Draft a text message to ${name} (${role}) with the next step and relevant dates for this transaction.`)}
+                        type="button"
+                        onClick={() => void deleteContact(contact.id)}
+                        disabled={contactDeleteBusyId === contact.id}
+                        className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/20 transition disabled:opacity-50"
+                      >
+                        {contactDeleteBusyId === contact.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                      <button
+                        onClick={() => void sendRevaMessage(`Draft a text message to ${contact.name} (${contact.role}) with the next step and relevant dates for this transaction.`)}
                         className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
                       >
                         Text via GHL
                       </button>
                       <button
-                        onClick={() => void sendRevaMessage(`Draft an email to ${name} (${role}) about this transaction. Include the key next step and dates.`)}
+                        onClick={() => void sendRevaMessage(`Draft an email to ${contact.name} (${contact.role}) about this transaction. Include the key next step and dates.`)}
                         className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
                       >
                         Email
@@ -1390,6 +1544,111 @@ export default function TransactionDetailPage() {
             </div>
           )}
         </div>
+
+        {showContactModal ? (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-white">
+                  {editingContactId ? 'Edit Contact' : 'Add Contact'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowContactModal(false)
+                    setEditingContactId(null)
+                  }}
+                  className="rounded-lg border border-slate-600 px-2 py-1 text-xs text-slate-200 hover:border-orange-500/40"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <label className="text-xs font-medium text-slate-300">
+                  Name (required)
+                  <input
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="John Smith"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Role (required)
+                  <select
+                    value={contactForm.role}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, role: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  >
+                    {CONTACT_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Phone
+                  <input
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, phone: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="423-555-0100"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Email
+                  <input
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, email: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="john@example.com"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Company/Brokerage
+                  <input
+                    value={contactForm.company}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, company: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="Acme Mortgage"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Notes
+                  <textarea
+                    value={contactForm.notes}
+                    onChange={(e) => setContactForm((prev) => ({ ...prev, notes: e.target.value }))}
+                    className="mt-1 min-h-20 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="Optional notes..."
+                  />
+                </label>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowContactModal(false)
+                    setEditingContactId(null)
+                  }}
+                  className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void saveContact()}
+                  disabled={contactSaving}
+                  className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
+                >
+                  {contactSaving ? 'Saving…' : 'Save Contact'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
   }
