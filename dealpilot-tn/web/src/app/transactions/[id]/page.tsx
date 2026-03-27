@@ -349,7 +349,7 @@ export default function TransactionDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const txId = params?.id ? Number(params.id) : NaN
+  const txId = params?.id ?? ''
 
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null>(null)
@@ -450,7 +450,7 @@ export default function TransactionDetailPage() {
   })
 
   const loadPageData = useCallback(async () => {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     setLoading(true)
     try {
       const res = await fetch(`/api/transactions/${txId}`, { cache: 'no-store' })
@@ -472,7 +472,7 @@ export default function TransactionDetailPage() {
   }, [txId, router])
 
   const loadContacts = useCallback(async () => {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     setContactsLoading(true)
     try {
       const res = await fetch(`/api/transactions/${txId}/contacts`, { cache: 'no-store' })
@@ -487,7 +487,7 @@ export default function TransactionDetailPage() {
   }, [txId])
 
   async function loadCommsHistory() {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     setCommHistoryLoading(true)
     try {
       const res = await fetch(`/api/transactions/${txId}/communication-log`, { cache: 'no-store' })
@@ -502,7 +502,7 @@ export default function TransactionDetailPage() {
   }
 
   async function loadActivity() {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     setActivityLoading(true)
     try {
       const res = await fetch(`/api/transactions/${txId}/activity`, { cache: 'no-store' })
@@ -521,7 +521,7 @@ export default function TransactionDetailPage() {
   }, [txId, loadPageData, loadContacts])
 
   useEffect(() => {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     const pending = txDocuments.some((d) =>
       ['uploading', 'uploaded', 'processing'].includes(String(d.status || ''))
     )
@@ -594,7 +594,7 @@ export default function TransactionDetailPage() {
         rowSlotId?: string
       }
     ) => {
-      if (!Number.isFinite(txId)) return
+      if (!txId) return
       if (txDocUploadBusy) return
       const effectiveType = options?.documentType || docTypePick
       const opt = DOCUMENT_TYPE_OPTIONS.find((o) => o.value === effectiveType)
@@ -756,7 +756,7 @@ export default function TransactionDetailPage() {
   }, [revaMessages, revaSending])
 
   async function patchTransaction(payload: Record<string, any>) {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     await fetch(`/api/transactions/${txId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -765,7 +765,7 @@ export default function TransactionDetailPage() {
   }
 
   async function applyContractAddressToDeal() {
-    if (!addressMismatch || !Number.isFinite(txId)) return
+    if (!addressMismatch || !txId) return
     setAddressMismatchBusy(true)
     try {
       const res = await fetch(`/api/transactions/${txId}`, {
@@ -798,7 +798,7 @@ export default function TransactionDetailPage() {
   }
 
   function keepDealAddressDismissMismatch() {
-    if (!addressMismatch || !Number.isFinite(txId)) return
+    if (!addressMismatch || !txId) return
     const docId = addressMismatch.docId
     addressMismatchDismissed.current.add(docId)
     setAddressMismatch(null)
@@ -810,7 +810,7 @@ export default function TransactionDetailPage() {
   }
 
   async function generateIntelligence() {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     await fetch(`/api/transactions/${txId}/analyze`, { method: 'POST' })
     await patchTransaction({
       activity_event: {
@@ -866,7 +866,7 @@ export default function TransactionDetailPage() {
   }
 
   async function deleteTransaction() {
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     const ok = window.confirm('Delete this transaction? This cannot be undone.')
     if (!ok) return
     const res = await fetch(`/api/transactions/${txId}`, { method: 'DELETE' })
@@ -890,7 +890,7 @@ export default function TransactionDetailPage() {
   }
 
   async function downloadClosingPackage() {
-    if (!Number.isFinite(txId) || bundleDownloading) return
+    if (!txId || bundleDownloading) return
     setBundleDownloading(true)
     try {
       const res = await fetch(`/api/transactions/${txId}/documents/bundle`, { cache: 'no-store' })
@@ -922,7 +922,7 @@ export default function TransactionDetailPage() {
   async function sendRevaMessage(message: string) {
     const trimmed = message.trim()
     if (!trimmed) return
-    if (!Number.isFinite(txId)) return
+    if (!txId) return
     if (revaSending) return
 
     setRevaInput('')
@@ -1789,7 +1789,7 @@ export default function TransactionDetailPage() {
         window.alert('Role is required.')
         return
       }
-      if (!Number.isFinite(txId)) return
+      if (!txId) return
 
       setContactSaving(true)
       try {
@@ -1826,7 +1826,7 @@ export default function TransactionDetailPage() {
     }
 
     async function deleteContact(contactId: string) {
-      if (!Number.isFinite(txId)) return
+      if (!txId) return
       const ok = window.confirm('Delete this contact?')
       if (!ok) return
       setContactDeleteBusyId(contactId)
@@ -2086,7 +2086,7 @@ export default function TransactionDetailPage() {
 
   function activityTab() {
     async function letRevaDraftMessage() {
-      if (!Number.isFinite(txId)) return
+      if (!txId) return
       const contact = contacts.find((c) => c.id === sendContactId)
       if (!sendContactId || !contact) {
         window.alert('Select a contact first.')
@@ -2141,7 +2141,7 @@ export default function TransactionDetailPage() {
     }
 
     async function sendGhlMessage() {
-      if (!Number.isFinite(txId)) return
+      if (!txId) return
       const contact = contacts.find((c) => c.id === sendContactId)
       if (!sendContactId || !contact) {
         window.alert('Select a contact.')
@@ -2212,7 +2212,7 @@ export default function TransactionDetailPage() {
         window.alert('Note text is required.')
         return
       }
-      if (!Number.isFinite(txId)) return
+      if (!txId) return
 
       const label =
         activityForm.type === 'call'

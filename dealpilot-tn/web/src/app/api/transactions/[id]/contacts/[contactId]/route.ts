@@ -1,33 +1,31 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import {
-  contactDisplayName,
-  resolveDealUuidForTransaction,
-  updateContactFields,
-} from '@/lib/transactionDealContacts'
+import { contactDisplayName, updateContactFields } from '@/lib/transactionDealContacts'
 
-function parseTransactionId(rawId: string): number | null {
-  const id = Number(rawId)
-  if (!Number.isFinite(id)) return null
-  return id
+function parseTransactionId(rawId: string): string | null {
+  if (!rawId || rawId.trim() === '') return null
+  return rawId.trim()
 }
 
-async function assertTransactionOwnership(transactionId: number, userId: string): Promise<string | null> {
+async function assertTransactionOwnership(transactionId: string, userId: string): Promise<string | null> {
   const supabase = createServerSupabaseClient()
   const { data, error } = await supabase
     .from('transactions')
     .select('id')
     .eq('id', transactionId)
-    .eq('user_id', userId)
+    .eq('agent_id', userId)
     .maybeSingle()
 
-  if (error) return error.message
+  if (error) {
+    console.error('assertTransactionOwnership:', error.message)
+    return error.message
+  }
   if (!data) return 'Transaction not found'
   return null
 }
 
 function mapDealContactResponse(
-  transactionId: number,
+  transactionId: string,
   userId: string,
   dc: Record<string, unknown>
 ) {
@@ -73,10 +71,7 @@ export async function PATCH(
     const ownershipErr = await assertTransactionOwnership(transactionId, user.id)
     if (ownershipErr) return NextResponse.json({ error: ownershipErr }, { status: ownershipErr === 'Transaction not found' ? 404 : 500 })
 
-    const { dealUuid, error: dealErr } = await resolveDealUuidForTransaction(supabase, transactionId, user.id)
-    if (!dealUuid) {
-      return NextResponse.json({ error: dealErr || 'Could not resolve deal for transaction' }, { status: 400 })
-    }
+    const dealUuid = transactionId
 
     const { data: existing, error: existingError } = await supabase
       .from('deal_contacts')
@@ -153,10 +148,7 @@ export async function DELETE(
     const ownershipErr = await assertTransactionOwnership(transactionId, user.id)
     if (ownershipErr) return NextResponse.json({ error: ownershipErr }, { status: ownershipErr === 'Transaction not found' ? 404 : 500 })
 
-    const { dealUuid, error: dealErr } = await resolveDealUuidForTransaction(supabase, transactionId, user.id)
-    if (!dealUuid) {
-      return NextResponse.json({ error: dealErr || 'Could not resolve deal for transaction' }, { status: 400 })
-    }
+    const dealUuid = transactionId
 
     const { error } = await supabase
       .from('deal_contacts')
