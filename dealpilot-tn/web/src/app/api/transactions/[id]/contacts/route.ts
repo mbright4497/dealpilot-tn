@@ -1,31 +1,16 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { contactDisplayName, insertContactForOwner } from '@/lib/transactionDealContacts'
-
-function parseTransactionId(rawId: string): string | null {
-  if (!rawId || rawId.trim() === '') return null
-  return rawId.trim()
-}
-
-async function assertTransactionOwnership(transactionId: string, userId: string): Promise<string | null> {
-  const supabase = createServerSupabaseClient()
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('id')
-    .eq('id', transactionId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (error) {
-    console.error('assertTransactionOwnership:', error.message)
-    return error.message
-  }
-  if (!data) return 'Transaction not found'
-  return null
-}
+import {
+  assertTransactionOwnedByUser,
+  loadTransactionContacts,
+  newContactFromPostBody,
+  parseTransactionIdParam,
+  saveTransactionContacts,
+  toApiContactRow,
+} from '@/lib/transactionContactsJsonb'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const transactionId = parseTransactionId(params.id)
+  const transactionId = parseTransactionIdParam(params.id)
   if (transactionId === null) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   try {
@@ -35,52 +20,28 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const ownershipErr = await assertTransactionOwnership(transactionId, user.id)
-    if (ownershipErr) return NextResponse.json({ error: ownershipErr }, { status: ownershipErr === 'Transaction not found' ? 404 : 500 })
+    const owned = await assertTransactionOwnedByUser(supabase, transactionId, user.id)
+    if (owned.error) {
+      const status = owned.notFound ? 404 : 500
+      return NextResponse.json({ error: owned.error }, { status })
+    }
 
-    const dealUuid = transactionId
+    const { contacts, error, notFound } = await loadTransactionContacts(supabase, transactionId, user.id)
+    if (error) {
+      const status = notFound ? 404 : 500
+      return NextResponse.json({ error }, { status })
+    }
 
-    const { data, error } = await supabase
-      .from('deal_contacts')
-      .select('id, deal_id, contact_id, role, comm_preference, notes, created_at, contacts(*)')
-      .eq('deal_id', dealUuid)
-      .order('created_at', { ascending: true })
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    const rows = (data ?? []) as Record<string, unknown>[]
-    const mapped = rows.map((dc) => {
-      const c = (dc.contacts as Record<string, unknown> | null) || null
-      const name = contactDisplayName(c)
-      const created =
-        (typeof dc.created_at === 'string' && dc.created_at) ||
-        (c && typeof c.created_at === 'string' && c.created_at) ||
-        new Date().toISOString()
-      return {
-        id: String(dc.id),
-        transaction_id: transactionId,
-        user_id: user.id,
-        role: typeof dc.role === 'string' ? dc.role : 'other',
-        name,
-        phone: c && typeof c.phone === 'string' ? c.phone : null,
-        email: c && typeof c.email === 'string' ? c.email : null,
-        company: c && typeof c.company === 'string' ? c.company : null,
-        notes:
-          (typeof dc.notes === 'string' && dc.notes) ||
-          (c && typeof c.notes === 'string' ? c.notes : null) ||
-          null,
-        created_at: created,
-      }
-    })
-
+    const mapped = contacts.map((c) => toApiContactRow(transactionId, user.id, c))
     return NextResponse.json({ contacts: mapped })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Could not load contacts' }, { status: 500 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Could not load contacts'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const transactionId = parseTransactionId(params.id)
+  const transactionId = parseTransactionIdParam(params.id)
   if (transactionId === null) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   try {
@@ -90,78 +51,33 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const ownershipErr = await assertTransactionOwnership(transactionId, user.id)
-    if (ownershipErr) return NextResponse.json({ error: ownershipErr }, { status: ownershipErr === 'Transaction not found' ? 404 : 500 })
-
-    const dealUuid = transactionId
-
-    const body = await req.json().catch(() => ({}))
-    const name = String(body?.name || '').trim()
-    let role = String(body?.role || '').trim()
-    const phone = String(body?.phone || '').trim() || null
-    const email = String(body?.email || '').trim() || null
-    const company = String(body?.company || '').trim() || null
-    const notes = String(body?.notes || '').trim() || null
-    const commPreferenceRaw = body?.comm_preference
-    const comm_preference =
-      typeof commPreferenceRaw === 'string' && commPreferenceRaw.trim()
-        ? commPreferenceRaw.trim()
-        : 'email'
-
-    if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
-    if (!role) role = 'other'
-
-    const inserted = await insertContactForOwner(supabase, user.id, {
-      name,
-      email,
-      phone,
-      company,
-      notes,
-      roleLabel: role,
-    })
-    if ('error' in inserted) {
-      return NextResponse.json({ error: inserted.error }, { status: 500 })
+    const owned = await assertTransactionOwnedByUser(supabase, transactionId, user.id)
+    if (owned.error) {
+      const status = owned.notFound ? 404 : 500
+      return NextResponse.json({ error: owned.error }, { status })
     }
 
-    const { data: link, error: linkErr } = await supabase
-      .from('deal_contacts')
-      .insert({
-        deal_id: dealUuid,
-        contact_id: inserted.id,
-        role,
-        comm_preference,
-      })
-      .select('id, deal_id, contact_id, role, comm_preference, notes, created_at, contacts(*)')
-      .single()
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
+    const created = newContactFromPostBody(body)
+    if (!created) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
 
-    if (linkErr) return NextResponse.json({ error: linkErr.message }, { status: 500 })
-
-    const dc = link as Record<string, unknown>
-    const c = (dc.contacts as Record<string, unknown> | null) || null
-    const displayName = contactDisplayName(c)
-    const created =
-      (typeof dc.created_at === 'string' && dc.created_at) ||
-      (c && typeof c.created_at === 'string' && c.created_at) ||
-      new Date().toISOString()
-
-    const mapped = {
-      id: String(dc.id),
-      transaction_id: transactionId,
-      user_id: user.id,
-      role: typeof dc.role === 'string' ? dc.role : role,
-      name: displayName,
-      phone: c && typeof c.phone === 'string' ? c.phone : null,
-      email: c && typeof c.email === 'string' ? c.email : null,
-      company: c && typeof c.company === 'string' ? c.company : null,
-      notes:
-        (typeof dc.notes === 'string' && dc.notes) ||
-        (c && typeof c.notes === 'string' ? c.notes : null) ||
-        null,
-      created_at: created,
+    const { contacts: existing, error: loadErr, notFound } = await loadTransactionContacts(
+      supabase,
+      transactionId,
+      user.id
+    )
+    if (loadErr) {
+      const status = notFound ? 404 : 500
+      return NextResponse.json({ error: loadErr }, { status })
     }
 
-    return NextResponse.json({ contact: mapped }, { status: 201 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'Could not create contact' }, { status: 500 })
+    const next = [...existing, created]
+    const { error: saveErr } = await saveTransactionContacts(supabase, transactionId, user.id, next)
+    if (saveErr) return NextResponse.json({ error: saveErr }, { status: 500 })
+
+    return NextResponse.json({ contact: toApiContactRow(transactionId, user.id, created) }, { status: 201 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Could not create contact'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
