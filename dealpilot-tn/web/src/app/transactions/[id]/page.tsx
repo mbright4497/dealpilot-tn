@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Loader2, Phone, Trash2, Upload } from 'lucide-react'
+import { CircleHelp, Loader2, Phone, Trash2, Upload } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
 import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
 import {
@@ -684,6 +684,7 @@ export default function TransactionDetailPage() {
 
   function documentsTab() {
     const requiredSlots = TN_DOCUMENT_CHECKLIST.filter((s) => s.requirement === 'required')
+    const optionalSlots = TN_DOCUMENT_CHECKLIST.filter((s) => s.requirement === 'optional')
     const uploadedByType = new Map<string, TransactionDocumentRow>()
     for (const d of txDocuments) {
       const existing = uploadedByType.get(d.document_type)
@@ -699,15 +700,55 @@ export default function TransactionDetailPage() {
     const requiredTotal = requiredSlots.length
     const requiredPct = requiredTotal ? Math.round((uploadedRequiredCount / requiredTotal) * 100) : 0
     const missingRequiredCount = requiredTotal - uploadedRequiredCount
+    const missingRequiredSlots = requiredSlots.filter((s) => !uploadedByType.has(s.document_type))
 
     const loanType = String(tx?.loan_type || '').toLowerCase()
-    const fhaVaLoan = loanType.includes('fha') || loanType.includes('va')
-    const conditionalNeeded = TN_DOCUMENT_CHECKLIST.filter((s) => {
-      if (s.requirement !== 'conditional') return false
-      const condition = String(s.condition || '').toLowerCase()
-      if (condition.includes('fha') || condition.includes('va')) return fhaVaLoan && !uploadedByType.has(s.document_type)
-      return false
-    })
+    const fhaVaLoan = loanType.includes('fha') || loanType.includes('va') || loanType.includes('thda')
+    const psaDoc = txDocuments.find((d) => d.document_type === 'rf401_psa')
+    const extractedSource = (psaDoc?.extracted_data || {}) as Record<string, unknown>
+    const extractedText = JSON.stringify(extractedSource).toLowerCase()
+    const yearBuiltRaw = [
+      extractedSource.year_built,
+      extractedSource.yearBuilt,
+      extractedSource.built_year,
+      extractedSource.property_year_built,
+    ].find((v) => v !== undefined && v !== null)
+    const yearBuiltValue = Number(yearBuiltRaw)
+    const pre1978Property = Number.isFinite(yearBuiltValue) ? yearBuiltValue < 1978 : extractedText.includes('pre-1978')
+    const hasSepticProperty =
+      extractedText.includes('septic') ||
+      String(extractedSource.waste_disposal || '').toLowerCase().includes('septic') ||
+      String(extractedSource.wastewater || '').toLowerCase().includes('septic') ||
+      Boolean(extractedSource.has_septic)
+
+    const triggeredBadgeBySlotId = new Map<string, string>()
+    const triggeredTypeBySlotId = new Map<string, 'FHA/VA' | 'pre-1978' | 'septic'>()
+    if (fhaVaLoan) triggeredBadgeBySlotId.set('fha_va_addendum', 'NEEDED FOR YOUR LOAN TYPE')
+    if (fhaVaLoan) triggeredTypeBySlotId.set('fha_va_addendum', 'FHA/VA')
+    if (pre1978Property) triggeredBadgeBySlotId.set('lead_paint', 'REQUIRED - PRE-1978 PROPERTY')
+    if (pre1978Property) triggeredTypeBySlotId.set('lead_paint', 'pre-1978')
+    if (hasSepticProperty) {
+      triggeredBadgeBySlotId.set('septic_importance', 'NEEDED FOR THIS PROPERTY')
+      triggeredBadgeBySlotId.set('subsurface_sewage', 'NEEDED FOR THIS PROPERTY')
+      triggeredBadgeBySlotId.set('water_waste', 'NEEDED FOR THIS PROPERTY')
+      triggeredTypeBySlotId.set('septic_importance', 'septic')
+      triggeredTypeBySlotId.set('subsurface_sewage', 'septic')
+      triggeredTypeBySlotId.set('water_waste', 'septic')
+    }
+
+    const triggeredConditionalSlots = TN_DOCUMENT_CHECKLIST.filter(
+      (s) => s.requirement === 'conditional' && triggeredBadgeBySlotId.has(s.id) && !uploadedByType.has(s.document_type)
+    )
+
+    const missingOptionalSlots = optionalSlots.filter((s) => !uploadedByType.has(s.document_type))
+
+    const firstSentence = (text?: string) => {
+      if (!text) return 'Recommended for risk reduction.'
+      const parts = text.split('.')
+      const sentence = parts[0]?.trim()
+      return sentence ? `${sentence}.` : text
+    }
+
     const issueCount = txDocuments.reduce((acc, d) => acc + (d.broker_review?.issues?.length || 0), 0)
 
     const renderStatus = (slot: TNDocumentSlot, doc: TransactionDocumentRow | undefined) => {
@@ -739,8 +780,29 @@ export default function TransactionDetailPage() {
         <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-4">
           <h3 className="text-sm font-semibold text-white">📋 Reva&apos;s Document Check</h3>
           <div className="mt-3 space-y-1 text-sm text-slate-200">
+            {missingRequiredSlots.map((slot) => (
+              <div key={`required-${slot.id}`} className="rounded-md border border-red-500/30 bg-red-950/40 px-2 py-1 text-red-100">
+                ⚠️ {slot.display_name} is required and missing. This is a TCA compliance issue.
+              </div>
+            ))}
+            {triggeredConditionalSlots.map((slot) => (
+              <div key={`triggered-${slot.id}`} className="rounded-md border border-orange-500/30 bg-orange-950/40 px-2 py-1 text-orange-100">
+                📋 This is a {triggeredTypeBySlotId.get(slot.id) || 'conditional'} transaction. {slot.display_name} is required for your deal type.
+              </div>
+            ))}
+            {missingOptionalSlots.slice(0, 4).map((slot) => (
+              <div key={`optional-${slot.id}`} className="rounded-md border border-sky-500/30 bg-sky-950/30 px-2 py-1 text-sky-100">
+                💡 {slot.display_name} is optional but recommended. {firstSentence(slot.why_it_matters)}
+              </div>
+            ))}
+            {missingOptionalSlots.length > 4 ? (
+              <div className="text-xs text-slate-400">+ {missingOptionalSlots.length - 4} more optional recommended documents</div>
+            ) : null}
             <div>{missingRequiredCount} required docs missing</div>
-            <div>{conditionalNeeded.length} conditional doc needed{conditionalNeeded.length === 1 ? '' : 's'}{fhaVaLoan ? ' (FHA/VA loan)' : ''}</div>
+            <div>
+              {triggeredConditionalSlots.length} triggered conditional doc
+              {triggeredConditionalSlots.length === 1 ? '' : 's'} currently missing
+            </div>
             <div>{issueCount} issues found in uploaded docs</div>
           </div>
           <button
@@ -849,15 +911,34 @@ export default function TransactionDetailPage() {
                   {slots.map((slot) => {
                     const doc = uploadedByType.get(slot.document_type)
                     const docReady = !!doc
+                    const triggeredBadge = triggeredBadgeBySlotId.get(slot.id)
                     return (
                       <div
                         key={slot.id}
-                        className="grid gap-2 rounded-lg border border-slate-700 bg-[#0A1022] p-3 md:grid-cols-[170px_140px_1fr_auto] md:items-center"
+                        className={classNames(
+                          'grid gap-2 rounded-lg border bg-[#0A1022] p-3 md:grid-cols-[170px_140px_1fr_auto] md:items-center',
+                          triggeredBadge ? 'border-orange-500/60 bg-orange-950/15' : 'border-slate-700'
+                        )}
                       >
                         <div className="text-xs font-semibold">{renderStatus(slot, doc)}</div>
                         <div>{renderRequirement(slot)}</div>
                         <div className={classNames('text-sm text-white', slot.requirement === 'required' && 'font-semibold')} title={slot.requirement === 'conditional' ? `Required when: ${slot.condition || ''}` : undefined}>
-                          {slot.display_name}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span>{slot.display_name}</span>
+                            <details className="group relative">
+                              <summary className="list-none cursor-pointer text-slate-300 hover:text-orange-200">
+                                <CircleHelp size={14} />
+                              </summary>
+                              <div className="absolute z-10 mt-2 w-72 rounded-md border border-slate-600 bg-[#0B1530] p-2 text-xs text-slate-200 shadow-xl">
+                                {slot.why_it_matters || 'This document protects your client and your license.'}
+                              </div>
+                            </details>
+                            {triggeredBadge ? (
+                              <span className="rounded-full border border-orange-500/60 bg-orange-500/20 px-2 py-0.5 text-[10px] font-bold text-orange-100">
+                                {triggeredBadge}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <input
