@@ -44,7 +44,7 @@ function mapManualTypeToActivityType(type: string): TimelineEventType {
 }
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
-  const transactionId = Number(params.id)
+  const transactionId = parseInt(String(params.id), 10)
   if (Number.isNaN(transactionId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   try {
@@ -77,7 +77,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         .order('created_at', { ascending: false }),
       supabase
         .from('transaction_activity')
-        .select('id, activity_type, title, description, created_at, metadata')
+        .select('id, activity_type, title, description, metadata, created_at')
         .eq('transaction_id', transactionId)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false }),
@@ -235,7 +235,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const transactionId = Number(params.id)
+  const transactionId = parseInt(String(params.id), 10)
   if (Number.isNaN(transactionId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
   try {

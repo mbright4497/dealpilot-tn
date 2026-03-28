@@ -13,7 +13,10 @@ export async function POST(req: Request) {
 
     const body = await req.json().catch(() => ({} as Record<string, unknown>))
     const type = body?.type as 'email' | 'sms'
-    const dealId = Number(body?.dealId)
+    const dealId = parseInt(String(body?.dealId), 10)
+    if (isNaN(dealId)) {
+      return NextResponse.json({ error: 'Invalid deal id' }, { status: 400 })
+    }
     const contactRole = String(body?.contactRole || '')
     const transactionContactId = body?.transactionContactId
       ? String(body.transactionContactId)
@@ -32,49 +35,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Connect GHL in Settings to send communications' }, { status: 400 })
     }
 
-    if (!Number.isFinite(dealId)) {
-      return NextResponse.json({ error: 'Invalid deal id' }, { status: 400 })
-    }
-
     let contactName = ''
     let contactEmail: string | null = null
     let contactPhone: string | null = null
     let contactRoleLabel = ''
 
-    if (transactionContactId) {
-      const { data: tc, error: tcErr } = await supabase
-        .from('transaction_contacts')
-        .select('id, name, email, phone, role')
-        .eq('id', transactionContactId)
-        .eq('transaction_id', dealId)
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (tcErr || !tc) {
-        return NextResponse.json({ error: 'Contact not found for this transaction' }, { status: 400 })
-      }
-      contactName = String(tc.name || '').trim()
-      contactEmail = tc.email ? String(tc.email).trim() : null
-      contactPhone = tc.phone ? String(tc.phone).trim() : null
-      contactRoleLabel = String(tc.role || '').trim()
-    } else {
-      const { data: links } = await supabase
-        .from('deal_contacts')
-        .select('role,contacts(name,email,phone)')
-        .eq('deal_id', dealId)
-      const target = (links || []).find(
-        (l: { role?: string }) => String(l.role || '').toLowerCase() === contactRole.toLowerCase()
+    const { data: tx } = await supabase
+      .from('transactions')
+      .select('contacts')
+      .eq('id', dealId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const allContacts = Array.isArray(tx?.contacts)
+      ? (tx.contacts as Array<{
+          id: string
+          name: string
+          role: string
+          phone: string | null
+          email: string | null
+        }>)
+      : []
+
+    const target = transactionContactId
+      ? allContacts.find((c) => c.id === transactionContactId)
+      : allContacts.find((c) => c.role?.toLowerCase() === contactRole.toLowerCase())
+
+    if (!target) {
+      return NextResponse.json(
+        { error: 'Contact not found for this transaction' },
+        { status: 400 }
       )
-      const contact = target?.contacts as
-        | { name?: string | null; email?: string | null; phone?: string | null }
-        | undefined
-      if (!contact) {
-        return NextResponse.json({ error: `No ${contactRole} contact found for this deal` }, { status: 400 })
-      }
-      contactName = String(contact.name || contactRole || '').trim()
-      contactEmail = contact.email ? String(contact.email).trim() : null
-      contactPhone = contact.phone ? String(contact.phone).trim() : null
-      contactRoleLabel = contactRole
     }
+
+    contactName = target.name || ''
+    contactEmail = target.email || null
+    contactPhone = target.phone || null
+    contactRoleLabel = target.role || ''
 
     if (type === 'email' && !contactEmail) {
       return NextResponse.json(
@@ -110,26 +107,35 @@ export async function POST(req: Request) {
     }
     if (!sendRes.success) return NextResponse.json({ error: `Failed to send ${type} via GHL` }, { status: 502 })
 
-    const { data: comm, error: commErr } = await supabase
-      .from('communications')
-      .insert({
-        deal_id: dealId,
-        user_id: user.id,
-        type,
-        direction: 'outbound',
-        contact_name: contactName || contactRoleLabel,
-        contact_role: contactRoleLabel,
-        subject: type === 'email' ? subject : null,
-        message,
-        status: 'sent',
-        triggered_by_reva: triggeredByReva,
-        ghl_message_id: sendRes.messageId || null,
-      })
-      .select('id')
-      .single()
-
-    if (commErr) {
-      console.warn('[communications/send] communications insert skipped:', commErr.message)
+    let comm: { id: string } | null = null
+    try {
+      const { data: commRow, error: commErr } = await supabase
+        .from('communications')
+        .insert({
+          deal_id: dealId,
+          user_id: user.id,
+          type,
+          direction: 'outbound',
+          contact_name: contactName || contactRoleLabel,
+          contact_role: contactRoleLabel,
+          subject: type === 'email' ? subject : null,
+          message,
+          status: 'sent',
+          triggered_by_reva: triggeredByReva,
+          ghl_message_id: sendRes.messageId || null,
+        })
+        .select('id')
+        .single()
+      if (commErr) {
+        console.warn('[communications/send] communications insert failed:', commErr.message)
+      } else {
+        comm = commRow
+      }
+    } catch (commCatch: unknown) {
+      console.warn(
+        '[communications/send] communications insert failed:',
+        commCatch instanceof Error ? commCatch.message : String(commCatch)
+      )
     }
 
     const title =
