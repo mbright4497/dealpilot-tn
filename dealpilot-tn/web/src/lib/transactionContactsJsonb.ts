@@ -100,6 +100,7 @@ export function toApiContactRow(
     email: c.email,
     company: c.company,
     notes: c.notes,
+    ghl_contact_id: c.ghl_contact_id,
     created_at: c.created_at,
   }
 }

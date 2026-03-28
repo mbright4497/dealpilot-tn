@@ -21,15 +21,50 @@ function authHeaders(apiKey: string): HeadersInit {
 
 export async function sendGHLEmail(
   apiKey: string,
-  to: { email: string; name: string },
+  to: { email: string; name: string; ghlContactId?: string | null },
   from: { email: string; name: string },
   subject: string,
-  body: string
+  body: string,
+  locationId?: string | null
 ): Promise<{ success: boolean; messageId?: string; fromEmail?: string }> {
+  const ghlContactId = String(to.ghlContactId || "").trim();
+  const loc = String(locationId || "").trim();
+
+  if (ghlContactId) {
+    const res = await fetch(`${GHL_BASE_V2}/conversations/messages`, {
+      method: "POST",
+      headers: authHeaders(apiKey),
+      body: JSON.stringify({
+        to: ghlContactId,
+        subject,
+        body,
+        ...(loc ? { location_id: loc } : {}),
+        channel: "email",
+      }),
+    });
+    if (!res.ok) return { success: false };
+    const json = await res.json().catch(() => ({}));
+    return {
+      success: true,
+      messageId:
+        json?.id ||
+        json?.messageId ||
+        json?.message?.id ||
+        json?.data?.id ||
+        json?.data?.messageId,
+      fromEmail: from.email,
+    };
+  }
+
   const res = await fetch(`${GHL_BASE_V1}/emails/`, {
     method: "POST",
     headers: authHeaders(apiKey),
-    body: JSON.stringify({ to, from, subject, html: body }),
+    body: JSON.stringify({
+      to: { email: to.email, name: to.name },
+      from,
+      subject,
+      html: body,
+    }),
   });
   if (!res.ok) return { success: false };
   const json = await res.json().catch(() => ({}));
@@ -80,21 +115,32 @@ export async function getGHLContacts(apiKey: string, query?: string): Promise<GH
 export async function createGHLContact(
   apiKey: string,
   contact: {
-    firstName: string;
-    lastName: string;
-    email?: string;
-    phone?: string;
-    tags?: string[];
+    name: string;
+    email: string | null;
+    phone: string | null;
+    locationId: string;
   }
-): Promise<{ id: string }> {
-  const res = await fetch(`${GHL_BASE_V2}/contacts/`, {
-    method: "POST",
-    headers: authHeaders(apiKey),
-    body: JSON.stringify(contact),
-  });
-  if (!res.ok) throw new Error("Failed to create GHL contact");
-  const json = await res.json().catch(() => ({}));
-  return { id: String(json?.contact?.id || json?.id || "") };
+): Promise<{ id: string } | null> {
+  try {
+    const res = await fetch(`${GHL_BASE_V2}/contacts/`, {
+      method: "POST",
+      headers: authHeaders(apiKey),
+      body: JSON.stringify({
+        firstName: contact.name.split(" ")[0],
+        lastName: contact.name.split(" ").slice(1).join(" ") || "",
+        email: contact.email,
+        phone: contact.phone,
+        locationId: contact.locationId,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (data?.contact?.id) return { id: String(data.contact.id) };
+    if (data?.id) return { id: String(data.id) };
+    return null;
+  } catch (e) {
+    console.warn("GHL contact create failed:", e);
+    return null;
+  }
 }
 
 export async function testGHLConnection(

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createGHLContact } from '@/lib/ghl/ghlClient'
 import {
   assertTransactionOwnedByUser,
   loadTransactionContacts,
@@ -7,6 +8,7 @@ import {
   parseTransactionIdParam,
   saveTransactionContacts,
   toApiContactRow,
+  type TransactionJsonContact,
 } from '@/lib/transactionContactsJsonb'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
@@ -75,7 +77,55 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { error: saveErr } = await saveTransactionContacts(supabase, transactionId, user.id, next)
     if (saveErr) return NextResponse.json({ error: saveErr }, { status: 500 })
 
-    return NextResponse.json({ contact: toApiContactRow(transactionId, user.id, created) }, { status: 201 })
+    let contactOut: TransactionJsonContact = created
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('ghl_api_key, ghl_location_id')
+      .eq('id', user.id)
+      .single()
+
+    const ghlKey = profile?.ghl_api_key ? String(profile.ghl_api_key).trim() : ''
+    if (ghlKey) {
+      try {
+        const ghlResult = await createGHLContact(ghlKey, {
+          name: created.name,
+          email: created.email,
+          phone: created.phone,
+          locationId: String(profile?.ghl_location_id || '').trim(),
+        })
+        if (ghlResult?.id) {
+          const { contacts: afterSave, error: reloadErr } = await loadTransactionContacts(
+            supabase,
+            transactionId,
+            user.id
+          )
+          if (!reloadErr) {
+            const updated = afterSave.map((c) =>
+              c.id === created.id ? { ...c, ghl_contact_id: ghlResult.id } : c
+            )
+            const { error: patchErr } = await saveTransactionContacts(
+              supabase,
+              transactionId,
+              user.id,
+              updated
+            )
+            if (!patchErr) {
+              const merged = updated.find((c) => c.id === created.id)
+              if (merged) contactOut = merged
+            } else {
+              console.warn('[transactions/contacts] GHL id patch save failed:', patchErr)
+            }
+          } else {
+            console.warn('[transactions/contacts] reload contacts after GHL sync failed:', reloadErr)
+          }
+        }
+      } catch (e) {
+        console.warn('[transactions/contacts] GHL sync failed:', e)
+      }
+    }
+
+    return NextResponse.json({ contact: toApiContactRow(transactionId, user.id, contactOut) }, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Could not create contact'
     return NextResponse.json({ error: msg }, { status: 500 })

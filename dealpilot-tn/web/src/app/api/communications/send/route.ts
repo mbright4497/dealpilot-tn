@@ -54,6 +54,7 @@ export async function POST(req: Request) {
           role: string
           phone: string | null
           email: string | null
+          ghl_contact_id?: string | null
         }>)
       : []
 
@@ -95,12 +96,23 @@ export async function POST(req: Request) {
       fromEmail?: string
     } = { success: false }
     if (type === 'email') {
+      const ghlContactId = target.ghl_contact_id ? String(target.ghl_contact_id).trim() : ''
+      const fromReva = { email: 'reva@ihomehq.com', name: 'Reva' }
+      const fromProfile = {
+        email: profile?.email || 'noreply@dealpilot.local',
+        name: profile?.full_name || 'DealPilot',
+      }
       sendRes = await sendGHLEmail(
         ghlApiKey,
-        { email: contactEmail!, name: contactName || contactRoleLabel },
-        { email: profile?.email || 'noreply@dealpilot.local', name: profile?.full_name || 'DealPilot' },
+        {
+          email: contactEmail!,
+          name: contactName || contactRoleLabel,
+          ...(ghlContactId ? { ghlContactId } : {}),
+        },
+        ghlContactId ? fromReva : fromProfile,
         subject,
-        message
+        message,
+        profile?.ghl_location_id
       )
     } else {
       sendRes = await sendGHLSMS(ghlApiKey, contactPhone!, smsFrom, message)
