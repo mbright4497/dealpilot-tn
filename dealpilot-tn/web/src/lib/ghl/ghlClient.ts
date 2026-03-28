@@ -173,16 +173,31 @@ export async function createGHLContact(
       status: res.status,
       body: responseText,
     });
-    let data: Record<string, unknown> = {};
+    let json: Record<string, unknown> = {};
     try {
-      data = JSON.parse(responseText) as Record<string, unknown>;
+      json = JSON.parse(responseText) as Record<string, unknown>;
     } catch {
-      data = {};
+      json = {};
     }
-    const contactObj = data?.contact as Record<string, unknown> | undefined;
-    if (contactObj?.id) return { id: String(contactObj.id) };
-    if (data?.id) return { id: String(data.id) };
-    return null;
+
+    // If duplicate contact exists, use that ID
+    if (res.status === 400) {
+      const meta = json?.meta as Record<string, unknown> | undefined;
+      const existingId = meta?.contactId;
+      if (existingId && typeof existingId === "string") {
+        console.log("[createGHLContact] duplicate found, using existing id:", existingId);
+        return { id: existingId };
+      }
+      console.warn("[createGHLContact] 400 error:", responseText);
+      return null;
+    }
+
+    if (!res.ok) return null;
+
+    // parse success response for id
+    const contactId = (json?.contact as any)?.id || json?.id;
+    if (!contactId) return null;
+    return { id: String(contactId) };
   } catch (e) {
     console.warn("GHL contact create failed:", e);
     return null;
