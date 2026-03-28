@@ -222,7 +222,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         .map((c: any) => c.text.value)
         .join('\n')
 
-      const { cleanedReply, action } = extractActionBlock(rawReply || '')
+      let { cleanedReply, action } = extractActionBlock(rawReply || '')
       let transaction: unknown = null
       if (action?.type === 'create_transaction' && action.data) {
         const payload = action.data
@@ -236,6 +236,76 @@ Instructions: Search your knowledge base documents to answer this question. Cite
           phase: payload.phase ? String(payload.phase) : 'intake',
           type: payload.client_type ? String(payload.client_type) : 'buyer',
         })
+      }
+
+      if (action?.type === 'send_email' && action.data && dealId) {
+        const emailData = action.data as {
+          contactId?: string
+          subject?: string
+          message?: string
+        }
+        try {
+          const appUrl =
+            process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
+          const sendRes = await fetch(`${appUrl}/api/communications/send`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Cookie: request.headers.get('cookie') || '',
+            },
+            body: JSON.stringify({
+              type: 'email',
+              dealId,
+              transactionContactId: emailData.contactId || '',
+              subject: emailData.subject || 'Message from ClosingPilot',
+              message: emailData.message || '',
+              triggeredByReva: true,
+            }),
+          })
+          const sendJson = await sendRes.json().catch(() => ({}))
+          if (!sendJson.success) {
+            cleanedReply += `\n\n⚠️ Email could not be sent: ${sendJson.error || 'Unknown error'}`
+          } else {
+            cleanedReply += `\n\n✅ Email sent successfully.`
+          }
+        } catch (sendErr: unknown) {
+          const msg = sendErr instanceof Error ? sendErr.message : String(sendErr)
+          cleanedReply += `\n\n⚠️ Email send failed: ${msg}`
+        }
+      }
+
+      if (action?.type === 'send_sms' && action.data && dealId) {
+        const smsData = action.data as {
+          contactId?: string
+          message?: string
+        }
+        try {
+          const appUrl =
+            process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
+          const sendRes = await fetch(`${appUrl}/api/communications/send`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Cookie: request.headers.get('cookie') || '',
+            },
+            body: JSON.stringify({
+              type: 'sms',
+              dealId,
+              transactionContactId: smsData.contactId || '',
+              message: smsData.message || '',
+              triggeredByReva: true,
+            }),
+          })
+          const sendJson = await sendRes.json().catch(() => ({}))
+          if (!sendJson.success) {
+            cleanedReply += `\n\n⚠️ SMS could not be sent: ${sendJson.error || 'Unknown error'}`
+          } else {
+            cleanedReply += `\n\n✅ SMS sent successfully.`
+          }
+        } catch (sendErr: unknown) {
+          const msg = sendErr instanceof Error ? sendErr.message : String(sendErr)
+          cleanedReply += `\n\n⚠️ SMS send failed: ${msg}`
+        }
       }
 
       return Response.json({

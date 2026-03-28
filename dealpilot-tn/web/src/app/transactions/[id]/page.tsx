@@ -1927,7 +1927,15 @@ export default function TransactionDetailPage() {
                         Text via GHL
                       </button>
                       <button
-                        onClick={() => void sendRevaMessage(`Draft an email to ${contact.name} (${contact.role}) about this transaction. Include the key next step and dates.`)}
+                        type="button"
+                        onClick={() => {
+                          setSendChannel('email')
+                          setSendContactId(contact.id)
+                          setSendSubject('')
+                          setSendBody('')
+                          setSendDraftedByReva(false)
+                          setShowSendMessageModal(true)
+                        }}
                         className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition"
                       >
                         Email
