@@ -1929,6 +1929,7 @@ export default function TransactionDetailPage() {
                       <button
                         type="button"
                         onClick={() => {
+                          setActiveTab('activity')
                           setSendChannel('email')
                           setSendContactId(contact.id)
                           setSendSubject('')
