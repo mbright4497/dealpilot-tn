@@ -19,6 +19,17 @@ function authHeaders(apiKey: string): HeadersInit {
   };
 }
 
+/** Same as authHeaders but Authorization shows only last 4 chars of the API key (debug logs). */
+function authHeadersForDebugLog(apiKey: string): Record<string, string> {
+  const last4 = apiKey.length >= 4 ? apiKey.slice(-4) : "****";
+  return {
+    Authorization: `Bearer ****${last4}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    Version: "2021-07-28",
+  };
+}
+
 export async function sendGHLEmail(
   apiKey: string,
   to: { email: string; name: string; ghlContactId?: string | null },
@@ -30,27 +41,41 @@ export async function sendGHLEmail(
   const ghlContactId = String(to.ghlContactId || "").trim();
   const loc = String(locationId || "").trim();
 
+  // Debug: everything we know before any GHL HTTP call (no secrets beyond masked key).
+  console.log("[ghlClient] sendGHLEmail preflight (no request yet)", {
+    branch: ghlContactId ? "v2_conversations_messages" : "v1_emails",
+    hasApiKey: Boolean(apiKey),
+    to,
+    from,
+    subject,
+    body,
+    locationId: loc || null,
+  });
+
   if (ghlContactId) {
     const url = `${GHL_BASE_V2}/conversations/messages`;
-    console.log("[ghlClient] sending to:", {
-      endpoint: url,
-      ghlContactId: to.ghlContactId,
-      email: to.email,
+    const requestBody = JSON.stringify({
+      to: ghlContactId,
+      subject,
+      body,
+      ...(loc ? { location_id: loc } : {}),
+      channel: "email",
+    });
+    console.log("[ghlClient] GHL email direct request (v2)", {
+      url,
+      headers: authHeadersForDebugLog(apiKey),
+      body: requestBody,
     });
     const res = await fetch(url, {
       method: "POST",
       headers: authHeaders(apiKey),
-      body: JSON.stringify({
-        to: ghlContactId,
-        subject,
-        body,
-        ...(loc ? { location_id: loc } : {}),
-        channel: "email",
-      }),
+      body: requestBody,
     });
-    console.log("[ghlClient] email response status:", res.status);
     const responseText = await res.text();
-    console.log("[ghlClient] email response body:", responseText);
+    console.log("[ghlClient] GHL email direct response (v2)", {
+      status: res.status,
+      body: responseText,
+    });
     if (!res.ok) return { success: false };
     let json: Record<string, unknown> = {};
     try {
@@ -71,24 +96,27 @@ export async function sendGHLEmail(
   }
 
   const url = `${GHL_BASE_V1}/emails/`;
-  console.log("[ghlClient] sending to:", {
-    endpoint: url,
-    ghlContactId: to.ghlContactId,
-    email: to.email,
+  const requestBody = JSON.stringify({
+    to: { email: to.email, name: to.name },
+    from,
+    subject,
+    html: body,
+  });
+  console.log("[ghlClient] GHL email direct request (v1)", {
+    url,
+    headers: authHeadersForDebugLog(apiKey),
+    body: requestBody,
   });
   const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(apiKey),
-    body: JSON.stringify({
-      to: { email: to.email, name: to.name },
-      from,
-      subject,
-      html: body,
-    }),
+    body: requestBody,
   });
-  console.log("[ghlClient] email response status:", res.status);
   const responseText = await res.text();
-  console.log("[ghlClient] email response body:", responseText);
+  console.log("[ghlClient] GHL email direct response (v1)", {
+    status: res.status,
+    body: responseText,
+  });
   if (!res.ok) return { success: false };
   let json: Record<string, unknown> = {};
   try {

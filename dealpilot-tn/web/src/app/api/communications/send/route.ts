@@ -30,6 +30,12 @@ export async function POST(req: Request) {
       .select('ghl_api_key, ghl_location_id, email, full_name')
       .eq('id', user.id)
       .single()
+    console.log(
+      '[send] ghl_api_key present:',
+      !!profile?.ghl_api_key,
+      'last4:',
+      profile?.ghl_api_key?.slice(-4)
+    )
     const ghlApiKey = profile?.ghl_api_key || (body?.ghlApiKey as string | undefined)
     if (!ghlApiKey) {
       return NextResponse.json({ error: 'Connect GHL in Settings to send communications' }, { status: 400 })
@@ -73,6 +79,9 @@ export async function POST(req: Request) {
     contactEmail = target.email || null
     contactPhone = target.phone || null
     contactRoleLabel = target.role || ''
+
+    console.log('[send] ghl_contact_id on target:', target?.ghl_contact_id)
+    console.log('[send] contact email:', contactEmail)
 
     if (type === 'email' && !contactEmail) {
       return NextResponse.json(
