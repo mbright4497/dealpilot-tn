@@ -31,7 +31,13 @@ export async function sendGHLEmail(
   const loc = String(locationId || "").trim();
 
   if (ghlContactId) {
-    const res = await fetch(`${GHL_BASE_V2}/conversations/messages`, {
+    const url = `${GHL_BASE_V2}/conversations/messages`;
+    console.log("[ghlClient] sending to:", {
+      endpoint: url,
+      ghlContactId: to.ghlContactId,
+      email: to.email,
+    });
+    const res = await fetch(url, {
       method: "POST",
       headers: authHeaders(apiKey),
       body: JSON.stringify({
@@ -42,21 +48,35 @@ export async function sendGHLEmail(
         channel: "email",
       }),
     });
+    console.log("[ghlClient] email response status:", res.status);
+    const responseText = await res.text();
+    console.log("[ghlClient] email response body:", responseText);
     if (!res.ok) return { success: false };
-    const json = await res.json().catch(() => ({}));
+    let json: Record<string, unknown> = {};
+    try {
+      json = JSON.parse(responseText) as Record<string, unknown>;
+    } catch {
+      json = {};
+    }
     return {
       success: true,
       messageId:
         json?.id ||
         json?.messageId ||
-        json?.message?.id ||
-        json?.data?.id ||
-        json?.data?.messageId,
+        (json?.message as Record<string, unknown> | undefined)?.id ||
+        (json?.data as Record<string, unknown> | undefined)?.id ||
+        (json?.data as Record<string, unknown> | undefined)?.messageId,
       fromEmail: from.email,
     };
   }
 
-  const res = await fetch(`${GHL_BASE_V1}/emails/`, {
+  const url = `${GHL_BASE_V1}/emails/`;
+  console.log("[ghlClient] sending to:", {
+    endpoint: url,
+    ghlContactId: to.ghlContactId,
+    email: to.email,
+  });
+  const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(apiKey),
     body: JSON.stringify({
@@ -66,8 +86,16 @@ export async function sendGHLEmail(
       html: body,
     }),
   });
+  console.log("[ghlClient] email response status:", res.status);
+  const responseText = await res.text();
+  console.log("[ghlClient] email response body:", responseText);
   if (!res.ok) return { success: false };
-  const json = await res.json().catch(() => ({}));
+  let json: Record<string, unknown> = {};
+  try {
+    json = JSON.parse(responseText) as Record<string, unknown>;
+  } catch {
+    json = {};
+  }
   return {
     success: true,
     messageId: json?.id || json?.messageId,

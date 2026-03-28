@@ -117,6 +117,7 @@ export async function POST(req: Request) {
     } else {
       sendRes = await sendGHLSMS(ghlApiKey, contactPhone!, smsFrom, message)
     }
+    console.log('[send] sendGHLEmail result:', JSON.stringify(sendRes))
     if (!sendRes.success) return NextResponse.json({ error: `Failed to send ${type} via GHL` }, { status: 502 })
 
     let comm: { id: string } | null = null
