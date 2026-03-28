@@ -37,13 +37,14 @@ export async function sendGHLEmail(
   subject: string,
   body: string,
   locationId?: string | null
-): Promise<{ success: boolean; messageId?: string; fromEmail?: string }> {
+): Promise<{ success: boolean; messageId?: string; fromEmail?: string; error?: string }> {
   const ghlContactId = String(to.ghlContactId || "").trim();
   const loc = String(locationId || "").trim();
 
   // Debug: everything we know before any GHL HTTP call (no secrets beyond masked key).
   console.log("[ghlClient] sendGHLEmail preflight (no request yet)", {
-    branch: ghlContactId ? "v2_conversations_messages" : "v1_emails",
+    branch: "v2_conversations_messages",
+    hasGhlContactId: Boolean(ghlContactId),
     hasApiKey: Boolean(apiKey),
     to,
     from,
@@ -52,57 +53,22 @@ export async function sendGHLEmail(
     locationId: loc || null,
   });
 
-  if (ghlContactId) {
-    const url = `${GHL_BASE_V2}/conversations/messages`;
-    const requestBody = JSON.stringify({
-      to: ghlContactId,
-      subject,
-      body,
-      ...(loc ? { location_id: loc } : {}),
-      channel: "email",
-    });
-    console.log("[ghlClient] GHL email direct request (v2)", {
-      url,
-      headers: authHeadersForDebugLog(apiKey),
-      body: requestBody,
-    });
-    const res = await fetch(url, {
-      method: "POST",
-      headers: authHeaders(apiKey),
-      body: requestBody,
-    });
-    const responseText = await res.text();
-    console.log("[ghlClient] GHL email direct response (v2)", {
-      status: res.status,
-      body: responseText,
-    });
-    if (!res.ok) return { success: false };
-    let json: Record<string, unknown> = {};
-    try {
-      json = JSON.parse(responseText) as Record<string, unknown>;
-    } catch {
-      json = {};
-    }
+  if (!ghlContactId) {
     return {
-      success: true,
-      messageId:
-        json?.id ||
-        json?.messageId ||
-        (json?.message as Record<string, unknown> | undefined)?.id ||
-        (json?.data as Record<string, unknown> | undefined)?.id ||
-        (json?.data as Record<string, unknown> | undefined)?.messageId,
-      fromEmail: from.email,
+      success: false,
+      error: "Contact must be synced to GHL before sending email",
     };
   }
 
-  const url = `${GHL_BASE_V1}/emails/`;
+  const url = `${GHL_BASE_V2}/conversations/messages`;
   const requestBody = JSON.stringify({
-    to: { email: to.email, name: to.name },
-    from,
+    to: ghlContactId,
     subject,
-    html: body,
+    body,
+    ...(loc ? { location_id: loc } : {}),
+    channel: "email",
   });
-  console.log("[ghlClient] GHL email direct request (v1)", {
+  console.log("[ghlClient] GHL email direct request (v2)", {
     url,
     headers: authHeadersForDebugLog(apiKey),
     body: requestBody,
@@ -113,7 +79,7 @@ export async function sendGHLEmail(
     body: requestBody,
   });
   const responseText = await res.text();
-  console.log("[ghlClient] GHL email direct response (v1)", {
+  console.log("[ghlClient] GHL email direct response (v2)", {
     status: res.status,
     body: responseText,
   });
@@ -126,7 +92,12 @@ export async function sendGHLEmail(
   }
   return {
     success: true,
-    messageId: json?.id || json?.messageId,
+    messageId:
+      json?.id ||
+      json?.messageId ||
+      (json?.message as Record<string, unknown> | undefined)?.id ||
+      (json?.data as Record<string, unknown> | undefined)?.id ||
+      (json?.data as Record<string, unknown> | undefined)?.messageId,
     fromEmail: from.email,
   };
 }
@@ -177,8 +148,16 @@ export async function createGHLContact(
     locationId: string;
   }
 ): Promise<{ id: string } | null> {
+  const url = `${GHL_BASE_V2}/contacts/`;
   try {
-    const res = await fetch(`${GHL_BASE_V2}/contacts/`, {
+    console.log("[createGHLContact] request:", {
+      url,
+      hasApiKey: !!apiKey,
+      locationId: contact.locationId,
+      name: contact.name,
+      email: contact.email,
+    });
+    const res = await fetch(url, {
       method: "POST",
       headers: authHeaders(apiKey),
       body: JSON.stringify({
@@ -189,8 +168,19 @@ export async function createGHLContact(
         locationId: contact.locationId,
       }),
     });
-    const data = await res.json().catch(() => ({}));
-    if (data?.contact?.id) return { id: String(data.contact.id) };
+    const responseText = await res.text();
+    console.log("[createGHLContact] response:", {
+      status: res.status,
+      body: responseText,
+    });
+    let data: Record<string, unknown> = {};
+    try {
+      data = JSON.parse(responseText) as Record<string, unknown>;
+    } catch {
+      data = {};
+    }
+    const contactObj = data?.contact as Record<string, unknown> | undefined;
+    if (contactObj?.id) return { id: String(contactObj.id) };
     if (data?.id) return { id: String(data.id) };
     return null;
   } catch (e) {

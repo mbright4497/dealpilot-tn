@@ -89,6 +89,18 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+    if (type === 'email') {
+      const syncedId = target.ghl_contact_id ? String(target.ghl_contact_id).trim() : ''
+      if (!syncedId) {
+        return NextResponse.json(
+          {
+            error:
+              'Contact is not synced to GHL yet. Delete and re-add this contact to sync them.',
+          },
+          { status: 400 }
+        )
+      }
+    }
     if (type === 'sms' && !contactPhone) {
       return NextResponse.json(
         { error: `${contactRoleLabel || 'Contact'} is missing phone` },
@@ -105,20 +117,16 @@ export async function POST(req: Request) {
       fromEmail?: string
     } = { success: false }
     if (type === 'email') {
-      const ghlContactId = target.ghl_contact_id ? String(target.ghl_contact_id).trim() : ''
+      const ghlContactId = String(target.ghl_contact_id || '').trim()
       const fromReva = { email: 'reva@ihomehq.com', name: 'Reva' }
-      const fromProfile = {
-        email: profile?.email || 'noreply@dealpilot.local',
-        name: profile?.full_name || 'DealPilot',
-      }
       sendRes = await sendGHLEmail(
         ghlApiKey,
         {
           email: contactEmail!,
           name: contactName || contactRoleLabel,
-          ...(ghlContactId ? { ghlContactId } : {}),
+          ghlContactId,
         },
-        ghlContactId ? fromReva : fromProfile,
+        fromReva,
         subject,
         message,
         profile?.ghl_location_id
@@ -127,7 +135,13 @@ export async function POST(req: Request) {
       sendRes = await sendGHLSMS(ghlApiKey, contactPhone!, smsFrom, message)
     }
     console.log('[send] sendGHLEmail result:', JSON.stringify(sendRes))
-    if (!sendRes.success) return NextResponse.json({ error: `Failed to send ${type} via GHL` }, { status: 502 })
+    if (!sendRes.success) {
+      const detail =
+        type === 'email' && 'error' in sendRes && sendRes.error
+          ? sendRes.error
+          : `Failed to send ${type} via GHL`
+      return NextResponse.json({ error: detail }, { status: 502 })
+    }
 
     let comm: { id: string } | null = null
     try {

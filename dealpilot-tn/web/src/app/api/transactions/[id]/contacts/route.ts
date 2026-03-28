@@ -85,10 +85,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .eq('id', user.id)
       .single()
 
+    let ghlResult: Awaited<ReturnType<typeof createGHLContact>> | null = null
     const ghlKey = profile?.ghl_api_key ? String(profile.ghl_api_key).trim() : ''
     if (ghlKey) {
       try {
-        const ghlResult = await createGHLContact(ghlKey, {
+        ghlResult = await createGHLContact(ghlKey, {
           name: created.name,
           email: created.email,
           phone: created.phone,
@@ -102,7 +103,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           )
           if (!reloadErr) {
             const updated = afterSave.map((c) =>
-              c.id === created.id ? { ...c, ghl_contact_id: ghlResult.id } : c
+              c.id === created.id ? { ...c, ghl_contact_id: ghlResult!.id } : c
             )
             const { error: patchErr } = await saveTransactionContacts(
               supabase,
@@ -124,6 +125,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         console.warn('[transactions/contacts] GHL sync failed:', e)
       }
     }
+
+    console.log('[contacts POST] GHL sync result:', JSON.stringify(ghlResult))
+    console.log('[contacts POST] ghl_api_key present:', !!profile?.ghl_api_key)
+    console.log('[contacts POST] location_id:', profile?.ghl_location_id)
 
     return NextResponse.json({ contact: toApiContactRow(transactionId, user.id, contactOut) }, { status: 201 })
   } catch (e: unknown) {
