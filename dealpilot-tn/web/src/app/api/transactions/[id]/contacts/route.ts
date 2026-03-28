@@ -60,6 +60,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
+    console.log('[contacts POST] handler reached, starting GHL sync check')
     const created = newContactFromPostBody(body)
     if (!created) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
 
@@ -79,6 +80,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     let contactOut: TransactionJsonContact = created
 
+    console.log('[contacts POST] about to load GHL credentials')
     const { data: profile } = await supabase
       .from('profiles')
       .select('ghl_api_key, ghl_location_id')
@@ -124,6 +126,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       } catch (e) {
         console.warn('[transactions/contacts] GHL sync failed:', e)
       }
+    } else {
+      console.log('[contacts POST] GHL createGHLContact skipped: no ghl_api_key (or empty after trim)')
     }
 
     console.log('[contacts POST] GHL sync result:', JSON.stringify(ghlResult))
