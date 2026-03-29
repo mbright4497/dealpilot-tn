@@ -9,12 +9,11 @@ export type GHLContact = {
 
 const GHL_BASE_V2 = "https://services.leadconnectorhq.com";
 
-function authHeaders(apiKey: string): HeadersInit {
+function authHeaders(apiKey: string): Record<string, string> {
   return {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
-    Accept: "application/json",
-    Version: "2021-07-28",
+    Version: "2021-04-15",
   };
 }
 
