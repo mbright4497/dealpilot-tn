@@ -102,19 +102,47 @@ export async function sendGHLEmail(
   };
 }
 
+function maskPhoneForLog(phone: string | undefined | null): string {
+  if (phone == null || phone === "") return "";
+  const s = String(phone);
+  return s.length <= 6 ? `${s.slice(0, 2)}...` : `${s.slice(0, 6)}...`;
+}
+
 export async function sendGHLSMS(
   apiKey: string,
   toPhone: string,
   fromPhone: string,
   message: string
 ): Promise<{ success: boolean; messageId?: string; fromNumber?: string }> {
-  const res = await fetch(`${GHL_BASE_V1}/sms/`, {
+  const url = `${GHL_BASE_V1}/sms/`;
+  const rawBody = { to: toPhone, from: fromPhone, message };
+  const bodyForLog = JSON.stringify({
+    to: maskPhoneForLog(toPhone),
+    from: maskPhoneForLog(fromPhone),
+    message,
+  });
+  console.log("[ghlClient] sendGHLSMS request", {
+    url,
+    headers: authHeadersForDebugLog(apiKey),
+    body: bodyForLog,
+  });
+  const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(apiKey),
-    body: JSON.stringify({ to: toPhone, from: fromPhone, message }),
+    body: JSON.stringify(rawBody),
+  });
+  const responseText = await res.text();
+  console.log("[ghlClient] sendGHLSMS response", {
+    status: res.status,
+    body: responseText,
   });
   if (!res.ok) return { success: false };
-  const json = await res.json().catch(() => ({}));
+  let json: Record<string, unknown> = {};
+  try {
+    json = JSON.parse(responseText) as Record<string, unknown>;
+  } catch {
+    json = {};
+  }
   return {
     success: true,
     messageId: json?.id || json?.messageId,
