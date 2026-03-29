@@ -195,7 +195,9 @@ export async function buildRevaContext(
     try {
       const { data: deal } = await supabase
         .from('transactions')
-        .select('id, address, status, client, type, closing_date, binding_date, purchase_price')
+        .select(
+          'id, address, status, client, type, closing_date, binding_date, purchase_price, contacts'
+        )
         .eq('id', dealId)
         .single()
 
@@ -208,16 +210,28 @@ export async function buildRevaContext(
         lines.push(`Purchase price: ${deal.purchase_price || 'not extracted yet'}`)
       }
 
-      const { data: contacts } = await supabase
-        .from('deal_contacts')
-        .select('*')
-        .eq('deal_id', dealId)
+      const rawContacts = deal && (deal as { contacts?: unknown }).contacts
+      const txContacts = Array.isArray(rawContacts)
+        ? (rawContacts as Array<{
+            id?: string
+            name?: string
+            role?: string
+            email?: string | null
+            phone?: string | null
+          }>)
+        : []
 
-      if (contacts && contacts.length > 0) {
+      if (txContacts.length > 0) {
         lines.push('Contacts:')
-        for (const c of contacts) {
+        for (const c of txContacts) {
+          const id = c.id != null ? String(c.id) : 'UNKNOWN'
+          const name = c.name != null ? String(c.name) : 'Unnamed'
+          const role = c.role != null ? String(c.role) : ''
+          const email = c.email != null && String(c.email).trim() !== '' ? String(c.email) : 'NO EMAIL'
+          const phone = c.phone != null && String(c.phone).trim() !== '' ? String(c.phone) : 'NO PHONE'
+          lines.push(`CONTACT ID: ${id}`)
           lines.push(
-            `- ${c.name} (${c.role}) | ${c.email || 'NO EMAIL'} | ${c.phone || 'NO PHONE'}`
+            `CONTACT: ${name} | Role: ${role} | Email: ${email} | Phone: ${phone}`
           )
         }
       } else {

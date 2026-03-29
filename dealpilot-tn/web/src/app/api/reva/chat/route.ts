@@ -151,6 +151,8 @@ export async function POST(request: Request) {
     const fullMessage = `${dateAwarenessBlock}LIVE SYSTEM CONTEXT (use this for all deal questions):
 ${context}
 
+IMPORTANT: When sending emails use the exact CONTACT ID shown above for that contact. Always use the real UUID from CONTACT ID field.
+
 COMMUNICATION STYLE: ${styleContext}
 
 DRIVE MODE RULES:
@@ -247,6 +249,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         try {
           const appUrl =
             process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
+          const dealIdNum = parseInt(String(dealId), 10)
           const sendRes = await fetch(`${appUrl}/api/communications/send`, {
             method: 'POST',
             headers: {
@@ -255,8 +258,8 @@ Instructions: Search your knowledge base documents to answer this question. Cite
             },
             body: JSON.stringify({
               type: 'email',
-              dealId,
-              transactionContactId: emailData.contactId || '',
+              dealId: dealIdNum,
+              transactionContactId: emailData.contactId ?? '',
               subject: emailData.subject || 'Message from ClosingPilot',
               message: emailData.message || '',
               triggeredByReva: true,
