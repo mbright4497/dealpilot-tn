@@ -9,11 +9,14 @@ export type GHLContact = {
 
 const GHL_BASE_V2 = "https://services.leadconnectorhq.com";
 
-function authHeaders(apiKey: string): Record<string, string> {
+function authHeaders(
+  apiKey: string,
+  version = "2021-04-15"
+): Record<string, string> {
   return {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
-    Version: "2021-04-15",
+    Version: version,
   };
 }
 
@@ -78,7 +81,7 @@ export async function sendGHLEmail(
   try {
     res = await fetch(url, {
       method: "POST",
-      headers: authHeaders(apiKey),
+      headers: authHeaders(apiKey, "2021-07-28"),
       body: requestBody,
       signal: controller.signal,
     });
