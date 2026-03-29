@@ -24,7 +24,7 @@ function authHeadersForDebugLog(apiKey: string): Record<string, string> {
     Authorization: `Bearer ****${last4}`,
     "Content-Type": "application/json",
     Accept: "application/json",
-    Version: "2021-07-28",
+    Version: "2021-04-15",
   };
 }
 
@@ -124,11 +124,14 @@ export async function sendGHLSMS(
   const contactId = String(ghlContactId || "").trim();
   const loc = String(locationId || "").trim();
 
+  const digits = toPhone.replace(/\D/g, "");
+  const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+
   const url = `${GHL_BASE_V2}/conversations/messages`;
   const body = JSON.stringify({
     type: "SMS",
     contactId: contactId || undefined,
-    phone: toPhone,
+    ...(contactId ? {} : { toNumber: e164 }),
     message,
     ...(loc ? { locationId: loc } : {}),
   });
