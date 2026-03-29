@@ -151,7 +151,11 @@ export async function POST(request: Request) {
     const fullMessage = `${dateAwarenessBlock}LIVE SYSTEM CONTEXT (use this for all deal questions):
 ${context}
 
-IMPORTANT: When sending emails use the exact CONTACT ID shown above for that contact. Always use the real UUID from CONTACT ID field.
+IMPORTANT:
+- For EMAIL requests: use REVA_ACTION send_email
+- For SMS/TEXT requests: use REVA_ACTION send_sms
+- Always use the exact CONTACT ID from CONTACT ID field above for that contact
+- Never use a made-up or placeholder contact ID
 
 COMMUNICATION STYLE: ${styleContext}
 
