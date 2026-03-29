@@ -250,6 +250,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
           contactId?: string
           subject?: string
           message?: string
+          body?: string
         }
         try {
           const appUrl =
@@ -266,7 +267,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
               dealId: dealIdNum,
               transactionContactId: emailData.contactId ?? '',
               subject: emailData.subject || 'Message from ClosingPilot',
-              message: emailData.message || '',
+              message: emailData.body || emailData.message || '',
               triggeredByReva: true,
             }),
           })
