@@ -62,11 +62,11 @@ export async function sendGHLEmail(
 
   const url = `${GHL_BASE_V2}/conversations/messages`;
   const requestBody = JSON.stringify({
-    to: ghlContactId,
+    type: "Email",
+    contactId: ghlContactId,
     subject,
-    body,
-    ...(loc ? { location_id: loc } : {}),
-    channel: "email",
+    html: body,
+    locationId: loc || undefined,
   });
   console.log("[ghlClient] GHL email direct request (v2)", {
     url,

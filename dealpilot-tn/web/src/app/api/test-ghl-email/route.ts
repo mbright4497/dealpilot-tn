@@ -66,69 +66,23 @@ export async function GET() {
       )
     }
 
-    // User-specified primary payload (message field; type Email)
-    const primary = {
-      type: 'Email',
+    const payload = {
+      type: 'Email' as const,
       contactId: CONTACT_ID,
       subject: SUBJECT,
-      message: TEXT,
+      html: TEXT,
       locationId: LOCATION_ID,
     }
 
-    // Three comparison calls (per request): body vs message, +channel, type Email vs email
-    const variation_body = {
-      type: 'Email',
-      contactId: CONTACT_ID,
-      subject: SUBJECT,
-      body: TEXT,
-      locationId: LOCATION_ID,
-    }
-
-    const variation_channel = {
-      type: 'Email',
-      contactId: CONTACT_ID,
-      subject: SUBJECT,
-      message: TEXT,
-      locationId: LOCATION_ID,
-      channel: 'Email',
-    }
-
-    const variation_typeLowercase = {
-      type: 'email',
-      contactId: CONTACT_ID,
-      subject: SUBJECT,
-      message: TEXT,
-      locationId: LOCATION_ID,
-    }
-
-    const [primaryRes, bodyRes, channelRes, typeLowerRes] = await Promise.all([
-      postGhlMessage(apiKey, primary),
-      postGhlMessage(apiKey, variation_body),
-      postGhlMessage(apiKey, variation_channel),
-      postGhlMessage(apiKey, variation_typeLowercase),
-    ])
-
-    const fullResponse = (label: string, request: Record<string, unknown>, r: Awaited<ReturnType<typeof postGhlMessage>>) => ({
-      label,
-      request,
-      status: r.status,
-      statusText: r.statusText,
-      ghlBody: r.body,
-      rawText: r.rawText,
-    })
+    const result = await postGhlMessage(apiKey, payload)
 
     return NextResponse.json({
       endpoint: GHL_MESSAGES_URL,
-      contactId: CONTACT_ID,
-      locationId: LOCATION_ID,
-      /** Step 2: exact payload (message + type Email). */
-      primary: fullResponse('primary_message_type_Email', primary, primaryRes),
-      /** Three variation probes to compare (body vs message, channel, type casing). */
-      variations: [
-        fullResponse('body_instead_of_message', variation_body, bodyRes),
-        fullResponse('channel_Email_added', variation_channel, channelRes),
-        fullResponse('type_email_lowercase', variation_typeLowercase, typeLowerRes),
-      ],
+      request: payload,
+      status: result.status,
+      statusText: result.statusText,
+      ghlBody: result.body,
+      rawText: result.rawText,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
