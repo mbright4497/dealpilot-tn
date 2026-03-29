@@ -228,6 +228,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         .map((c: any) => c.text.value)
         .join('\n')
 
+      console.log('[reva] rawReply:', rawReply?.slice(0, 500))
       let { cleanedReply, action } = extractActionBlock(rawReply || '')
       let transaction: unknown = null
       if (action?.type === 'create_transaction' && action.data) {
