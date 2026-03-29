@@ -150,8 +150,9 @@ export async function POST(req: Request) {
         target?.ghl_contact_id || null,
         locationId
       )
+      console.log('[send] SMS result:', JSON.stringify(sendRes))
     }
-    console.log('[send] sendGHLEmail result:', JSON.stringify(sendRes))
+    console.log('[send] send result:', type, JSON.stringify(sendRes))
     if (!sendRes.success) {
       const detail =
         type === 'email' && 'error' in sendRes && sendRes.error
