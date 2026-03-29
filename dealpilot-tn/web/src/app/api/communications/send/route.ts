@@ -138,7 +138,14 @@ export async function POST(req: Request) {
         hasPhone: !!contactPhone,
         phone: contactPhone?.slice(0,6) + '...',
       })
-      sendRes = await sendGHLSMS(ghlApiKey, contactPhone!, smsFrom, message)
+      sendRes = await sendGHLSMS(
+        ghlApiKey,
+        contactPhone!,
+        smsFrom,
+        message,
+        target?.ghl_contact_id || null,
+        locationId
+      )
     }
     console.log('[send] sendGHLEmail result:', JSON.stringify(sendRes))
     if (!sendRes.success) {

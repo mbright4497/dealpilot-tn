@@ -7,7 +7,6 @@ export type GHLContact = {
   tags: string[];
 };
 
-const GHL_BASE_V1 = "https://rest.gohighlevel.com/v1";
 const GHL_BASE_V2 = "https://services.leadconnectorhq.com";
 
 function authHeaders(apiKey: string): HeadersInit {
@@ -102,51 +101,57 @@ export async function sendGHLEmail(
   };
 }
 
-function maskPhoneForLog(phone: string | undefined | null): string {
-  if (phone == null || phone === "") return "";
-  const s = String(phone);
-  return s.length <= 6 ? `${s.slice(0, 2)}...` : `${s.slice(0, 6)}...`;
-}
-
 export async function sendGHLSMS(
   apiKey: string,
   toPhone: string,
   fromPhone: string,
-  message: string
+  message: string,
+  ghlContactId?: string | null,
+  locationId?: string | null
 ): Promise<{ success: boolean; messageId?: string; fromNumber?: string }> {
-  const url = `${GHL_BASE_V1}/sms/`;
-  const rawBody = { to: toPhone, from: fromPhone, message };
-  const bodyForLog = JSON.stringify({
-    to: maskPhoneForLog(toPhone),
-    from: maskPhoneForLog(fromPhone),
+  const contactId = String(ghlContactId || "").trim();
+  const loc = String(locationId || "").trim();
+
+  const url = `${GHL_BASE_V2}/conversations/messages`;
+  const body = JSON.stringify({
+    type: "SMS",
+    contactId: contactId || undefined,
+    phone: toPhone,
     message,
+    ...(loc ? { locationId: loc } : {}),
   });
-  console.log("[ghlClient] sendGHLSMS request", {
+
+  console.log("[ghlClient] sendGHLSMS v2 request", {
     url,
-    headers: authHeadersForDebugLog(apiKey),
-    body: bodyForLog,
+    hasContactId: !!contactId,
+    hasPhone: !!toPhone,
   });
+
   const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(apiKey),
-    body: JSON.stringify(rawBody),
+    body,
   });
+
   const responseText = await res.text();
-  console.log("[ghlClient] sendGHLSMS response", {
+  console.log("[ghlClient] sendGHLSMS v2 response", {
     status: res.status,
     body: responseText,
   });
+
   if (!res.ok) return { success: false };
+
   let json: Record<string, unknown> = {};
   try {
     json = JSON.parse(responseText) as Record<string, unknown>;
   } catch {
     json = {};
   }
+
   return {
     success: true,
-    messageId: json?.id || json?.messageId,
-    fromNumber: String(json?.from || json?.fromNumber || fromPhone || "").trim() || fromPhone,
+    messageId: json?.messageId || json?.id,
+    fromNumber: fromPhone,
   };
 }
 
