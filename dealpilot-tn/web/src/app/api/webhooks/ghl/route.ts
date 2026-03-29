@@ -73,6 +73,54 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to save communication' }, { status: 500 })
     }
 
+    // If inbound SMS, call Reva and reply
+    if (direction === 'inbound' && channel === 'ghl_sms' && body && dealId) {
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
+
+        // Call Reva chat with the inbound message
+        const revaRes = await fetch(`${appUrl}/api/reva/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.REVA_INTERNAL_SECRET
+              ? { 'x-internal-reva-secret': process.env.REVA_INTERNAL_SECRET }
+              : {}),
+          },
+          body: JSON.stringify({
+            message: body,
+            dealId,
+            userId: tenant.owner_user_id,
+            skipHistory: false,
+          }),
+        })
+        const revaJson = await revaRes.json().catch(() => ({}))
+        const revaReply = revaJson?.reply || revaJson?.message || null
+
+        if (revaReply) {
+          // Find contact phone to reply to
+          const fromPhone =
+            payload?.contact?.phone || payload?.from || payload?.sender || null
+
+          if (fromPhone) {
+            const { sendGHLSMS } = await import('@/lib/ghl/ghlClient')
+            await sendGHLSMS(
+              process.env.GHL_API_KEY || '',
+              fromPhone,
+              process.env.GHL_SMS_NUMBER || '',
+              revaReply,
+              contactId,
+              locationId
+            )
+            console.log('[webhook/ghl] Reva replied via SMS to', fromPhone)
+          }
+        }
+      } catch (revaErr) {
+        console.error('[webhook/ghl] Reva reply failed', revaErr)
+        // Don't fail the webhook — just log
+      }
+    }
+
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error('Webhook handler error', error)

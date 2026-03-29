@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { buildRevaContext } from '@/lib/reva/buildRevaContext'
@@ -61,7 +62,13 @@ function extractActionBlock(text: string): {
 export async function POST(request: Request) {
   try {
     console.log('Assistant ID:', process.env.REVA_ASSISTANT_ID_TN)
-    const { message, dealId, threadId: requestThreadId, context: requestContext } = await request.json()
+    const {
+      message,
+      dealId,
+      threadId: requestThreadId,
+      context: requestContext,
+      userId: bodyUserId,
+    } = await request.json()
 
     if (!message) {
       return Response.json({ error: 'Message required' }, { status: 400 })
@@ -70,36 +77,59 @@ export async function POST(request: Request) {
       String(message).toLowerCase().includes(kw)
     )
 
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // no-op in read-only server contexts
-            }
-          },
-        },
-      }
-    )
+    const internalSecret = request.headers.get('x-internal-reva-secret')
+    const expectedSecret = process.env.REVA_INTERNAL_SECRET || ''
+    const internalOk =
+      Boolean(expectedSecret && internalSecret === expectedSecret && bodyUserId)
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    let supabase: ReturnType<typeof createServerClient> | ReturnType<typeof createClient>
+    let userId: string
+    let userEmail: string | undefined
+
+    if (internalOk) {
+      supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+      userId = String(bodyUserId)
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .maybeSingle()
+      userEmail = prof?.email ?? undefined
+    } else {
+      const cookieStore = cookies()
+      supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return cookieStore.getAll()
+            },
+            setAll(cookiesToSet) {
+              try {
+                cookiesToSet.forEach(({ name, value, options }) =>
+                  cookieStore.set(name, value, options)
+                )
+              } catch {
+                // no-op in read-only server contexts
+              }
+            },
+          },
+        }
+      )
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      userId = user.id
+      userEmail = user.email
     }
-    const userId = user.id
-    const userEmail = user.email
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const assistantId = process.env.REVA_ASSISTANT_ID_TN
