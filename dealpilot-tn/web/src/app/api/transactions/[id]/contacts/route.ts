@@ -88,14 +88,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .single()
 
     let ghlResult: Awaited<ReturnType<typeof createGHLContact>> | null = null
-    const ghlKey = profile?.ghl_api_key ? String(profile.ghl_api_key).trim() : ''
+    const ghlKey = process.env.GHL_API_KEY || String(profile?.ghl_api_key || '').trim()
+    const locationId = process.env.GHL_LOCATION_ID || String(profile?.ghl_location_id || '').trim()
     if (ghlKey) {
       try {
         ghlResult = await createGHLContact(ghlKey, {
           name: created.name,
           email: created.email,
           phone: created.phone,
-          locationId: String(profile?.ghl_location_id || '').trim(),
+          locationId,
         })
         if (ghlResult?.id) {
           const { contacts: afterSave, error: reloadErr } = await loadTransactionContacts(

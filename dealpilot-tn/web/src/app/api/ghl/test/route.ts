@@ -46,6 +46,8 @@ export async function POST(req: Request) {
       }
     }
 
+    ghl_api_key = process.env.GHL_API_KEY || String(ghl_api_key ?? '').trim()
+
     if (!String(ghl_location_id ?? '').trim() || !String(ghl_api_key ?? '').trim()) {
       return NextResponse.json({ success: false, error: 'Missing credentials' }, { status: 400 })
     }

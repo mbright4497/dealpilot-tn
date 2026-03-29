@@ -30,13 +30,15 @@ export async function POST(req: Request) {
       .select('ghl_api_key, ghl_location_id, email, full_name')
       .eq('id', user.id)
       .single()
+    const ghlApiKey = process.env.GHL_API_KEY || profile?.ghl_api_key || ''
+    const smsFrom = process.env.GHL_SMS_NUMBER || profile?.ghl_location_id || ''
+    const locationId = process.env.GHL_LOCATION_ID || profile?.ghl_location_id || ''
     console.log(
       '[send] ghl_api_key present:',
-      !!profile?.ghl_api_key,
+      !!ghlApiKey,
       'last4:',
-      profile?.ghl_api_key?.slice(-4)
+      ghlApiKey?.slice(-4)
     )
-    const ghlApiKey = profile?.ghl_api_key || (body?.ghlApiKey as string | undefined)
     if (!ghlApiKey) {
       return NextResponse.json({ error: 'Connect GHL in Settings to send communications' }, { status: 400 })
     }
@@ -108,8 +110,6 @@ export async function POST(req: Request) {
       )
     }
 
-    const smsFrom = String(profile?.ghl_location_id || '').trim()
-
     let sendRes: {
       success: boolean
       messageId?: string
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
         fromReva,
         subject,
         message,
-        profile?.ghl_location_id
+        locationId
       )
     } else {
       sendRes = await sendGHLSMS(ghlApiKey, contactPhone!, smsFrom, message)
