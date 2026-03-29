@@ -72,11 +72,24 @@ export async function sendGHLEmail(
     headers: authHeadersForDebugLog(apiKey),
     body: requestBody,
   });
-  const res = await fetch(url, {
-    method: "POST",
-    headers: authHeaders(apiKey),
-    body: requestBody,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: authHeaders(apiKey),
+      body: requestBody,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    console.log("[ghlClient] sendGHLEmail fetch error:", err);
+    return { success: false };
+  } finally {
+    clearTimeout(timeout);
+  }
+
   const responseText = await res.text();
   console.log("[ghlClient] GHL email direct response (v2)", {
     status: res.status,
@@ -127,11 +140,23 @@ export async function sendGHLSMS(
     hasPhone: !!toPhone,
   });
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: authHeaders(apiKey),
-    body,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: authHeaders(apiKey),
+      body,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    console.log("[ghlClient] sendGHLSMS fetch error:", err);
+    return { success: false };
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const responseText = await res.text();
   console.log("[ghlClient] sendGHLSMS v2 response", {
