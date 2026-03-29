@@ -25,6 +25,8 @@ export async function POST(req: Request) {
     const message = String(body?.message || '')
     const triggeredByReva = body?.triggeredByReva === true
 
+    console.log('[send] incoming type:', type, 'contactId:', transactionContactId)
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('ghl_api_key, ghl_location_id, email, full_name')
@@ -117,6 +119,7 @@ export async function POST(req: Request) {
       fromEmail?: string
     } = { success: false }
     if (type === 'email') {
+      console.log('[send] routing to EMAIL')
       const ghlContactId = String(target.ghl_contact_id || '').trim()
       const fromReva = { email: 'reva@ihomehq.com', name: 'Reva' }
       sendRes = await sendGHLEmail(
@@ -132,6 +135,7 @@ export async function POST(req: Request) {
         locationId
       )
     } else {
+      console.log('[send] routing to SMS')
       console.log('[send] SMS params:', {
         hasApiKey: !!ghlApiKey,
         smsFrom: smsFrom?.slice(0,6) + '...',
