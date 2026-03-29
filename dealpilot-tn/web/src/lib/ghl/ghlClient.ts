@@ -37,7 +37,8 @@ export async function sendGHLEmail(
   from: { email: string; name: string },
   subject: string,
   body: string,
-  locationId?: string | null
+  locationId?: string | null,
+  message?: string | null
 ): Promise<{ success: boolean; messageId?: string; fromEmail?: string; error?: string }> {
   const ghlContactId = String(to.ghlContactId || "").trim();
   const loc = String(locationId || "").trim();
@@ -61,12 +62,18 @@ export async function sendGHLEmail(
     };
   }
 
+  console.log(
+    "[ghlClient] email body param:",
+    String(body || message || "").slice(0, 100)
+  );
+
   const url = `${GHL_BASE_V2}/conversations/messages`;
   const requestBody = JSON.stringify({
     type: "Email",
     contactId: ghlContactId,
     subject,
-    html: body,
+    html: body || message || "",
+    body: body || message || "",
     locationId: loc || undefined,
   });
   console.log("[ghlClient] GHL email direct request (v2)", {
