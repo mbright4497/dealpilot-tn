@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import OpenAI from 'openai'
 import { sendGHLSMS } from '@/lib/ghl/ghlClient'
 
 export const dynamic = 'force-dynamic'
@@ -15,13 +16,6 @@ const noStoreJsonHeaders = {
 } as const
 
 export async function GET(request: Request) {
-  // Force no caching
-  const ts = new Date().toISOString()
-  console.log('[cron] executing at:', ts)
-
-  const cacheBust = new URL(request.url).searchParams.get('t')
-  if (cacheBust) console.log('[cron] cache-bust query t:', cacheBust)
-
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json(
@@ -40,12 +34,6 @@ export async function GET(request: Request) {
     .select('id, full_name, phone, email, ghl_contact_id')
     .not('phone', 'is', null)
 
-  console.log(
-    '[cron] agents found:',
-    agents?.length,
-    agents?.map((a) => ({ name: a.full_name, phone: a.phone }))
-  )
-
   if (!agents || agents.length === 0) {
     return NextResponse.json({ sent: 0 }, { headers: noStoreJsonHeaders })
   }
@@ -61,28 +49,49 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: false })
         .limit(10)
 
-      console.log(
-        '[cron] transactions for',
-        agent.full_name,
-        ':',
-        transactions?.length
-      )
-
       if (!transactions || transactions.length === 0) continue
 
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+      const now = new Date()
+      const today = now.toISOString().split('T')[0]
       const firstName = agent.full_name?.split(' ')[0] || 'there'
 
-      const briefing = `Good morning ${firstName}! Reva here. You have ${transactions.length} active deal(s). Reply for details.`
-      console.log('[cron] briefing text:', briefing.slice(0, 100))
+      const dealSummary = transactions.map((t: any) => {
+        const closing = t.closing_date ? new Date(t.closing_date) : null
+        const daysToClose = closing
+          ? Math.floor((closing.getTime() - now.getTime()) / 86400000)
+          : null
+        return `${t.address} | ${t.client} | ${
+          daysToClose === null ? 'No closing date'
+          : daysToClose < 0 ? `${Math.abs(daysToClose)} days OVERDUE`
+          : `${daysToClose} days to close`
+        } | Binding: ${t.binding_date || 'NOT SET'}`
+      }).join('\n')
 
-      console.log('[cron] GHL env check:', {
-        hasApiKey: !!process.env.GHL_API_KEY,
-        apiKeyLast4: process.env.GHL_API_KEY?.slice(-4),
-        hasLocationId: !!process.env.GHL_LOCATION_ID,
-        hasSmsNumber: !!process.env.GHL_SMS_NUMBER,
-        smsNumber: process.env.GHL_SMS_NUMBER,
-        agentPhone: agent.phone
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        max_tokens: 150,
+        messages: [
+          {
+            role: 'system',
+            content: `You are Reva, AI Transaction Coordinator.
+Generate a morning SMS briefing for ${firstName}.
+Today is ${today}.
+Keep it under 160 characters.
+Lead with the most urgent item.
+Be specific — use addresses and numbers.
+End with "Reply for details."`
+          },
+          {
+            role: 'user',
+            content: `Agent deals:\n${dealSummary}\nGenerate morning briefing SMS.`
+          }
+        ]
       })
+
+      const briefing = completion.choices[0].message.content ||
+        `Good morning ${firstName}! You have ${transactions.length} active deal(s). Reply for details.`
 
       const smsResult = await sendGHLSMS(
         process.env.GHL_API_KEY || '',
@@ -92,8 +101,7 @@ export async function GET(request: Request) {
         agent.ghl_contact_id || null,
         process.env.GHL_LOCATION_ID || ''
       )
-      console.log('[cron] SMS result:', JSON.stringify(smsResult))
-      console.log('[cron] SMS sent to:', agent.phone)
+      console.log('[cron] briefing sent to:', agent.full_name)
 
       results.push({ agent: agent.full_name, sent: true })
     } catch (err) {
