@@ -289,14 +289,21 @@ Instructions: Search your knowledge base documents to answer this question. Cite
             headers: {
               'Content-Type': 'application/json',
               Cookie: request.headers.get('cookie') || '',
+              ...(process.env.REVA_INTERNAL_SECRET
+                ? { 'x-internal-reva-secret': process.env.REVA_INTERNAL_SECRET }
+                : {}),
             },
             body: JSON.stringify({
               type: 'email',
               dealId: dealIdNum,
+              userId,
               transactionContactId: emailData.contactId ?? '',
               subject: emailData.subject || 'Message from ClosingPilot',
               message: emailData.body || emailData.message || '',
               triggeredByReva: true,
+              ghlApiKey: process.env.GHL_API_KEY || '',
+              ghlLocationId: process.env.GHL_LOCATION_ID || '',
+              ghlSmsNumber: process.env.GHL_SMS_NUMBER || '',
             }),
           })
           const sendJson = await sendRes.json().catch(() => ({}))
@@ -324,13 +331,20 @@ Instructions: Search your knowledge base documents to answer this question. Cite
             headers: {
               'Content-Type': 'application/json',
               Cookie: request.headers.get('cookie') || '',
+              ...(process.env.REVA_INTERNAL_SECRET
+                ? { 'x-internal-reva-secret': process.env.REVA_INTERNAL_SECRET }
+                : {}),
             },
             body: JSON.stringify({
               type: 'sms',
               dealId,
+              userId,
               transactionContactId: smsData.contactId || '',
               message: smsData.message || '',
               triggeredByReva: true,
+              ghlApiKey: process.env.GHL_API_KEY || '',
+              ghlLocationId: process.env.GHL_LOCATION_ID || '',
+              ghlSmsNumber: process.env.GHL_SMS_NUMBER || '',
             }),
           })
           const sendJson = await sendRes.json().catch(() => ({}))

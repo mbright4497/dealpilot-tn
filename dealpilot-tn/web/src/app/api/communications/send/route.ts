@@ -1,17 +1,48 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { sendGHLEmail, sendGHLSMS } from '@/lib/ghl/ghlClient'
 
 export async function POST(req: Request) {
   try {
-    const supabase = createServerSupabaseClient()
+    const body = await req.json().catch(() => ({} as Record<string, unknown>))
+    const cookieSupabase = createServerSupabaseClient()
     const {
       data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    } = await cookieSupabase.auth.getUser()
 
-    const body = await req.json().catch(() => ({} as Record<string, unknown>))
+    const triggeredByReva = body?.triggeredByReva === true
+    const internalSecret = req.headers.get('x-internal-reva-secret')
+    const expectedSecret = process.env.REVA_INTERNAL_SECRET || ''
+    const bodyUserId = body?.userId ? String(body.userId) : ''
+    const internalRevaOk =
+      Boolean(
+        triggeredByReva &&
+          expectedSecret &&
+          internalSecret === expectedSecret &&
+          bodyUserId
+      )
+
+    let supabase = cookieSupabase
+    let effectiveUserId: string | null = user?.id ?? null
+
+    if (!effectiveUserId && internalRevaOk) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+      if (!url || !key) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      supabase = createClient(url, key, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
+      effectiveUserId = bodyUserId
+    }
+
+    if (!effectiveUserId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const type = body?.type as 'email' | 'sms'
     const dealId = parseInt(String(body?.dealId), 10)
     if (isNaN(dealId)) {
@@ -23,18 +54,44 @@ export async function POST(req: Request) {
       : ''
     const subject = String(body?.subject || '')
     const message = String(body?.message || '')
-    const triggeredByReva = body?.triggeredByReva === true
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('ghl_api_key, ghl_location_id, email, full_name')
-      .eq('id', user.id)
-      .single()
-    const ghlApiKey = process.env.GHL_API_KEY || profile?.ghl_api_key || ''
-    const smsFrom = process.env.GHL_SMS_NUMBER || profile?.ghl_location_id || ''
-    const locationId = process.env.GHL_LOCATION_ID || profile?.ghl_location_id || ''
+    type ProfileRow = {
+      ghl_api_key?: string | null
+      ghl_location_id?: string | null
+      email?: string | null
+      full_name?: string | null
+    } | null
+
+    let profile: ProfileRow = null
+    if (!(body?.triggeredByReva && !user)) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('ghl_api_key, ghl_location_id, email, full_name')
+        .eq('id', effectiveUserId)
+        .single()
+      profile = data as ProfileRow
+    }
+
+    const ghlApiKey =
+      process.env.GHL_API_KEY ||
+      (body?.ghlApiKey ? String(body.ghlApiKey) : '') ||
+      profile?.ghl_api_key ||
+      ''
+    const locationId =
+      process.env.GHL_LOCATION_ID ||
+      (body?.ghlLocationId ? String(body.ghlLocationId) : '') ||
+      profile?.ghl_location_id ||
+      ''
+    const smsFrom =
+      process.env.GHL_SMS_NUMBER ||
+      (body?.ghlSmsNumber ? String(body.ghlSmsNumber) : '') ||
+      profile?.ghl_location_id ||
+      ''
     if (!ghlApiKey) {
-      return NextResponse.json({ error: 'Connect GHL in Settings to send communications' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Connect GHL in Settings to send communications' },
+        { status: 400 }
+      )
     }
 
     let contactName = ''
@@ -46,7 +103,7 @@ export async function POST(req: Request) {
       .from('transactions')
       .select('contacts')
       .eq('id', dealId)
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .maybeSingle()
 
     const allContacts = Array.isArray(tx?.contacts)
@@ -146,7 +203,7 @@ export async function POST(req: Request) {
         .from('communications')
         .insert({
           deal_id: dealId,
-          user_id: user.id,
+          user_id: effectiveUserId,
           type,
           direction: 'outbound',
           contact_name: contactName || contactRoleLabel,
@@ -178,7 +235,7 @@ export async function POST(req: Request) {
 
     const { error: actErr } = await supabase.from('transaction_activity').insert({
       transaction_id: dealId,
-      user_id: user.id,
+      user_id: effectiveUserId,
       activity_type: type === 'sms' ? 'ghl_sms' : 'ghl_email',
       title,
       description: message.slice(0, 2000),
