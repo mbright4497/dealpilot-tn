@@ -39,7 +39,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ profile: null })
     }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ profile: data })
+    return NextResponse.json({ profile: { ...data, email: user.email } })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || String(err) }, { status: 500 })
   }
