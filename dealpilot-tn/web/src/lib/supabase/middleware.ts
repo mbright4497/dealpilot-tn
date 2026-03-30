@@ -10,6 +10,7 @@ function normalizePathname(pathname: string) {
 
 function isPublicPath(pathname: string) {
   if (pathname === "/api/reva/chat") return true;
+  if (pathname.startsWith("/api/webhooks")) return true;
   if (
     pathname === "/login" ||
     pathname === "/signup" ||
@@ -20,8 +21,6 @@ function isPublicPath(pathname: string) {
     return true;
   }
   if (pathname === "/api/ghl" || pathname.startsWith("/api/ghl/")) return true;
-  if (pathname === "/api/webhooks" || pathname.startsWith("/api/webhooks/"))
-    return true;
   if (pathname === "/embed" || pathname.startsWith("/embed/")) return true;
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
   return false;
