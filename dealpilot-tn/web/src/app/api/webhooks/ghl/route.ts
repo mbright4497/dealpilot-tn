@@ -86,6 +86,13 @@ export async function POST(req: Request) {
       console.error('Insert comm error', insertErr)
       return NextResponse.json({ error: 'Failed to save communication' }, { status: 500 })
     }
+    console.log('[webhook] inbound check:', {
+      direction,
+      channel,
+      hasBody: !!body,
+      body: body?.slice(0, 50),
+      hasSecret: !!process.env.REVA_INTERNAL_SECRET,
+    })
 
     // If inbound SMS, call Reva and reply
     if (direction === 'inbound' && channel === 'ghl_sms' && body) {
@@ -110,6 +117,8 @@ export async function POST(req: Request) {
         })
         const revaJson = await revaRes.json().catch(() => ({}))
         const revaReply = revaJson?.reply || revaJson?.message || null
+        console.log('[webhook] Reva fetch status:', revaRes.status)
+        console.log('[webhook] Reva reply:', revaReply?.slice(0, 100))
 
         if (revaReply) {
           // Find contact phone to reply to
@@ -126,6 +135,7 @@ export async function POST(req: Request) {
               contactId,
               locationId
             )
+            console.log('[webhook] SMS reply sent to:', fromPhone)
             console.log('[webhook/ghl] Reva replied via SMS to', fromPhone)
           }
         }
