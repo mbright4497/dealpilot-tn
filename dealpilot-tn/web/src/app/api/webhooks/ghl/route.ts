@@ -216,6 +216,16 @@ Always confirm the message before sending.`
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
 
+        let smsThreadId: string | null = null
+        if (fromPhone) {
+          const { data: threadRow } = await supabase
+            .from('reva_sms_threads')
+            .select('thread_id')
+            .eq('phone', fromPhone)
+            .maybeSingle()
+          smsThreadId = threadRow?.thread_id || null
+        }
+
         // Call Reva chat with the inbound message
         const revaRes = await fetch(`${appUrl}/api/reva/chat`, {
           method: 'POST',
@@ -227,14 +237,29 @@ Always confirm the message before sending.`
           },
           body: JSON.stringify({
             message: body,
-            dealId: agentTransactions[0]?.id ?? null,
+            dealId: agentTransactions[0]?.id || null,
             userId: resolvedUserId,
             skipHistory: false,
             agentContext,
+            threadId: smsThreadId,
           }),
         })
         const revaJson = await revaRes.json().catch(() => ({}))
         const revaReply = revaJson?.reply || revaJson?.message || null
+
+        const returnedThreadId = revaJson?.threadId || null
+        if (fromPhone && returnedThreadId) {
+          await supabase
+            .from('reva_sms_threads')
+            .upsert(
+              {
+                phone: fromPhone,
+                thread_id: returnedThreadId,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'phone' }
+            )
+        }
 
         if (revaReply && (fromPhone || contactId)) {
           const { sendGHLSMS } = await import('@/lib/ghl/ghlClient')
