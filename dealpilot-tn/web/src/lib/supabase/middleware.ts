@@ -9,6 +9,7 @@ function normalizePathname(pathname: string) {
 }
 
 function isPublicPath(pathname: string) {
+  if (pathname === "/api/reva/chat") return true;
   if (
     pathname === "/login" ||
     pathname === "/signup" ||
