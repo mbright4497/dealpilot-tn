@@ -17,9 +17,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
     // Load the log (draft/queued/sent/delivered/etc).
     const { data: logs, error: logsErr } = await supabase
-      .from('communication_log')
+      .from('communications')
       .select('*')
-      .eq('deal_id', dealId)
+      .eq('deal_id', String(dealId))
       .order('created_at', { ascending: false })
 
     if (logsErr) return NextResponse.json({ error: logsErr.message }, { status: 500 })

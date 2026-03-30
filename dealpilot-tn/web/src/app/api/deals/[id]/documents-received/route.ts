@@ -29,10 +29,12 @@ export async function GET(_: Request, { params }: Params) {
     .from('deals')
     .select('documents_received')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ documents_received: normalizeDocumentsReceived(data?.documents_received) })
+  return NextResponse.json({
+    documents_received: normalizeDocumentsReceived(data?.documents_received),
+  })
 }
 
 export async function PATCH(req: Request, { params }: Params) {

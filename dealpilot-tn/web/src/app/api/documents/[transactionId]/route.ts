@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET(request: Request, { params }: { params: { transactionId: string } }) {
+  const supabase = getSupabase()
   const transactionId = Number(params.transactionId)
   try {
     const { data, error } = await supabase
@@ -45,6 +46,7 @@ export async function GET(request: Request, { params }: { params: { transactionI
 }
 
 export async function POST(request: Request, { params }: { params: { transactionId: string } }) {
+  const supabase = getSupabase()
   const transactionId = Number(params.transactionId)
 
   try {
