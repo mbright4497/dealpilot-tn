@@ -102,11 +102,14 @@ End with "Reply for details."`,
         ],
       })
 
+      const briefingText = completion.choices[0].message.content
+      console.log('[cron] briefing text:', briefingText?.slice(0, 100))
+
       const briefing =
-        completion.choices[0].message.content ||
+        briefingText ||
         `Good morning ${firstName}! You have ${transactions.length} active deals. Reply for details.`
 
-      await sendGHLSMS(
+      const smsResult = await sendGHLSMS(
         process.env.GHL_API_KEY || '',
         agent.phone!,
         process.env.GHL_SMS_NUMBER || '',
@@ -114,7 +117,7 @@ End with "Reply for details."`,
         null,
         process.env.GHL_LOCATION_ID || ''
       )
-
+      console.log('[cron] SMS result:', JSON.stringify(smsResult))
       console.log('[cron] SMS sent to:', agent.phone)
 
       results.push({ agent: agent.full_name, sent: true })
