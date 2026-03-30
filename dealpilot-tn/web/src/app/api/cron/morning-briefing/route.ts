@@ -7,10 +7,21 @@ export const revalidate = 0
 export const maxDuration = 60
 
 const noStoreJsonHeaders = {
-  'Cache-Control': 'no-store, no-cache, must-revalidate',
+  Pragma: 'no-cache',
+  Expires: '0',
+  'Surrogate-Control': 'no-store',
+  'Cache-Control':
+    'no-store, no-cache, must-revalidate, proxy-revalidate',
 } as const
 
 export async function GET(request: Request) {
+  // Force no caching
+  const ts = new Date().toISOString()
+  console.log('[cron] executing at:', ts)
+
+  const cacheBust = new URL(request.url).searchParams.get('t')
+  if (cacheBust) console.log('[cron] cache-bust query t:', cacheBust)
+
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json(
@@ -97,10 +108,6 @@ export async function GET(request: Request) {
       total: results.length,
       results,
     },
-    {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
-    }
+    { headers: noStoreJsonHeaders }
   )
 }
