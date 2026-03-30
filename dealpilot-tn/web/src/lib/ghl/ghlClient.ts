@@ -144,6 +144,7 @@ export async function sendGHLSMS(
     contactId: contactId || undefined,
     ...(conversationId ? { conversationId } : {}),
     ...(contactId ? {} : { toNumber: e164 }),
+    fromNumber: fromPhone || process.env.GHL_SMS_NUMBER || "",
     message,
     ...(loc ? { locationId: loc } : {}),
   });
