@@ -58,8 +58,8 @@ export async function POST(req: Request) {
     // Compose channel
     const channel = type.includes('sms') ? 'ghl_sms' : type.includes('email') ? 'ghl_email' : type.includes('call') ? 'ghl_call' : `ghl_${type}`
 
-    // Insert into deal_communications
-    const { error: insertErr } = await supabase.from('deal_communications').insert({
+    // Insert into communications
+    const { error: insertErr } = await supabase.from('communications').insert({
       deal_id: dealId,
       user_id: userId,
       comm_type: channel,
