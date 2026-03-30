@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 
   const { data: agents } = await supabase
     .from('profiles')
-    .select('id, full_name, phone, email')
+    .select('id, full_name, phone, email, ghl_contact_id')
     .not('phone', 'is', null)
 
   console.log(
@@ -51,8 +51,6 @@ export async function GET(request: Request) {
   }
 
   const results: { agent: string | null; sent: boolean }[] = []
-
-  const { findGHLContactByPhone } = await import('@/lib/ghl/ghlClient')
 
   for (const agent of agents) {
     try {
@@ -86,19 +84,12 @@ export async function GET(request: Request) {
         agentPhone: agent.phone
       })
 
-      const agentGhlContactId = await findGHLContactByPhone(
-        process.env.GHL_API_KEY || '',
-        process.env.GHL_LOCATION_ID || '',
-        agent.phone!
-      )
-      console.log('[cron] agent GHL contact ID:', agentGhlContactId)
-
       const smsResult = await sendGHLSMS(
         process.env.GHL_API_KEY || '',
         agent.phone!,
         process.env.GHL_SMS_NUMBER || '',
         briefing,
-        agentGhlContactId,
+        agent.ghl_contact_id || null,
         process.env.GHL_LOCATION_ID || ''
       )
       console.log('[cron] SMS result:', JSON.stringify(smsResult))

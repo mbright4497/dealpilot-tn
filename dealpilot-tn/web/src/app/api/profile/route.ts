@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id,full_name,brokerage,phone,license_number,state,user_type,ghl_api_key,ghl_location_id,notification_prefs,notification_email,subscription_tier,created_at,updated_at')
+      .select('id,full_name,brokerage,phone,license_number,state,user_type,ghl_api_key,ghl_location_id,ghl_contact_id,notification_prefs,notification_email,subscription_tier,created_at,updated_at')
       .eq('id', user.id)
       .limit(1)
       .single()
@@ -62,6 +62,7 @@ export async function PATCH(req: Request) {
       user_type,
       ghl_api_key,
       ghl_location_id,
+      ghl_contact_id,
       notification_email,
     } = body as any
 
@@ -76,6 +77,7 @@ export async function PATCH(req: Request) {
     if (user_type !== undefined) updates.user_type = user_type
     if (ghl_api_key !== undefined) updates.ghl_api_key = ghl_api_key
     if (ghl_location_id !== undefined) updates.ghl_location_id = ghl_location_id
+    if (ghl_contact_id !== undefined) updates.ghl_contact_id = ghl_contact_id
     if (notification_email !== undefined) updates.notification_email = notification_email
 
     // Prefer UPDATE so partial patches never rely on INSERT upsert quirks (RLS / defaults).
