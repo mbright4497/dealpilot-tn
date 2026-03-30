@@ -7,6 +7,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 )
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function toDealUuid(value: unknown): string | null {
+  if (value == null) return null
+  const s = String(value).trim()
+  return UUID_RE.test(s) ? s : null
+}
+
 export async function POST(req: Request) {
   try {
     const payload = await req.json().catch(() => null)
@@ -37,7 +46,7 @@ export async function POST(req: Request) {
 
     // Attempt to find matching transaction by recipient/contact info
     // Try matching by contact id in transactions.external_contact_id or by client name
-    let dealRow: { deal_id?: number; id?: number } | null = null
+    let dealRow: { deal_id?: string; id?: string } | null = null
     const contactIdentifier = payload?.contact?.phone || payload?.contact?.email || payload?.contact?.name || payload?.from || payload?.sender || null
 
     // First try matching by transaction.client
@@ -53,24 +62,25 @@ export async function POST(req: Request) {
       if (ds && ds.length) dealRow = ds[0]
     }
 
-    const dealId = dealRow ? (dealRow.deal_id || dealRow.id) : null
+    const dealId = toDealUuid(dealRow ? (dealRow.deal_id ?? dealRow.id) : null)
 
-    // Compose channel
+    // Compose channel (ghl_* for downstream logic; DB `type` is sms | email | call)
     const channel = type.includes('sms') ? 'ghl_sms' : type.includes('email') ? 'ghl_email' : type.includes('call') ? 'ghl_call' : `ghl_${type}`
+    const commType =
+      type.includes('sms') ? 'sms' : type.includes('email') ? 'email' : type.includes('call') ? 'call' : 'sms'
 
-    // Insert into communications
     const { error: insertErr } = await supabase.from('communications').insert({
       deal_id: dealId,
       user_id: userId,
-      comm_type: channel,
+      type: commType,
       direction: direction || 'inbound',
-      recipient: contactIdentifier || null,
+      contact_name: payload?.contact?.name || null,
       subject: payload?.subject || null,
-      body: body || null,
+      message: body || null,
       status: 'received',
-      metadata: payload || {},
-      created_at: new Date().toISOString()
-    }).select().single()
+      triggered_by_reva: false,
+      created_at: new Date().toISOString(),
+    })
 
     if (insertErr) {
       console.error('Insert comm error', insertErr)
