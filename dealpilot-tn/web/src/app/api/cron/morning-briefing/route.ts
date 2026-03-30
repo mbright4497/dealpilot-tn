@@ -22,6 +22,12 @@ export async function GET(request: Request) {
     .select('id, full_name, phone, email')
     .not('phone', 'is', null)
 
+  console.log(
+    '[cron] agents found:',
+    agents?.length,
+    agents?.map((a) => ({ name: a.full_name, phone: a.phone }))
+  )
+
   if (!agents || agents.length === 0) {
     return NextResponse.json({ sent: 0 })
   }
@@ -37,6 +43,13 @@ export async function GET(request: Request) {
         .eq('user_id', agent.id)
         .order('created_at', { ascending: false })
         .limit(10)
+
+      console.log(
+        '[cron] transactions for',
+        agent.full_name,
+        ':',
+        transactions?.length
+      )
 
       if (!transactions || transactions.length === 0) continue
 
@@ -93,6 +106,8 @@ End with "Reply for details."`,
         null,
         process.env.GHL_LOCATION_ID || ''
       )
+
+      console.log('[cron] SMS sent to:', agent.phone)
 
       results.push({ agent: agent.full_name, sent: true })
     } catch (err) {
