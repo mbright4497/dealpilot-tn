@@ -2,8 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/morning-briefing",
-      "schedule": "0 11 * * *",
-      "comment": "Redeploy to pick up cron secret"
+      "schedule": "0 11 * * *"
     }
   ]
 }
