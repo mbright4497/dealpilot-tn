@@ -50,13 +50,30 @@ export async function POST(req: Request) {
     console.log('[webhook] fromPhone resolved:', fromPhone)
 
     // Extract common fields (structure may vary by GHL webhook)
-    const contactId = payload?.contactId || payload?.contact?.id || payload?.data?.contactId || null
+    const contactId =
+      payload?.contactId ||
+      payload?.contact_id ||
+      payload?.contact?.id ||
+      null
     const typeRaw = (payload?.type || payload?.event || payload?.message?.type || '')
     const type = String(typeRaw).toLowerCase()
     const body = payload?.message?.body || payload?.data?.body || payload?.body || ''
     const direction = (payload?.direction || payload?.message?.direction || 'inbound')
-    const locationId = payload?.locationId || payload?.data?.locationId || payload?.location || null
-    const conversationId = payload?.conversationId || payload?.conversation?.id || null
+    const rawLocationId =
+      payload?.locationId ||
+      payload?.location_id ||
+      payload?.location ||
+      null
+    const locationId = typeof rawLocationId === 'object'
+      ? rawLocationId?.id || null
+      : rawLocationId
+    const conversationId =
+      payload?.conversationId ||
+      payload?.conversation_id ||
+      payload?.customData?.conversationId ||
+      payload?.triggerData?.conversationId ||
+      payload?.workflow?.conversationId ||
+      null
 
     console.log('[webhook] conversationId:', conversationId)
 
