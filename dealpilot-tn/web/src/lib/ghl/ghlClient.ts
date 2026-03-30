@@ -184,6 +184,27 @@ export async function sendGHLSMS(
   };
 }
 
+export async function findGHLContactByPhone(
+  apiKey: string,
+  locationId: string,
+  phone: string
+): Promise<string | null> {
+  try {
+    const digits = phone.replace(/\D/g, "");
+    const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+    const url = `${GHL_BASE_V2}/contacts/search/duplicate?locationId=${locationId}&phone=${encodeURIComponent(e164)}`;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: authHeaders(apiKey),
+    });
+    const json = await res.json().catch(() => ({}));
+    const id = (json as { contact?: { id?: unknown } })?.contact?.id;
+    return id != null ? String(id) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getGHLConversation(
   apiKey: string,
   contactId: string,
