@@ -56,6 +56,9 @@ export async function POST(req: Request) {
     const body = payload?.message?.body || payload?.data?.body || payload?.body || ''
     const direction = (payload?.direction || payload?.message?.direction || 'inbound')
     const locationId = payload?.locationId || payload?.data?.locationId || payload?.location || null
+    const conversationId = payload?.conversationId || payload?.conversation?.id || null
+
+    console.log('[webhook] conversationId:', conversationId)
 
     if (!locationId) {
       console.log('[webhook] no locationId in payload')
@@ -185,7 +188,8 @@ export async function POST(req: Request) {
             process.env.GHL_SMS_NUMBER || '',
             revaReply,
             contactId,
-            locationId
+            locationId,
+            conversationId
           )
           console.log(
             '[webhook] GHL SMS result:',

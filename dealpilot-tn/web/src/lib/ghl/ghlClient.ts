@@ -129,7 +129,8 @@ export async function sendGHLSMS(
   fromPhone: string,
   message: string,
   ghlContactId?: string | null,
-  locationId?: string | null
+  locationId?: string | null,
+  conversationId?: string | null
 ): Promise<{ success: boolean; messageId?: string; fromNumber?: string }> {
   const contactId = String(ghlContactId || "").trim();
   const loc = String(locationId || "").trim();
@@ -141,6 +142,7 @@ export async function sendGHLSMS(
   const body = JSON.stringify({
     type: "SMS",
     contactId: contactId || undefined,
+    ...(conversationId ? { conversationId } : {}),
     ...(contactId ? {} : { toNumber: e164 }),
     message,
     ...(loc ? { locationId: loc } : {}),
