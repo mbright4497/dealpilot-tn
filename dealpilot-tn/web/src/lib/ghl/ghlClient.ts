@@ -162,7 +162,13 @@ export async function sendGHLSMS(
 
   const responseText = await res.text();
 
-  if (!res.ok) return { success: false };
+  if (!res.ok) {
+    console.error("[ghlClient] sendGHLSMS failed:", {
+      status: res.status,
+      body: responseText,
+    });
+    return { success: false };
+  }
 
   let json: Record<string, unknown> = {};
   try {
