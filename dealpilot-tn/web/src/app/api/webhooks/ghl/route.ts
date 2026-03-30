@@ -199,6 +199,17 @@ export async function POST(req: Request) {
 
         if (revaReply && (fromPhone || contactId)) {
           const { sendGHLSMS } = await import('@/lib/ghl/ghlClient')
+          // Look up conversationId from GHL if not in payload
+          let resolvedConversationId = conversationId
+          if (!resolvedConversationId && contactId && locationId) {
+            const { getGHLConversation } = await import('@/lib/ghl/ghlClient')
+            resolvedConversationId = await getGHLConversation(
+              process.env.GHL_API_KEY || '',
+              contactId,
+              locationId
+            )
+            console.log('[webhook] looked up conversationId:', resolvedConversationId)
+          }
           console.log(
             '[webhook] contactId from payload:',
             contactId
@@ -214,7 +225,7 @@ export async function POST(req: Request) {
             revaReply,
             contactId,
             locationId,
-            conversationId
+            resolvedConversationId
           )
           console.log(
             '[webhook] GHL SMS result:',

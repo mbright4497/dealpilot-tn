@@ -194,6 +194,29 @@ export async function sendGHLSMS(
   };
 }
 
+export async function getGHLConversation(
+  apiKey: string,
+  contactId: string,
+  locationId: string
+): Promise<string | null> {
+  try {
+    const url = `${GHL_BASE_V2}/conversations/search?contactId=${contactId}&locationId=${locationId}`;
+    const res = await fetch(url, {
+      method: "GET",
+      headers: authHeaders(apiKey),
+    });
+    const json = await res.json().catch(() => ({}));
+    console.log("[ghlClient] conversation lookup:", {
+      status: res.status,
+      conversationId: json?.conversations?.[0]?.id || null,
+    });
+    return json?.conversations?.[0]?.id || null;
+  } catch (err) {
+    console.error("[ghlClient] conversation lookup error:", err);
+    return null;
+  }
+}
+
 export async function getGHLContacts(apiKey: string, query?: string): Promise<GHLContact[]> {
   const url = new URL(`${GHL_BASE_V2}/contacts/`);
   if (query) url.searchParams.set("query", query);
