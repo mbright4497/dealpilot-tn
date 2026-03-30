@@ -64,6 +64,15 @@ export async function GET(request: Request) {
       const briefing = `Good morning ${firstName}! Reva here. You have ${transactions.length} active deal(s). Reply for details.`
       console.log('[cron] briefing text:', briefing.slice(0, 100))
 
+      console.log('[cron] GHL env check:', {
+        hasApiKey: !!process.env.GHL_API_KEY,
+        apiKeyLast4: process.env.GHL_API_KEY?.slice(-4),
+        hasLocationId: !!process.env.GHL_LOCATION_ID,
+        hasSmsNumber: !!process.env.GHL_SMS_NUMBER,
+        smsNumber: process.env.GHL_SMS_NUMBER,
+        agentPhone: agent.phone
+      })
+
       const smsResult = await sendGHLSMS(
         process.env.GHL_API_KEY || '',
         agent.phone!,
