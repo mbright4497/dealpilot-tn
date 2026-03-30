@@ -65,7 +65,15 @@ export async function POST(req: Request) {
     const dealId = toDealUuid(dealRow ? (dealRow.deal_id ?? dealRow.id) : null)
 
     // Compose channel (ghl_* for downstream logic; DB `type` is sms | email | call)
-    const channel = type.includes('sms') ? 'ghl_sms' : type.includes('email') ? 'ghl_email' : type.includes('call') ? 'ghl_call' : `ghl_${type}`
+    // GHL may send message type as a number (e.g. 2) instead of the string "SMS"
+    const channel =
+      type.includes('sms') || type === '2' || type === '1'
+        ? 'ghl_sms'
+        : type.includes('email') || type === '3'
+          ? 'ghl_email'
+          : type.includes('call') || type === '4'
+            ? 'ghl_call'
+            : `ghl_${type}`
     const commType =
       type.includes('sms') ? 'sms' : type.includes('email') ? 'email' : type.includes('call') ? 'call' : 'sms'
 
@@ -94,8 +102,12 @@ export async function POST(req: Request) {
       hasSecret: !!process.env.REVA_INTERNAL_SECRET,
     })
 
-    // If inbound SMS, call Reva and reply
-    if (direction === 'inbound' && channel === 'ghl_sms' && body) {
+    // If inbound message with body, call Reva and reply (SMS channel or legacy numeric ghl_*)
+    if (
+      direction === 'inbound' &&
+      body &&
+      (channel === 'ghl_sms' || channel === 'ghl_2' || channel === 'ghl_1')
+    ) {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
 
