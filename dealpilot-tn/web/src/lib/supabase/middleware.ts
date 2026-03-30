@@ -12,6 +12,7 @@ function isPublicPath(pathname: string) {
   if (pathname === "/api/reva/chat") return true;
   if (pathname === "/api/communications/send") return true;
   if (pathname.startsWith("/api/webhooks")) return true;
+  if (pathname.startsWith("/api/cron")) return true;
   if (
     pathname === "/login" ||
     pathname === "/signup" ||
