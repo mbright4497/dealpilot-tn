@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     }
 
     // If inbound SMS, call Reva and reply
-    if (direction === 'inbound' && channel === 'ghl_sms' && body && dealId) {
+    if (direction === 'inbound' && channel === 'ghl_sms' && body) {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
 
