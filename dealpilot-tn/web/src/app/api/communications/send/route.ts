@@ -25,8 +25,6 @@ export async function POST(req: Request) {
     const message = String(body?.message || '')
     const triggeredByReva = body?.triggeredByReva === true
 
-    console.log('[send] incoming type:', type, 'contactId:', transactionContactId)
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('ghl_api_key, ghl_location_id, email, full_name')
@@ -35,12 +33,6 @@ export async function POST(req: Request) {
     const ghlApiKey = process.env.GHL_API_KEY || profile?.ghl_api_key || ''
     const smsFrom = process.env.GHL_SMS_NUMBER || profile?.ghl_location_id || ''
     const locationId = process.env.GHL_LOCATION_ID || profile?.ghl_location_id || ''
-    console.log(
-      '[send] ghl_api_key present:',
-      !!ghlApiKey,
-      'last4:',
-      ghlApiKey?.slice(-4)
-    )
     if (!ghlApiKey) {
       return NextResponse.json({ error: 'Connect GHL in Settings to send communications' }, { status: 400 })
     }
@@ -84,9 +76,6 @@ export async function POST(req: Request) {
     contactPhone = target.phone || null
     contactRoleLabel = target.role || ''
 
-    console.log('[send] ghl_contact_id on target:', target?.ghl_contact_id)
-    console.log('[send] contact email:', contactEmail)
-
     if (type === 'email' && !contactEmail) {
       return NextResponse.json(
         { error: `${contactRoleLabel || 'Contact'} is missing email` },
@@ -119,7 +108,6 @@ export async function POST(req: Request) {
       fromEmail?: string
     } = { success: false }
     if (type === 'email') {
-      console.log('[send] routing to EMAIL')
       const ghlContactId = String(target.ghl_contact_id || '').trim()
       const fromReva = { email: 'reva@ihomehq.com', name: 'Reva' }
       sendRes = await sendGHLEmail(
@@ -135,13 +123,6 @@ export async function POST(req: Request) {
         locationId
       )
     } else {
-      console.log('[send] routing to SMS')
-      console.log('[send] SMS params:', {
-        hasApiKey: !!ghlApiKey,
-        smsFrom: smsFrom?.slice(0,6) + '...',
-        hasPhone: !!contactPhone,
-        phone: contactPhone?.slice(0,6) + '...',
-      })
       sendRes = await sendGHLSMS(
         ghlApiKey,
         contactPhone!,
@@ -150,9 +131,7 @@ export async function POST(req: Request) {
         target?.ghl_contact_id || null,
         locationId
       )
-      console.log('[send] SMS result:', JSON.stringify(sendRes))
     }
-    console.log('[send] send result:', type, JSON.stringify(sendRes))
     if (!sendRes.success) {
       const detail =
         type === 'email' && 'error' in sendRes && sendRes.error

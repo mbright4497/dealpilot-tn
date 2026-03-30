@@ -21,23 +21,6 @@ export async function POST(req: Request) {
     const payload = await req.json().catch(() => null)
     if (!payload) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
 
-    console.log(
-      '[webhook] full payload keys:',
-      JSON.stringify(Object.keys(payload || {}))
-    )
-    console.log(
-      '[webhook] payload sample:',
-      JSON.stringify({
-        from: payload?.from,
-        phone: payload?.phone,
-        contact: payload?.contact,
-        contactPhone: payload?.contact_phone,
-        sender: payload?.sender,
-        type: payload?.type,
-        direction: payload?.direction,
-      })
-    )
-
     const fromPhone =
       payload?.from ||
       payload?.phone ||
@@ -46,8 +29,6 @@ export async function POST(req: Request) {
       payload?.sender ||
       payload?.fromNumber ||
       null
-
-    console.log('[webhook] fromPhone resolved:', fromPhone)
 
     // Extract common fields (structure may vary by GHL webhook)
     const contactId =
@@ -75,8 +56,6 @@ export async function POST(req: Request) {
       payload?.workflow?.conversationId ||
       null
 
-    console.log('[webhook] conversationId:', conversationId)
-
     if (!locationId) {
       console.log('[webhook] no locationId in payload')
     }
@@ -96,8 +75,6 @@ export async function POST(req: Request) {
     } else if (profileData?.length) {
       userId = profileData[0].id
     }
-
-    console.log('[webhook] userId resolved:', userId, 'locationId:', locationId)
 
     // Attempt to find matching transaction by recipient/contact info
     // Try matching by contact id in transactions.external_contact_id or by client name
@@ -152,9 +129,6 @@ export async function POST(req: Request) {
     console.log('[webhook] inbound check:', {
       direction,
       channel,
-      hasBody: !!body,
-      body: body?.slice(0, 50),
-      hasSecret: !!process.env.REVA_INTERNAL_SECRET,
     })
 
     // If inbound message with body, call Reva and reply (SMS channel or legacy numeric ghl_*)
@@ -165,16 +139,6 @@ export async function POST(req: Request) {
     ) {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
-
-        console.log('[webhook] calling Reva with:', {
-          message: body?.slice(0, 500),
-          dealId,
-          userId,
-          skipHistory: false,
-          channel,
-          contactId,
-          locationId,
-        })
 
         // Call Reva chat with the inbound message
         const revaRes = await fetch(`${appUrl}/api/reva/chat`, {
@@ -194,8 +158,6 @@ export async function POST(req: Request) {
         })
         const revaJson = await revaRes.json().catch(() => ({}))
         const revaReply = revaJson?.reply || revaJson?.message || null
-        console.log('[webhook] Reva fetch status:', revaRes.status)
-        console.log('[webhook] Reva reply:', revaReply?.slice(0, 100))
 
         if (revaReply && (fromPhone || contactId)) {
           const { sendGHLSMS } = await import('@/lib/ghl/ghlClient')
@@ -208,17 +170,8 @@ export async function POST(req: Request) {
               contactId,
               locationId
             )
-            console.log('[webhook] looked up conversationId:', resolvedConversationId)
           }
-          console.log(
-            '[webhook] contactId from payload:',
-            contactId
-          )
-          console.log(
-            '[webhook] locationId from payload:',
-            locationId
-          )
-          const smsResult = await sendGHLSMS(
+          await sendGHLSMS(
             process.env.GHL_API_KEY || '',
             fromPhone || '',
             process.env.GHL_SMS_NUMBER || '',
@@ -227,15 +180,6 @@ export async function POST(req: Request) {
             locationId,
             resolvedConversationId
           )
-          console.log(
-            '[webhook] GHL SMS result:',
-            JSON.stringify(smsResult)
-          )
-          console.log(
-            '[webhook] full GHL SMS result:',
-            JSON.stringify(smsResult)
-          )
-          console.log('[webhook] SMS reply sent to:', fromPhone || '(contactId only)')
           console.log(
             '[webhook/ghl] Reva replied via SMS to',
             fromPhone || '(contactId only)'

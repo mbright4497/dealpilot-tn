@@ -61,7 +61,6 @@ function extractActionBlock(text: string): {
 
 export async function POST(request: Request) {
   try {
-    console.log('Assistant ID:', process.env.REVA_ASSISTANT_ID_TN)
     const {
       message,
       dealId,
@@ -133,7 +132,6 @@ export async function POST(request: Request) {
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const assistantId = process.env.REVA_ASSISTANT_ID_TN
-    console.log('assistantId value being used:', assistantId)
 
     if (!assistantId) {
       return Response.json({
@@ -173,10 +171,8 @@ export async function POST(request: Request) {
       threadId = requestThreadId
     } else {
       const threadObj = await openai.beta.threads.create()
-      console.log('Thread created:', JSON.stringify(threadObj))
       threadId = threadObj.id
     }
-    console.log('threadId created:', threadId)
 
     const fullMessage = `${dateAwarenessBlock}LIVE SYSTEM CONTEXT (use this for all deal questions):
 ${context}
@@ -213,8 +209,6 @@ Instructions: Search your knowledge base documents to answer this question. Cite
     })
 
     try {
-      console.log('runStream starts: switching to polling via runs.create')
-      console.log('textDelta events fire: polling mode, no textDelta events expected')
       const run = await openai.beta.threads.runs.create(threadId, {
         assistant_id: assistantId,
       })
@@ -241,7 +235,6 @@ Instructions: Search your knowledge base documents to answer this question. Cite
           run.id
         )
         status = updated.status
-        console.log('Run status:', status, 'elapsed:', Date.now() - startTime)
       }
 
       if (status !== 'completed') {
@@ -258,7 +251,6 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         .map((c: any) => c.text.value)
         .join('\n')
 
-      console.log('[reva] rawReply:', rawReply?.slice(0, 500))
       let { cleanedReply, action } = extractActionBlock(rawReply || '')
       let transaction: unknown = null
       if (action?.type === 'create_transaction' && action.data) {

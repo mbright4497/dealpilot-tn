@@ -62,11 +62,6 @@ export async function sendGHLEmail(
     };
   }
 
-  console.log(
-    "[ghlClient] email body param:",
-    String(body || message || "").slice(0, 100)
-  );
-
   const url = `${GHL_BASE_V2}/conversations/messages`;
   const requestBody = JSON.stringify({
     type: "Email",
@@ -102,7 +97,6 @@ export async function sendGHLEmail(
   const responseText = await res.text();
   console.log("[ghlClient] GHL email direct response (v2)", {
     status: res.status,
-    body: responseText,
   });
   if (!res.ok) return { success: false };
   let json: Record<string, unknown> = {};
@@ -149,12 +143,6 @@ export async function sendGHLSMS(
     ...(loc ? { locationId: loc } : {}),
   });
 
-  console.log("[ghlClient] sendGHLSMS v2 request", {
-    url,
-    hasContactId: !!contactId,
-    hasPhone: !!toPhone,
-  });
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
 
@@ -166,18 +154,13 @@ export async function sendGHLSMS(
       body,
       signal: controller.signal,
     });
-  } catch (err) {
-    console.log("[ghlClient] sendGHLSMS fetch error:", err);
+  } catch {
     return { success: false };
   } finally {
     clearTimeout(timeout);
   }
 
   const responseText = await res.text();
-  console.log("[ghlClient] sendGHLSMS v2 response", {
-    status: res.status,
-    body: responseText,
-  });
 
   if (!res.ok) return { success: false };
 
@@ -207,10 +190,6 @@ export async function getGHLConversation(
       headers: authHeaders(apiKey),
     });
     const json = await res.json().catch(() => ({}));
-    console.log("[ghlClient] conversation lookup:", {
-      status: res.status,
-      conversationId: json?.conversations?.[0]?.id || null,
-    });
     return json?.conversations?.[0]?.id || null;
   } catch (err) {
     console.error("[ghlClient] conversation lookup error:", err);
