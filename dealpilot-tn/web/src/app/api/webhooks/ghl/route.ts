@@ -76,6 +76,82 @@ export async function POST(req: Request) {
       userId = profileData[0].id
     }
 
+    const normalizedFrom = fromPhone
+      ? fromPhone.replace(/\D/g, '').replace(/^1/, '')
+      : null
+
+    let agentProfile: {
+      id: string
+      full_name: string | null
+      email: string | null
+    } | null = null
+
+    if (normalizedFrom) {
+      const { data: profileByPhone } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .ilike('phone', `%${normalizedFrom}%`)
+        .maybeSingle()
+      agentProfile = profileByPhone
+    }
+
+    const resolvedUserId = agentProfile?.id || userId
+
+    let agentTransactions: Array<{
+      id: number
+      address: string
+      client: string
+      phase: string
+      closing_date: string | null
+      contacts: unknown
+    }> = []
+
+    if (resolvedUserId) {
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('id, address, client, phase, closing_date, contacts')
+        .eq('user_id', resolvedUserId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      agentTransactions = txs || []
+    }
+
+    const agentContext = agentProfile
+      ? `AGENT CONTEXT (from SMS caller ID):
+You are currently texting with ${agentProfile.full_name}, 
+a licensed Tennessee real estate agent.
+
+THEIR ACTIVE TRANSACTIONS:
+${
+  agentTransactions.length === 0
+    ? 'No active transactions found.'
+    : agentTransactions
+        .map((t) => {
+          const contacts = Array.isArray(t.contacts)
+            ? t.contacts
+                .map(
+                  (c: {
+                    name?: string
+                    role?: string
+                    phone?: string
+                    email?: string
+                    ghl_contact_id?: string
+                  }) =>
+                    `${c.name} (${c.role}) - ${c.phone || 'no phone'} - ${c.email || 'no email'} - GHL ID: ${c.ghl_contact_id || 'not synced'}`
+                )
+                .join(', ')
+            : 'none'
+          return `- Deal ID: ${t.id} | ${t.address} | Client: ${t.client} | Phase: ${t.phase} | Closing: ${t.closing_date || 'TBD'} | Contacts: ${contacts}`
+        })
+        .join('\n')
+}
+
+When the agent asks you to contact someone on a deal,
+use the contact details above to execute REVA_ACTION.
+You can send SMS and email to any contact listed above.
+Always confirm the message before sending.`
+      : null
+
     // Attempt to find matching transaction by recipient/contact info
     // Try matching by contact id in transactions.external_contact_id or by client name
     let dealRow: { deal_id?: string; id?: string } | null = null
@@ -151,9 +227,10 @@ export async function POST(req: Request) {
           },
           body: JSON.stringify({
             message: body,
-            dealId,
-            userId,
+            dealId: agentTransactions[0]?.id ?? null,
+            userId: resolvedUserId,
             skipHistory: false,
+            agentContext,
           }),
         })
         const revaJson = await revaRes.json().catch(() => ({}))

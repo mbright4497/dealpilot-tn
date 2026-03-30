@@ -61,13 +61,15 @@ function extractActionBlock(text: string): {
 
 export async function POST(request: Request) {
   try {
+    const reqBody = await request.json()
     const {
       message,
       dealId,
       threadId: requestThreadId,
       context: requestContext,
       userId: bodyUserId,
-    } = await request.json()
+    } = reqBody || {}
+    const agentContext = reqBody?.agentContext ?? null
 
     if (!message) {
       return Response.json({ error: 'Message required' }, { status: 400 })
@@ -150,6 +152,10 @@ export async function POST(request: Request) {
       styleInstructions[selectedStyle] || styleInstructions.friendly_tn
     const context = await buildRevaContext(supabase, userId, dealId, userEmail)
 
+    const enrichedMessage = agentContext
+      ? `${agentContext}\n\nAgent SMS message: ${message}`
+      : message
+
     const nowChat = new Date()
     const todayLongChat = nowChat.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -199,7 +205,7 @@ Then say: 'Transaction created! I've set up your deadlines and checklist. Upload
 Ask ONE question at a time. Wait for the answer before asking the next. This is Drive Mode - the user may be hands-free.
 Current context mode: ${requestContext || 'default'}
 
-USER QUESTION: ${message}
+USER QUESTION: ${enrichedMessage}
 
 Instructions: Search your knowledge base documents to answer this question. Cite the specific document and section. Use the live context above for any deal-specific questions.`
 
