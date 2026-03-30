@@ -4,12 +4,20 @@ import { sendGHLSMS } from '@/lib/ghl/ghlClient'
 import OpenAI from 'openai'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 export const maxDuration = 60
+
+const noStoreJsonHeaders = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+} as const
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: noStoreJsonHeaders }
+    )
   }
 
   const supabase = createClient(
@@ -29,7 +37,7 @@ export async function GET(request: Request) {
   )
 
   if (!agents || agents.length === 0) {
-    return NextResponse.json({ sent: 0 })
+    return NextResponse.json({ sent: 0 }, { headers: noStoreJsonHeaders })
   }
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -116,9 +124,16 @@ End with "Reply for details."`,
     }
   }
 
-  return NextResponse.json({
-    sent: results.filter((r) => r.sent).length,
-    total: results.length,
-    results,
-  })
+  return NextResponse.json(
+    {
+      sent: results.filter((r) => r.sent).length,
+      total: results.length,
+      results,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    }
+  )
 }
