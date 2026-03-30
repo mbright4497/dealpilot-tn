@@ -22,14 +22,18 @@ export async function POST(req: Request) {
 
     if (!locationId) return NextResponse.json({ error: 'locationId missing' }, { status: 400 })
 
-    // Find tenant by GHL location id
-    const { data: tenants, error: tenantErr } = await supabase.from('tenants').select('*').eq('ghl_location_id', String(locationId)).limit(1)
-    if (tenantErr) {
-      console.error('Tenant lookup error', tenantErr)
-      return NextResponse.json({ error: 'Tenant lookup failed' }, { status: 500 })
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('ghl_location_id', String(locationId))
+      .maybeSingle()
+
+    if (profileErr) {
+      console.error('Profile lookup error', profileErr)
+      return NextResponse.json({ error: 'Profile lookup failed' }, { status: 500 })
     }
-    if (!tenants || tenants.length === 0) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
-    const tenant = tenants[0]
+
+    const userId = profile?.id ?? null
 
     // Attempt to find matching transaction by recipient/contact info
     // Try matching by contact id in transactions.external_contact_id or by client name
@@ -57,7 +61,7 @@ export async function POST(req: Request) {
     // Insert into deal_communications
     const { error: insertErr } = await supabase.from('deal_communications').insert({
       deal_id: dealId,
-      user_id: tenant.owner_user_id,
+      user_id: userId,
       comm_type: channel,
       direction: direction || 'inbound',
       recipient: contactIdentifier || null,
@@ -90,7 +94,7 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             message: body,
             dealId,
-            userId: tenant.owner_user_id,
+            userId,
             skipHistory: false,
           }),
         })
