@@ -203,7 +203,7 @@ export async function POST(req: Request) {
       const { data: commRow, error: commErr } = await supabase
         .from('communications')
         .insert({
-          deal_id: dealId,
+          deal_id: Number(dealId),
           user_id: effectiveUserId,
           type,
           direction: 'outbound',

@@ -1,20 +1,10 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 )
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-function toDealUuid(value: unknown): string | null {
-  if (value == null) return null
-  const s = String(value).trim()
-  return UUID_RE.test(s) ? s : null
-}
 
 export async function POST(req: Request) {
   try {
@@ -152,25 +142,65 @@ You can send SMS and email to any contact listed above.
 Always confirm the message before sending.`
       : null
 
-    // Attempt to find matching transaction by recipient/contact info
-    // Try matching by contact id in transactions.external_contact_id or by client name
-    let dealRow: { deal_id?: string; id?: string } | null = null
-    const contactIdentifier = payload?.contact?.phone || payload?.contact?.email || payload?.contact?.name || payload?.from || payload?.sender || null
+    // Match a transaction row; communications.deal_id references transactions(id)
+    const contactIdentifier =
+      payload?.contact?.phone ||
+      payload?.contact?.email ||
+      payload?.contact?.name ||
+      payload?.from ||
+      payload?.sender ||
+      null
 
-    // First try matching by transaction.client
-    if (contactIdentifier) {
+    let matchedTx: Record<string, unknown> | null = null
+
+    const txQueryWithOr = (orClause: string) => {
+      let q = supabase.from('transactions').select('*').or(orClause).limit(1)
+      if (resolvedUserId) q = q.eq('user_id', resolvedUserId)
+      return q
+    }
+
+    if (contactId) {
+      const { data: txs } = await txQueryWithOr(
+        `external_contact_id.eq.${contactId},client.ilike.%${contactId}%`
+      )
+      if (txs?.length) matchedTx = txs[0] as Record<string, unknown>
+    }
+
+    if (!matchedTx && contactIdentifier) {
       const likeVal = `%${contactIdentifier}%`
-      const { data: txs } = await supabase.from('transactions').select('*').or(`client.ilike.${likeVal},address.ilike.${likeVal}`).limit(1)
-      if (txs && txs.length) dealRow = txs[0]
+      const { data: txs } = await txQueryWithOr(
+        `client.ilike.${likeVal},address.ilike.${likeVal}`
+      )
+      if (txs?.length) matchedTx = txs[0] as Record<string, unknown>
     }
 
-    // Fallback: if contactId provided, try to find deal_state with matching external id
-    if (!dealRow && contactId) {
-      const { data: ds } = await supabase.from('deal_state').select('*').eq('external_contact_id', contactId).limit(1)
-      if (ds && ds.length) dealRow = ds[0]
+    if (!matchedTx && contactId) {
+      const { data: ds } = await supabase
+        .from('deal_state')
+        .select('transaction_id')
+        .eq('external_contact_id', contactId)
+        .limit(1)
+      const tid = ds?.[0]?.transaction_id
+      const txIdNum =
+        typeof tid === 'number'
+          ? tid
+          : typeof tid === 'string' && /^\d+$/.test(tid)
+            ? Number(tid)
+            : null
+      if (txIdNum != null) {
+        let q = supabase.from('transactions').select('*').eq('id', txIdNum).limit(1)
+        if (resolvedUserId) q = q.eq('user_id', resolvedUserId)
+        const { data: txs } = await q
+        if (txs?.length) matchedTx = txs[0] as Record<string, unknown>
+      }
     }
 
-    const dealId = toDealUuid(dealRow ? (dealRow.deal_id ?? dealRow.id) : null)
+    let dealId: number | string | null = null
+    if (matchedTx) {
+      const id = matchedTx.id
+      if (typeof id === 'number' && Number.isFinite(id)) dealId = id
+      else if (typeof id === 'string' && /^\d+$/.test(id)) dealId = id
+    }
 
     // Compose channel (ghl_* for downstream logic; DB `type` is sms | email | call)
     // GHL may send message type as a number (e.g. 2) instead of the string "SMS"
@@ -186,7 +216,7 @@ Always confirm the message before sending.`
       type.includes('sms') ? 'sms' : type.includes('email') ? 'email' : type.includes('call') ? 'call' : 'sms'
 
     const { error: insertErr } = await supabase.from('communications').insert({
-      deal_id: dealId,
+      deal_id: dealId ? Number(dealId) : null,
       user_id: userId,
       type: commType,
       direction: direction || 'inbound',
