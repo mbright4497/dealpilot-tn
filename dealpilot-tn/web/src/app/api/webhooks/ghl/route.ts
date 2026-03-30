@@ -182,6 +182,14 @@ export async function POST(req: Request) {
 
         if (revaReply && (fromPhone || contactId)) {
           const { sendGHLSMS } = await import('@/lib/ghl/ghlClient')
+          console.log(
+            '[webhook] contactId from payload:',
+            contactId
+          )
+          console.log(
+            '[webhook] locationId from payload:',
+            locationId
+          )
           const smsResult = await sendGHLSMS(
             process.env.GHL_API_KEY || '',
             fromPhone || '',
@@ -193,6 +201,10 @@ export async function POST(req: Request) {
           )
           console.log(
             '[webhook] GHL SMS result:',
+            JSON.stringify(smsResult)
+          )
+          console.log(
+            '[webhook] full GHL SMS result:',
             JSON.stringify(smsResult)
           )
           console.log('[webhook] SMS reply sent to:', fromPhone || '(contactId only)')
