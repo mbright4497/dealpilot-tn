@@ -21,6 +21,34 @@ export async function POST(req: Request) {
     const payload = await req.json().catch(() => null)
     if (!payload) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
 
+    console.log(
+      '[webhook] full payload keys:',
+      JSON.stringify(Object.keys(payload || {}))
+    )
+    console.log(
+      '[webhook] payload sample:',
+      JSON.stringify({
+        from: payload?.from,
+        phone: payload?.phone,
+        contact: payload?.contact,
+        contactPhone: payload?.contact_phone,
+        sender: payload?.sender,
+        type: payload?.type,
+        direction: payload?.direction,
+      })
+    )
+
+    const fromPhone =
+      payload?.from ||
+      payload?.phone ||
+      payload?.contact_phone ||
+      payload?.contact?.phone ||
+      payload?.sender ||
+      payload?.fromNumber ||
+      null
+
+    console.log('[webhook] fromPhone resolved:', fromPhone)
+
     // Extract common fields (structure may vary by GHL webhook)
     const contactId = payload?.contactId || payload?.contact?.id || payload?.data?.contactId || null
     const typeRaw = (payload?.type || payload?.event || payload?.message?.type || '')
@@ -149,24 +177,21 @@ export async function POST(req: Request) {
         console.log('[webhook] Reva fetch status:', revaRes.status)
         console.log('[webhook] Reva reply:', revaReply?.slice(0, 100))
 
-        if (revaReply) {
-          // Find contact phone to reply to
-          const fromPhone =
-            payload?.contact?.phone || payload?.from || payload?.sender || null
-
-          if (fromPhone) {
-            const { sendGHLSMS } = await import('@/lib/ghl/ghlClient')
-            await sendGHLSMS(
-              process.env.GHL_API_KEY || '',
-              fromPhone,
-              process.env.GHL_SMS_NUMBER || '',
-              revaReply,
-              contactId,
-              locationId
-            )
-            console.log('[webhook] SMS reply sent to:', fromPhone)
-            console.log('[webhook/ghl] Reva replied via SMS to', fromPhone)
-          }
+        if (revaReply && (fromPhone || contactId)) {
+          const { sendGHLSMS } = await import('@/lib/ghl/ghlClient')
+          await sendGHLSMS(
+            process.env.GHL_API_KEY || '',
+            fromPhone || '',
+            process.env.GHL_SMS_NUMBER || '',
+            revaReply,
+            contactId,
+            locationId
+          )
+          console.log('[webhook] SMS reply sent to:', fromPhone || '(contactId only)')
+          console.log(
+            '[webhook/ghl] Reva replied via SMS to',
+            fromPhone || '(contactId only)'
+          )
         }
       } catch (revaErr) {
         console.error('[webhook/ghl] Reva reply failed', revaErr)
