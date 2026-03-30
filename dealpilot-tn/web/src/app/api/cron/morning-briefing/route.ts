@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendGHLSMS } from '@/lib/ghl/ghlClient'
-import OpenAI from 'openai'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -40,7 +39,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ sent: 0 }, { headers: noStoreJsonHeaders })
   }
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const results: { agent: string | null; sent: boolean }[] = []
 
   for (const agent of agents) {
@@ -62,52 +60,9 @@ export async function GET(request: Request) {
       if (!transactions || transactions.length === 0) continue
 
       const firstName = agent.full_name?.split(' ')[0] || 'there'
-      const now = new Date()
-      const today = now.toISOString().split('T')[0]
 
-      const dealSummary = transactions
-        .map((t) => {
-          const closing = t.closing_date ? new Date(t.closing_date) : null
-          const daysToClose = closing
-            ? Math.floor((closing.getTime() - now.getTime()) / 86400000)
-            : null
-          return `${t.address} | ${t.client} | ${
-            daysToClose === null
-              ? 'No closing date'
-              : daysToClose < 0
-                ? `${Math.abs(daysToClose)} days OVERDUE`
-                : `${daysToClose} days to close`
-          } | Binding: ${t.binding_date || 'NOT SET'}`
-        })
-        .join('\n')
-
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        max_tokens: 150,
-        messages: [
-          {
-            role: 'system',
-            content: `You are Reva, AI Transaction Coordinator. 
-Generate a morning SMS briefing for ${firstName}.
-Today is ${today}.
-Keep it under 160 characters.
-Lead with the most urgent item.
-Be specific — use addresses and numbers.
-End with "Reply for details."`,
-          },
-          {
-            role: 'user',
-            content: `Agent deals:\n${dealSummary}\nGenerate morning briefing SMS.`,
-          },
-        ],
-      })
-
-      const briefingText = completion.choices[0].message.content
-      console.log('[cron] briefing text:', briefingText?.slice(0, 100))
-
-      const briefing =
-        briefingText ||
-        `Good morning ${firstName}! You have ${transactions.length} active deals. Reply for details.`
+      const briefing = `Good morning ${firstName}! Reva here. You have ${transactions.length} active deal(s). Reply for details.`
+      console.log('[cron] briefing text:', briefing.slice(0, 100))
 
       const smsResult = await sendGHLSMS(
         process.env.GHL_API_KEY || '',
