@@ -1,6 +1,6 @@
 import './globals.css'
 
-export const metadata = { title: 'ClosingPilot TN' }
+export const metadata = { title: 'Closing Jet TN' }
 
 export default function RootLayout({ children }:{ children: React.ReactNode }){
   return (

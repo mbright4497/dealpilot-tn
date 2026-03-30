@@ -11,7 +11,7 @@ export default function ClosingPilotLogo({ size = 'lg' }: { size?: 'sm' | 'lg' }
         <path d="M9 8l6-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ color: '#ffffff', fontSize: size === 'sm' ? 14 : 28, ...textStyle }}>ClosingPilot</span>
+        <span style={{ color: '#ffffff', fontSize: size === 'sm' ? 14 : 28, ...textStyle }}>Closing Jet</span>
         <span style={{ color: '#f97316', fontSize: size === 'sm' ? 12 : 20, fontWeight: 800 }}>TN</span>
       </div>
     </div>

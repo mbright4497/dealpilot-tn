@@ -78,7 +78,7 @@ export default function SignupPage() {
     <div className="min-h-screen bg-[#0B0F1A] text-white flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6 shadow-xl">
         <div className="mb-6">
-          <p className="text-sm text-white/60">ClosingPilot TN</p>
+          <p className="text-sm text-white/60">Closing Jet TN</p>
           <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
         </div>
 

@@ -114,7 +114,7 @@ export default function Sidebar() {
       <div className="p-4 flex items-center gap-3">
         <ClosingPilotLogo size="sm" />
         <div>
-          <h2 className="text-white font-semibold text-sm leading-tight">ClosingPilot TN</h2>
+          <h2 className="text-white font-semibold text-sm leading-tight">Closing Jet TN</h2>
           <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
         </div>
       </div>

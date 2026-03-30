@@ -81,7 +81,7 @@ export default function OnboardingPage(){
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <a href="/" className="text-sm text-gray-300 hover:text-white">← Back to Dashboard</a>
-          <h1 className="text-3xl font-bold text-white mt-2">Welcome to ClosingPilot TN</h1>
+          <h1 className="text-3xl font-bold text-white mt-2">Welcome to Closing Jet TN</h1>
           <p className="text-sm text-gray-400 mt-2">Let's set up your account so we can personalize your experience.</p>
         </div>
 

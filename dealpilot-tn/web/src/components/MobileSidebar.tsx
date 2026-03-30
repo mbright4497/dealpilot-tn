@@ -10,7 +10,7 @@ export default function MobileSidebar({ items, unreadCount, onNavigate, onClose 
         <div className="p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">CP</div>
           <div>
-            <h2 className="text-white font-semibold text-sm leading-tight">ClosingPilot TN</h2>
+            <h2 className="text-white font-semibold text-sm leading-tight">Closing Jet TN</h2>
             <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
           </div>
         </div>

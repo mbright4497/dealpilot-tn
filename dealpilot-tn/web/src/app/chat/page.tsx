@@ -296,13 +296,13 @@ function ChatPageInner() {
     void sendDashboardMessageRef.current('Start a new transaction')
   }, [])
 
-  // inline upload handler used when Reva asks user to upload a contract
+  // inline upload handler used when Vera asks user to upload a contract
   async function handleInlineUpload(ev:any){
     const f = ev.target.files && ev.target.files[0]
     if(!f) return
     try{
       // show parsing state in chat
-      setChatMessages(m=>[...m, { role: 'assistant', content: 'Reva is reviewing your contract...' }])
+      setChatMessages(m=>[...m, { role: 'assistant', content: 'Vera is reviewing your contract...' }])
       setChatLoading(true)
       const buf = await f.arrayBuffer()
       const b64 = Buffer.from(buf).toString('base64')
@@ -517,7 +517,7 @@ function ChatPageInner() {
         <div className="p-4 flex items-center gap-3">
           <ClosingPilotLogo size="sm" />
           <div>
-            <h2 className="text-white font-semibold text-sm leading-tight">ClosingPilot TN</h2>
+            <h2 className="text-white font-semibold text-sm leading-tight">Closing Jet TN</h2>
             <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
           </div>
         </div>
@@ -568,7 +568,7 @@ function ChatPageInner() {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6">
         {view === 'dashboard' && (()=>{
-          // Reva-first hero + ticker layout
+          // Vera-first hero + ticker layout
           const activeDeals = transactions.filter(t=>{ const s = ((t as any).current_state || (t as any).state_label || t.status || '').toString().toLowerCase(); return s !== 'closed' && s !== 'cancelled' })
           activeDeals.sort((a:any,b:any)=>{
             const ad = (a.closing_date || a.closing) ? new Date(a.closing_date || a.closing).getTime() : Infinity
@@ -577,7 +577,7 @@ function ChatPageInner() {
           })
           return (
             <div className="min-h-[80vh] flex flex-col">
-              {/* TOP HALF — Reva */}
+              {/* TOP HALF — Vera */}
 <div className="flex-1 rounded-lg mb-4 bg-gradient-to-b from-[#031023] via-[#04172a] to-[#071a2f] flex flex-col items-center justify-center text-center p-8">
  {/* Avatar + glow + talking animation */}
  <div className="relative flex flex-col items-center">
@@ -590,7 +590,7 @@ function ChatPageInner() {
  />
  <img
  src="/avatar-pilot.png"
- alt="Reva"
+ alt="Vera"
  className="w-56 h-56 rounded-full relative z-10 shadow-2xl"
  style={revaSpeaking ? { animation: "revaTalk 0.9s ease-in-out infinite" } : {}}
  />
@@ -633,7 +633,7 @@ function ChatPageInner() {
          <div
            className="text-base md:text-lg font-normal leading-relaxed text-white"
            dangerouslySetInnerHTML={{
-             __html: (loading ? "Reva is getting ready..." : (briefing || "No briefing available"))
+             __html: (loading ? "Vera is getting ready..." : (briefing || "No briefing available"))
                .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
                .replace(/\n/g, "<br/>"),
            }}
@@ -644,12 +644,12 @@ function ChatPageInner() {
 
      {(chatMessages.length > 0) && (
        <div className="text-base md:text-lg font-normal leading-relaxed text-white">
-         {chatMessages.length===0 && <div className="text-gray-400">No messages yet — say hello to Reva.</div>}
+         {chatMessages.length===0 && <div className="text-gray-400">No messages yet — say hello to Vera.</div>}
          <div ref={chatRef} className="max-h-[220px] overflow-y-auto">
            {chatMessages.map((m, idx) => (
              <div key={idx} className={`mb-3 flex ${m.role==='user' ? 'justify-end' : 'justify-start'}`}>
                <div className="flex flex-col items-start">
-                 <div className={`text-xs text-gray-400 mb-1 ${m.role==='user' ? 'text-right' : 'text-left'}`}>{m.role==='user' ? 'You' : 'Reva'}</div>
+                 <div className={`text-xs text-gray-400 mb-1 ${m.role==='user' ? 'text-right' : 'text-left'}`}>{m.role==='user' ? 'You' : 'Vera'}</div>
                 <div className={`${m.role==='user' ? 'bg-[#0b1a2b] text-white' : 'bg-[#081827] text-white'} px-3 py-2 rounded-lg max-w-[80%]`}>{m.content}</div>
                 {m.revaAction?.type === 'send_communication' && (
                   <button
@@ -707,7 +707,7 @@ function ChatPageInner() {
                </div>
              </div>
            ))}
-           {chatLoading && <div className="text-gray-400">Reva is thinking...</div>}
+           {chatLoading && <div className="text-gray-400">Vera is thinking...</div>}
          </div>
        </div>
      )}
@@ -744,7 +744,7 @@ function ChatPageInner() {
  ? "bg-orange-500 animate-pulse"
  : "bg-[#0f1724] border border-white/10 hover:border-orange-400/60 transition")
  }
- title={revaSpeaking ? "Stop Reva" : "Play Reva briefing"}
+ title={revaSpeaking ? "Stop Vera" : "Play Vera briefing"}
  >
  {revaSpeaking ? "⏸" : "▶"}
  </button>
@@ -774,7 +774,7 @@ if (res.ok) {
  if (j.threadId) setThreadId(j.threadId)
  setChatMessages(m=>[...m, { role: 'assistant', content: reply, showUpload: /upload|purchase & sale agreement/i.test(reply.toLowerCase()), revaAction: parsedAction }])
  if (j.triggerDriveMode === true) setDriveModeOpen(true)
- addToast("Reva replied");
+ addToast("Vera replied");
         // create_transaction action from Reva (dashboard form)
         if(j.transaction){ setTransactions(prev=>[j.transaction, ...prev]); addToast('Transaction Created!') }
 }
@@ -788,7 +788,7 @@ if (res.ok) {
   <div className="flex items-center gap-2">
    <input
     name="ask"
-    placeholder="Ask Reva anything..."
+    placeholder="Ask Vera anything..."
     className="flex-1 px-4 py-3 rounded-full bg-[#0b1a2b] placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
    />
    <button
@@ -816,7 +816,7 @@ if (res.ok) {
  Refresh
  </button>
  </div>
-{revaSpeaking && <div className="mt-2 text-xs text-orange-300">Reva is speaking...</div>}
+{revaSpeaking && <div className="mt-2 text-xs text-orange-300">Vera is speaking...</div>}
 
  {/* Local keyframes */}
  <style jsx>{`
@@ -895,7 +895,7 @@ if (res.ok) {
                   ))}
                 </div>
                 <div className="mt-3">
-                  <div className="text-sm text-gray-300 mb-2">Reva's Actions</div>
+                  <div className="text-sm text-gray-300 mb-2">Vera's Actions</div>
                   <div className="flex gap-2">
                     {actions.length===0 ? <div className="text-gray-400">All caught up! No pending actions.</div> : actions.map((a:any)=> (
                       <button key={`${a.dealId}-${a.milestone_key||a.action}`} onClick={async ()=>{ const res = await fetch('/api/eva/execute-action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actionType: a.action, dealId: a.dealId, milestone_key: a.milestone_key }) }); if(res.ok){ const r = await fetch('/api/eva/actions'); if(r.ok){ const aj = await r.json(); setActions(aj.actions||[]) } addToast(`Done - ${a.action} for ${a.address}`) } else addToast('Failed') }} className={`px-3 py-1 rounded-full text-sm ${a.urgency==='critical' ? 'bg-red-600 text-white' : a.urgency==='high' ? 'bg-amber-500 text-black' : 'bg-gray-700 text-white'}`}>{a.action} • {a.address}</button>
@@ -939,7 +939,7 @@ if (res.ok) {
       )}
       {/* Floating chat button */}
       <button onClick={() => setChatOpen(true)} className="w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center overflow-hidden border-2 border-orange-500 hover:border-orange-400 p-0" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 40 }}>
-        <img src="/avatar-pilot.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" />
+        <img src="/avatar-pilot.png" alt="Vera" className="w-10 h-10 rounded-full object-cover" />
         {alerts.length > 0 && <span className="absolute right-0 top-0 h-3 w-3 rounded-full bg-red-500" />}
       </button>
       {chatOpen && <AIChatbot onClose={() => setChatOpen(false)} style={assistantStyle} voiceEnabled={voiceEnabled} />}
