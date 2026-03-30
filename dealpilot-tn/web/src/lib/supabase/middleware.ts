@@ -19,6 +19,8 @@ function isPublicPath(pathname: string) {
     return true;
   }
   if (pathname === "/api/ghl" || pathname.startsWith("/api/ghl/")) return true;
+  if (pathname === "/api/webhooks" || pathname.startsWith("/api/webhooks/"))
+    return true;
   if (pathname === "/embed" || pathname.startsWith("/embed/")) return true;
   if (pathname === "/api/auth" || pathname.startsWith("/api/auth/")) return true;
   return false;
