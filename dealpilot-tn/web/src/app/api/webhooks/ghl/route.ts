@@ -29,20 +29,27 @@ export async function POST(req: Request) {
     const direction = (payload?.direction || payload?.message?.direction || 'inbound')
     const locationId = payload?.locationId || payload?.data?.locationId || payload?.location || null
 
-    if (!locationId) return NextResponse.json({ error: 'locationId missing' }, { status: 400 })
-
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('ghl_location_id', String(locationId))
-      .maybeSingle()
-
-    if (profileErr) {
-      console.error('Profile lookup error', profileErr)
-      return NextResponse.json({ error: 'Profile lookup failed' }, { status: 500 })
+    if (!locationId) {
+      console.log('[webhook] no locationId in payload')
     }
 
-    const userId = profile?.id ?? null
+    let userId: string | null = null
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('id, ghl_location_id')
+      .limit(10)
+
+    // Try matching by ghl_location_id first
+    if (profileData && locationId) {
+      const match = profileData.find(
+        (p) => p.ghl_location_id === String(locationId)
+      )
+      userId = match?.id || profileData[0]?.id || null
+    } else if (profileData?.length) {
+      userId = profileData[0].id
+    }
+
+    console.log('[webhook] userId resolved:', userId, 'locationId:', locationId)
 
     // Attempt to find matching transaction by recipient/contact info
     // Try matching by contact id in transactions.external_contact_id or by client name
@@ -110,6 +117,16 @@ export async function POST(req: Request) {
     ) {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
+
+        console.log('[webhook] calling Reva with:', {
+          message: body?.slice(0, 500),
+          dealId,
+          userId,
+          skipHistory: false,
+          channel,
+          contactId,
+          locationId,
+        })
 
         // Call Reva chat with the inbound message
         const revaRes = await fetch(`${appUrl}/api/reva/chat`, {
