@@ -87,6 +87,46 @@ export async function POST(req: Request) {
 
     const resolvedUserId = agentProfile?.id || userId
 
+    // Contact caller ID — search all transactions' contacts JSONB for this phone
+    let contactProfile: {
+      name: string
+      role: string
+      email: string | null
+      ghl_contact_id: string | null
+      dealAddress: string
+      dealId: number
+      agentUserId: string
+    } | null = null
+
+    if (!agentProfile && normalizedFrom) {
+      const { data: allTx } = await supabase
+        .from('transactions')
+        .select('id, address, user_id, contacts')
+        .not('contacts', 'is', null)
+
+      if (allTx) {
+        for (const tx of allTx) {
+          const contacts = Array.isArray(tx.contacts) ? tx.contacts : []
+          const match = contacts.find((c: any) => {
+            const normalized = (c.phone || '').replace(/\D/g, '').replace(/^1/, '')
+            return normalized === normalizedFrom
+          })
+          if (match) {
+            contactProfile = {
+              name: match.name,
+              role: match.role,
+              email: match.email || null,
+              ghl_contact_id: match.ghl_contact_id || null,
+              dealAddress: tx.address,
+              dealId: tx.id,
+              agentUserId: tx.user_id,
+            }
+            break
+          }
+        }
+      }
+    }
+
     let agentTransactions: Array<{
       id: number
       address: string
@@ -269,10 +309,16 @@ Always confirm the message before sending.`
           },
           body: JSON.stringify({
             message: body,
-            dealId: agentTransactions[0]?.id || null,
-            userId: resolvedUserId,
+            dealId: contactProfile?.dealId || agentTransactions[0]?.id || null,
+            userId: contactProfile?.agentUserId || resolvedUserId,
             skipHistory: false,
-            agentContext,
+            agentContext: contactProfile
+              ? `CONTACT CONTEXT (from SMS caller ID):
+You are currently texting with ${contactProfile.name}, 
+the ${contactProfile.role} on ${contactProfile.dealAddress}.
+Address them by name. Be warm and helpful.
+Their deal ID is ${contactProfile.dealId}.`
+              : agentContext,
             threadId: smsThreadId,
           }),
         })
@@ -319,18 +365,16 @@ Always confirm the message before sending.`
             fromPhone || '(contactId only)'
           )
           // Notify the agent that their contact just texted Vera
-          if (!agentProfile && resolvedUserId) {
+          if (contactProfile) {
             const { data: agentProfileData } = await supabase
               .from('profiles')
               .select('phone, full_name')
-              .eq('id', resolvedUserId)
+              .eq('id', contactProfile.agentUserId)
               .maybeSingle()
 
             const agentPhone = agentProfileData?.phone
-            const contactName = payload?.contact?.name || fromPhone || 'A contact'
-
             if (agentPhone) {
-              const notifyMsg = `📬 ${contactName} just texted Vera: "${body.slice(0, 80)}${body.length > 80 ? '...' : ''}"`
+              const notifyMsg = `📬 ${contactProfile.name} (${contactProfile.role}) just texted Vera: "${body.slice(0, 80)}${body.length > 80 ? '...' : ''}"`
               await sendGHLSMS(
                 process.env.GHL_API_KEY || '',
                 agentPhone,
@@ -340,7 +384,7 @@ Always confirm the message before sending.`
                 locationId,
                 null
               )
-              console.log('[webhook/ghl] Agent notified of contact reply:', agentPhone)
+              console.log('[webhook/ghl] Agent notified:', agentPhone, 'about', contactProfile.name)
             }
           }
         }
