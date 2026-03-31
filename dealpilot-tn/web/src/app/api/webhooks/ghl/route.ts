@@ -104,6 +104,8 @@ export async function POST(req: Request) {
         .order('created_at', { ascending: false })
         .limit(10)
       agentTransactions = txs || []
+      console.log('[DEBUG] sample contacts:', 
+        JSON.stringify(agentTransactions[0]?.contacts))
     }
 
     const agentContext = agentProfile
