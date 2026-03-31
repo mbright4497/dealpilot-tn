@@ -316,6 +316,31 @@ Always confirm the message before sending.`
             '[webhook/ghl] Reva replied via SMS to',
             fromPhone || '(contactId only)'
           )
+          // Notify the agent that their contact just texted Vera
+          if (!agentProfile && resolvedUserId) {
+            const { data: agentProfileData } = await supabase
+              .from('profiles')
+              .select('phone, full_name')
+              .eq('id', resolvedUserId)
+              .maybeSingle()
+
+            const agentPhone = agentProfileData?.phone
+            const contactName = payload?.contact?.name || fromPhone || 'A contact'
+
+            if (agentPhone) {
+              const notifyMsg = `📬 ${contactName} just texted Vera: "${body.slice(0, 80)}${body.length > 80 ? '...' : ''}"`
+              await sendGHLSMS(
+                process.env.GHL_API_KEY || '',
+                agentPhone,
+                process.env.GHL_SMS_NUMBER || '',
+                notifyMsg,
+                null,
+                locationId,
+                null
+              )
+              console.log('[webhook/ghl] Agent notified of contact reply:', agentPhone)
+            }
+          }
         }
       } catch (revaErr) {
         console.error('[webhook/ghl] Reva reply failed', revaErr)
