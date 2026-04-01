@@ -261,18 +261,9 @@ export async function parseContractPdfFromBase64(fileBase64: string): Promise<Pa
     throw new Error("Missing OPENAI_API_KEY")
   }
 
-  const pdfBuffer = base64ToBuffer(fileBase64)
-
-  /* ---------------- PDF TEXT EXTRACTION (visual order) ---------------- */
-  const contractText = await extractVisualTextFromPdf(pdfBuffer)
-
-  if (!contractText || contractText.trim().length < 50) {
-    throw new Error("Could not extract text from PDF. The file may be scanned/image-only.")
-  }
-
-  // Add line numbers for GPT reference
-  const lines = contractText.split('\n')
-  const numberedText = lines.map((line: string, i: number) => `L${i + 1}: ${line}`).join('\n')
+  // Strip data URI prefix if present, then re-attach for OpenAI file attachment
+  const b64Clean = fileBase64.includes(",") ? fileBase64.split(",").pop() || "" : fileBase64
+  const fileData = `data:application/pdf;base64,${b64Clean}`
 
   /* ---------------- SYSTEM PROMPT ---------------- */
   const systemPrompt = [
@@ -350,9 +341,6 @@ export async function parseContractPdfFromBase64(fileBase64: string): Promise<Pa
     "Look for blank lines after 'All exhibits and/or addenda attached hereto, listed below'",
     "and capture every line of text entered there.",
     "",
-    "Each line in the contract text is prefixed with a line number (L1, L2, etc.).",
-    "Use these to locate fields precisely.",
-    "",
     "Return ONLY valid JSON matching the requested schema.",
     "Use null for any field not found or not applicable.",
     "Arrays default to [].",
@@ -362,12 +350,7 @@ export async function parseContractPdfFromBase64(fileBase64: string): Promise<Pa
 
   /* ---------------- USER PROMPT ---------------- */
   const userPrompt = [
-    "Analyze this Tennessee REALTORS contract. First identify the form type, then extract every field.",
-    "",
-    "Contract text (each line prefixed with line number):",
-    "---",
-    numberedText,
-    "---",
+    "Analyze the attached Tennessee REALTORS contract PDF. First identify the form type, then extract every field.",
     "",
     "Return a single JSON object with this exact structure:",
     "{",
@@ -515,7 +498,22 @@ export async function parseContractPdfFromBase64(fileBase64: string): Promise<Pa
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        {
+          role: "user",
+          content: [
+            {
+              type: "file",
+              file: {
+                filename: "contract.pdf",
+                file_data: fileData,
+              },
+            },
+            {
+              type: "text",
+              text: userPrompt,
+            },
+          ],
+        },
       ],
     }),
   })
