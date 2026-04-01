@@ -626,6 +626,25 @@ function TransactionDetailContent() {
         }
         const j = await res.json()
         if (j.document?.id) setAirdropWatchId(Number(j.document.id))
+        if (j.document?.id) {
+          const watchId = Number(j.document.id)
+          // Poll every 3 seconds until doc status is reviewed or error
+          const pollInterval = setInterval(async () => {
+            const pollRes = await fetch(`/api/transactions/${txId}`, { cache: 'no-store' })
+            if (!pollRes.ok) { clearInterval(pollInterval); return }
+            const pollJson = await pollRes.json()
+            const docs = Array.isArray(pollJson?.transaction_documents) 
+              ? pollJson.transaction_documents 
+              : []
+            setTxDocuments(docs)
+            const doc = docs.find((d: TransactionDocumentRow) => d.id === watchId)
+            if (doc?.status === 'reviewed' || doc?.status === 'error') {
+              clearInterval(pollInterval)
+            }
+          }, 3000)
+          // Safety timeout — stop polling after 2 minutes
+          setTimeout(() => clearInterval(pollInterval), 120000)
+        }
         setSelectedUploadFile(null)
         await loadPageData()
       } catch (e: unknown) {
