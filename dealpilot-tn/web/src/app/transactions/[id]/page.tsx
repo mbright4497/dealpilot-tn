@@ -345,7 +345,7 @@ function inferChecklistPhase(item: ChecklistItem, fallback: DocPhase): DocPhase 
   return fallback
 }
 
-export default function TransactionDetailPage() {
+function TransactionDetailContent() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -353,12 +353,6 @@ export default function TransactionDetailPage() {
 
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null | undefined>(undefined)
-  const [prevTxId, setPrevTxId] = useState(txId)
-  if (prevTxId !== txId) {
-    setPrevTxId(txId)
-    setTx(undefined)
-    setLoading(true)
-  }
   const [txDocuments, setTxDocuments] = useState<TransactionDocumentRow[]>([])
   const [docTypePick, setDocTypePick] = useState('rf401_psa')
   const [customDocName, setCustomDocName] = useState('')
@@ -457,8 +451,6 @@ export default function TransactionDetailPage() {
 
   const loadPageData = useCallback(async () => {
     if (!txId) return
-    setTx(undefined)
-    setLoading(true)
     try {
       const res = await fetch(`/api/transactions/${txId}`, { cache: 'no-store' })
       if (res.status === 404) {
@@ -524,8 +516,6 @@ export default function TransactionDetailPage() {
   }
 
   useEffect(() => {
-    setTx(undefined)
-    setLoading(true)
     void loadPageData().then(() => Promise.all([loadCommsHistory(), loadContacts(), loadActivity()]))
   }, [txId, loadPageData, loadContacts])
 
@@ -2752,5 +2742,11 @@ export default function TransactionDetailPage() {
       ) : null}
     </main>
   )
+}
+
+export default function TransactionDetailPage() {
+  const params = useParams<{ id: string }>()
+  const txId = params?.id ?? ''
+  return <TransactionDetailContent key={txId} />
 }
 
