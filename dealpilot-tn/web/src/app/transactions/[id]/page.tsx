@@ -451,6 +451,7 @@ export default function TransactionDetailPage() {
 
   const loadPageData = useCallback(async () => {
     if (!txId) return
+    setTx(undefined)
     setLoading(true)
     try {
       const res = await fetch(`/api/transactions/${txId}`, { cache: 'no-store' })
