@@ -382,6 +382,16 @@ function TransactionDetailContent() {
   )
 
   const [aiChecklist, setAiChecklist] = useState<ChecklistItem[]>([])
+  const [showEditDealModal, setShowEditDealModal] = useState(false)
+  const [editDealForm, setEditDealForm] = useState({
+    address: '',
+    client: '',
+    binding_date: '',
+    closing_date: '',
+    purchase_price: '',
+    status: '',
+    phase: '',
+  })
   const [showAddDeadlineModal, setShowAddDeadlineModal] = useState(false)
   const [deadlineForm, setDeadlineForm] = useState({ name: '', dueDate: '', notes: '' })
   const [deadlineSaving, setDeadlineSaving] = useState(false)
@@ -2588,11 +2598,16 @@ function TransactionDetailContent() {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => {
-                      const current = String((tx as any)?.notes || '')
-                      const next = window.prompt('Edit deal notes (optional):', current)
-                      if (next === null) return
-                      void patchTransaction({ notes: next })
-                      void loadPageData()
+                      setEditDealForm({
+                        address: tx?.address || '',
+                        client: tx?.client || '',
+                        binding_date: tx?.binding_date ? tx.binding_date.slice(0, 10) : '',
+                        closing_date: tx?.closing_date ? tx.closing_date.slice(0, 10) : '',
+                        purchase_price: tx?.purchase_price ? String(tx.purchase_price) : '',
+                        status: tx?.status || '',
+                        phase: tx?.phase || '',
+                      })
+                      setShowEditDealModal(true)
                     }}
                     className="rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-2 text-sm font-medium text-slate-200 hover:border-orange-500/40 hover:text-orange-100 transition"
                   >
@@ -2719,6 +2734,81 @@ function TransactionDetailContent() {
           setAirdropWatchId(null)
         }}
       />
+
+      {showEditDealModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-700 bg-[#0B1530] p-5">
+            <h2 className="text-lg font-semibold text-white">Edit Deal</h2>
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm text-slate-300">
+                Property Address
+                <input value={editDealForm.address} onChange={e => setEditDealForm(f => ({ ...f, address: e.target.value }))} className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700 outline-none" />
+              </label>
+              <label className="block text-sm text-slate-300">
+                Client Name
+                <input value={editDealForm.client} onChange={e => setEditDealForm(f => ({ ...f, client: e.target.value }))} className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700 outline-none" />
+              </label>
+              <label className="block text-sm text-slate-300">
+                Binding Date
+                <input type="date" value={editDealForm.binding_date} onChange={e => setEditDealForm(f => ({ ...f, binding_date: e.target.value }))} className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700 outline-none" />
+              </label>
+              <label className="block text-sm text-slate-300">
+                Closing Date
+                <input type="date" value={editDealForm.closing_date} onChange={e => setEditDealForm(f => ({ ...f, closing_date: e.target.value }))} className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700 outline-none" />
+              </label>
+              <label className="block text-sm text-slate-300">
+                Purchase Price
+                <input type="number" value={editDealForm.purchase_price} onChange={e => setEditDealForm(f => ({ ...f, purchase_price: e.target.value }))} className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700 outline-none" placeholder="345000" />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-sm text-slate-300">
+                  Status
+                  <select value={editDealForm.status} onChange={e => setEditDealForm(f => ({ ...f, status: e.target.value }))} className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700 outline-none">
+                    <option value="active">Active</option>
+                    <option value="under contract">Under Contract</option>
+                    <option value="pending">Pending</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-slate-300">
+                  Phase
+                  <select value={editDealForm.phase} onChange={e => setEditDealForm(f => ({ ...f, phase: e.target.value }))} className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700 outline-none">
+                    <option value="intake">Intake</option>
+                    <option value="pre_contract">Pre-Contract</option>
+                    <option value="under_contract">Under Contract</option>
+                    <option value="inspection">Inspection</option>
+                    <option value="closing">Closing</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button onClick={() => setShowEditDealModal(false)} className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-900">
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await patchTransaction({
+                    address: editDealForm.address,
+                    client: editDealForm.client,
+                    binding_date: editDealForm.binding_date || null,
+                    closing_date: editDealForm.closing_date || null,
+                    purchase_price: editDealForm.purchase_price ? Number(editDealForm.purchase_price) : null,
+                    status: editDealForm.status,
+                    phase: editDealForm.phase,
+                  })
+                  setShowEditDealModal(false)
+                  void loadPageData()
+                }}
+                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-600"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAddressMismatchModal && addressMismatch ? (
         <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
