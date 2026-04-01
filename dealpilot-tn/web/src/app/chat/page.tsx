@@ -186,6 +186,32 @@ function ChatPageInner() {
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [revaSpeaking, setRevaSpeaking] = useState(false)
   const [voiceAutoPlay, setVoiceAutoPlay] = useState(()=>{ try{ return typeof window !== 'undefined' ? localStorage.getItem('eva-voice-auto') !== 'false' : true }catch(e){ return true } })
+  const [chatInput, setChatInput] = useState('')
+  const [recording, setRecording] = useState(false)
+  const [speechSupported, setSpeechSupported] = useState(false)
+
+  useEffect(() => {
+    const R = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (R) setSpeechSupported(true)
+  }, [])
+
+  function startVoiceInput() {
+    const R = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!R) return
+    const recog = new R()
+    recog.lang = 'en-US'
+    recog.interimResults = false
+    recog.maxAlternatives = 1
+    recog.onstart = () => setRecording(true)
+    recog.onend = () => setRecording(false)
+    recog.onresult = (ev: any) => {
+      const t = ev.results[ev.results.length - 1][0].transcript
+      setChatInput((prev: string) => (prev ? prev + ' ' : '') + t)
+    }
+    recog.onerror = (e: any) => { console.error('speech error', e); setRecording(false) }
+    recog.start()
+  }
+
   // addMessage no-op fallback for legacy event handlers that expect a handler on window
   const addMessage = (m:any)=>{ /* noop fallback to avoid runtime errors when handlers fire outside provider */ }
 
@@ -262,8 +288,7 @@ function ChatPageInner() {
     setChatMessages(m=>[...m, { role: 'user', content: val }])
     try{
       // clear input field if present
-      const inp = document.querySelector('input[name="ask"]') as HTMLInputElement | null
-      if(inp) inp.value = ''
+      setChatInput('')
     }catch(_){ }
     setChatLoading(true)
     try{
@@ -762,7 +787,7 @@ function ChatPageInner() {
  // append user message, clear input, switch to chat mode
  setChatMode(true)
  setChatMessages(m=>[...m, { role: 'user', content: val }])
- try { (e.target as any).elements.ask.value = '' }catch(_){ }
+ try { (e.target as any).elements.ask.value = ''; setChatInput('') }catch(_){ }
  setChatLoading(true)
  try {
 const res = await fetch("/api/reva/chat", {
@@ -792,8 +817,19 @@ if (res.ok) {
  className="flex-1"
  >
   <div className="flex items-center gap-2">
+          {speechSupported && (
+            <button
+              onClick={startVoiceInput}
+              title={recording ? 'Recording...' : 'Voice input'}
+              className={`p-2 rounded-lg ${recording ? 'bg-red-500 text-white' : 'bg-gray-700 text-white hover:bg-gray-600'}`}
+            >
+              {recording ? '●' : '🎤'}
+            </button>
+          )}
    <input
     name="ask"
+    value={chatInput}
+    onChange={(e) => setChatInput(e.target.value)}
     placeholder="Ask Vera anything..."
     className="flex-1 px-4 py-3 rounded-full bg-[#0b1a2b] placeholder:text-gray-500 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition"
    />
