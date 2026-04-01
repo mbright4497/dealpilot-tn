@@ -53,6 +53,7 @@ export async function POST() {
       .from('transactions')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
+      .neq('status', 'deleted')
 
     const hasNoActiveTransactions = (activeTransactionCount ?? 0) === 0
     const context = await buildRevaContext(supabase, userId, undefined, userEmail)
@@ -142,6 +143,7 @@ ${context}`
       .from('transactions')
       .select('id, address, client, status, closing_date, binding_date')
       .eq('user_id', userId)
+      .neq('status', 'deleted')
 
     const dealNow = new Date()
     const dealHealth = (allDeals || []).map((d: {

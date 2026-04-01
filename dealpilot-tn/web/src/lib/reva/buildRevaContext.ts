@@ -55,6 +55,7 @@ export async function buildRevaContext(
       .from('transactions')
       .select('*')
       .eq('user_id', userId)
+      .neq('status', 'deleted')
       .order('id', { ascending: false })
     console.log('Transactions result:', JSON.stringify(deals))
     console.log('Transactions error:', JSON.stringify(error))
@@ -117,6 +118,7 @@ export async function buildRevaContext(
       .from('transactions')
       .select('id, address, user_id')
       .eq('user_id', userId)
+      .neq('status', 'deleted')
       .order('id', { ascending: false })
 
     if (txError || !transactions || transactions.length === 0) {
