@@ -57,7 +57,7 @@ export const DOCUMENT_TYPE_OPTIONS: { value: TransactionDocumentType; label: str
   { value: 'lead_paint_pamphlet', label: 'Protect Your Family from Lead Pamphlet' },
   { value: 'property_condition', label: 'Property Condition Disclosure' },
   { value: 'property_condition_update', label: 'Residential Property Condition Update' },
-  { value: 'rf621_buyer_rep', label: 'Buyer Rep Agreement (RF621)' },
+  { value: 'rf621_buyer_rep', label: 'Buyer Rep Agreement (RF141)' },
   { value: 'buyer_rep_amendment', label: 'Amendment to Buyer Representation Agreement' },
   { value: 'working_with_pro', label: 'Working with a Real Estate Professional' },
   { value: 'disclaimer_notice', label: 'Disclaimer Notice' },

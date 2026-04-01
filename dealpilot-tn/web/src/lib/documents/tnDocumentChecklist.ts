@@ -16,7 +16,7 @@ export interface TNDocumentSlot {
 export const TN_DOCUMENT_CHECKLIST: TNDocumentSlot[] = [
   {
     id: 'buyer_rep',
-    display_name: 'Buyer Representation Agreement (RF621)',
+    display_name: 'Buyer Representation Agreement (RF141)',
     document_type: 'rf621_buyer_rep',
     phase: 'pre_contract',
     requirement: 'required',
