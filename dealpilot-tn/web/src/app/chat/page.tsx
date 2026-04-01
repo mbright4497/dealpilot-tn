@@ -41,6 +41,8 @@ import RookWizard from '@/components/RookWizard'
 import DriveMode from '@/components/reva/DriveMode'
 import { DashboardWeatherCard } from '@/components/dashboard/DashboardWeatherCard'
 import type { WeatherSnapshot } from '@/lib/weather/openMeteo'
+import { signOutAndRedirectToLogin } from '@/lib/auth-client'
+import MobileSidebar from '@/components/MobileSidebar'
 
 class DealErrorBoundary extends React.Component<{children:React.ReactNode},{error:Error|null}>{
   constructor(p:any){super(p);this.state={error:null}}
@@ -507,6 +509,14 @@ function ChatPageInner() {
         <StartNewTransactionListener onFire={fireStartNewTransaction} />
       </Suspense>
       <style>{`@keyframes pulseRing{0%{transform:scale(1);opacity:0.9}50%{transform:scale(1.06);opacity:0.5}100%{transform:scale(1);opacity:0.9}}@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      {sidebarOpen && (
+        <MobileSidebar
+          items={NAV_ITEMS}
+          unreadCount={unreadCount}
+          onNavigate={(id) => { setView(id); pushUrlFor(id) }}
+          onClose={() => setSidebarOpen(false)}
+        />
+      )}
       {/* Mobile hamburger */}
       <button onClick={()=>setSidebarOpen(true)} className="md:hidden fixed top-4 left-4 z-50 p-2 bg-gray-800 text-white rounded-lg">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
