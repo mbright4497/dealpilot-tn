@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { speak, stopSpeaking } from '@/lib/voice-engine'
 
 type Props = {
   open: boolean
@@ -65,6 +66,8 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
   const [listening, setListening] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
+  const speakPrompt = (text: string) => { speak(text, 'friendly-tn', () => setSpeaking(true), () => setSpeaking(false)) }
 
   useEffect(() => {
     if (!open) return
@@ -89,7 +92,7 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
         const json = await res.json()
         if (!isActive) return
         if (json.threadId) setThreadId(json.threadId)
-        if (json.reply) setCurrentPrompt(json.reply)
+        if (json.reply) { setCurrentPrompt(json.reply); speakPrompt(json.reply) }
       } finally {
         if (isActive) setBusy(false)
       }
@@ -171,7 +174,7 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
     })
     const json = await res.json()
     if (json.threadId) setThreadId(json.threadId)
-    if (json.reply) setCurrentPrompt(json.reply)
+    if (json.reply) { setCurrentPrompt(json.reply); speakPrompt(json.reply) }
     if (json.transaction && onTransactionCreated) onTransactionCreated(json.transaction)
     setAnswer('')
     setStep((prev) => Math.min(6, prev + 1))
@@ -183,9 +186,9 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
       <div className="w-full max-w-2xl rounded-2xl bg-gray-950 p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <img src="/avatar-pilot.png" alt="Reva" className="h-14 w-14 rounded-full" />
+            <img src="/avatar-pilot.png" alt="Vera" className="h-14 w-14 rounded-full" />
             <div>
-              <div className="text-lg font-semibold text-white">Reva Drive Mode</div>
+              <div className="text-lg font-semibold text-white">Vera Drive Mode</div>
               <div className="text-sm text-gray-400">Step {Math.min(6, step + 1)} of 6</div>
             </div>
           </div>
@@ -223,6 +226,9 @@ export default function DriveMode({ open, onClose, onTransactionCreated }: Props
           <div className="flex gap-2">
             <button className="rounded-lg bg-gray-800 px-3 py-2 text-sm text-white" title="Voice input" onClick={startVoiceInput}>
               {listening ? 'Listening...' : 'Voice'}
+            </button>
+            <button className="rounded-lg bg-gray-800 px-3 py-2 text-sm text-white" title={speaking ? 'Stop Vera' : 'Speak prompt'} onClick={() => speaking ? stopSpeaking() : speakPrompt(currentPrompt)}>
+              {speaking ? '🔇' : '🔊'}
             </button>
             <button
               className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50"
