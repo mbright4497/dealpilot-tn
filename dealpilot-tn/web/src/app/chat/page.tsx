@@ -396,15 +396,11 @@ function ChatPageInner() {
   }
 
   function openDeal(txId: number) {
-    setSelectedTxId(txId)
-    setView('deal')
-    router.push(`/transactions/${txId}`)
+    window.location.href = `/transactions/${txId}`
   }
 
   function openChecklist(txId: number) {
-    setSelectedTxId(txId)
-    setView('deal')
-    router.push(`/transactions/${txId}`)
+    window.location.href = `/transactions/${txId}`
   }
 
   async function deleteTransaction(txId: number) {
