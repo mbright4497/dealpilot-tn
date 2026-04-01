@@ -26,6 +26,7 @@ export async function GET() {
     .from('transactions')
     .select('*')
     .eq('user_id', user.id)
+    .neq('status', 'deleted')
     .order('created_at', { ascending: false })
 
   const { data, error } = await q
