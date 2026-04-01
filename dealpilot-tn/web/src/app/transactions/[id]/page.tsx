@@ -352,7 +352,7 @@ export default function TransactionDetailPage() {
   const txId = params?.id ?? ''
 
   const [loading, setLoading] = useState(true)
-  const [tx, setTx] = useState<TxRow | null>(null)
+  const [tx, setTx] = useState<TxRow | null | undefined>(undefined)
   const [txDocuments, setTxDocuments] = useState<TransactionDocumentRow[]>([])
   const [docTypePick, setDocTypePick] = useState('rf401_psa')
   const [customDocName, setCustomDocName] = useState('')
@@ -2504,7 +2504,7 @@ export default function TransactionDetailPage() {
         ? 'error'
         : 'processing'
 
-  if (loading) {
+  if (loading || tx === undefined) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-6 text-slate-300">
         <div className="rounded-2xl border border-slate-700 bg-[#0B1530] p-6">
