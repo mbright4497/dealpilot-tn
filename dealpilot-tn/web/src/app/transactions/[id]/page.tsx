@@ -517,6 +517,8 @@ export default function TransactionDetailPage() {
   }
 
   useEffect(() => {
+    setTx(undefined)
+    setLoading(true)
     void loadPageData().then(() => Promise.all([loadCommsHistory(), loadContacts(), loadActivity()]))
   }, [txId, loadPageData, loadContacts])
 
