@@ -135,7 +135,7 @@ export default function TransactionsPage() {
           return (
             <button
               key={tx.id}
-              onClick={() => router.push(`/transactions/${tx.id}`)}
+              onClick={() => window.location.href = `/transactions/${tx.id}`}
               className="rounded-xl border border-gray-800 bg-gray-900 p-4 text-left hover:border-orange-500/60"
             >
               <div className="text-lg font-bold text-white">{tx.address || 'Untitled property'}</div>
