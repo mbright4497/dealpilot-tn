@@ -353,6 +353,12 @@ export default function TransactionDetailPage() {
 
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null | undefined>(undefined)
+  const [prevTxId, setPrevTxId] = useState(txId)
+  if (prevTxId !== txId) {
+    setPrevTxId(txId)
+    setTx(undefined)
+    setLoading(true)
+  }
   const [txDocuments, setTxDocuments] = useState<TransactionDocumentRow[]>([])
   const [docTypePick, setDocTypePick] = useState('rf401_psa')
   const [customDocName, setCustomDocName] = useState('')
