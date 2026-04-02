@@ -1,4 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 import type { DealImpact } from '@/lib/reva/dealImpact'
 
 function asRecord(v: unknown): Record<string, unknown> | null {
@@ -40,12 +40,17 @@ function joinNames(v: unknown): string | null {
 
 /** Merge deal_impact + PSA extraction into transactions row (contract_data JSONB + scalar columns). */
 export async function applyDealImpactToTransaction(
-  supabase: SupabaseClient,
   transactionId: number,
   documentType: string,
   dealImpact: DealImpact,
   extracted: unknown
 ): Promise<void> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  )
+
   const { data: tx, error } = await supabase
     .from('transactions')
     .select('id, contract_data, purchase_price, closing_date, earnest_money, binding_date, possession_date')

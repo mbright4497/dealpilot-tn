@@ -145,7 +145,7 @@ export async function runDocumentExtraction(
       extractedData: extracted,
     })
 
-    await applyDealImpactToTransaction(supabase, doc.transaction_id, docType, dealImpact, extracted)
+    await applyDealImpactToTransaction(doc.transaction_id, docType, dealImpact, extracted)
 
     await supabase
       .from('transaction_documents')
