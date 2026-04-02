@@ -744,7 +744,7 @@ function TransactionDetailContent() {
     }
 
     const generatedKnown = [
-      { name: 'Inspection Period End', dueDate: addDaysIso(tx?.binding_date || null, 10) },
+      { name: 'Inspection Period End', dueDate: (tx as any)?.inspection_end_date ? dateOnlyIso((tx as any).inspection_end_date) : addDaysIso(tx?.binding_date || null, (tx as any)?.inspection_period_days ?? 10) },
       { name: 'Financing Contingency', dueDate: addDaysIso(tx?.binding_date || null, 21) },
       { name: 'Appraisal Deadline', dueDate: addDaysIso(tx?.binding_date || null, 21) },
       { name: 'Title Search', dueDate: addDaysIso(tx?.binding_date || null, 14) },

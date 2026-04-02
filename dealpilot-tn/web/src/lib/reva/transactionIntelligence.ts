@@ -64,13 +64,15 @@ Return ONLY valid JSON, no markdown, no explanation:
 }
 
 Rules:
-- If closing_date is set, calculate actual deadline dates
+- ALL deadlines and due_dates must be calculated from binding_date, NOT from Today. Today is provided only for reference (e.g. to flag overdue items), never as a deadline anchor.
+- Inspection Period End = binding_date + inspection_period_days calendar days (use the value provided; default 10 if unknown)
+- If binding_date is set, calculate actual deadline dates from it
+- If binding_date is missing, set all due_dates to null — never substitute Today
 - If financing_contingency_waived is true, skip loan milestones
 - Always include TN mandatory disclosures
 - Flag if closing window is compressed (under 21 days)
 - Use TCA citations where relevant
-- Make checklist items deal-specific, not generic
-- If binding_date is missing, note all date-based deadlines as 'pending binding date'`
+- Make checklist items deal-specific, not generic`
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',

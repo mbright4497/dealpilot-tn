@@ -203,6 +203,15 @@ export async function applyDealImpactToTransaction(
         contractData.binding_date = bindingDate
       }
 
+      // ── Derived: Inspection End Date = binding_date + inspection_period_days ──
+      const effectiveBindingDate = bindingDate || asStr(tx.binding_date as unknown)
+      const effectiveInspDays = inspDays ?? (tx.inspection_period_days as number | null)
+      if (effectiveBindingDate && effectiveInspDays !== null && effectiveInspDays !== undefined) {
+        const inspEnd = new Date(effectiveBindingDate)
+        inspEnd.setDate(inspEnd.getDate() + effectiveInspDays)
+        updates.inspection_end_date = inspEnd.toISOString().slice(0, 10)
+      }
+
       // ── Section 21 – Special Stipulations ────────────────────────────────
       const stips = asStr(fields.specialStipulations)
       if (stips) updates.special_stipulations = stips
