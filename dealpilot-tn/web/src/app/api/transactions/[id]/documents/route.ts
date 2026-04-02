@@ -166,15 +166,23 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: insErr?.message || 'insert failed' }, { status: 500 })
     }
 
-    const svc = getOptionalServiceSupabase()
-    if (svc) {
-      void runDocumentExtraction(svc, inserted.id).catch((e) =>
-        console.error('[documents POST] async extraction', e)
-      )
-    } else {
-      void runDocumentExtraction(supabase, inserted.id).catch((e) =>
-        console.error('[documents POST] extraction (user client)', e)
-      )
+    if (document_type === 'rf401_psa') {
+      const extractionClient = getOptionalServiceSupabase() ?? supabase
+      console.log(`DOCUMENTS ROUTE: triggering extraction for doc ${inserted.id}`)
+      try {
+        await runDocumentExtraction(extractionClient, inserted.id)
+      } catch (e) {
+        console.error(
+          'DOCUMENTS ROUTE: runDocumentExtraction FAILED — doc',
+          inserted.id,
+          'transaction',
+          transactionId,
+          e
+        )
+        if (e instanceof Error && e.stack) {
+          console.error('DOCUMENTS ROUTE: extraction error stack', e.stack)
+        }
+      }
     }
 
     const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 3600)
