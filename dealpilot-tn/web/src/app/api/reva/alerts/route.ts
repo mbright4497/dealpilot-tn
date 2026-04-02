@@ -67,8 +67,8 @@ export async function POST() {
       await sendGHLEmail(
         profile.ghl_api_key,
         { email: profile.notification_email, name: 'User' },
-        { email: 'alerts@dealpilot.local', name: 'Reva Alerts' },
-        `Reva Critical Alerts (${critical.length})`,
+        { email: 'alerts@dealpilot.local', name: 'Vera Alerts' },
+        `Vera Critical Alerts (${critical.length})`,
         critical.map((a) => `- ${a.message} Action: ${a.action}`).join('\n')
       )
     }

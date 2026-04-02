@@ -137,7 +137,7 @@ export async function POST(request: Request) {
 
     if (!assistantId) {
       return Response.json({
-        reply: 'Reva is not configured yet. Please contact support.',
+        reply: 'Vera is not configured yet. Please contact support.',
       })
     }
 
@@ -230,7 +230,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
       ) {
         if (Date.now() - startTime > 45000) {
           return Response.json({
-            reply: 'Reva is taking too long. Please try again.',
+            reply: 'Vera is taking too long. Please try again.',
             threadId,
           })
         }

@@ -5,7 +5,7 @@ const AGENT_ORDER = [
   { name: 'Tango', role: 'Leader / Orchestrator', piece: '\u2654', coord: 'e1' },
   { name: 'Marcus', role: 'COO', piece: '\u2655', coord: 'd1' },
   { name: 'Rayno', role: 'Software Engineer', piece: '\u2657', coord: 'f1' },
-  { name: 'Reva', role: 'Transaction Coordinator', piece: '\u2656', coord: 'a1' },
+  { name: 'Vera', role: 'Transaction Coordinator', piece: '\u2656', coord: 'a1' },
   { name: 'Carlos', role: 'Lead Gen & CRM Manager', piece: '\u2658', coord: 'b1' },
   { name: 'Nina', role: 'Content & Marketing Director', piece: '\u2659', coord: 'd2' },
   { name: 'Maya', role: 'Client Success & Booking', piece: '\u2659', coord: 'e2' }

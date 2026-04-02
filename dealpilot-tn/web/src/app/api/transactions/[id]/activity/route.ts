@@ -101,7 +101,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
           id: `doc_reviewed_${row.id}`,
           activity_type: 'document',
           title: `${row.display_name || 'Document'} reviewed`,
-          description: 'Reva completed document review.',
+          description: 'Vera completed document review.',
           created_at: asIso(row.updated_at) || uploadedAt,
           source: 'documents',
         })

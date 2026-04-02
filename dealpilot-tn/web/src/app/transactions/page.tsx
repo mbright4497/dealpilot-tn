@@ -78,7 +78,7 @@ export default function TransactionsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Your Transactions</h1>
-          <p className="mt-1 text-sm text-gray-400">Manage every deal through Reva and API routes.</p>
+          <p className="mt-1 text-sm text-gray-400">Manage every deal through Vera and API routes.</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-orange-500/20 px-3 py-1 text-sm font-semibold text-orange-300">{visible.length}</span>
@@ -125,7 +125,7 @@ export default function TransactionsPage() {
       {loading ? <p className="text-gray-400">Loading transactions...</p> : null}
       {!loading && visible.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-700 p-8 text-center text-gray-400">
-          No transactions yet. Ask Reva to start one, or click Add below.
+          No transactions yet. Ask Vera to start one, or click Add below.
         </div>
       ) : null}
 
@@ -248,7 +248,7 @@ export default function TransactionsPage() {
                 }}
                 className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-50"
               >
-                {creating ? 'Creating...' : 'Create with Reva'}
+                {creating ? 'Creating...' : 'Create with Vera'}
               </button>
             </div>
           </div>

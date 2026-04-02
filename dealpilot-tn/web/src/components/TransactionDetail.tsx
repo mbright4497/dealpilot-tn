@@ -946,7 +946,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
 
       {/* EVA HERO (top) - small iterative addition */}
       <div ref={revaPanelRef} className="mb-4 rounded-lg bg-[#061021] p-4 border border-white/6 hidden md:block">
-        <div className="mb-2 text-sm text-gray-300 flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full object-cover" /><span>Reva — Deal Assistant</span></div>
+        <div className="mb-2 text-sm text-gray-300 flex items-center gap-3"><img src="/reva-avatar.png" alt="Vera" className="w-10 h-10 rounded-full object-cover" /><span>Vera — Deal Assistant</span></div>
         <div className="h-40 overflow-auto p-2 bg-gray-800 rounded mb-3">
           {chatMessages.map((m,i)=>(
             <div key={i} className={m.from==='assistant' ? 'mb-2 text-left' : 'mb-2 text-right'}>
@@ -969,7 +969,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
           ))}
         </div>
         <div className="flex gap-2 items-center">
-          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Reva about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" />
+          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask Vera about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" />
           <button onClick={async ()=>{ if(!input) return; await sendAIMessage(input); setInput('') }} className="px-4 py-2 bg-orange-500 rounded">Ask</button>
         </div>
         <div className="mt-3 flex gap-2">
@@ -1515,7 +1515,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                     <input type="file" onChange={(e)=>{ const file = e.target.files?.[0]; if (file) handleUpload(file) }} className="text-sm text-gray-300" />
                     {uploading && <div className="text-xs text-gray-400 mt-2">Uploading...</div>}
                     {discussingDoc && (
-                      <div className="mt-2 p-2 bg-indigo-900 rounded text-sm text-indigo-200">💬 Reva is discussing <strong>{discussingDoc}</strong> — scroll up to see the chat</div>
+                      <div className="mt-2 p-2 bg-indigo-900 rounded text-sm text-indigo-200">💬 Vera is discussing <strong>{discussingDoc}</strong> — scroll up to see the chat</div>
                     )}
                   </div>
                   {docs.length===0 && <div className="text-gray-500">No files</div>}
@@ -1590,7 +1590,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
                               // update input state before calling the assistant
                               setInput(msg)
                               // show toast/banner
-                              setShowDiscussToast({ show: true, message: `Sending ${fileName} to Reva for review...` })
+                              setShowDiscussToast({ show: true, message: `Sending ${fileName} to Vera for review...` })
                               setTimeout(()=> setShowDiscussToast({ show: false, message: '' }), 3000)
                               // ensure Reva drawer is visible
                               setMode('overview')
@@ -1763,7 +1763,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
       <div className="absolute inset-0 bg-black bg-opacity-40" onClick={()=>setMobileRevaOpen(false)} />
       <div className="relative w-full bg-[#061021] rounded-t-2xl p-4 max-h-[80vh] overflow-auto">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3"><img src="/reva-avatar.png" alt="Reva" className="w-10 h-10 rounded-full" /><div className="text-white font-semibold">Reva — Deal Assistant</div></div>
+          <div className="flex items-center gap-3"><img src="/reva-avatar.png" alt="Vera" className="w-10 h-10 rounded-full" /><div className="text-white font-semibold">Vera — Deal Assistant</div></div>
           <button onClick={()=>setMobileRevaOpen(false)} className="text-sm text-gray-300">Close</button>
         </div>
         <div className="h-64 overflow-auto p-2 bg-gray-800 rounded mb-3">
@@ -1788,7 +1788,7 @@ export default function TransactionDetail({transaction, dealId, onBack, onUpdate
           ))}
         </div>
         <div className="flex gap-2 items-center">
-          <input name="ask-mobile" placeholder="Ask Reva about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" onKeyDown={async (e:any)=>{ if(e.key==='Enter'){ const val = e.target.value; if(val){ await sendAIMessage(val); e.target.value=''; } } }} />
+          <input name="ask-mobile" placeholder="Ask Vera about this deal..." className="flex-1 px-3 py-2 rounded bg-gray-800 border border-white/10" onKeyDown={async (e:any)=>{ if(e.key==='Enter'){ const val = e.target.value; if(val){ await sendAIMessage(val); e.target.value=''; } } }} />
           <button onClick={async ()=>{ const inp = document.querySelector('input[name="ask-mobile"]') as HTMLInputElement|null; const val = inp?.value?.trim(); if(val){ await sendAIMessage(val); if(inp) inp.value=''; } }} className="px-4 py-2 bg-orange-500 rounded">Ask</button>
         </div>
       </div>

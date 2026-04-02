@@ -43,8 +43,8 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
       try{
         const res = await fetch('/api/eva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: apiMessages, dealId: pageContext?.dealId || id }) })
         const j = await res.json()
-        addMessage({ id: `eva_${Date.now()}`, role: 'eva', content: j.reply || 'REVA response', payload: j.renderPayload })
-      }catch(e){ console.error('chip action failed', e); addMessage({ id:`eva_err_${Date.now()}`, role:'eva', content: 'REVA is unavailable.' }) }
+        addMessage({ id: `eva_${Date.now()}`, role: 'eva', content: j.reply || 'Vera response', payload: j.renderPayload })
+      }catch(e){ console.error('chip action failed', e); addMessage({ id:`eva_err_${Date.now()}`, role:'eva', content: 'Vera is unavailable.' }) }
     }
 
     return (
@@ -108,8 +108,8 @@ export default function EvaRichCardRenderer({payload}:{payload:any}){
       try{
         const res = await fetch('/api/eva/chat', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: apiMessages, dealId: pageContext?.dealId }) })
         const j = await res.json()
-        addMessage({ id:`eva_${Date.now()}`, role:'eva', content: j.reply || 'REVA response', payload: j.renderPayload })
-      }catch(e){ console.error('chip action failed', e); addMessage({ id:`eva_err_${Date.now()}`, role:'eva', content: 'REVA is unavailable.' }) }
+        addMessage({ id:`eva_${Date.now()}`, role:'eva', content: j.reply || 'Vera response', payload: j.renderPayload })
+      }catch(e){ console.error('chip action failed', e); addMessage({ id:`eva_err_${Date.now()}`, role:'eva', content: 'Vera is unavailable.' }) }
     }
     return (
       <div className="flex flex-wrap gap-2">

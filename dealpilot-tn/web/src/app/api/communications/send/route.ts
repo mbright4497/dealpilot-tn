@@ -167,7 +167,7 @@ export async function POST(req: Request) {
     } = { success: false }
     if (type === 'email') {
       const ghlContactId = String(target.ghl_contact_id || '').trim()
-      const fromReva = { email: 'reva@ihomehq.com', name: 'Reva' }
+      const fromReva = { email: 'reva@ihomehq.com', name: 'Vera' }
       sendRes = await sendGHLEmail(
         ghlApiKey,
         {

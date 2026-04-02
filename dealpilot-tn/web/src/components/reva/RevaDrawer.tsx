@@ -23,10 +23,10 @@ export default function EvaDrawer(){
         <div className="p-4 flex items-center justify-between border-b border-[#11314f]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center">
-              <img src="/avatar-pilot.png" alt="REVA" className="w-10 h-10 rounded-full" />
+              <img src="/avatar-pilot.png" alt="Vera" className="w-10 h-10 rounded-full" />
             </div>
             <div>
-              <div className="text-white font-semibold">REVA</div>
+              <div className="text-white font-semibold">Vera</div>
               <div className="text-xs text-gray-400">{pageContext?.route || 'Global'}</div>
             </div>
           </div>

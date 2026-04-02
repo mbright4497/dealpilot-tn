@@ -231,7 +231,7 @@ export default function DocumentAirDrop({
             >
               <img
                 src={REVA_AVATAR}
-                alt="Reva"
+                alt="Vera"
                 width={80}
                 height={80}
                 className="h-20 w-20 rounded-full object-cover shadow-xl"
@@ -253,7 +253,7 @@ export default function DocumentAirDrop({
       {showWorking ? (
         <div className="mt-4 max-w-md px-6 text-center">
           <p className="text-base font-medium text-slate-100">
-            Reva is reading the documents
+            Vera is reading the documents
             <span className="inline-block w-6 text-left" style={{ animation: 'ellipsisPulse 1s ease-in-out infinite' }}>
               {dots}
             </span>

@@ -111,43 +111,64 @@ export async function runDocumentExtraction(
   }
 
   try {
+    console.log('[EXTRACTION] starting for doc', documentId, 'transaction', doc.transaction_id, 'type', doc.document_type)
+
     const { data: blob, error: dlErr } = await supabase.storage.from(BUCKET).download(path)
     if (dlErr || !blob) throw new Error(dlErr?.message || 'download failed')
+    console.log('[EXTRACTION] downloaded blob, size', blob.size)
 
     const buf = Buffer.from(await blob.arrayBuffer())
     const base64 = buf.toString('base64')
+    console.log('[EXTRACTION] base64 length', base64.length)
 
     const docType = String(doc.document_type || 'other')
     const typed = isTransactionDocumentType(docType) ? docType : 'other'
+    console.log('[EXTRACTION] docType', docType, 'typed', typed)
 
     let extracted: unknown
 
     if (docType === 'rf401_psa') {
+      console.log('[EXTRACTION] running RF401 vision extraction')
       const parsed: ParsedContractPayload = await parseContractPdfFromBase64(base64)
       extracted = parsed
+      console.log('[EXTRACTION] RF401 parsed keys:', Object.keys((parsed as any)?.fields ?? parsed ?? {}))
     } else {
+      console.log('[EXTRACTION] extracting PDF text for docType:', docType)
       const text = await extractPdfTextFromBase64(base64)
+      console.log('[EXTRACTION] extracted text length:', text.length, 'chars')
       const lines = text.split('\n')
       const numberedText = lines.map((line: string, i: number) => `L${i + 1}: ${line}`).join('\n')
       const instruction = extractionInstructionForType(docType)
+      console.log('[EXTRACTION] sending to GPT, truncated text length:', Math.min(numberedText.length, 120000))
       extracted = await extractJsonWithGpt(instruction, numberedText)
+      console.log('[EXTRACTION] GPT extraction complete')
     }
 
+    const fields = (extracted as any)?.fields ?? extracted
+    console.log('[EXTRACTION] extracted fields:', JSON.stringify(fields, null, 2))
+
+    console.log('[EXTRACTION] computing deal impact')
     let dealImpact = computeDealImpact(typed as TransactionDocumentType, extracted)
     const addrMismatch = computeAddressMismatch(extracted, tx?.address ?? null)
     if (addrMismatch) {
+      console.log('[EXTRACTION] address mismatch detected:', addrMismatch)
       dealImpact = { ...dealImpact, address_mismatch: addrMismatch }
     }
+    console.log('[EXTRACTION] dealImpact:', JSON.stringify(dealImpact, null, 2))
 
+    console.log('[EXTRACTION] running broker review')
     const review = await brokerReview({
       documentType: docType,
       displayName: String(doc.display_name || ''),
       extractedData: extracted,
     })
+    console.log('[EXTRACTION] broker review complete, issues:', (review as any)?.issues?.length ?? 0)
 
+    console.log('[EXTRACTION] applying deal impact to transaction row', doc.transaction_id)
     await applyDealImpactToTransaction(doc.transaction_id, docType, dealImpact, extracted)
+    console.log('[EXTRACTION] applyDealImpactToTransaction complete')
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from('transaction_documents')
       .update({
         status: 'reviewed',
@@ -157,8 +178,14 @@ export async function runDocumentExtraction(
         updated_at: new Date().toISOString(),
       })
       .eq('id', documentId)
+
+    if (updateErr) {
+      console.error('[EXTRACTION] failed to update document record', documentId, updateErr)
+    } else {
+      console.log('[EXTRACTION] doc', documentId, 'marked reviewed ✓')
+    }
   } catch (e: any) {
-    console.error('[runDocumentExtraction]', documentId, e)
+    console.error('[runDocumentExtraction] FAILED doc', documentId, e?.message ?? e)
     await supabase
       .from('transaction_documents')
       .update({

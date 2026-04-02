@@ -75,7 +75,7 @@ export async function GET(request: Request) {
         messages: [
           {
             role: 'system',
-            content: `You are Reva, AI Transaction Coordinator.
+            content: `You are Vera, AI Transaction Coordinator.
 Generate a morning SMS briefing for ${firstName}.
 Today is ${today}.
 Keep it under 160 characters.

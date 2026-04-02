@@ -10,7 +10,7 @@ export async function setupTransactionIntelligence(
 
   const today = new Date().toISOString().split('T')[0]
 
-  const prompt = `You are Reva, an expert Tennessee real estate transaction coordinator with full knowledge of TN law, RF401, and TREC requirements.
+  const prompt = `You are Vera, an expert Tennessee real estate transaction coordinator with full knowledge of TN law, RF401, and TREC requirements.
 
 A new transaction has been created:
 Address: ${transaction.address}, ${transaction.property_city || ''} TN ${transaction.property_zip || ''}

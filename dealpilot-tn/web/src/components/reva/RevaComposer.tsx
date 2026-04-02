@@ -48,9 +48,9 @@ export default function EvaComposer(){
     try{
       const res = await fetch('/api/eva/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       const j = await res.json()
-      addMessage({id: 'eva_'+Date.now(), role:'eva', content: j.reply || 'REVA placeholder response', payload: j.renderPayload})
+      addMessage({id: 'eva_'+Date.now(), role:'eva', content: j.reply || 'Vera placeholder response', payload: j.renderPayload})
     }catch(e){
-      addMessage({id:'eva_err_'+Date.now(), role:'eva', content:'REVA is unavailable (placeholder).'})
+      addMessage({id:'eva_err_'+Date.now(), role:'eva', content:'Vera is unavailable (placeholder).'})
     }
       // If REVA returns a structured action to create a transaction, surface it via a window event
       try{ if(j.action && j.action.type === 'create_transaction' && j.action.data){ window.dispatchEvent(new CustomEvent('reva:create_transaction', { detail: j.action.data })) } }catch(_){ }
@@ -104,7 +104,7 @@ export default function EvaComposer(){
       <div className="flex gap-2 items-center">
         <input ref={fileRef} type="file" accept="application/pdf" style={{display:'none'}} onChange={(e)=>handleFile(e.target.files?.[0]||null)} />
         <button onClick={()=>fileRef.current?.click()} className="px-3 py-2 bg-gray-800 rounded border border-white/10">📎</button>
-        <input value={text} onChange={(e)=>setText(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } }} className="flex-1 bg-[#0a1628] border border-[#1e3a5f] rounded-xl px-4 py-3 text-white" placeholder="Ask REVA about this page..." />
+        <input value={text} onChange={(e)=>setText(e.target.value)} onKeyDown={(e)=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); send(); } }} className="flex-1 bg-[#0a1628] border border-[#1e3a5f] rounded-xl px-4 py-3 text-white" placeholder="Ask Vera about this page..." />
         <button type="button" onClick={send} className="bg-orange-500 rounded-xl px-4">Send</button>
       </div>
     </div>

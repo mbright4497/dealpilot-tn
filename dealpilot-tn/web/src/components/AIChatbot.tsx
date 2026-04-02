@@ -6,7 +6,7 @@ import { speak, stopSpeaking, isSpeaking as checkSpeaking } from '@/lib/voice-en
 
 export default function AIChatbot({ onClose, style = 'friendly-tn', voiceEnabled = false, transactionId }: { onClose: () => void, style?: AssistantStyle, voiceEnabled?: boolean, transactionId?: number }){
   const [voiceOn, setVoiceOn] = useState<boolean>(voiceEnabled)
-  const [messages, setMessages] = useState<any[]>([{ role: 'system', content: "Hi! I'm Reva, your DealPilot TN assistant — your Real Estate Virtual Assistant. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?" }])
+  const [messages, setMessages] = useState<any[]>([{ role: 'system', content: "Hi! I'm Vera, your DealPilot TN assistant — your Real Estate Virtual Assistant. I can help you fill out TREC forms, calculate contract deadlines, track your transactions, and ensure compliance with Tennessee real estate law. What would you like to work on?" }])
   const [input, setInput] = useState('')
   const [minimized, setMinimized] = useState(false)
   const [speaking, setSpeaking] = useState(false)
@@ -120,9 +120,9 @@ export default function AIChatbot({ onClose, style = 'friendly-tn', voiceEnabled
     <div className="fixed top-0 right-0 h-screen flex flex-col bg-white shadow-lg text-gray-900" style={{ width: 420, maxWidth: '100%' }}>
       <div className="p-3 flex justify-between items-center bg-gray-900 text-white">
         <div className="flex items-center gap-3">
-          <img src="/avatar-pilot.png" alt="Reva" className="w-12 h-12 rounded-full object-cover border-2 border-orange-500" />
+          <img src="/avatar-pilot.png" alt="Vera" className="w-12 h-12 rounded-full object-cover border-2 border-orange-500" />
           <div>
-            <div className="text-lg font-bold">Reva</div>
+            <div className="text-lg font-bold">Vera</div>
             <div className="text-xs text-gray-300">{speaking? 'Speaking' : 'Live'}</div>
           </div>
         </div>

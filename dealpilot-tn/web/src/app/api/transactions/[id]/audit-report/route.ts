@@ -74,7 +74,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       <h2>Documents</h2>
       <pre>${escapeHtml(JSON.stringify(documents, null, 2))}</pre>
 
-      <h2>Audit Logs / Reva Actions</h2>
+      <h2>Audit Logs / Vera Actions</h2>
       <pre>${escapeHtml(JSON.stringify(auditLogs, null, 2))}</pre>
 
     </body>

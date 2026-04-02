@@ -6,8 +6,8 @@ export default function EvaFab(){
   const { toggleEva, isOpen } = useEva()
     if(isOpen) return null
   return (
-    <button onClick={toggleEva} aria-label="Open REVA" className="fixed z-50 right-6 bottom-6 bg-orange-500 hover:bg-orange-400 rounded-full w-14 h-14 shadow-xl flex items-center justify-center">
-      <img src="/avatar-pilot.png" alt="REVA" className="w-12 h-12 rounded-full object-cover" style={{width:48,height:48}} />
+    <button onClick={toggleEva} aria-label="Open Vera" className="fixed z-50 right-6 bottom-6 bg-orange-500 hover:bg-orange-400 rounded-full w-14 h-14 shadow-xl flex items-center justify-center">
+      <img src="/avatar-pilot.png" alt="Vera" className="w-12 h-12 rounded-full object-cover" style={{width:48,height:48}} />
     </button>
   )
 }

@@ -46,7 +46,7 @@ export default function SmartIntakeCard(){
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="text-white font-semibold">New Deal</h3>
-          <div className="text-sm text-gray-400">Upload your signed Purchase &amp; Sale Agreement — Reva handles the rest.</div>
+          <div className="text-sm text-gray-400">Upload your signed Purchase &amp; Sale Agreement — Vera handles the rest.</div>
         </div>
       </div>
 
@@ -57,7 +57,7 @@ export default function SmartIntakeCard(){
         </label>
       </div>
 
-      {loading && <div className="mt-3 text-gray-400">Reva is reading your contract...</div>}
+      {loading && <div className="mt-3 text-gray-400">Vera is reading your contract...</div>}
       {error && <div className="mt-3 text-red-400">{error}</div>}
 
       {summary && (

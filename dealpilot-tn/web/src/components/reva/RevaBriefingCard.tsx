@@ -17,7 +17,7 @@ export default function EvaBriefingCard(){
       setMsg(j.message)
       setChips(j.chips||[])
       setLoading(false)
-    }).catch(()=>{ if(mounted){ setMsg('REVA briefing unavailable'); setLoading(false)} })
+    }).catch(()=>{ if(mounted){ setMsg('Vera briefing unavailable'); setLoading(false)} })
     return ()=>{ mounted=false }
   },[])
 
@@ -58,7 +58,7 @@ export default function EvaBriefingCard(){
     <div className="bg-[#0f1c2e] border border-[#1e3a5f] rounded-xl p-6">
       <div className="flex items-start gap-4">
         <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center font-bold"> 
-          <img src="/reva-avatar.png" alt="REVA" className="w-10 h-10 rounded-full" />
+          <img src="/reva-avatar.png" alt="Vera" className="w-10 h-10 rounded-full" />
         </div>
         <div className="flex-1">
           <div className="text-gray-200 leading-relaxed">{msg}</div>

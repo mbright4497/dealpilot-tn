@@ -72,7 +72,7 @@ export async function GET(request: Request) {
 
       const firstName = agent.full_name?.split(' ')[0] || 'there'
 
-      const briefing = `Good morning ${firstName}! Reva here. You have ${transactions.length} active deal(s). Reply for details.`
+      const briefing = `Good morning ${firstName}! Vera here. You have ${transactions.length} active deal(s). Reply for details.`
       console.log('[cron] briefing text:', briefing.slice(0, 100))
 
       console.log('[cron] GHL env check:', {

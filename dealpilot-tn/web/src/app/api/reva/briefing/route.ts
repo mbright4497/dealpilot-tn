@@ -100,7 +100,7 @@ export async function POST() {
 Reference location for small talk: ${wx.locationLabel}.`
     }
 
-    const systemPrompt = `You are Reva, an expert Tennessee real estate transaction coordinator AI powered by GPT-4o with full access to TN real estate law via your vector store.
+    const systemPrompt = `You are Vera, an expert Tennessee real estate transaction coordinator AI powered by GPT-4o with full access to TN real estate law via your vector store.
 
 CRITICAL DATE AWARENESS:
 - Today is ${todayLong} (${today}).

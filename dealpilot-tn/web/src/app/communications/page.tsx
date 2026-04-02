@@ -101,7 +101,7 @@ export default function CommunicationsPage(){
             {status && <div className="text-sm text-emerald-300">{status}</div>}
 
             <div className="flex justify-end gap-2">
-              <button onClick={askRevaDraft} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white">Ask Reva to draft</button>
+              <button onClick={askRevaDraft} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white">Ask Vera to draft</button>
               <button onClick={sendNow} className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black">Send</button>
             </div>
           </div>
