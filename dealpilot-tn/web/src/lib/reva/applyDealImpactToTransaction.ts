@@ -239,5 +239,12 @@ export async function applyDealImpactToTransaction(
   const substantive = Object.keys(updates).filter((k) => k !== 'updated_at')
   if (substantive.length === 0) return
 
-  await supabase.from('transactions').update(updates).eq('id', transactionId)
+  console.log('APPLY_DEAL_IMPACT: writing fields', Object.keys(updates))
+  const { error: updateError } = await supabase
+    .from('transactions')
+    .update(updates)
+    .eq('id', transactionId)
+  if (updateError) {
+    console.error('APPLY_DEAL_IMPACT: update failed', updateError.message, updateError.details, updateError.hint)
+  }
 }
