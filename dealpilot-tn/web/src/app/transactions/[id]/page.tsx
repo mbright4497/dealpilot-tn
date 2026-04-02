@@ -180,6 +180,12 @@ const EMPTY_CONTACT_FORM: ContactFormState = {
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
+  // Parse YYYY-MM-DD as local time — new Date("YYYY-MM-DD") is UTC midnight which
+  // shifts to the previous day in US timezones.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString()
+  }
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return String(value)
   return d.toLocaleDateString()
