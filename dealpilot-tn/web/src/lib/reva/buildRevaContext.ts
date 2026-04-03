@@ -198,7 +198,7 @@ export async function buildRevaContext(
       const { data: deal } = await supabase
         .from('transactions')
         .select(
-          'id, address, status, client, type, closing_date, binding_date, purchase_price, contacts'
+          'id, address, status, client, type, closing_date, binding_date, purchase_price, contacts, earnest_money, earnest_money_confirmed, earnest_money_holder, earnest_money_days, inspection_period_days, loan_type, county, special_stipulations, contract_data'
         )
         .eq('id', dealId)
         .single()
@@ -210,6 +210,29 @@ export async function buildRevaContext(
         lines.push(`Binding date: ${deal.binding_date || 'NOT SET - CRITICAL'}`)
         lines.push(`Closing date: ${deal.closing_date || 'NOT SET'}`)
         lines.push(`Purchase price: ${deal.purchase_price || 'not extracted yet'}`)
+        lines.push(`Loan type: ${deal.loan_type || 'NOT SET'}`)
+        lines.push(`County: ${deal.county || 'NOT SET'}`)
+        lines.push(
+          `Earnest money: ${deal.earnest_money ? '$' + deal.earnest_money : 'NOT SET'}`
+        )
+        lines.push(`Earnest money holder: ${deal.earnest_money_holder || 'NOT SET'}`)
+        lines.push(
+          `Earnest money due: ${deal.earnest_money_days ? deal.earnest_money_days + ' days after binding' : 'NOT SET'}`
+        )
+        lines.push(
+          `Earnest money confirmed: ${deal.earnest_money_confirmed ? 'YES ✅' : 'NO - NOT YET CONFIRMED'}`
+        )
+        lines.push(
+          `Inspection period: ${deal.inspection_period_days || 'NOT SET'} days`
+        )
+        if (deal.binding_date && deal.inspection_period_days) {
+          const inspEnd = new Date(deal.binding_date)
+          inspEnd.setDate(inspEnd.getDate() + deal.inspection_period_days)
+          lines.push(`Inspection period ends: ${inspEnd.toISOString().split('T')[0]}`)
+        }
+        if (deal.special_stipulations) {
+          lines.push(`Special stipulations: ${deal.special_stipulations}`)
+        }
       }
 
       const rawContacts = deal && (deal as { contacts?: unknown }).contacts
@@ -247,6 +270,40 @@ export async function buildRevaContext(
         }
       } else {
         lines.push('Contacts: None linked to this deal')
+      }
+
+      try {
+        const { data: inspectorAssignments } = await supabase
+          .from('transaction_inspectors')
+          .select('*, inspectors(*)')
+          .eq('transaction_id', dealId)
+
+        if (inspectorAssignments && inspectorAssignments.length > 0) {
+          lines.push('')
+          lines.push('ASSIGNED INSPECTORS/SERVICE PROVIDERS:')
+          for (const assignment of inspectorAssignments) {
+            const ins = assignment.inspectors
+            if (!ins) continue
+            lines.push(
+              `- ${ins.name} | ${ins.company || 'No company'} | ${ins.phone || 'No phone'} | Booking: ${ins.booking_method || 'call'} | Type: ${assignment.inspection_type || 'home'} | Status: ${assignment.status || 'pending'}`
+            )
+            if (assignment.scheduled_at) {
+              lines.push(
+                `  Scheduled: ${new Date(assignment.scheduled_at).toLocaleDateString()}`
+              )
+            }
+            if (assignment.report_received) {
+              lines.push(`  Report: RECEIVED ✅`)
+            } else {
+              lines.push(`  Report: NOT YET RECEIVED`)
+            }
+          }
+        } else {
+          lines.push('')
+          lines.push('ASSIGNED INSPECTORS: None assigned yet')
+        }
+      } catch {
+        // inspectors unavailable
       }
 
       let docs: any[] = []
