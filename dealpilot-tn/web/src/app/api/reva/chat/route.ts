@@ -273,17 +273,22 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         })
       }
 
-      if (action?.type === 'send_email' && action.data && dealId) {
+      if (action?.type === 'send_email' && action.data) {
         const emailData = action.data as {
           contactId?: string
           subject?: string
           message?: string
           body?: string
         }
-        try {
+        const hasDealFocus = dealId != null && String(dealId).trim() !== ''
+        if (!hasDealFocus && !String(emailData.contactId || '').trim()) {
+          // skip: communications/send needs dealId or transaction contact id
+        } else try {
           const appUrl =
             process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
-          const dealIdNum = parseInt(String(dealId), 10)
+          const dealIdForSend = hasDealFocus
+            ? parseInt(String(dealId), 10)
+            : null
           const sendRes = await fetch(`${appUrl}/api/communications/send`, {
             method: 'POST',
             headers: {
@@ -295,7 +300,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
             },
             body: JSON.stringify({
               type: 'email',
-              dealId: dealIdNum,
+              dealId: dealIdForSend,
               userId,
               transactionContactId: emailData.contactId ?? '',
               subject: emailData.subject || 'Message from ClosingPilot',
@@ -318,14 +323,20 @@ Instructions: Search your knowledge base documents to answer this question. Cite
         }
       }
 
-      if (action?.type === 'send_sms' && action.data && dealId) {
+      if (action?.type === 'send_sms' && action.data) {
         const smsData = action.data as {
           contactId?: string
           message?: string
         }
-        try {
+        const hasDealFocusSms = dealId != null && String(dealId).trim() !== ''
+        if (!hasDealFocusSms && !String(smsData.contactId || '').trim()) {
+          // skip
+        } else try {
           const appUrl =
             process.env.NEXT_PUBLIC_APP_URL || 'https://dealpilot-tn.vercel.app'
+          const dealIdForSms = hasDealFocusSms
+            ? parseInt(String(dealId), 10)
+            : null
           const sendRes = await fetch(`${appUrl}/api/communications/send`, {
             method: 'POST',
             headers: {
@@ -337,7 +348,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
             },
             body: JSON.stringify({
               type: 'sms',
-              dealId: parseInt(String(dealId), 10),
+              dealId: dealIdForSms,
               userId,
               transactionContactId: smsData.contactId || '',
               message: smsData.message || '',

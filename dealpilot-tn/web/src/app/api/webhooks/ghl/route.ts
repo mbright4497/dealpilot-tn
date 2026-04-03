@@ -144,8 +144,8 @@ export async function POST(req: Request) {
         .from('transactions')
         .select('id, address, client, phase, closing_date, contacts')
         .eq('user_id', resolvedUserId)
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false })
-        .limit(10)
       agentTransactions = txs || []
       console.log('[DEBUG] sample contacts:', 
         JSON.stringify(agentTransactions[0]?.contacts))
@@ -313,7 +313,11 @@ Always confirm the message before sending.`
           },
           body: JSON.stringify({
             message: body,
-            dealId: contactProfile?.dealId || agentTransactions[0]?.id || null,
+            // Agent SMS: omit deal focus so Vera uses AGENT CONTEXT contacts across all deals
+            // (was agentTransactions[0] = newest deal, wrong when texting about another deal).
+            dealId:
+              contactProfile?.dealId ??
+              (agentProfile ? null : agentTransactions[0]?.id ?? null),
             userId: contactProfile?.agentUserId || resolvedUserId,
             skipHistory: false,
             agentContext: contactProfile

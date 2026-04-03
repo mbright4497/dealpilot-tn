@@ -21,6 +21,44 @@ function ghlIdFromContactRaw(c: Record<string, unknown>): string {
  * Prefer id on the resolved contact; if missing, find another party on the same deal
  * with the same normalized phone that has a GHL id.
  */
+type DealContact = {
+  id: string
+  name: string
+  role: string
+  phone: string | null
+  email: string | null
+  ghl_contact_id?: string | null
+  ghlContactId?: string | null
+}
+
+function findContactOnDeal(
+  contactsRaw: unknown[],
+  transactionContactId: string,
+  contactRole: string
+): DealContact | null {
+  const allContacts = contactsRaw as DealContact[]
+  if (transactionContactId) {
+    const byInternal =
+      allContacts.find((c) => c.id === transactionContactId) ?? null
+    if (byInternal) return byInternal
+    return (
+      allContacts.find(
+        (c) =>
+          (c.ghl_contact_id && c.ghl_contact_id === transactionContactId) ||
+          (c.ghlContactId && c.ghlContactId === transactionContactId)
+      ) ?? null
+    )
+  }
+  if (contactRole) {
+    return (
+      allContacts.find(
+        (c) => c.role?.toLowerCase() === contactRole.toLowerCase()
+      ) ?? null
+    )
+  }
+  return null
+}
+
 function resolveGhlContactIdForOutbound(
   target: Record<string, unknown>,
   allRaw: unknown[]
@@ -82,10 +120,12 @@ export async function POST(req: Request) {
     }
 
     const type = body?.type as 'email' | 'sms'
-    const dealId = parseInt(String(body?.dealId), 10)
-    if (isNaN(dealId)) {
-      return NextResponse.json({ error: 'Invalid deal id' }, { status: 400 })
-    }
+    const dealIdRaw = body?.dealId
+    const dealIdFromBody =
+      dealIdRaw != null && dealIdRaw !== ''
+        ? parseInt(String(dealIdRaw), 10)
+        : NaN
+    const hasValidDealId = Number.isFinite(dealIdFromBody)
     const contactRole = String(body?.contactRole || '')
     const transactionContactId = body?.transactionContactId
       ? String(body.transactionContactId)
@@ -132,45 +172,73 @@ export async function POST(req: Request) {
       )
     }
 
+    if (!hasValidDealId && !transactionContactId) {
+      return NextResponse.json({ error: 'Invalid deal id' }, { status: 400 })
+    }
+
     let contactName = ''
     let contactEmail: string | null = null
     let contactPhone: string | null = null
     let contactRoleLabel = ''
 
-    const { data: tx } = await supabase
-      .from('transactions')
-      .select('contacts')
-      .eq('id', dealId)
-      .eq('user_id', effectiveUserId)
-      .maybeSingle()
+    let resolvedDealId: number | null = hasValidDealId ? dealIdFromBody : null
+    let contactsRaw: unknown[] = []
 
-    const contactsRaw = Array.isArray(tx?.contacts) ? tx!.contacts : []
-    const allContacts = contactsRaw as Array<{
-      id: string
-      name: string
-      role: string
-      phone: string | null
-      email: string | null
-      ghl_contact_id?: string | null
-      ghlContactId?: string | null
-    }>
+    if (hasValidDealId) {
+      const { data: tx } = await supabase
+        .from('transactions')
+        .select('contacts')
+        .eq('id', dealIdFromBody)
+        .eq('user_id', effectiveUserId)
+        .maybeSingle()
+      contactsRaw = Array.isArray(tx?.contacts) ? tx!.contacts : []
+    }
 
-    const target = transactionContactId
-      ? (allContacts.find((c) => c.id === transactionContactId) ??
-         // Fallback: AI may have passed GHL contact ID instead of internal UUID
-         allContacts.find(
-           (c) =>
-             (c.ghl_contact_id && c.ghl_contact_id === transactionContactId) ||
-             (c.ghlContactId && c.ghlContactId === transactionContactId)
-         ))
-      : allContacts.find((c) => c.role?.toLowerCase() === contactRole.toLowerCase())
+    let target = findContactOnDeal(
+      contactsRaw,
+      transactionContactId,
+      contactRole
+    )
+
+    if (!target && transactionContactId) {
+      const { data: allTx } = await supabase
+        .from('transactions')
+        .select('id, contacts')
+        .eq('user_id', effectiveUserId)
+        .neq('status', 'deleted')
+
+      for (const row of allTx || []) {
+        const rowContacts = Array.isArray(row.contacts) ? row.contacts : []
+        const hit = findContactOnDeal(
+          rowContacts,
+          transactionContactId,
+          ''
+        )
+        if (hit) {
+          resolvedDealId = row.id
+          contactsRaw = rowContacts
+          target = hit
+          break
+        }
+      }
+    }
+
+    const allContacts = contactsRaw as DealContact[]
+
+    if (resolvedDealId == null) {
+      return NextResponse.json(
+        { error: 'Could not resolve deal for this contact' },
+        { status: 400 }
+      )
+    }
 
     if (type === 'sms' && transactionContactId) {
       console.log('[communications/send] SMS transactionContactId resolution', {
-        dealId,
+        dealId: resolvedDealId,
+        dealIdFromRequest: hasValidDealId ? dealIdFromBody : null,
         transactionContactId,
         effectiveUserId,
-        transactionRowFound: Boolean(tx),
+        transactionRowFound: contactsRaw.length > 0,
         resolvedContact: target
           ? {
               id: target.id,
@@ -215,7 +283,7 @@ export async function POST(req: Request) {
     if (type === 'email') {
       if (!resolvedGhlId) {
         console.error('[communications/send] outbound email: no ghl_contact_id', {
-          dealId,
+          dealId: resolvedDealId,
           transactionContactId: transactionContactId || null,
           contactRole: contactRole || null,
           contactName: target.name,
@@ -237,7 +305,7 @@ export async function POST(req: Request) {
     }
     if (type === 'sms' && !resolvedGhlId) {
       console.error('[communications/send] outbound SMS blocked: missing ghl_contact_id', {
-        dealId,
+        dealId: resolvedDealId,
         transactionContactId: transactionContactId || null,
         contactRole: contactRole || null,
         contactName: contactName || contactRoleLabel,
@@ -295,7 +363,7 @@ export async function POST(req: Request) {
       const { data: commRow, error: commErr } = await supabase
         .from('communications')
         .insert({
-          deal_id: Number(dealId),
+          deal_id: Number(resolvedDealId),
           user_id: effectiveUserId,
           type,
           direction: 'outbound',
@@ -327,7 +395,7 @@ export async function POST(req: Request) {
         : `Email sent to ${contactName || contactRoleLabel || 'contact'}`
 
     const { error: actErr } = await supabase.from('transaction_activity').insert({
-      transaction_id: dealId,
+      transaction_id: resolvedDealId,
       user_id: effectiveUserId,
       activity_type: type === 'sms' ? 'ghl_sms' : 'ghl_email',
       title,
