@@ -156,7 +156,13 @@ export async function POST(req: Request) {
     }>
 
     const target = transactionContactId
-      ? allContacts.find((c) => c.id === transactionContactId)
+      ? (allContacts.find((c) => c.id === transactionContactId) ??
+         // Fallback: AI may have passed GHL contact ID instead of internal UUID
+         allContacts.find(
+           (c) =>
+             (c.ghl_contact_id && c.ghl_contact_id === transactionContactId) ||
+             (c.ghlContactId && c.ghlContactId === transactionContactId)
+         ))
       : allContacts.find((c) => c.role?.toLowerCase() === contactRole.toLowerCase())
 
     if (type === 'sms' && transactionContactId) {

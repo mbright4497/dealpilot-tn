@@ -337,7 +337,7 @@ Instructions: Search your knowledge base documents to answer this question. Cite
             },
             body: JSON.stringify({
               type: 'sms',
-              dealId,
+              dealId: parseInt(String(dealId), 10),
               userId,
               transactionContactId: smsData.contactId || '',
               message: smsData.message || '',

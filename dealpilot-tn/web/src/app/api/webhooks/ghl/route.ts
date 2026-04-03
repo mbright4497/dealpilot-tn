@@ -162,21 +162,22 @@ ${
     ? 'No active transactions found.'
     : agentTransactions
         .map((t) => {
-          const contacts = Array.isArray(t.contacts)
-            ? t.contacts
+          const contactLines = Array.isArray(t.contacts)
+            ? (t.contacts as Array<{
+                id?: string
+                name?: string
+                role?: string
+                phone?: string
+                email?: string
+                ghl_contact_id?: string
+              }>)
                 .map(
-                  (c: {
-                    name?: string
-                    role?: string
-                    phone?: string
-                    email?: string
-                    ghl_contact_id?: string
-                  }) =>
-                    `${c.name} (${c.role}) - ${c.phone || 'no phone'} - ${c.email || 'no email'} - GHL ID: ${c.ghl_contact_id || 'not synced'}`
+                  (c) =>
+                    `  CONTACT ID: ${c.id || '(none)'} | ${c.name || 'Unnamed'} (${c.role || 'unknown'}) | Phone: ${c.phone || 'no phone'} | Email: ${c.email || 'no email'} | GHL: ${c.ghl_contact_id || 'not synced'}`
                 )
-                .join(', ')
-            : 'none'
-          return `- Deal ID: ${t.id} | ${t.address} | Client: ${t.client} | Phase: ${t.phase} | Closing: ${t.closing_date || 'TBD'} | Contacts: ${contacts}`
+                .join('\n')
+            : '  none'
+          return `- Deal ID: ${t.id} | ${t.address} | Client: ${t.client} | Phase: ${t.phase} | Closing: ${t.closing_date || 'TBD'}\n${contactLines}`
         })
         .join('\n')
 }
