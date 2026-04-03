@@ -90,7 +90,9 @@ export async function GET(request: Request) {
         process.env.GHL_SMS_NUMBER || '',
         briefing,
         null,
-        process.env.GHL_LOCATION_ID || ''
+        process.env.GHL_LOCATION_ID || '',
+        null,
+        { allowPhoneOnlyRecipient: true }
       )
       console.log('[cron] SMS result:', JSON.stringify(smsResult))
       console.log('[cron] SMS sent to:', agent.phone)

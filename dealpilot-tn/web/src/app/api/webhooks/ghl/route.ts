@@ -361,7 +361,8 @@ Their deal ID is ${contactProfile.dealId}.`
             revaReply,
             contactId,
             locationId,
-            resolvedConversationId
+            resolvedConversationId,
+            { allowPhoneOnlyRecipient: !contactId }
           )
           console.log(
             '[webhook/ghl] Reva replied via SMS to',
@@ -385,7 +386,8 @@ Their deal ID is ${contactProfile.dealId}.`
                 notifyMsg,
                 null,
                 locationId,
-                null
+                null,
+                { allowPhoneOnlyRecipient: true }
               )
               console.log('[webhook/ghl] Agent notified:', agentPhone, 'about', contactProfile.name)
             }

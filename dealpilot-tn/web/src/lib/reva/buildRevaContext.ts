@@ -220,6 +220,8 @@ export async function buildRevaContext(
             role?: string
             email?: string | null
             phone?: string | null
+            ghl_contact_id?: string | null
+            ghlContactId?: string | null
           }>)
         : []
 
@@ -231,10 +233,17 @@ export async function buildRevaContext(
           const role = c.role != null ? String(c.role) : ''
           const email = c.email != null && String(c.email).trim() !== '' ? String(c.email) : 'NO EMAIL'
           const phone = c.phone != null && String(c.phone).trim() !== '' ? String(c.phone) : 'NO PHONE'
+          const ghlRaw =
+            c.ghl_contact_id != null && String(c.ghl_contact_id).trim() !== ''
+              ? String(c.ghl_contact_id).trim()
+              : c.ghlContactId != null && String(c.ghlContactId).trim() !== ''
+                ? String(c.ghlContactId).trim()
+                : ''
           lines.push(`CONTACT ID: ${id}`)
           lines.push(
             `CONTACT: ${name} | Role: ${role} | Email: ${email} | Phone: ${phone}`
           )
+          lines.push(`GHL CONTACT ID: ${ghlRaw || 'NOT SYNCED — SMS/email to this party will fail until synced'}`)
         }
       } else {
         lines.push('Contacts: None linked to this deal')

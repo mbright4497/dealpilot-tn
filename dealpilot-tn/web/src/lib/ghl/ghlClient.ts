@@ -117,6 +117,14 @@ export async function sendGHLEmail(
   };
 }
 
+export type SendGHLSmsOptions = {
+  /**
+   * When true, omitting contactId is allowed and GHL receives `toNumber` (E.164).
+   * Use only for ad-hoc numbers (e.g. agent morning briefing) — not transaction contacts.
+   */
+  allowPhoneOnlyRecipient?: boolean;
+};
+
 export async function sendGHLSMS(
   apiKey: string,
   toPhone: string,
@@ -124,13 +132,32 @@ export async function sendGHLSMS(
   message: string,
   ghlContactId?: string | null,
   locationId?: string | null,
-  conversationId?: string | null
-): Promise<{ success: boolean; messageId?: string; fromNumber?: string }> {
+  conversationId?: string | null,
+  options?: SendGHLSmsOptions
+): Promise<{
+  success: boolean;
+  messageId?: string;
+  fromNumber?: string;
+  error?: string;
+}> {
   const contactId = String(ghlContactId || "").trim();
   const loc = String(locationId || "").trim();
+  const allowPhoneOnly = options?.allowPhoneOnlyRecipient === true;
 
   const digits = toPhone.replace(/\D/g, "");
   const e164 = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+
+  if (!contactId && !allowPhoneOnly) {
+    console.error("[ghlClient] sendGHLSMS aborted: missing GHL contactId (refusing phone-only SMS)", {
+      toPhoneDigits: digits || null,
+      hasLocationId: Boolean(loc),
+    });
+    return {
+      success: false,
+      error:
+        "GHL contact id is required to send SMS to this recipient. Sync the contact to GHL or pass ghl_contact_id.",
+    };
+  }
 
   const url = `${GHL_BASE_V2}/conversations/messages`;
   const body = JSON.stringify({
@@ -154,8 +181,10 @@ export async function sendGHLSMS(
       body,
       signal: controller.signal,
     });
-  } catch {
-    return { success: false };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[ghlClient] sendGHLSMS fetch error:", msg);
+    return { success: false, error: msg };
   } finally {
     clearTimeout(timeout);
   }
@@ -166,8 +195,13 @@ export async function sendGHLSMS(
     console.error("[ghlClient] sendGHLSMS failed:", {
       status: res.status,
       body: responseText,
+      hadContactId: Boolean(contactId),
+      allowPhoneOnly,
     });
-    return { success: false };
+    return {
+      success: false,
+      error: responseText.slice(0, 500) || `GHL SMS request failed (${res.status})`,
+    };
   }
 
   let json: Record<string, unknown> = {};

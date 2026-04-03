@@ -5,6 +5,43 @@ import { createClient } from '@supabase/supabase-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { sendGHLEmail, sendGHLSMS } from '@/lib/ghl/ghlClient'
 
+function digitsOnly(phone: string | null | undefined): string {
+  return String(phone || '').replace(/\D/g, '')
+}
+
+/** Read GHL id from JSONB contact (snake_case or camelCase). */
+function ghlIdFromContactRaw(c: Record<string, unknown>): string {
+  const a = c.ghl_contact_id
+  const b = c.ghlContactId
+  const s = (a != null ? String(a) : b != null ? String(b) : '').trim()
+  return s
+}
+
+/**
+ * Prefer id on the resolved contact; if missing, find another party on the same deal
+ * with the same normalized phone that has a GHL id.
+ */
+function resolveGhlContactIdForOutbound(
+  target: Record<string, unknown>,
+  allRaw: unknown[]
+): string | null {
+  const direct = ghlIdFromContactRaw(target)
+  if (direct) return direct
+  const targetDigits = digitsOnly(
+    target.phone != null ? String(target.phone) : null
+  )
+  if (!targetDigits) return null
+  for (const item of allRaw) {
+    if (!item || typeof item !== 'object') continue
+    const o = item as Record<string, unknown>
+    if (digitsOnly(o.phone != null ? String(o.phone) : null) !== targetDigits)
+      continue
+    const id = ghlIdFromContactRaw(o)
+    if (id) return id
+  }
+  return null
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({} as Record<string, unknown>))
@@ -107,16 +144,16 @@ export async function POST(req: Request) {
       .eq('user_id', effectiveUserId)
       .maybeSingle()
 
-    const allContacts = Array.isArray(tx?.contacts)
-      ? (tx.contacts as Array<{
-          id: string
-          name: string
-          role: string
-          phone: string | null
-          email: string | null
-          ghl_contact_id?: string | null
-        }>)
-      : []
+    const contactsRaw = Array.isArray(tx?.contacts) ? tx!.contacts : []
+    const allContacts = contactsRaw as Array<{
+      id: string
+      name: string
+      role: string
+      phone: string | null
+      email: string | null
+      ghl_contact_id?: string | null
+      ghlContactId?: string | null
+    }>
 
     const target = transactionContactId
       ? allContacts.find((c) => c.id === transactionContactId)
@@ -140,13 +177,23 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+    const resolvedGhlId = resolveGhlContactIdForOutbound(
+      target as unknown as Record<string, unknown>,
+      contactsRaw as unknown[]
+    )
+
     if (type === 'email') {
-      const syncedId = target.ghl_contact_id ? String(target.ghl_contact_id).trim() : ''
-      if (!syncedId) {
+      if (!resolvedGhlId) {
+        console.error('[communications/send] outbound email: no ghl_contact_id', {
+          dealId,
+          transactionContactId: transactionContactId || null,
+          contactRole: contactRole || null,
+          contactName: target.name,
+        })
         return NextResponse.json(
           {
             error:
-              'Contact is not synced to GHL yet. Delete and re-add this contact to sync them.',
+              'Contact is not synced to GHL yet (no ghl_contact_id on this party). Delete and re-add this contact to sync them.',
           },
           { status: 400 }
         )
@@ -158,6 +205,22 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
+    if (type === 'sms' && !resolvedGhlId) {
+      console.error('[communications/send] outbound SMS blocked: missing ghl_contact_id', {
+        dealId,
+        transactionContactId: transactionContactId || null,
+        contactRole: contactRole || null,
+        contactName: contactName || contactRoleLabel,
+        contactPhone: contactPhone ? `${digitsOnly(contactPhone).slice(0, 3)}…` : null,
+      })
+      return NextResponse.json(
+        {
+          error:
+            'Cannot send SMS: this transaction contact has no ghl_contact_id in the deal’s contacts list. Sync the contact to GHL (or ensure ghl_contact_id is stored on that party) before sending.',
+        },
+        { status: 400 }
+      )
+    }
 
     let sendRes: {
       success: boolean
@@ -166,14 +229,13 @@ export async function POST(req: Request) {
       fromEmail?: string
     } = { success: false }
     if (type === 'email') {
-      const ghlContactId = String(target.ghl_contact_id || '').trim()
       const fromReva = { email: 'reva@ihomehq.com', name: 'Vera' }
       sendRes = await sendGHLEmail(
         ghlApiKey,
         {
           email: contactEmail!,
           name: contactName || contactRoleLabel,
-          ghlContactId,
+          ghlContactId: resolvedGhlId!,
         },
         fromReva,
         subject,
@@ -186,13 +248,13 @@ export async function POST(req: Request) {
         contactPhone!,
         smsFrom,
         message,
-        target?.ghl_contact_id || null,
+        resolvedGhlId,
         locationId
       )
     }
     if (!sendRes.success) {
       const detail =
-        type === 'email' && 'error' in sendRes && sendRes.error
+        'error' in sendRes && sendRes.error
           ? sendRes.error
           : `Failed to send ${type} via GHL`
       return NextResponse.json({ error: detail }, { status: 502 })

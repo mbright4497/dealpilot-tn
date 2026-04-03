@@ -93,13 +93,16 @@ End with "Reply for details."`
       const briefing = completion.choices[0].message.content ||
         `Good morning ${firstName}! You have ${transactions.length} active deal(s). Reply for details.`
 
+      const agentGhlId = agent.ghl_contact_id || null
       const smsResult = await sendGHLSMS(
         process.env.GHL_API_KEY || '',
         agent.phone!,
         process.env.GHL_SMS_NUMBER || '',
         briefing,
-        agent.ghl_contact_id || null,
-        process.env.GHL_LOCATION_ID || ''
+        agentGhlId,
+        process.env.GHL_LOCATION_ID || '',
+        null,
+        { allowPhoneOnlyRecipient: !agentGhlId }
       )
       console.log('[cron] briefing sent to:', agent.full_name)
 
