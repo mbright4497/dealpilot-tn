@@ -159,6 +159,30 @@ export async function POST(req: Request) {
       ? allContacts.find((c) => c.id === transactionContactId)
       : allContacts.find((c) => c.role?.toLowerCase() === contactRole.toLowerCase())
 
+    if (type === 'sms' && transactionContactId) {
+      console.log('[communications/send] SMS transactionContactId resolution', {
+        dealId,
+        transactionContactId,
+        effectiveUserId,
+        transactionRowFound: Boolean(tx),
+        resolvedContact: target
+          ? {
+              id: target.id,
+              name: target.name,
+              role: target.role,
+              phone: target.phone ?? null,
+              email: target.email ?? null,
+              ghl_contact_id: target.ghl_contact_id ?? target.ghlContactId ?? null,
+            }
+          : null,
+        contactsOnDeal: allContacts.map((c) => ({
+          id: c.id,
+          name: c.name,
+          role: c.role,
+        })),
+      })
+    }
+
     if (!target) {
       return NextResponse.json(
         { error: 'Contact not found for this transaction' },
