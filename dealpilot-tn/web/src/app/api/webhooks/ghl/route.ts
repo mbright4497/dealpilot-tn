@@ -1,6 +1,12 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+
+function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  return digits.slice(-10)
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -66,9 +72,7 @@ export async function POST(req: Request) {
       userId = profileData[0].id
     }
 
-    const normalizedFrom = fromPhone
-      ? fromPhone.replace(/\D/g, '').replace(/^1/, '')
-      : null
+    const normalizedFrom = fromPhone ? normalizePhone(fromPhone) : null
 
     let agentProfile: {
       id: string
@@ -108,8 +112,7 @@ export async function POST(req: Request) {
         for (const tx of allTx) {
           const contacts = Array.isArray(tx.contacts) ? tx.contacts : []
           const match = contacts.find((c: any) => {
-            const normalized = (c.phone || '').replace(/\D/g, '').replace(/^1/, '')
-            return normalized === normalizedFrom
+            return normalizePhone(c.phone || '') === normalizedFrom
           })
           if (match) {
             contactProfile = {
