@@ -95,7 +95,7 @@ export async function GET(request: Request) {
         .from('transaction_activity')
         .select('id')
         .eq('transaction_id', tx.id)
-        .eq('type', 'vera_deadline_reminder')
+        .eq('activity_type', 'vera_deadline_reminder')
         .eq('title', deadline.name)
         .gte('created_at', today.toISOString())
         .limit(1)
@@ -149,7 +149,7 @@ export async function GET(request: Request) {
       await supabase.from('transaction_activity').insert({
         transaction_id: tx.id,
         user_id: tx.user_id,
-        type: 'vera_deadline_reminder',
+        activity_type: 'vera_deadline_reminder',
         title: deadline.name,
         description: `Vera sent ${deadline.name} reminder to ${contact?.name || 'agent only'}`,
         created_at: new Date().toISOString()

@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import { ClipboardList } from 'lucide-react'
 import { signOutAndRedirectToLogin } from '@/lib/auth-client'
 
 export default function MobileSidebar({ items, unreadCount, onNavigate, onClose }:{ items:{id:string,label:string}[], unreadCount:number, onNavigate:(id:string)=>void, onClose:()=>void }){
@@ -18,6 +19,14 @@ export default function MobileSidebar({ items, unreadCount, onNavigate, onClose 
           {items.map(it=> (
             <button key={it.id} onClick={()=>{ onNavigate(it.id); onClose() }} className="w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">{it.label}</button>
           ))}
+          <a
+            href="/inspectors"
+            onClick={onClose}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white"
+          >
+            <ClipboardList size={18} strokeWidth={2} />
+            Inspectors
+          </a>
           <button onClick={()=>{ onNavigate('communications'); onClose() }} className="w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">Communications {unreadCount>0 && <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">{unreadCount}</span>}</button>
           <button onClick={()=>{ onNavigate('settings'); onClose() }} className="w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">Settings</button>
         </nav>

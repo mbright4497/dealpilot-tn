@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ClipboardList } from 'lucide-react'
 import ClosingPilotLogo from '@/components/ClosingPilotLogo'
 import SidebarUserFooter from '@/components/SidebarUserFooter'
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', href: '/' },
   { id: 'transactions', label: 'Transactions', href: '/transactions' },
+  { id: 'inspectors', label: 'Inspectors', href: '/inspectors' },
   { id: 'deadlines', label: 'Deadlines', href: '/deadlines' },
   { id: 'ai', label: 'AI Assistant', href: '/ai' },
   { id: 'communications', label: 'Communications', href: '/communications' },
@@ -72,6 +74,9 @@ function matchesRoute(pathname: string, href: string) {
   if (href === '/transactions') {
     return pathname.startsWith('/transactions')
   }
+  if (href === '/inspectors') {
+    return pathname.startsWith('/inspectors')
+  }
   if (href === '/deadlines') {
     return pathname.startsWith('/deadlines')
   }
@@ -129,7 +134,7 @@ export default function Sidebar() {
                 active ? 'bg-gray-800 text-orange-400' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
             >
-              <NavIcon name={item.id} />
+              {item.id === 'inspectors' ? <ClipboardList size={18} strokeWidth={2} /> : <NavIcon name={item.id} />}
               {item.label}
               {item.id === 'communications' && unreadCount > 0 && (
                 <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">

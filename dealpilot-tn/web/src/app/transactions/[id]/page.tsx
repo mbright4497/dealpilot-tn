@@ -383,9 +383,9 @@ function TransactionDetailContent() {
   const addressMismatchDismissed = useRef<Set<number>>(new Set())
   const rowUploadInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'checklist' | 'deadlines' | 'contacts' | 'activity'>(
-    'overview'
-  )
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'documents' | 'checklist' | 'inspectors' | 'deadlines' | 'contacts' | 'activity'
+  >('overview')
 
   const [aiChecklist, setAiChecklist] = useState<ChecklistItem[]>([])
   const [showEditDealModal, setShowEditDealModal] = useState(false)
@@ -408,6 +408,19 @@ function TransactionDetailContent() {
   const [contactForm, setContactForm] = useState<ContactFormState>(EMPTY_CONTACT_FORM)
   const [contactSaving, setContactSaving] = useState(false)
   const [contactDeleteBusyId, setContactDeleteBusyId] = useState<string | null>(null)
+
+  const [txInspectors, setTxInspectors] = useState<any[]>([])
+  const [txInspectorsLoading, setTxInspectorsLoading] = useState(false)
+  const [showAssignInspectorModal, setShowAssignInspectorModal] = useState(false)
+  const [inspectorDirectory, setInspectorDirectory] = useState<any[]>([])
+  const [assignInspectorForm, setAssignInspectorForm] = useState({
+    inspector_id: '',
+    inspection_type: 'home',
+    scheduled_at: '',
+    notes: '',
+  })
+  const [assignInspectorSaving, setAssignInspectorSaving] = useState(false)
+  const [inspectorPatchBusy, setInspectorPatchBusy] = useState<string | null>(null)
 
   const summary = useMemo(() => (tx?.ai_summary ?? null) as AiSummary, [tx])
 
@@ -534,6 +547,26 @@ function TransactionDetailContent() {
   useEffect(() => {
     void loadPageData().then(() => Promise.all([loadCommsHistory(), loadContacts(), loadActivity()]))
   }, [txId, loadPageData, loadContacts])
+
+  useEffect(() => {
+    if (activeTab !== 'inspectors' || !txId) return
+    let cancelled = false
+    setTxInspectorsLoading(true)
+    fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled) setTxInspectors(Array.isArray(j.inspectors) ? j.inspectors : [])
+      })
+      .catch(() => {
+        if (!cancelled) setTxInspectors([])
+      })
+      .finally(() => {
+        if (!cancelled) setTxInspectorsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, txId])
 
   useEffect(() => {
     if (!txId) return
@@ -1792,6 +1825,319 @@ function TransactionDetailContent() {
     )
   }
 
+  function inspectorsTab() {
+    const inspectionTypeOptions = [
+      { value: 'home', label: 'Home' },
+      { value: 'wdi', label: 'WDI' },
+      { value: 'septic', label: 'Septic' },
+      { value: 'well', label: 'Well' },
+      { value: 'mold', label: 'Mold' },
+    ] as const
+
+    function inspectionLabel(v: string | null | undefined): string {
+      const key = String(v || 'home').toLowerCase()
+      const found = inspectionTypeOptions.find((o) => o.value === key)
+      return found?.label || key
+    }
+
+    function pickInspector(inspectors: unknown): Record<string, unknown> | null {
+      if (!inspectors) return null
+      const row = Array.isArray(inspectors) ? inspectors[0] : inspectors
+      return row && typeof row === 'object' ? (row as Record<string, unknown>) : null
+    }
+
+    function formatDateTimeLocal(iso: string | null | undefined): string {
+      if (!iso) return '—'
+      const d = new Date(iso)
+      if (Number.isNaN(d.getTime())) return '—'
+      return d.toLocaleString()
+    }
+
+    async function openAssignModal() {
+      setAssignInspectorForm({
+        inspector_id: '',
+        inspection_type: 'home',
+        scheduled_at: '',
+        notes: '',
+      })
+      try {
+        const res = await fetch('/api/inspectors', { cache: 'no-store' })
+        const j = await res.json()
+        setInspectorDirectory(Array.isArray(j.inspectors) ? j.inspectors : [])
+      } catch {
+        setInspectorDirectory([])
+      }
+      setShowAssignInspectorModal(true)
+    }
+
+    async function submitAssign() {
+      if (!txId) return
+      const iid = assignInspectorForm.inspector_id.trim()
+      if (!iid) {
+        window.alert('Select an inspector.')
+        return
+      }
+      setAssignInspectorSaving(true)
+      try {
+        const payload: Record<string, unknown> = {
+          inspector_id: iid,
+          inspection_type: assignInspectorForm.inspection_type,
+          notes: assignInspectorForm.notes.trim() || null,
+        }
+        if (assignInspectorForm.scheduled_at) {
+          const d = new Date(assignInspectorForm.scheduled_at)
+          if (!Number.isNaN(d.getTime())) payload.scheduled_at = d.toISOString()
+        }
+        const res = await fetch(`/api/transactions/${txId}/inspectors`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          window.alert(j?.error || 'Could not assign')
+          return
+        }
+        setShowAssignInspectorModal(false)
+        const r2 = await fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
+        const j2 = await r2.json()
+        setTxInspectors(Array.isArray(j2.inspectors) ? j2.inspectors : [])
+      } finally {
+        setAssignInspectorSaving(false)
+      }
+    }
+
+    async function patchAssignment(id: string, body: Record<string, unknown>) {
+      if (!txId) return
+      setInspectorPatchBusy(id)
+      try {
+        const res = await fetch(`/api/transactions/${txId}/inspectors`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, ...body }),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          window.alert(j?.error || 'Update failed')
+          return
+        }
+        const r2 = await fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
+        const j2 = await r2.json()
+        setTxInspectors(Array.isArray(j2.inspectors) ? j2.inspectors : [])
+      } finally {
+        setInspectorPatchBusy(null)
+      }
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-white">Inspectors</h2>
+            <button
+              type="button"
+              onClick={() => void openAssignModal()}
+              className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition"
+            >
+              + Assign Inspector
+            </button>
+          </div>
+
+          {txInspectorsLoading ? (
+            <p className="mt-3 text-sm text-slate-400">Loading…</p>
+          ) : txInspectors.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">No inspectors assigned. Click + Assign Inspector to add one.</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {txInspectors.map((row: any) => {
+                const insp = pickInspector(row.inspectors)
+                const name = String(insp?.name || 'Inspector')
+                const company = insp?.company ? String(insp.company) : ''
+                const phone = insp?.phone ? String(insp.phone) : ''
+                const bm = String(insp?.booking_method || 'call').toLowerCase()
+                const st = String(row.status || 'pending').toLowerCase()
+                const busy = inspectorPatchBusy === row.id
+
+                let statusBadge = 'border-amber-500/40 bg-amber-500/15 text-amber-100'
+                let statusLabel = 'Pending'
+                if (st === 'scheduled') {
+                  statusBadge = 'border-sky-500/40 bg-sky-500/15 text-sky-100'
+                  statusLabel = 'Scheduled'
+                } else if (st === 'completed') {
+                  statusBadge = 'border-emerald-500/40 bg-emerald-500/15 text-emerald-100'
+                  statusLabel = 'Completed'
+                }
+
+                return (
+                  <div key={row.id} className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="text-base font-semibold text-white">{name}</div>
+                        {company ? <div className="text-sm text-slate-400">{company}</div> : null}
+                        {phone ? <div className="mt-1 text-sm text-slate-300">{phone}</div> : null}
+                        <div className="mt-2 text-xs text-slate-500">
+                          Type:{' '}
+                          <span className="font-medium text-slate-300">{inspectionLabel(row.inspection_type)}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${statusBadge}`}>
+                          {statusLabel}
+                        </span>
+                        {bm === 'call' ? (
+                          <span className="rounded-full border border-red-500/40 bg-red-500/15 px-2 py-0.5 text-[11px] font-semibold text-red-200">
+                            Requires Phone Call
+                          </span>
+                        ) : null}
+                        {bm === 'text' ? (
+                          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-200">
+                            Can Text to Book
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    {row.scheduled_at ? (
+                      <div className="mt-2 text-xs text-slate-400">
+                        Scheduled: <span className="text-slate-200">{formatDateTimeLocal(row.scheduled_at)}</span>
+                      </div>
+                    ) : null}
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {st === 'pending' ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void patchAssignment(row.id, {
+                              status: 'scheduled',
+                              scheduled_at: row.scheduled_at || new Date().toISOString(),
+                            })
+                          }
+                          className="rounded-lg border border-sky-600/50 bg-sky-950/40 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:border-sky-500/60 disabled:opacity-50"
+                        >
+                          Mark Scheduled
+                        </button>
+                      ) : null}
+                      {st === 'scheduled' ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() =>
+                            void patchAssignment(row.id, {
+                              status: 'completed',
+                              completed_at: new Date().toISOString(),
+                            })
+                          }
+                          className="rounded-lg border border-emerald-600/50 bg-emerald-950/40 px-3 py-1.5 text-xs font-semibold text-emerald-100 hover:border-emerald-500/60 disabled:opacity-50"
+                        >
+                          Mark Complete
+                        </button>
+                      ) : null}
+                      <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(row.report_received)}
+                          disabled={busy}
+                          onChange={(e) => void patchAssignment(row.id, { report_received: e.target.checked })}
+                          className="rounded border-slate-600"
+                        />
+                        Report Received
+                      </label>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {showAssignInspectorModal ? (
+          <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold text-white">Assign Inspector</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAssignInspectorModal(false)}
+                  className="rounded-lg border border-slate-600 px-2 py-1 text-xs text-slate-200 hover:border-orange-500/40"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3">
+                <label className="text-xs font-medium text-slate-300">
+                  Inspector
+                  <select
+                    value={assignInspectorForm.inspector_id}
+                    onChange={(e) => setAssignInspectorForm((f) => ({ ...f, inspector_id: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  >
+                    <option value="">Select…</option>
+                    {inspectorDirectory.map((d: any) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                        {d.company ? ` — ${d.company}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Inspection type
+                  <select
+                    value={assignInspectorForm.inspection_type}
+                    onChange={(e) => setAssignInspectorForm((f) => ({ ...f, inspection_type: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  >
+                    {inspectionTypeOptions.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Scheduled date/time (optional)
+                  <input
+                    type="datetime-local"
+                    value={assignInspectorForm.scheduled_at}
+                    onChange={(e) => setAssignInspectorForm((f) => ({ ...f, scheduled_at: e.target.value }))}
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                  />
+                </label>
+                <label className="text-xs font-medium text-slate-300">
+                  Notes
+                  <textarea
+                    value={assignInspectorForm.notes}
+                    onChange={(e) => setAssignInspectorForm((f) => ({ ...f, notes: e.target.value }))}
+                    className="mt-1 min-h-20 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
+                    placeholder="Optional…"
+                  />
+                </label>
+              </div>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignInspectorModal(false)}
+                  className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void submitAssign()}
+                  disabled={assignInspectorSaving}
+                  className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
+                >
+                  {assignInspectorSaving ? 'Saving…' : 'Assign'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
   function contactsTab() {
     function openAddContactModal() {
       setEditingContactId(null)
@@ -2639,6 +2985,7 @@ function TransactionDetailContent() {
                 { key: 'overview', label: 'Overview' },
                 { key: 'documents', label: 'Documents' },
                 { key: 'checklist', label: 'Checklist' },
+                { key: 'inspectors', label: 'Inspectors' },
                 { key: 'deadlines', label: 'Deadlines' },
                 { key: 'contacts', label: 'Contacts' },
                 { key: 'activity', label: 'Activity' },
@@ -2662,6 +3009,7 @@ function TransactionDetailContent() {
             {activeTab === 'overview' ? overviewTab() : null}
             {activeTab === 'documents' ? documentsTab() : null}
             {activeTab === 'checklist' ? checklistTab() : null}
+            {activeTab === 'inspectors' ? inspectorsTab() : null}
             {activeTab === 'deadlines' ? deadlinesTab() : null}
             {activeTab === 'contacts' ? contactsTab() : null}
             {activeTab === 'activity' ? activityTab() : null}
