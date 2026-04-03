@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   // Load all active transactions with deadlines
   const { data: transactions } = await supabase
     .from('transactions')
-    .select('id, address, client, binding_date, closing_date, user_id, contacts')
+    .select('id, address, client, binding_date, closing_date, user_id, contacts, inspection_period_days')
     .in('status', ['active', 'under_contract', 'pending'])
     .neq('status', 'deleted')
     .not('binding_date', 'is', null)
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       },
       {
         name: 'Inspection Period End',
-        date: addDays(bindingDate, 10),
+        date: addDays(bindingDate, tx.inspection_period_days || 10),
         daysWarning: 2,
         partyRole: 'Buyer',
         message: (contact: string, addr: string) =>
