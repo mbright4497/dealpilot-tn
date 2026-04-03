@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const { data: transactions } = await supabase
     .from('transactions')
     .select('id, address, client, binding_date, closing_date, user_id, contacts')
-    .eq('status', 'active')
+    .in('status', ['active', 'under_contract', 'pending'])
     .neq('status', 'deleted')
     .not('binding_date', 'is', null)
 
