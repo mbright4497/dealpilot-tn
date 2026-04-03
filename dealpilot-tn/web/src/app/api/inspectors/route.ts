@@ -14,6 +14,7 @@ type InspectorInsertBody = {
   specialties?: string[]
   notes?: string
   preferred?: boolean
+  category?: string
 }
 
 function buildInspectorUpdates(body: InspectorInsertBody & { active?: boolean }) {
@@ -28,6 +29,10 @@ function buildInspectorUpdates(body: InspectorInsertBody & { active?: boolean })
   if (body.notes !== undefined) updates.notes = body.notes
   if (body.preferred !== undefined) updates.preferred = body.preferred
   if (body.active !== undefined) updates.active = body.active
+  if (body.category !== undefined) {
+    const c = typeof body.category === 'string' ? body.category.trim().toLowerCase() : ''
+    updates.category = c || 'inspector'
+  }
   return updates
 }
 
@@ -67,6 +72,9 @@ export async function POST(req: Request) {
     const name = typeof body.name === 'string' ? body.name.trim() : ''
     if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 })
 
+    const categoryRaw = typeof body.category === 'string' ? body.category.trim().toLowerCase() : ''
+    const category = categoryRaw || 'inspector'
+
     const row = {
       user_id: user.id,
       name,
@@ -78,6 +86,7 @@ export async function POST(req: Request) {
       specialties: Array.isArray(body.specialties) ? body.specialties : [],
       notes: body.notes ?? null,
       preferred: body.preferred ?? false,
+      category,
     }
 
     const { data, error } = await supabase.from('inspectors').insert(row).select().single()

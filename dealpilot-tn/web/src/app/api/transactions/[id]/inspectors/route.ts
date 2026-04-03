@@ -53,6 +53,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
           notes,
           preferred,
           active,
+          category,
           created_at,
           updated_at
         )
@@ -106,7 +107,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .maybeSingle()
 
     if (inspErr) return NextResponse.json({ error: inspErr.message }, { status: 500 })
-    if (!insp) return NextResponse.json({ error: 'Inspector not found' }, { status: 404 })
+    if (!insp) return NextResponse.json({ error: 'Service provider not found' }, { status: 404 })
 
     const inspectionType =
       typeof body.inspection_type === 'string' && body.inspection_type.trim()

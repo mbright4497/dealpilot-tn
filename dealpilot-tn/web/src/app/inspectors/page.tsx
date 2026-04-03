@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type Inspector = {
   id: string
@@ -13,10 +13,40 @@ type Inspector = {
   specialties: string[] | null
   notes: string | null
   preferred: boolean | null
+  category?: string | null
 }
 
 const BOOKING_OPTIONS = ['call', 'text', 'email', 'online'] as const
-const SPECIALTY_OPTIONS = ['Home', 'WDI', 'Septic', 'Well', 'Mold'] as const
+const SPECIALTY_OPTIONS = ['Home', 'WDI', 'Septic', 'Well', 'Mold', 'Radon'] as const
+
+const CATEGORY_ORDER = [
+  'inspector',
+  'contractor',
+  'lender',
+  'title_company',
+  'attorney',
+  'other',
+] as const
+
+const CATEGORY_LABELS: Record<(typeof CATEGORY_ORDER)[number], string> = {
+  inspector: 'Inspector',
+  contractor: 'Contractor',
+  lender: 'Lender',
+  title_company: 'Title Company',
+  attorney: 'Attorney',
+  other: 'Other',
+}
+
+const CATEGORY_SELECT_OPTIONS = CATEGORY_ORDER.map((value) => ({
+  value,
+  label: CATEGORY_LABELS[value],
+}))
+
+function normalizeCategory(c: string | null | undefined): (typeof CATEGORY_ORDER)[number] {
+  const v = (c || 'inspector').toLowerCase()
+  if ((CATEGORY_ORDER as readonly string[]).includes(v)) return v as (typeof CATEGORY_ORDER)[number]
+  return 'other'
+}
 
 const bookingBadgeClass: Record<string, string> = {
   call: 'bg-red-500/20 text-red-200 border-red-500/40',
@@ -35,6 +65,7 @@ const emptyForm = {
   specialties: [] as string[],
   notes: '',
   preferred: false,
+  category: 'inspector' as (typeof CATEGORY_ORDER)[number],
 }
 
 export default function InspectorsPage() {
@@ -45,6 +76,26 @@ export default function InspectorsPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null)
+
+  const sections = useMemo(() => {
+    const groups = new Map<(typeof CATEGORY_ORDER)[number], Inspector[]>()
+    for (const row of inspectors) {
+      const cat = normalizeCategory(row.category)
+      if (!groups.has(cat)) groups.set(cat, [])
+      groups.get(cat)!.push(row)
+    }
+    const sortRows = (a: Inspector, b: Inspector) => {
+      if (Boolean(b.preferred) !== Boolean(a.preferred)) {
+        return (b.preferred ? 1 : 0) - (a.preferred ? 1 : 0)
+      }
+      return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    }
+    return CATEGORY_ORDER.filter((k) => groups.has(k)).map((k) => ({
+      key: k,
+      label: CATEGORY_LABELS[k],
+      rows: groups.get(k)!.sort(sortRows),
+    }))
+  }, [inspectors])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,6 +130,7 @@ export default function InspectorsPage() {
       specialties: Array.isArray(row.specialties) ? [...row.specialties] : [],
       notes: row.notes || '',
       preferred: Boolean(row.preferred),
+      category: normalizeCategory(row.category),
     })
     setModalOpen(true)
   }
@@ -110,6 +162,7 @@ export default function InspectorsPage() {
         specialties: form.specialties,
         notes: form.notes.trim() || null,
         preferred: form.preferred,
+        category: form.category,
       }
       if (editingId) {
         const res = await fetch('/api/inspectors', {
@@ -119,7 +172,7 @@ export default function InspectorsPage() {
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
-          window.alert(j?.error || 'Could not update inspector')
+          window.alert(j?.error || 'Could not update')
           return
         }
       } else {
@@ -130,7 +183,7 @@ export default function InspectorsPage() {
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
-          window.alert(j?.error || 'Could not create inspector')
+          window.alert(j?.error || 'Could not create')
           return
         }
       }
@@ -142,7 +195,7 @@ export default function InspectorsPage() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm('Remove this inspector from your directory?')) return
+    if (!window.confirm('Remove this provider from your directory?')) return
     setDeleteBusyId(id)
     try {
       const res = await fetch(`/api/inspectors?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
@@ -157,19 +210,81 @@ export default function InspectorsPage() {
     }
   }
 
+  function renderCard(row: Inspector) {
+    const bm = String(row.booking_method || 'call').toLowerCase()
+    const badgeCls = bookingBadgeClass[bm] || bookingBadgeClass.call
+    const cat = normalizeCategory(row.category)
+    return (
+      <div
+        key={row.id}
+        className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 shadow-sm ring-1 ring-slate-800/80"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className="text-lg font-semibold text-white">{row.name}</div>
+            {row.company ? <div className="text-sm text-slate-400">{row.company}</div> : null}
+            {row.phone ? <div className="mt-1 text-sm text-slate-300">{row.phone}</div> : null}
+          </div>
+          <div className="flex flex-wrap justify-end gap-1">
+            <span className="rounded-full border border-slate-600/80 bg-slate-800/80 px-2 py-0.5 text-[11px] font-semibold text-slate-300">
+              {CATEGORY_LABELS[cat]}
+            </span>
+            {row.preferred ? (
+              <span className="rounded-full border border-orange-500/50 bg-orange-500/15 px-2 py-0.5 text-xs font-semibold text-orange-200">
+                Preferred
+              </span>
+            ) : null}
+            <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${badgeCls}`}>
+              {bm}
+            </span>
+          </div>
+        </div>
+        {Array.isArray(row.specialties) && row.specialties.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {row.specialties.map((s) => (
+              <span
+                key={s}
+                className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => openEdit(row)}
+            className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-orange-500/40"
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            disabled={deleteBusyId === row.id}
+            onClick={() => void remove(row.id)}
+            className="rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-950/50 disabled:opacity-50"
+          >
+            {deleteBusyId === row.id ? '…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white">Inspector Directory</h1>
-          <p className="mt-1 text-sm text-gray-400">Your saved inspectors for quick assignment on deals.</p>
+          <h1 className="text-3xl font-bold text-white">Service Providers</h1>
+          <p className="mt-1 text-sm text-gray-400">Your saved providers for quick assignment on deals.</p>
         </div>
         <button
           type="button"
           onClick={openAdd}
           className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition"
         >
-          + Add Inspector
+          + Add provider
         </button>
       </div>
 
@@ -177,67 +292,16 @@ export default function InspectorsPage() {
         <p className="text-sm text-gray-400">Loading…</p>
       ) : inspectors.length === 0 ? (
         <div className="rounded-xl border border-gray-700 bg-gray-900/40 px-6 py-12 text-center text-slate-400">
-          No inspectors yet. Add your first.
+          No service providers yet. Add your first.
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {inspectors.map((row) => {
-            const bm = String(row.booking_method || 'call').toLowerCase()
-            const badgeCls = bookingBadgeClass[bm] || bookingBadgeClass.call
-            return (
-              <div
-                key={row.id}
-                className="rounded-xl border border-slate-700 bg-slate-900/50 p-4 shadow-sm ring-1 ring-slate-800/80"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <div className="text-lg font-semibold text-white">{row.name}</div>
-                    {row.company ? <div className="text-sm text-slate-400">{row.company}</div> : null}
-                    {row.phone ? <div className="mt-1 text-sm text-slate-300">{row.phone}</div> : null}
-                  </div>
-                  <div className="flex flex-wrap justify-end gap-1">
-                    {row.preferred ? (
-                      <span className="rounded-full border border-orange-500/50 bg-orange-500/15 px-2 py-0.5 text-xs font-semibold text-orange-200">
-                        Preferred
-                      </span>
-                    ) : null}
-                    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold capitalize ${badgeCls}`}>
-                      {bm}
-                    </span>
-                  </div>
-                </div>
-                {Array.isArray(row.specialties) && row.specialties.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {row.specialties.map((s) => (
-                      <span
-                        key={s}
-                        className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-300"
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(row)}
-                    className="rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-orange-500/40"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    disabled={deleteBusyId === row.id}
-                    onClick={() => void remove(row.id)}
-                    className="rounded-lg border border-red-500/40 bg-red-950/30 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-950/50 disabled:opacity-50"
-                  >
-                    {deleteBusyId === row.id ? '…' : 'Delete'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+        <div className="space-y-10">
+          {sections.map((sec) => (
+            <section key={sec.key}>
+              <h2 className="mb-4 text-lg font-semibold text-white">{sec.label}</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{sec.rows.map((row) => renderCard(row))}</div>
+            </section>
+          ))}
         </div>
       )}
 
@@ -245,7 +309,9 @@ export default function InspectorsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-white">{editingId ? 'Edit Inspector' : 'Add Inspector'}</h2>
+              <h2 className="text-lg font-semibold text-white">
+                {editingId ? 'Edit service provider' : 'Add service provider'}
+              </h2>
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
@@ -263,6 +329,25 @@ export default function InspectorsPage() {
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700"
                 />
+              </label>
+              <label className="block text-sm text-slate-300">
+                Category
+                <select
+                  value={form.category}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      category: e.target.value as (typeof CATEGORY_ORDER)[number],
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white ring-1 ring-slate-700"
+                >
+                  {CATEGORY_SELECT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block text-sm text-slate-300">
                 Company
@@ -366,7 +451,7 @@ export default function InspectorsPage() {
                 onClick={() => void save()}
                 className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
               >
-                {saving ? 'Saving…' : editingId ? 'Save' : 'Add Inspector'}
+                {saving ? 'Saving…' : editingId ? 'Save' : 'Add provider'}
               </button>
             </div>
           </div>

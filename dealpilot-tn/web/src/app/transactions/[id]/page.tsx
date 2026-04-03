@@ -1832,7 +1832,53 @@ function TransactionDetailContent() {
       { value: 'septic', label: 'Septic' },
       { value: 'well', label: 'Well' },
       { value: 'mold', label: 'Mold' },
+      { value: 'radon', label: 'Radon' },
     ] as const
+
+    const providerCategoryOrder = [
+      'inspector',
+      'contractor',
+      'lender',
+      'title_company',
+      'attorney',
+      'other',
+    ] as const
+
+    const providerCategoryLabels: Record<string, string> = {
+      inspector: 'Inspector',
+      contractor: 'Contractor',
+      lender: 'Lender',
+      title_company: 'Title Company',
+      attorney: 'Attorney',
+      other: 'Other',
+    }
+
+    function normalizeProviderCategory(c: unknown): string {
+      const v = typeof c === 'string' ? c.toLowerCase() : 'inspector'
+      if ((providerCategoryOrder as readonly string[]).includes(v)) return v
+      return 'other'
+    }
+
+    function groupDirectoryForSelect(list: unknown[]) {
+      const groups = new Map<string, Record<string, unknown>[]>()
+      for (const d of list) {
+        const row = d && typeof d === 'object' ? (d as Record<string, unknown>) : null
+        if (!row) continue
+        const cat = normalizeProviderCategory(row.category)
+        if (!groups.has(cat)) groups.set(cat, [])
+        groups.get(cat)!.push(row)
+      }
+      return providerCategoryOrder.filter((k) => groups.has(k)).map((k) => ({
+        key: k,
+        label: providerCategoryLabels[k] || k,
+        items: groups.get(k)!,
+      }))
+    }
+
+    function providerCategoryDisplay(c: unknown): string {
+      const k = normalizeProviderCategory(c)
+      return providerCategoryLabels[k] || k
+    }
 
     function inspectionLabel(v: string | null | undefined): string {
       const key = String(v || 'home').toLowerCase()
@@ -1874,7 +1920,7 @@ function TransactionDetailContent() {
       if (!txId) return
       const iid = assignInspectorForm.inspector_id.trim()
       if (!iid) {
-        window.alert('Select an inspector.')
+        window.alert('Select a service provider.')
         return
       }
       setAssignInspectorSaving(true)
@@ -1933,27 +1979,30 @@ function TransactionDetailContent() {
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-white">Inspectors</h2>
+            <h2 className="text-sm font-semibold text-white">Services</h2>
             <button
               type="button"
               onClick={() => void openAssignModal()}
               className="rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition"
             >
-              + Assign Inspector
+              + Assign provider
             </button>
           </div>
 
           {txInspectorsLoading ? (
             <p className="mt-3 text-sm text-slate-400">Loading…</p>
           ) : txInspectors.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-400">No inspectors assigned. Click + Assign Inspector to add one.</p>
+            <p className="mt-3 text-sm text-slate-400">
+              No service providers assigned. Click + Assign provider to add one.
+            </p>
           ) : (
             <div className="mt-3 space-y-3">
               {txInspectors.map((row: any) => {
                 const insp = pickInspector(row.inspectors)
-                const name = String(insp?.name || 'Inspector')
+                const name = String(insp?.name || 'Service provider')
                 const company = insp?.company ? String(insp.company) : ''
                 const phone = insp?.phone ? String(insp.phone) : ''
+                const providerCat = providerCategoryDisplay(insp?.category)
                 const bm = String(insp?.booking_method || 'call').toLowerCase()
                 const st = String(row.status || 'pending').toLowerCase()
                 const busy = inspectorPatchBusy === row.id
@@ -1976,7 +2025,11 @@ function TransactionDetailContent() {
                         {company ? <div className="text-sm text-slate-400">{company}</div> : null}
                         {phone ? <div className="mt-1 text-sm text-slate-300">{phone}</div> : null}
                         <div className="mt-2 text-xs text-slate-500">
-                          Type:{' '}
+                          Category:{' '}
+                          <span className="font-medium text-slate-300">{providerCat}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          Service type:{' '}
                           <span className="font-medium text-slate-300">{inspectionLabel(row.inspection_type)}</span>
                         </div>
                       </div>
@@ -2055,7 +2108,7 @@ function TransactionDetailContent() {
           <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/75 p-4">
             <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-[#0B1530] p-5 shadow-xl">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-base font-semibold text-white">Assign Inspector</h3>
+                <h3 className="text-base font-semibold text-white">Assign service provider</h3>
                 <button
                   type="button"
                   onClick={() => setShowAssignInspectorModal(false)}
@@ -2066,23 +2119,27 @@ function TransactionDetailContent() {
               </div>
               <div className="mt-4 grid gap-3">
                 <label className="text-xs font-medium text-slate-300">
-                  Inspector
+                  Service provider
                   <select
                     value={assignInspectorForm.inspector_id}
                     onChange={(e) => setAssignInspectorForm((f) => ({ ...f, inspector_id: e.target.value }))}
                     className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-white"
                   >
                     <option value="">Select…</option>
-                    {inspectorDirectory.map((d: any) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name}
-                        {d.company ? ` — ${d.company}` : ''}
-                      </option>
+                    {groupDirectoryForSelect(inspectorDirectory).map((g) => (
+                      <optgroup key={g.key} label={g.label}>
+                        {g.items.map((d) => (
+                          <option key={String(d.id)} value={String(d.id)}>
+                            {String(d.name || '')}
+                            {d.company ? ` — ${String(d.company)}` : ''}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </label>
                 <label className="text-xs font-medium text-slate-300">
-                  Inspection type
+                  Service type
                   <select
                     value={assignInspectorForm.inspection_type}
                     onChange={(e) => setAssignInspectorForm((f) => ({ ...f, inspection_type: e.target.value }))}
@@ -2985,7 +3042,7 @@ function TransactionDetailContent() {
                 { key: 'overview', label: 'Overview' },
                 { key: 'documents', label: 'Documents' },
                 { key: 'checklist', label: 'Checklist' },
-                { key: 'inspectors', label: 'Inspectors' },
+                { key: 'inspectors', label: 'Services' },
                 { key: 'deadlines', label: 'Deadlines' },
                 { key: 'contacts', label: 'Contacts' },
                 { key: 'activity', label: 'Activity' },

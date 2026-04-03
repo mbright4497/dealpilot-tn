@@ -10,7 +10,7 @@ import SidebarUserFooter from '@/components/SidebarUserFooter'
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', href: '/' },
   { id: 'transactions', label: 'Transactions', href: '/transactions' },
-  { id: 'inspectors', label: 'Inspectors', href: '/inspectors' },
+  { id: 'inspectors', label: 'Service Providers', href: '/inspectors' },
   { id: 'deadlines', label: 'Deadlines', href: '/deadlines' },
   { id: 'ai', label: 'AI Assistant', href: '/ai' },
   { id: 'communications', label: 'Communications', href: '/communications' },

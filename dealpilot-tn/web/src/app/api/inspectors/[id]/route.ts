@@ -15,6 +15,7 @@ type InspectorPatchBody = {
   notes?: string
   preferred?: boolean
   active?: boolean
+  category?: string
 }
 
 function buildInspectorUpdates(body: InspectorPatchBody) {
@@ -29,6 +30,10 @@ function buildInspectorUpdates(body: InspectorPatchBody) {
   if (body.notes !== undefined) updates.notes = body.notes
   if (body.preferred !== undefined) updates.preferred = body.preferred
   if (body.active !== undefined) updates.active = body.active
+  if (body.category !== undefined) {
+    const c = typeof body.category === 'string' ? body.category.trim().toLowerCase() : ''
+    updates.category = c || 'inspector'
+  }
   return updates
 }
 
