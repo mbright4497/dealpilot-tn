@@ -102,6 +102,8 @@ type TxRow = {
   closing_date?: string | null
   purchase_price?: number | null
   earnest_money?: number | null
+  earnest_money_confirmed?: boolean | null
+  earnest_money_confirmed_at?: string | null
   loan_type?: string | null
   inspection_period?: string | null
   county?: string | null
@@ -401,6 +403,7 @@ function TransactionDetailContent() {
   const [showAddDeadlineModal, setShowAddDeadlineModal] = useState(false)
   const [deadlineForm, setDeadlineForm] = useState({ name: '', dueDate: '', notes: '' })
   const [deadlineSaving, setDeadlineSaving] = useState(false)
+  const [earnestConfirmBusy, setEarnestConfirmBusy] = useState(false)
   const [contacts, setContacts] = useState<TransactionContact[]>([])
   const [contactsLoading, setContactsLoading] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
@@ -1070,6 +1073,34 @@ function TransactionDetailContent() {
             <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
               <div className="text-xs uppercase tracking-wide text-slate-400">Earnest money</div>
               <div className="mt-1 text-sm font-semibold text-white">{currencyOrDash(tx?.earnest_money)}</div>
+              {tx?.earnest_money != null && tx?.earnest_money_confirmed === true ? (
+                <div className="mt-2 text-sm font-medium text-green-400">Earnest Money Confirmed ✓</div>
+              ) : null}
+              {tx?.earnest_money != null && tx?.earnest_money_confirmed !== true ? (
+                <button
+                  type="button"
+                  disabled={earnestConfirmBusy}
+                  onClick={() => {
+                    void (async () => {
+                      setEarnestConfirmBusy(true)
+                      try {
+                        const res = await fetch(`/api/transactions/${txId}/confirm-earnest`, { method: 'POST' })
+                        if (!res.ok) {
+                          const j = await res.json().catch(() => ({}))
+                          setToastMsg(String(j?.error || 'Could not confirm earnest money'))
+                          return
+                        }
+                        await loadPageData()
+                      } finally {
+                        setEarnestConfirmBusy(false)
+                      }
+                    })()
+                  }}
+                  className="mt-2 w-full rounded-lg bg-orange-500 px-3 py-2 text-sm font-semibold text-black hover:bg-orange-600 transition disabled:opacity-60"
+                >
+                  {earnestConfirmBusy ? '…' : '✅ Confirm Earnest Received'}
+                </button>
+              ) : null}
             </div>
             <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
               <div className="text-xs uppercase tracking-wide text-slate-400">Loan type</div>
