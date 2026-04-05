@@ -151,6 +151,24 @@ export async function POST(req: Request) {
         JSON.stringify(agentTransactions[0]?.contacts))
     }
 
+    // Try to match a deal from the message text (agent SMS)
+    let matchedDealId: number | null = null
+
+    if (agentProfile && body) {
+      const msgLower = String(body).toLowerCase()
+      const matched = agentTransactions.find((t) => {
+        const addr = (t.address || '').toLowerCase()
+        const addrWords = addr.split(/[\s,]+/).filter((w) => w.length > 3)
+        return addrWords.some((word) => msgLower.includes(word))
+      })
+      if (matched) {
+        matchedDealId = matched.id
+        console.log(
+          `[webhook/ghl] agent SMS matched deal: ${matched.address} (id: ${matched.id})`
+        )
+      }
+    }
+
     const agentContext = agentProfile
       ? `AGENT CONTEXT (from SMS caller ID):
 You are currently texting with ${agentProfile.full_name}, 
@@ -313,11 +331,10 @@ Always confirm the message before sending.`
           },
           body: JSON.stringify({
             message: body,
-            // Agent SMS: omit deal focus so Vera uses AGENT CONTEXT contacts across all deals
-            // (was agentTransactions[0] = newest deal, wrong when texting about another deal).
+            // Agent SMS: use address-in-message match when possible; else null (full agent context).
             dealId:
               contactProfile?.dealId ??
-              (agentProfile ? null : agentTransactions[0]?.id ?? null),
+              (agentProfile ? matchedDealId : agentTransactions[0]?.id ?? null),
             userId: contactProfile?.agentUserId || resolvedUserId,
             skipHistory: false,
             agentContext: contactProfile
