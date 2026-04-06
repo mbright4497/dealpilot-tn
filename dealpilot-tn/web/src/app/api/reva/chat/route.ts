@@ -189,6 +189,128 @@ IMPORTANT:
 - Always use the exact CONTACT ID from CONTACT ID field above for that contact
 - Never use a made-up or placeholder contact ID
 
+RF401 KNOWLEDGE BASE — Tennessee Purchase and Sale Agreement (Version 03/31/2026):
+
+BINDING AGREEMENT DATE — MOST CRITICAL FIELD:
+The Binding Agreement Date is the date AND TIME the agent acknowledges receipt of the final accepted offer. ALL deadlines count from the DAY AFTER this date. Example: binding date April 1 + earnest due in 3 days = due April 4. Never call it the offer date or signing date. If it is blank or missing, flag it immediately.
+
+KEY DEADLINES FROM BINDING AGREEMENT DATE:
+- Day 3: Buyer applies for loan + pays credit report + notifies seller of lender (Notification form)
+- Day 3: Earnest money due to Holder (TN standard — can be negotiated)
+- Day 5: Cash buyers must provide proof of available funds
+- Day 5: If appraisal contingent, buyer must order appraisal + give seller company name/phone
+- Day 14: Buyer must notify seller of: (a) hazard insurance secured, (b) Intent to Proceed sent + funds available per loan estimate, (c) appraisal ordered and fee paid
+- Inspection period: negotiated (Tri-Cities TN standard is 15 days)
+- Resolution period: begins when seller receives buyer's written repair list; standard is 3 days
+- HOA lien payoff: delivered to buyer's closing agent no later than 7 days before closing
+- Final inspection: closing date or within 2 days prior
+
+DEADLINE RULES (TN LAW):
+- All time periods are CALENDAR days ending at 11:59 PM local time
+- FOUR deadlines are FIRM even on weekends/holidays: Closing Date, Possession Date, Completion of Repair Deadline, Offer Expiration Date
+- ALL OTHER deadlines roll to next business day if they land on Saturday, Sunday, or federal holiday
+- Texting is NOT valid notice in Tennessee — valid methods: in person, prepaid overnight delivery, fax, USPS registered/certified mail, or email
+- Counting starts the DAY AFTER the initial date (e.g., day after Binding Agreement Date = day 1)
+
+SECTION 1 — PARTIES & PROPERTY:
+- Buyer and seller names must be FULL LEGAL names exactly as they appear on the deed
+- Instrument number is stamped on the recorded deed — varies by county; title company can provide
+- Section A items convey AUTOMATICALLY — do not re-list them in Section B
+- Section B: items NOT already in A that stay at no cost (freestanding fridge, non-built-in appliances)
+- Section C: items that do NOT stay — confirm against seller's property disclosure (RF201)
+- Section D leased items: buyer must know transfer fees, assumability, and payoff balance; if not assuming, seller pays cancellation fees and removes before closing; checkbox on line 33 MUST BE CHECKED to be part of agreement
+- Propane tanks: any fuel must be invoiced and credited to seller at closing via ALTA
+
+SECTION 2A — FINANCIAL CONTINGENCY (LOAN):
+- LTV = percentage of purchase price being financed (not the down payment percentage)
+- FHA 3.5% down = 96.5% LTV; VA zero down = 100% LTV; conventional varies
+- THDA is NOT a standalone loan type — must be FHA-backed or VA-backed THDA
+- FHA loan: FHA Addendum MUST be attached and listed in Section 20
+- VA loan: VA Addendum MUST be attached and listed in Section 20
+- Buyer can change loan terms but CANNOT increase costs to seller; use Notification 656 checkbox 8 to notify of lender change
+- Day 3/14 default: seller sends Notification 20 (2-day warning) then Notification 21 (termination); seller has RIGHT to terminate but is NOT obligated
+
+SECTION 2B — FINANCING CONTINGENCY WAIVED (CASH):
+- Box MUST BE CHECKED — section is not active unless checked
+- Cash buyers can still get a loan but lose financing contingency protections
+- Proof of funds due within 5 days of binding date
+
+SECTION 2C — APPRAISAL:
+- Must select EITHER option 1 (not contingent) OR option 2 (IS contingent) — unchecked sections are NOT part of the agreement
+- If appraisal comes in low and contingent: buyer has 3 days to waive OR terminate (earnest returned)
+- If buyer fails to act within 3 days: contingency is deemed satisfied — buyer loses termination right
+- Seller concession limits: FHA max 6% of purchase price; VA max 4%; Conventional 3% if LTV >90%, up to 6% if LTV ≤90%
+
+SECTION 3 — EARNEST MONEY:
+- If earnest check bounces: Holder notifies buyer → buyer has 1 day to deliver immediately available funds → failure = BUYER DEFAULT
+- Earnest cannot be disbursed until 14 days after deposit unless bank clearance letter provided
+- Holder disburses only at: closing, written agreement of all parties, court order, reasonable interpretation, or interpleader
+
+SECTION 4 — CLOSING & POSSESSION:
+- Closing expires at 11:59 PM local time on closing date — any extension must be in writing
+- Possession options MUST be selected — unselected items are NOT part of the agreement
+- Temporary occupancy requires RF635 form attached
+
+SECTION 7 — LEAD-BASED PAINT:
+- Required for ALL properties built BEFORE 1978 — attach RF209
+- Built 1978 or later: check "does not apply"
+
+SECTION 8 — INSPECTIONS:
+- Seller MUST have all utilities AND pool/spa operational during inspection period
+- Buyer covers all inspection costs including WDI (termite) report
+- VA buyers CAN pay for termite letter (as of June 2022)
+- Buyer waives cosmetic objections — no right to require cosmetic repairs
+- Buyer has NO right to require repairs purely to meet current building codes unless required by government
+- Submitting repair request list (RF654) ENDS inspection period and BEGINS resolution period
+- Resolution period: negotiate in good faith; failure to agree = automatic termination + earnest returned
+- Repair Amendment = RF655; Resolution Period Extension = RF653
+- Section 8E Waiver of All Inspections: THIS BOX MUST BE CHECKED — flag prominently, rarely appropriate
+
+SECTION 15 — HOME PROTECTION PLAN:
+- NOT a home inspection substitute
+- Must specify who pays, cost, provider, and which real estate company ordered it
+- If agent pays from commission: title company must be notified; broker must approve
+- Neither box checked = section is NOT part of the agreement
+
+SECTION 17 — BINDING AGREEMENT DATE:
+- Agents fill in acknowledgment of receipt section ONLY — agents do NOT sign as parties
+- The time and date agents acknowledge receipt = Binding Agreement Date for all deadline purposes
+
+SECTION 20 — EXHIBITS AND ADDENDA:
+- Everything attached must be listed here
+- FHA loan → FHA Addendum required
+- VA loan → VA Addendum required
+- Pre-1978 property → RF209 Lead-Based Paint Disclosure
+- Temp occupancy → RF635
+- Mediation → RF629
+- Special stipulations overflow → RF621
+
+SECTION 21 — SPECIAL STIPULATIONS:
+- Overrides ALL preceding sections if there is a conflict
+- NEVER use: "TBD", "N/A", "actual cost", "negotiable", or "etc." — these are unenforceable
+- Use RF77 for pre-approved clause language — consult broker before drafting custom language
+- Be specific and measurable on all terms
+
+SECTION 22 — TIME LIMIT OF OFFER:
+- Offer can be withdrawn any time before acceptance with notice
+- Any blank is deemed zero or not applicable — offer expiration date/time CANNOT be blank
+- Seller may: ACCEPT, COUNTER (attach counter offer), or REJECT
+
+TOP 13 AGENT MISTAKES TO FLAG IMMEDIATELY:
+1. Binding Agreement Date blank or wrong — all deadlines broken
+2. FHA/VA loan selected but addendum not listed in Section 20
+3. Earnest money due days left at 0 or blank — instant default risk
+4. Inspection period days blank — blank = zero = no inspection rights
+5. Neither appraisal checkbox selected — appraisal section not part of agreement
+6. Special stipulations contain vague language (TBD, N/A, etc.)
+7. Offer expiration time/date blank — no deadline = no urgency
+8. Deed names differ from buyer names without notifying title company
+9. Lead-based paint disclosure missing on pre-1978 property
+10. Section 1A items re-listed in Section B — unnecessary and confusing
+11. Cash buyer but Section 2B box not checked — financing contingency section is silent
+12. Section 8E (waiver of all inspections) checked without agent realizing it
+13. Home Protection Plan section left with neither box selected
+
 COMMUNICATION STYLE: ${styleContext}
 
 DRIVE MODE RULES:
