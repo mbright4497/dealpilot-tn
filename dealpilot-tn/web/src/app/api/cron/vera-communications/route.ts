@@ -6,22 +6,22 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 export const maxDuration = 60
 
-function daysDiff(dateStr: string | null, from: Date): number | null {
+function daysSince(dateStr: string | null, from: Date): number | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return null
+  return Math.floor((from.getTime() - d.getTime()) / 86400000)
+}
+
+function daysUntil(dateStr: string | null, from: Date): number | null {
   if (!dateStr) return null
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return null
   return Math.floor((d.getTime() - from.getTime()) / 86400000)
 }
 
-/** Days elapsed since a past date (positive = days ago) */
-function daysSince(dateStr: string | null, from: Date): number | null {
-  const d = daysDiff(dateStr, from)
-  return d === null ? null : -d
-}
-
 type PlaybookRule = {
   key: string
-  description: string
   shouldFire: (bindingDays: number | null, closingDays: number | null, inspectionDays: number | null) => boolean
   role: string
   type: 'email' | 'sms'
@@ -32,7 +32,6 @@ type PlaybookRule = {
 const PLAYBOOK: PlaybookRule[] = [
   {
     key: 'welcome_buyer',
-    description: 'Welcome buyer 1 day after binding',
     shouldFire: (b) => b === 1,
     role: 'buyer',
     type: 'email',
@@ -41,7 +40,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'earnest_money_reminder',
-    description: 'Earnest money reminder 3 days after binding',
     shouldFire: (b) => b === 3,
     role: 'buyer',
     type: 'email',
@@ -50,7 +48,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'inspection_nudge',
-    description: 'Inspection scheduling nudge 5 days after binding',
     shouldFire: (b) => b === 5,
     role: 'buyer',
     type: 'email',
@@ -59,7 +56,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'title_intro',
-    description: 'Title company intro email 2 days after binding',
     shouldFire: (b) => b === 2,
     role: 'title',
     type: 'email',
@@ -68,7 +64,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'inspection_deadline_warning',
-    description: 'Inspection period ends in 2 days',
     shouldFire: (b, c, i) => i === 2,
     role: 'buyer',
     type: 'sms',
@@ -77,7 +72,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'financing_check',
-    description: 'Financing contingency check 14 days before closing',
     shouldFire: (b, c) => c === 14,
     role: 'buyer',
     type: 'email',
@@ -86,7 +80,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'walkthrough_reminder',
-    description: 'Final walkthrough reminder 7 days before closing',
     shouldFire: (b, c) => c === 7,
     role: 'buyer',
     type: 'email',
@@ -95,7 +88,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'wire_instructions',
-    description: 'Wire instructions reminder 3 days before closing',
     shouldFire: (b, c) => c === 3,
     role: 'buyer',
     type: 'email',
@@ -104,7 +96,6 @@ const PLAYBOOK: PlaybookRule[] = [
   },
   {
     key: 'closing_day_reminder',
-    description: 'Closing day reminder',
     shouldFire: (b, c) => c === 1,
     role: 'buyer',
     type: 'sms',
@@ -126,6 +117,7 @@ export async function GET(request: Request) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const now = new Date()
   now.setHours(0, 0, 0, 0)
+  const todayStr = now.toISOString()
 
   const { data: agents } = await supabase
     .from('profiles')
@@ -136,8 +128,7 @@ export async function GET(request: Request) {
   }
 
   let totalQueued = 0
-
-  console.log('[vera-cron] starting run', { agentCount: agents.length, now: now.toISOString() })
+  const errors: string[] = []
 
   for (const agent of agents) {
     const { data: transactions } = await supabase
@@ -150,67 +141,68 @@ export async function GET(request: Request) {
 
     for (const tx of transactions) {
       const bindingDays = daysSince(tx.binding_date, now)
-      const closingDays = daysDiff(tx.closing_date, now)
-
-      console.log('[vera-cron] checking tx', { id: tx.id, address: tx.address, bindingDays, closingDays, contacts: (tx.contacts as any[])?.length })
-
-      // Calculate inspection end (10 business days from binding — approximate as 14 calendar days)
+      const closingDays = daysUntil(tx.closing_date, now)
       const inspectionEndStr = tx.binding_date
         ? new Date(new Date(tx.binding_date).getTime() + 14 * 86400000).toISOString()
         : null
-      const inspectionDays = daysDiff(inspectionEndStr, now)
+      const inspectionDays = inspectionEndStr ? daysUntil(inspectionEndStr, now) : null
 
       for (const rule of PLAYBOOK) {
-        console.log('[vera-cron] rule check', { key: rule.key, bindingDays, closingDays, inspectionDays })
-
         if (!rule.shouldFire(bindingDays, closingDays, inspectionDays)) continue
 
-        // Find target contact
         const contacts = Array.isArray(tx.contacts) ? tx.contacts : []
         const contact = contacts.find((c: any) => {
-          const r = c.role?.toLowerCase() || ''
+          const r = (c.role || '').toLowerCase()
           const target = rule.role.toLowerCase()
-          return r === target || r.startsWith(target) || r.includes(target)
+          return r === target || r.includes(target) || target.includes(r)
         })
-        if (!contact) continue
+        if (!contact) {
+          console.log(`[vera-cron] no contact found for role ${rule.role} on tx ${tx.id}`)
+          continue
+        }
 
-        // Check not already queued/sent today
+        // Dedup: check if already queued today for this rule + transaction
         const { data: existing } = await supabase
           .from('communication_log')
           .select('id')
           .eq('transaction_ref', tx.id)
-          .eq('channel', rule.type)
-          .ilike('body', `%${rule.key}%`)
-          .gte('created_at', now.toISOString())
+          .eq('status', 'pending_approval')
+          .ilike('body', `%[${rule.key}]%`)
+          .gte('created_at', todayStr)
           .maybeSingle()
 
         if (existing) continue
 
-        // Build prompt
         const prompt = rule.promptTemplate
           .replace(/{address}/g, tx.address || 'the property')
           .replace(/{binding_date}/g, tx.binding_date || 'unknown')
           .replace(/{closing_date}/g, tx.closing_date || 'unknown')
           .replace(/{inspection_end}/g, inspectionEndStr?.split('T')[0] || 'unknown')
 
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          max_tokens: 400,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are Vera, AI Transaction Coordinator for a Tennessee real estate agent. Draft professional, warm communications. Return ONLY the message body, no subject line, no preamble.',
-            },
-            { role: 'user', content: prompt },
-          ],
-        })
+        let body = ''
+        try {
+          const completion = await openai.chat.completions.create({
+            model: 'gpt-4o',
+            max_tokens: 400,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are Vera, AI Transaction Coordinator for a Tennessee real estate agent. Draft professional, warm communications. Return ONLY the message body, no subject line, no preamble.',
+              },
+              { role: 'user', content: prompt },
+            ],
+          })
+          body = completion.choices[0].message.content || ''
+        } catch (aiErr) {
+          console.error('[vera-cron] OpenAI failed:', aiErr)
+          errors.push(`openai_${rule.key}`)
+          continue
+        }
 
-        const body = completion.choices[0].message.content || ''
         const subject = rule.subjectTemplate.replace(/{address}/g, tx.address || 'the property')
         const autoSend = agent.vera_auto_send === true
 
-        // Insert into communication_log
-        const { error: insertErr } = await supabase.from('communication_log').insert({
+        const insertPayload: Record<string, unknown> = {
           transaction_ref: tx.id,
           channel: rule.type,
           contact_role: rule.role,
@@ -219,18 +211,24 @@ export async function GET(request: Request) {
           contact_phone: contact.phone || null,
           subject: rule.type === 'email' ? subject : null,
           body: `[${rule.key}] ${body}`,
-          status: autoSend ? 'sending' : 'pending_approval',
+          status: autoSend ? 'sent' : 'pending_approval',
           is_automated: true,
-          sent_at: autoSend ? new Date().toISOString() : null,
-        })
+        }
+        if (autoSend) insertPayload.sent_at = new Date().toISOString()
+
+        const { error: insertErr } = await supabase
+          .from('communication_log')
+          .insert(insertPayload)
+
         if (insertErr) {
-          console.error('[vera-cron] communication_log insert failed:', insertErr.message, insertErr.details, insertErr.hint)
+          console.error('[vera-cron] insert failed:', insertErr.message, '| payload keys:', Object.keys(insertPayload).join(','))
+          errors.push(`insert_${rule.key}: ${insertErr.message}`)
           continue
         }
 
         totalQueued++
+        console.log(`[vera-cron] queued ${rule.key} for tx ${tx.id} → ${contact.name}`)
 
-        // If auto-send, fire immediately
         if (autoSend) {
           await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/communications/send`, {
             method: 'POST',
@@ -249,11 +247,9 @@ export async function GET(request: Request) {
             }),
           })
         }
-
-        console.log(`[vera-cron] queued ${rule.key} for ${tx.address} → ${contact.name} (${autoSend ? 'auto-sent' : 'pending approval'})`)
       }
     }
   }
 
-  return NextResponse.json({ queued: totalQueued, timestamp: new Date().toISOString() })
+  return NextResponse.json({ queued: totalQueued, errors, timestamp: new Date().toISOString() })
 }
