@@ -2012,8 +2012,10 @@ function TransactionDetailContent() {
       if (!window.confirm(`Remove ${name} from this transaction?`)) return
       setInspectorPatchBusy(id)
       try {
-        const res = await fetch(`/api/transactions/${txId}/inspectors?id=${id}`, {
+        const res = await fetch(`/api/transactions/${txId}/inspectors`, {
           method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
         })
         if (!res.ok) {
           const j = await res.json().catch(() => ({}))
@@ -2143,7 +2145,7 @@ function TransactionDetailContent() {
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => { window.alert('row.id = ' + JSON.stringify(row.id) + ' | keys: ' + Object.keys(row).join(', ')); void deleteAssignment(row.id, name); }}
+                        onClick={() => void deleteAssignment(row.id, name)}
                         className="rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs font-semibold text-red-200 hover:border-red-500/60 disabled:opacity-50"
                       >
                         Remove
