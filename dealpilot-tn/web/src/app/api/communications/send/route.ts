@@ -528,6 +528,21 @@ export async function POST(req: Request) {
       )
     }
 
+    // Write to communication_log so Vera knows what was sent
+    try {
+      await supabase.from('communication_log').insert({
+        deal_id: Number(resolvedDealId),
+        channel: type,
+        recipient: contactEmail || contactPhone || contactName || contactRoleLabel,
+        subject: type === 'email' ? subject || null : null,
+        body: message.slice(0, 2000),
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+      })
+    } catch (logErr) {
+      console.warn('[communications/send] communication_log insert failed:', logErr)
+    }
+
     const title =
       type === 'sms'
         ? `SMS sent to ${contactName || contactRoleLabel || 'contact'}`
