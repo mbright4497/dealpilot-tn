@@ -64,6 +64,7 @@ export async function PATCH(req: Request) {
       ghl_location_id,
       ghl_contact_id,
       notification_email,
+      vera_auto_send,
     } = body as any
 
     // try update existing
@@ -79,6 +80,7 @@ export async function PATCH(req: Request) {
     if (ghl_location_id !== undefined) updates.ghl_location_id = ghl_location_id
     if (ghl_contact_id !== undefined) updates.ghl_contact_id = ghl_contact_id
     if (notification_email !== undefined) updates.notification_email = notification_email
+    if (vera_auto_send !== undefined) updates.vera_auto_send = vera_auto_send
 
     // Prefer UPDATE so partial patches never rely on INSERT upsert quirks (RLS / defaults).
     const { data: updated, error: updateErr } = await supabase

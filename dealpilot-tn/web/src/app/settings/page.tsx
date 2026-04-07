@@ -184,6 +184,36 @@ export default function SettingsPage() {
 
       <section className="mt-6 rounded-xl border border-white/10 bg-[#0b1628] p-5 shadow-sm">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <Bell className="h-5 w-5 shrink-0 text-orange-400/90" aria-hidden />
+          Vera Auto-Send
+        </h2>
+        <p className="mt-2 text-sm text-slate-400">When enabled, Vera will automatically send scheduled communications without requiring your approval. When disabled, messages are queued for your review first.</p>
+        <div className="mt-4 flex items-center justify-between rounded-lg border border-white/5 bg-[#081224]/60 p-4">
+          <div>
+            <div className="text-sm font-medium text-white">Auto-send communications</div>
+            <div className="text-xs text-slate-400 mt-0.5">{profile.vera_auto_send ? 'Vera sends immediately — no approval needed' : 'Messages queue for your approval before sending'}</div>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              const newVal = !profile.vera_auto_send
+              setProfile({ ...profile, vera_auto_send: newVal })
+              const res = await fetch('/api/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vera_auto_send: newVal }),
+              })
+              setStatus(res.ok ? (newVal ? 'Auto-send enabled' : 'Auto-send disabled — messages will queue for approval') : 'Failed to save')
+            }}
+            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${profile.vera_auto_send ? 'bg-orange-500' : 'bg-slate-600'}`}
+          >
+            <span className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${profile.vera_auto_send ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-white/10 bg-[#0b1628] p-5 shadow-sm">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Info className="h-5 w-5 shrink-0 text-slate-300" aria-hidden />
           About
         </h2>
