@@ -13,6 +13,12 @@ function daysDiff(dateStr: string | null, from: Date): number | null {
   return Math.floor((d.getTime() - from.getTime()) / 86400000)
 }
 
+/** Days elapsed since a past date (positive = days ago) */
+function daysSince(dateStr: string | null, from: Date): number | null {
+  const d = daysDiff(dateStr, from)
+  return d === null ? null : -d
+}
+
 type PlaybookRule = {
   key: string
   description: string
@@ -143,7 +149,7 @@ export async function GET(request: Request) {
     if (!transactions || transactions.length === 0) continue
 
     for (const tx of transactions) {
-      const bindingDays = daysDiff(tx.binding_date, now)
+      const bindingDays = daysSince(tx.binding_date, now)
       const closingDays = daysDiff(tx.closing_date, now)
 
       console.log('[vera-cron] checking tx', { id: tx.id, address: tx.address, bindingDays, closingDays, contacts: (tx.contacts as any[])?.length })
