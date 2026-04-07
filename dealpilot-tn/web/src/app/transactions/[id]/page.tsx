@@ -3023,13 +3023,16 @@ function TransactionDetailContent() {
   function outboxTab() {
     async function approve(item: any) {
       const body = item.body?.replace(/^\[[\w_]+\]\s*/, '') ?? ''
-      const res = await fetch('/api/communications/send', {
+      const res = await fetch('/api/communications/send-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: item.channel,
           dealId: txId,
-          contactRole: item.recipient,
+          contactName: item.contact_name,
+          contactEmail: item.contact_email,
+          contactPhone: item.contact_phone,
+          contactRole: item.contact_role,
           subject: item.subject || '',
           message: body,
         }),
