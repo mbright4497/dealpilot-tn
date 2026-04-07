@@ -95,12 +95,6 @@ export async function POST(req: Request) {
     } = await cookieSupabase.auth.getUser()
 
     const triggeredByReva = body?.triggeredByReva === true
-    console.log('[communications/send] incoming body:', JSON.stringify({
-      type: body?.type,
-      dealId: body?.dealId,
-      contactRole: body?.contactRole,
-      transactionContactId: body?.transactionContactId,
-    }))
     const internalSecret = req.headers.get('x-internal-reva-secret')
     const expectedSecret = process.env.REVA_INTERNAL_SECRET || ''
     const bodyUserId = body?.userId ? String(body.userId) : ''
