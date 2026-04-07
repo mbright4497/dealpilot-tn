@@ -3067,7 +3067,7 @@ function TransactionDetailContent() {
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.channel === 'email' ? 'bg-sky-500/20 text-sky-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
                         {item.channel?.toUpperCase()}
                       </span>
-                      <span className="text-xs text-slate-400">To: {item.recipient}</span>
+                      <span className="text-xs text-slate-400">To: {item.contact_email || item.contact_phone || item.contact_name || item.contact_role}</span>
                     </div>
                     <span className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</span>
                   </div>
