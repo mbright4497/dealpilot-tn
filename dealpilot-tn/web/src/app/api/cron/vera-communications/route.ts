@@ -178,7 +178,7 @@ export async function GET(request: Request) {
         const { data: existing } = await supabase
           .from('communication_log')
           .select('id')
-          .eq('deal_id', tx.id)
+          .eq('transaction_ref', tx.id)
           .eq('channel', rule.type)
           .ilike('body', `%${rule.key}%`)
           .gte('created_at', now.toISOString())
@@ -211,7 +211,7 @@ export async function GET(request: Request) {
 
         // Insert into communication_log
         const { error: insertErr } = await supabase.from('communication_log').insert({
-          deal_id: tx.id,
+          transaction_ref: tx.id,
           channel: rule.type,
           contact_role: rule.role,
           contact_name: contact.name || '',

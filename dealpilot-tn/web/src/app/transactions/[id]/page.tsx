@@ -583,7 +583,7 @@ function TransactionDetailContent() {
     supabase
       .from('communication_log')
       .select('*')
-      .eq('deal_id', txId)
+      .eq('transaction_ref', Number(txId))
       .eq('status', 'pending_approval')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
