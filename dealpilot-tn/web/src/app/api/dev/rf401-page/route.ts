@@ -6,8 +6,16 @@ import { promisify } from 'util'
 
 const execAsync = promisify(exec)
 
+function parsePageParam(raw: string | null): number {
+  const s = raw?.trim() ?? ''
+  if (s === '') return 1
+  const n = parseInt(s, 10)
+  if (!Number.isFinite(n) || n < 1) return 1
+  return n
+}
+
 export async function GET(req: NextRequest) {
-  const page = parseInt(req.nextUrl.searchParams.get('page') ?? '1', 10)
+  const page = parsePageParam(req.nextUrl.searchParams.get('page'))
   const pdfPath = path.join(process.cwd(), 'public', 'forms', 'rf401-blank.pdf')
   const outDir = path.join(process.cwd(), '.rf401-pages')
   const outFile = path.join(outDir, `page-${page}.png`)
@@ -15,12 +23,11 @@ export async function GET(req: NextRequest) {
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true })
 
   if (!fs.existsSync(outFile)) {
+    // -singlefile writes exactly one PNG as "<prefix>.png" (no zero-padding like page-011.png)
+    const outPrefix = path.join(outDir, `page-${page}`)
     await execAsync(
-      `pdftoppm -png -r 150 -f ${page} -l ${page} "${pdfPath}" "${path.join(outDir, 'page')}"`
+      `pdftoppm -png -r 150 -singlefile -f ${page} -l ${page} "${pdfPath}" "${outPrefix}"`
     )
-    // pdftoppm names files page-01.png etc — rename to our convention
-    const generated = fs.readdirSync(outDir).find(f => f.startsWith('page-') && f.endsWith('.png') && f !== `page-${page}.png`)
-    if (generated) fs.renameSync(path.join(outDir, generated), outFile)
   }
 
   if (!fs.existsSync(outFile)) {
