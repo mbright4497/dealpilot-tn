@@ -584,7 +584,7 @@ function TransactionDetailContent() {
       .from('communication_log')
       .select('*')
       .eq('transaction_ref', Number(txId))
-      .eq('status', 'pending_approval')
+      .eq('status', 'queued')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (!cancelled) setOutboxItems(data ?? [])

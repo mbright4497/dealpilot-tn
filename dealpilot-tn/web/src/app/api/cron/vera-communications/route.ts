@@ -166,7 +166,7 @@ export async function GET(request: Request) {
           .from('communication_log')
           .select('id')
           .eq('transaction_ref', tx.id)
-          .eq('status', 'pending_approval')
+          .eq('status', 'queued')
           .ilike('body', `%[${rule.key}]%`)
           .gte('created_at', todayStr)
           .maybeSingle()
@@ -211,7 +211,7 @@ export async function GET(request: Request) {
           contact_phone: contact.phone || null,
           subject: rule.type === 'email' ? subject : null,
           body: `[${rule.key}] ${body}`,
-          status: autoSend ? 'sent' : 'pending_approval',
+          status: autoSend ? 'sent' : 'queued',
           is_automated: true,
         }
         if (autoSend) insertPayload.sent_at = new Date().toISOString()
