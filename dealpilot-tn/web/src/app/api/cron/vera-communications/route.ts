@@ -212,11 +212,16 @@ export async function GET(request: Request) {
         // Insert into communication_log
         await supabase.from('communication_log').insert({
           deal_id: tx.id,
+          transaction_id: tx.id,
           channel: rule.type,
-          recipient: contact.email || contact.phone || contact.name,
+          contact_role: rule.role,
+          contact_name: contact.name || '',
+          contact_email: contact.email || null,
+          contact_phone: contact.phone || null,
           subject: rule.type === 'email' ? subject : null,
           body: `[${rule.key}] ${body}`,
           status: autoSend ? 'sending' : 'pending_approval',
+          is_automated: true,
           sent_at: autoSend ? new Date().toISOString() : null,
         })
 
