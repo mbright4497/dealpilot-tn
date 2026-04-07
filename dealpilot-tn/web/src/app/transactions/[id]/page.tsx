@@ -583,7 +583,7 @@ function TransactionDetailContent() {
     supabase
       .from('communication_log')
       .select('*')
-      .eq('transaction_ref', Number(txId))
+      .eq('transaction_ref', parseInt(String(txId), 10))
       .eq('status', 'queued')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
