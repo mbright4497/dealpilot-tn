@@ -80,6 +80,12 @@ function resolveGhlContactIdForOutbound(
   return null
 }
 
+/** Maps request contactRole to inspectors.category for transaction_inspectors fallback. */
+const CONTACT_ROLE_TO_INSPECTOR_CATEGORY: Record<string, string> = {
+  title: 'title_company',
+  inspector: 'inspector',
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({} as Record<string, unknown>))
@@ -165,12 +171,6 @@ export async function POST(req: Request) {
       (body?.ghlSmsNumber ? String(body.ghlSmsNumber) : '') ||
       profile?.ghl_location_id ||
       ''
-    if (!ghlApiKey) {
-      return NextResponse.json(
-        { error: 'Connect GHL in Settings to send communications' },
-        { status: 400 }
-      )
-    }
 
     if (!hasValidDealId && !transactionContactId) {
       return NextResponse.json({ error: 'Invalid deal id' }, { status: 400 })
@@ -219,6 +219,66 @@ export async function POST(req: Request) {
           contactsRaw = rowContacts
           target = hit
           break
+        }
+      }
+    }
+
+    if (!target && contactRole && resolvedDealId != null) {
+      const category =
+        CONTACT_ROLE_TO_INSPECTOR_CATEGORY[contactRole.toLowerCase()]
+      if (category) {
+        const { data: tiRows } = await supabase
+          .from('transaction_inspectors')
+          .select(
+            `
+            inspector_id,
+            inspectors (
+              id,
+              name,
+              company,
+              phone,
+              email,
+              category
+            )
+          `
+          )
+          .eq('transaction_id', resolvedDealId)
+
+        const match = (tiRows ?? []).find((r) => {
+          const ins = r.inspectors as
+            | { category?: string | null }
+            | { category?: string | null }[]
+            | null
+          const row = Array.isArray(ins) ? ins[0] : ins
+          return row?.category === category
+        })
+
+        if (match) {
+          const ins = match.inspectors as
+            | {
+                name?: string | null
+                company?: string | null
+                email?: string | null
+                phone?: string | null
+              }
+            | {
+                name?: string | null
+                company?: string | null
+                email?: string | null
+                phone?: string | null
+              }[]
+            | null
+          const insp = Array.isArray(ins) ? ins[0] : ins
+          if (insp) {
+            target = {
+              id: `inspector-${match.inspector_id}`,
+              name: insp.company?.trim() || insp.name?.trim() || '',
+              role: contactRole,
+              email: insp.email ?? null,
+              phone: insp.phone ?? null,
+              ghl_contact_id: '',
+            }
+          }
         }
       }
     }
@@ -280,23 +340,19 @@ export async function POST(req: Request) {
       contactsRaw as unknown[]
     )
 
-    if (type === 'email') {
-      if (!resolvedGhlId) {
-        console.error('[communications/send] outbound email: no ghl_contact_id', {
-          dealId: resolvedDealId,
-          transactionContactId: transactionContactId || null,
-          contactRole: contactRole || null,
-          contactName: target.name,
-        })
-        return NextResponse.json(
-          {
-            error:
-              'Contact is not synced to GHL yet (no ghl_contact_id on this party). Delete and re-add this contact to sync them.',
-          },
-          { status: 400 }
-        )
-      }
+    if (type === 'sms' && !ghlApiKey) {
+      return NextResponse.json(
+        { error: 'Connect GHL in Settings to send communications' },
+        { status: 400 }
+      )
     }
+    if (type === 'email' && resolvedGhlId && !ghlApiKey) {
+      return NextResponse.json(
+        { error: 'Connect GHL in Settings to send communications' },
+        { status: 400 }
+      )
+    }
+
     if (type === 'sms' && !contactPhone) {
       return NextResponse.json(
         { error: `${contactRoleLabel || 'Contact'} is missing phone` },
@@ -304,6 +360,15 @@ export async function POST(req: Request) {
       )
     }
     if (type === 'sms' && !resolvedGhlId) {
+      if (String(target.id || '').startsWith('inspector-')) {
+        return NextResponse.json(
+          {
+            error:
+              'Vendor does not have a GHL contact — SMS not available. Use email.',
+          },
+          { status: 400 }
+        )
+      }
       console.error('[communications/send] outbound SMS blocked: missing ghl_contact_id', {
         dealId: resolvedDealId,
         transactionContactId: transactionContactId || null,
@@ -327,19 +392,93 @@ export async function POST(req: Request) {
       fromEmail?: string
     } = { success: false }
     if (type === 'email') {
-      const fromReva = { email: 'reva@ihomehq.com', name: 'Vera' }
-      sendRes = await sendGHLEmail(
-        ghlApiKey,
-        {
-          email: contactEmail!,
-          name: contactName || contactRoleLabel,
-          ghlContactId: resolvedGhlId!,
-        },
-        fromReva,
-        subject,
-        message,
-        locationId
-      )
+      const { data: txAddr } = await supabase
+        .from('transactions')
+        .select('address')
+        .eq('id', resolvedDealId)
+        .eq('user_id', effectiveUserId)
+        .maybeSingle()
+      const dealAddress =
+        typeof txAddr?.address === 'string' ? txAddr.address : ''
+      const messageBody = message
+      const emailSubject =
+        subject || `Update on ${dealAddress || `deal #${resolvedDealId}`}`
+
+      if (resolvedGhlId) {
+        const fromReva = { email: 'reva@ihomehq.com', name: 'Vera' }
+        sendRes = await sendGHLEmail(
+          ghlApiKey,
+          {
+            email: contactEmail!,
+            name: contactName || contactRoleLabel,
+            ghlContactId: resolvedGhlId,
+          },
+          fromReva,
+          emailSubject,
+          messageBody,
+          locationId
+        )
+        if (!sendRes.success) {
+          const detail =
+            'error' in sendRes && sendRes.error
+              ? sendRes.error
+              : 'GHL email failed'
+          return NextResponse.json({ error: detail }, { status: 502 })
+        }
+      } else if (contactEmail) {
+        const resendKey = process.env.RESEND_API_KEY
+        if (!resendKey) {
+          return NextResponse.json(
+            {
+              error:
+                'No email delivery method available — add RESEND_API_KEY to env',
+            },
+            { status: 500 }
+          )
+        }
+        const emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Vera <vera@closingjet.com>',
+            to: [contactEmail],
+            subject: emailSubject,
+            html: messageBody,
+          }),
+        })
+        const resendBodyText = await emailRes.text()
+        console.log('[communications/send] Resend API result', {
+          ok: emailRes.ok,
+          status: emailRes.status,
+          body: resendBodyText.slice(0, 2000),
+        })
+        if (!emailRes.ok) {
+          return NextResponse.json(
+            { error: `Email delivery failed: ${resendBodyText}` },
+            { status: 502 }
+          )
+        }
+        let resendId: string | undefined
+        try {
+          const json = JSON.parse(resendBodyText) as { id?: string }
+          resendId = json.id
+        } catch {
+          // ignore parse errors
+        }
+        sendRes = {
+          success: true,
+          messageId: resendId,
+          fromEmail: 'vera@closingjet.com',
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'Contact is missing email address' },
+          { status: 400 }
+        )
+      }
     } else {
       sendRes = await sendGHLSMS(
         ghlApiKey,

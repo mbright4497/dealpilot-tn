@@ -2006,6 +2006,27 @@ function TransactionDetailContent() {
       }
     }
 
+    async function deleteAssignment(id: string, name: string) {
+      if (!txId) return
+      if (!window.confirm(`Remove ${name} from this transaction?`)) return
+      setInspectorPatchBusy(id)
+      try {
+        const res = await fetch(`/api/transactions/${txId}/inspectors?id=${id}`, {
+          method: 'DELETE',
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          window.alert(j?.error || 'Could not remove')
+          return
+        }
+        const r2 = await fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
+        const j2 = await r2.json()
+        setTxInspectors(Array.isArray(j2.inspectors) ? j2.inspectors : [])
+      } finally {
+        setInspectorPatchBusy(null)
+      }
+    }
+
     return (
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
@@ -2117,6 +2138,14 @@ function TransactionDetailContent() {
                           Mark Complete
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void deleteAssignment(row.id, name)}
+                        className="rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs font-semibold text-red-200 hover:border-red-500/60 disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
                       <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
                         <input
                           type="checkbox"
