@@ -11,7 +11,6 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', href: '/' },
   { id: 'transactions', label: 'Transactions', href: '/transactions' },
   { id: 'inspectors', label: 'Service Providers', href: '/inspectors' },
-  { id: 'deadlines', label: 'Deadlines', href: '/deadlines' },
   { id: 'ai', label: 'AI Assistant', href: '/ai' },
   { id: 'communications', label: 'Communications', href: '/communications' },
   { id: 'settings', label: 'Settings', href: '/settings' },
@@ -33,15 +32,6 @@ function NavIcon({ name }: { name: string }) {
           <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
           <line x1="8" y1="21" x2="16" y2="21" />
           <line x1="12" y1="17" x2="12" y2="21" />
-        </svg>
-      )
-    case 'deadlines':
-      return (
-        <svg {...props}>
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
       )
     case 'ai':
@@ -76,9 +66,6 @@ function matchesRoute(pathname: string, href: string) {
   }
   if (href === '/inspectors') {
     return pathname.startsWith('/inspectors')
-  }
-  if (href === '/deadlines') {
-    return pathname.startsWith('/deadlines')
   }
   if (href === '/ai') {
     return pathname.startsWith('/ai')
