@@ -482,7 +482,7 @@ function TransactionDetailContent() {
   const currentDocPhase = useMemo(() => normalizePhase(tx?.phase), [tx?.phase])
   const [expandedPhases, setExpandedPhases] = useState<Record<DocPhase, boolean>>({
     pre_contract: true,
-    under_contract: false,
+    under_contract: true,
     closing: false,
   })
 
@@ -1420,7 +1420,7 @@ function TransactionDetailContent() {
                               <button
                                 type="button"
                                 onClick={() => setReviewDoc(doc)}
-                                disabled={String(doc?.status || '') !== 'reviewed'}
+                                disabled={false}
                                 className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-40"
                               >
                                 Broker Review

@@ -350,6 +350,17 @@ export const TN_DOCUMENT_CHECKLIST: TNDocumentSlot[] = [
     why_it_matters: 'A missed closing date without a signed amendment puts the buyer in default.',
   },
   {
+    id: 'settlement_statement',
+    display_name: 'Settlement Statement (ALTA/HUD-1)',
+    document_type: 'settlement_statement',
+    phase: 'closing',
+    requirement: 'conditional',
+    condition: 'Required for cash transactions or when lender requires HUD-1',
+    reva_note: 'Compare net proceeds to PSA estimates. Flag any unexpected fees.',
+    why_it_matters:
+      'Documents final financial settlement. Required for cash deals where no Closing Disclosure is issued.',
+  },
+  {
     id: 'closing_disclosure',
     display_name: 'Closing Disclosure (HUD/ALTA Statement)',
     document_type: 'closing_disclosure',
@@ -367,6 +378,17 @@ export const TN_DOCUMENT_CHECKLIST: TNDocumentSlot[] = [
     condition: 'Required if repairs or credits are held in escrow post-closing',
     reva_note: 'Verify escrow amount, conditions for release, and deadline.',
     why_it_matters: 'Post-closing escrows without a written agreement become he-said-she-said disputes.',
+  },
+  {
+    id: 'appraisal',
+    display_name: 'Appraisal Report',
+    document_type: 'appraisal',
+    phase: 'closing',
+    requirement: 'conditional',
+    condition: 'Required when financing is involved',
+    reva_note: 'Check appraised value vs purchase price. Flag if appraisal gap exists.',
+    why_it_matters:
+      'Lender will not fund if the appraised value does not support the loan amount or if an appraisal gap is not resolved.',
   },
   {
     id: 'termite_letter',
