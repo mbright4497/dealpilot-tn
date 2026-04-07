@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
+import { createBrowserClient } from '@/lib/supabase-browser'
 import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
 import {
   DOCUMENT_TYPE_OPTIONS,
@@ -386,8 +387,12 @@ function TransactionDetailContent() {
   const rowUploadInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'documents' | 'checklist' | 'inspectors' | 'deadlines' | 'contacts' | 'activity'
+    'overview' | 'documents' | 'checklist' | 'inspectors' | 'deadlines' | 'contacts' | 'activity' | 'outbox'
   >('overview')
+
+  const supabase = useMemo(() => createBrowserClient(), [])
+  const [outboxItems, setOutboxItems] = useState<any[]>([])
+  const [outboxLoading, setOutboxLoading] = useState(false)
 
   const [aiChecklist, setAiChecklist] = useState<ChecklistItem[]>([])
   const [showEditDealModal, setShowEditDealModal] = useState(false)
@@ -570,6 +575,27 @@ function TransactionDetailContent() {
       cancelled = true
     }
   }, [activeTab, txId])
+
+  useEffect(() => {
+    if (activeTab !== 'outbox' || !txId) return
+    let cancelled = false
+    setOutboxLoading(true)
+    supabase
+      .from('communication_log')
+      .select('*')
+      .eq('deal_id', txId)
+      .eq('status', 'pending_approval')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (!cancelled) setOutboxItems(data ?? [])
+      })
+      .finally(() => {
+        if (!cancelled) setOutboxLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, txId, supabase])
 
   useEffect(() => {
     if (!txId) return
@@ -2994,6 +3020,84 @@ function TransactionDetailContent() {
     )
   }
 
+  function outboxTab() {
+    async function approve(item: any) {
+      const body = item.body?.replace(/^\[[\w_]+\]\s*/, '') ?? ''
+      const res = await fetch('/api/communications/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: item.channel,
+          dealId: txId,
+          contactRole: item.recipient,
+          subject: item.subject || '',
+          message: body,
+        }),
+      })
+      if (res.ok) {
+        await supabase.from('communication_log').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', item.id)
+        setOutboxItems((prev) => prev.filter((i) => i.id !== item.id))
+      } else {
+        const j = await res.json().catch(() => ({}))
+        window.alert(j?.error || 'Failed to send')
+      }
+    }
+
+    async function reject(item: any) {
+      if (!window.confirm('Discard this message?')) return
+      await supabase.from('communication_log').update({ status: 'rejected' }).eq('id', item.id)
+      setOutboxItems((prev) => prev.filter((i) => i.id !== item.id))
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
+          <h2 className="text-sm font-semibold text-white">Pending Vera Messages</h2>
+          <p className="mt-1 text-xs text-slate-400">These messages were drafted by Vera and are waiting for your approval before sending.</p>
+          {outboxLoading ? (
+            <p className="mt-3 text-sm text-slate-400">Loading…</p>
+          ) : outboxItems.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">No pending messages. Vera has nothing queued for this transaction.</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {outboxItems.map((item: any) => (
+                <div key={item.id} className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.channel === 'email' ? 'bg-sky-500/20 text-sky-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
+                        {item.channel?.toUpperCase()}
+                      </span>
+                      <span className="text-xs text-slate-400">To: {item.recipient}</span>
+                    </div>
+                    <span className="text-xs text-slate-500">{new Date(item.created_at).toLocaleString()}</span>
+                  </div>
+                  {item.subject && <div className="mt-2 text-sm font-medium text-white">{item.subject}</div>}
+                  <div className="mt-2 text-sm text-slate-300 whitespace-pre-wrap">{item.body?.replace(/^\[[\w_]+\]\s*/, '')}</div>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void approve(item)}
+                      className="rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-orange-600"
+                    >
+                      Approve & Send
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void reject(item)}
+                      className="rounded-lg border border-red-600/50 bg-red-950/40 px-3 py-1.5 text-xs font-semibold text-red-300 hover:border-red-500/60"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const airdropWatchDoc = useMemo(
     () => (airdropWatchId != null ? txDocuments.find((d) => d.id === airdropWatchId) : undefined),
     [airdropWatchId, txDocuments]
@@ -3110,6 +3214,7 @@ function TransactionDetailContent() {
                 { key: 'deadlines', label: 'Deadlines' },
                 { key: 'contacts', label: 'Contacts' },
                 { key: 'activity', label: 'Activity' },
+                { key: 'outbox', label: 'Outbox' },
               ] as const
             ).map((t) => (
               <button
@@ -3134,6 +3239,7 @@ function TransactionDetailContent() {
             {activeTab === 'deadlines' ? deadlinesTab() : null}
             {activeTab === 'contacts' ? contactsTab() : null}
             {activeTab === 'activity' ? activityTab() : null}
+            {activeTab === 'outbox' ? outboxTab() : null}
           </div>
         </section>
 
