@@ -3038,7 +3038,8 @@ function TransactionDetailContent() {
         }),
       })
       if (res.ok) {
-        await supabase.from('communication_log').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', item.id)
+        const { error: updateErr } = await supabase.from('communication_log').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', item.id)
+        if (updateErr) console.error('[outbox] status update failed:', updateErr.message)
         setOutboxItems((prev) => prev.filter((i) => i.id !== item.id))
       } else {
         const j = await res.json().catch(() => ({}))
