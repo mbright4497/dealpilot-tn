@@ -600,7 +600,7 @@ function TransactionDetailContent() {
   useEffect(() => {
     if (!txId) return
     const pending = txDocuments.some((d) =>
-      ['uploading', 'uploaded', 'processing'].includes(String(d.status || ''))
+      ['uploading', 'processing'].includes(String(d.status || ''))
     )
     if (!pending) return
     const t = setInterval(async () => {
@@ -608,13 +608,18 @@ function TransactionDetailContent() {
         const res = await fetch(`/api/transactions/${txId}/documents`, { cache: 'no-store' })
         if (!res.ok) return
         const j = await res.json()
-        setTxDocuments(Array.isArray(j.documents) ? j.documents : [])
+        const docs = Array.isArray(j.documents) ? j.documents : []
+        setTxDocuments(docs)
+        const stillPending = docs.some((d: TransactionDocumentRow) =>
+          ['uploading', 'processing'].includes(String(d.status || ''))
+        )
+        if (!stillPending) clearInterval(t)
       } catch {
         // ignore
       }
     }, 2200)
     return () => clearInterval(t)
-  }, [txDocuments, txId])
+  }, [txId])
 
   useEffect(() => {
     if (addressMismatch) return
