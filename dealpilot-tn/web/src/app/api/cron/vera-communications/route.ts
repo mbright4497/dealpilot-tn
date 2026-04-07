@@ -210,7 +210,7 @@ export async function GET(request: Request) {
         const autoSend = agent.vera_auto_send === true
 
         // Insert into communication_log
-        await supabase.from('communication_log').insert({
+        const { error: insertErr } = await supabase.from('communication_log').insert({
           deal_id: tx.id,
           transaction_id: tx.id,
           channel: rule.type,
@@ -224,6 +224,10 @@ export async function GET(request: Request) {
           is_automated: true,
           sent_at: autoSend ? new Date().toISOString() : null,
         })
+        if (insertErr) {
+          console.error('[vera-cron] communication_log insert failed:', insertErr.message, insertErr.details, insertErr.hint)
+          continue
+        }
 
         totalQueued++
 
