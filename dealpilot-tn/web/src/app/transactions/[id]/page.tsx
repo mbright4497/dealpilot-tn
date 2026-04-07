@@ -997,14 +997,17 @@ function TransactionDetailContent() {
       const json = await res.json()
       const docs = Array.isArray(json?.documents) ? (json.documents as BundleDocument[]) : []
       for (const doc of docs) {
-        const a = document.createElement('a')
-        a.href = doc.signed_url
-        a.download = doc.file_name || `${doc.display_name || 'document'}.pdf`
-        a.rel = 'noopener noreferrer'
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        await sleep(300)
+        await new Promise<void>((resolve) => {
+          const a = document.createElement('a')
+          a.href = doc.signed_url
+          a.download = doc.file_name || `${doc.display_name || 'document'}.pdf`
+          a.target = '_blank'
+          a.rel = 'noopener noreferrer'
+          a.style.display = 'none'
+          document.body.appendChild(a)
+          a.click()
+          setTimeout(() => { a.remove(); resolve() }, 800)
+        })
       }
       setToastMsg(`${docs.length} documents ready - downloading...`)
       window.setTimeout(() => setToastMsg(null), 3500)
