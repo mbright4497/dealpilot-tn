@@ -125,6 +125,45 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const { data, error } = await supabase.from('transaction_inspectors').insert(row).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Sync service provider into transactions.contacts JSONB so Vera can find them
+    try {
+      const { data: tx } = await supabase
+        .from('transactions')
+        .select('contacts')
+        .eq('id', transactionId)
+        .single()
+
+      const contacts: Record<string, unknown>[] = Array.isArray(tx?.contacts) ? tx.contacts : []
+
+      // Fetch full inspector details
+      const { data: inspDetails } = await supabase
+        .from('inspectors')
+        .select('name, company, phone, email, category')
+        .eq('id', inspectorId)
+        .single()
+
+      if (inspDetails) {
+        // Remove any existing contact with same category/role
+        const filtered = contacts.filter((c) => c.role !== inspDetails.category)
+        filtered.push({
+          id: `inspector-${inspectorId}`,
+          name: inspDetails.company || inspDetails.name,
+          role: inspDetails.category,
+          phone: inspDetails.phone || '',
+          email: inspDetails.email || '',
+          ghl_contact_id: '',
+        })
+        await supabase
+          .from('transactions')
+          .update({ contacts: filtered })
+          .eq('id', transactionId)
+          .eq('user_id', user.id)
+      }
+    } catch (syncErr) {
+      console.warn('[inspectors/POST] failed to sync contact to JSONB:', syncErr)
+    }
+
     return NextResponse.json({ assignment: data }, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Could not assign inspector'
