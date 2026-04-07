@@ -2007,6 +2007,7 @@ function TransactionDetailContent() {
     }
 
     async function deleteAssignment(id: string, name: string) {
+      console.log('[deleteAssignment] called with id:', id, 'name:', name)
       if (!txId) return
       if (!window.confirm(`Remove ${name} from this transaction?`)) return
       setInspectorPatchBusy(id)
@@ -2058,6 +2059,7 @@ function TransactionDetailContent() {
                 const bm = String(insp?.booking_method || 'call').toLowerCase()
                 const st = String(row.status || 'pending').toLowerCase()
                 const busy = inspectorPatchBusy === row.id
+                console.log('[inspectorCard] row.id:', row.id, 'row keys:', Object.keys(row))
 
                 let statusBadge = 'border-amber-500/40 bg-amber-500/15 text-amber-100'
                 let statusLabel = 'Pending'
