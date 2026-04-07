@@ -131,6 +131,8 @@ export async function GET(request: Request) {
 
   let totalQueued = 0
 
+  console.log('[vera-cron] starting run', { agentCount: agents.length, now: now.toISOString() })
+
   for (const agent of agents) {
     const { data: transactions } = await supabase
       .from('transactions')
@@ -144,6 +146,8 @@ export async function GET(request: Request) {
       const bindingDays = daysDiff(tx.binding_date, now)
       const closingDays = daysDiff(tx.closing_date, now)
 
+      console.log('[vera-cron] checking tx', { id: tx.id, address: tx.address, bindingDays, closingDays, contacts: (tx.contacts as any[])?.length })
+
       // Calculate inspection end (10 business days from binding — approximate as 14 calendar days)
       const inspectionEndStr = tx.binding_date
         ? new Date(new Date(tx.binding_date).getTime() + 14 * 86400000).toISOString()
@@ -151,6 +155,8 @@ export async function GET(request: Request) {
       const inspectionDays = daysDiff(inspectionEndStr, now)
 
       for (const rule of PLAYBOOK) {
+        console.log('[vera-cron] rule check', { key: rule.key, bindingDays, closingDays, inspectionDays })
+
         if (!rule.shouldFire(bindingDays, closingDays, inspectionDays)) continue
 
         // Find target contact
