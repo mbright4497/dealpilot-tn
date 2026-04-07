@@ -55,7 +55,7 @@ const PLAYBOOK: PlaybookRule[] = [
     key: 'title_intro',
     description: 'Title company intro email 2 days after binding',
     shouldFire: (b) => b === 2,
-    role: 'title_company',
+    role: 'title',
     type: 'email',
     subjectTemplate: 'New Transaction — {address}',
     promptTemplate: 'Draft a professional intro email to the title company for the property at {address}. Let them know we are under contract, binding date was {binding_date}, closing is {closing_date}, and ask them to begin the title search.',
@@ -155,9 +155,11 @@ export async function GET(request: Request) {
 
         // Find target contact
         const contacts = Array.isArray(tx.contacts) ? tx.contacts : []
-        const contact = contacts.find(
-          (c: any) => c.role?.toLowerCase() === rule.role.toLowerCase()
-        )
+        const contact = contacts.find((c: any) => {
+          const r = c.role?.toLowerCase() || ''
+          const target = rule.role.toLowerCase()
+          return r === target || r.startsWith(target) || r.includes(target)
+        })
         if (!contact) continue
 
         // Check not already queued/sent today
