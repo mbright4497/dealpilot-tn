@@ -123,6 +123,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: upErr.message }, { status: 500 })
     }
 
+    // For non-counter document types, replace any existing row with the same type.
+    // Counters (rf406_counter) are intentionally versioned — multiple rows allowed.
+    if (document_type !== 'rf406_counter') {
+      const { data: existing } = await supabase
+        .from('transaction_documents')
+        .select('id, file_url')
+        .eq('transaction_id', transactionId)
+        .eq('document_type', document_type)
+      if (existing?.length) {
+        const oldPaths = existing.map(r => r.file_url).filter(Boolean) as string[]
+        if (oldPaths.length) await supabase.storage.from(BUCKET).remove(oldPaths)
+        await supabase
+          .from('transaction_documents')
+          .delete()
+          .eq('transaction_id', transactionId)
+          .eq('document_type', document_type)
+      }
+    }
+
     const { count } = await supabase
       .from('transaction_documents')
       .select('*', { count: 'exact', head: true })
