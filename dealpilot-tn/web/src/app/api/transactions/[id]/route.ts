@@ -47,6 +47,9 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       console.warn('transaction_documents load:', txDocsRes.error.message)
     }
 
+    console.log('[tx-route] transaction_documents count:', txDocsWithUrls.length,
+      txDocsWithUrls.map(d => ({ id: d.id, status: d.status, has_url: !!d.file_url })))
+
     return NextResponse.json({
       transaction,
       deadlines: Array.isArray(transaction.ai_deadlines) ? transaction.ai_deadlines : [],
