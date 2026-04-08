@@ -19,12 +19,12 @@ export async function GET(request: Request, { params }: { params: { transactionI
     if (!docId) return NextResponse.json({ ok: false, error: 'docId required' }, { status: 400 })
 
     // fetch document row
-    const { data: docRow, error: docErr } = await supabase.from('documents').select('*').eq('id', docId).single()
+    const { data: docRow, error: docErr } = await supabase.from('transaction_documents').select('*').eq('id', Number(docId)).single()
     if (docErr) return NextResponse.json({ ok: false, error: docErr.message }, { status: 500 })
     if (!docRow) return NextResponse.json({ ok: false, error: 'document not found' }, { status: 404 })
     if (Number(docRow.transaction_id) !== transactionId) return NextResponse.json({ ok: false, error: 'document does not belong to transaction' }, { status: 403 })
 
-    const storagePath = docRow.storage_path || docRow.path || docRow.storagePath
+    const storagePath = docRow.file_url as string | null
     if (!storagePath) return NextResponse.json({ ok: false, error: 'document missing storage path' }, { status: 500 })
 
     // create signed url and fetch bytes
@@ -43,6 +43,11 @@ export async function GET(request: Request, { params }: { params: { transactionI
     try{
       const parsed = await pdfParse(buffer)
       extractedText = parsed.text || ''
+      // persist extracted text to transaction_documents
+      await supabase
+        .from('transaction_documents')
+        .update({ extracted_text: extractedText })
+        .eq('id', Number(docId))
     }catch(e:any){
       return NextResponse.json({ ok: false, error: 'pdf parse failed: '+String(e) }, { status: 500 })
     }

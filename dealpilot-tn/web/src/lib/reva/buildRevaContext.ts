@@ -363,6 +363,10 @@ export async function buildRevaContext(
           lines.push(
             `- ${d.display_name} | Type: ${d.document_type} | Status: ${d.status} | Executed: ${exec}`
           )
+          if (d.extracted_text && typeof d.extracted_text === 'string' && d.extracted_text.trim().length > 0) {
+            const textSnippet = d.extracted_text.trim().slice(0, 1500)
+            lines.push(`  DOCUMENT TEXT (first 1500 chars): ${textSnippet}`)
+          }
           if (ex && typeof ex === 'object') {
             if (ex.fields?.purchasePrice != null) {
               lines.push(`  Extracted: purchase price ${ex.fields.purchasePrice}`)

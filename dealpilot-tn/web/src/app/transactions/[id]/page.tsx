@@ -3029,7 +3029,19 @@ function TransactionDetailContent() {
   }
 
   function outboxTab() {
-    async function approve(item: any) {
+    type CommunicationLogRow = {
+      id: string
+      channel: 'email' | 'sms'
+      body: string | null
+      contact_name: string | null
+      contact_email: string | null
+      contact_phone: string | null
+      contact_role: string | null
+      subject: string | null
+      created_at: string
+    }
+
+    async function approve(item: CommunicationLogRow) {
       const body = item.body?.replace(/^\[[\w_]+\]\s*/, '') ?? ''
       const res = await fetch('/api/communications/send-direct', {
         method: 'POST',
@@ -3050,12 +3062,12 @@ function TransactionDetailContent() {
         if (updateErr) console.error('[outbox] status update failed:', updateErr.message)
         setOutboxItems((prev) => prev.filter((i) => i.id !== item.id))
       } else {
-        const j = await res.json().catch(() => ({}))
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
         window.alert(j?.error || 'Failed to send')
       }
     }
 
-    async function reject(item: any) {
+    async function reject(item: CommunicationLogRow) {
       if (!window.confirm('Discard this message?')) return
       await supabase.from('communication_log').update({ status: 'rejected' }).eq('id', item.id)
       setOutboxItems((prev) => prev.filter((i) => i.id !== item.id))
@@ -3072,7 +3084,7 @@ function TransactionDetailContent() {
             <p className="mt-3 text-sm text-slate-400">No pending messages. Vera has nothing queued for this transaction.</p>
           ) : (
             <div className="mt-3 space-y-3">
-              {outboxItems.map((item: any) => (
+              {outboxItems.map((item: CommunicationLogRow) => (
                 <div key={item.id} className="rounded-lg border border-slate-700 bg-slate-950/40 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
