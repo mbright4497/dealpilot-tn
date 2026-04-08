@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: { params: { transactionI
 
   try {
     // dynamic import to avoid bundling pdf-parse test assets during build
-    const pdfParse = (await import('pdf-parse'))?.default || (await import('pdf-parse'))
+    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js' as any)) as (buf: Buffer) => Promise<{ text: string }>
     const transactionId = Number(params.transactionId)
     const url = new URL(request.url)
     const docId = url.searchParams.get('docId')

@@ -20,7 +20,7 @@ export async function POST() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!docs || docs.length === 0) return NextResponse.json({ ok: true, processed: 0 })
 
-  const pdfParse = (await import('pdf-parse'))?.default || (await import('pdf-parse'))
+  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js' as any)) as (buf: Buffer) => Promise<{ text: string }>
   const results: { id: number; name: string; status: string; chars?: number }[] = []
 
   for (const doc of docs) {
