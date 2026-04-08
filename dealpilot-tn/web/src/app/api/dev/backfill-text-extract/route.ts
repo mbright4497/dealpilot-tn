@@ -48,7 +48,7 @@ export async function POST() {
       const thread = await openai.beta.threads.create({
         messages: [{
           role: 'user',
-          content: 'Extract and return ALL text content from this PDF document. Return only the raw text, preserving structure. No commentary.',
+          content: 'You are reviewing a Tennessee real estate transaction document. Read this PDF and provide a detailed summary including: all dates, names, addresses, dollar amounts, contingencies, deadlines, loan type, earnest money details, inspection periods, and any special stipulations. Be thorough and specific.',
           attachments: [{ file_id: file.id, tools: [{ type: 'file_search' }] }]
         }]
       })
