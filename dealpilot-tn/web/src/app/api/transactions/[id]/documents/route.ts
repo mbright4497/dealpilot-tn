@@ -166,23 +166,55 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: insErr?.message || 'insert failed' }, { status: 500 })
     }
 
-    if (document_type === 'rf401_psa') {
-      const extractionClient = getOptionalServiceSupabase() ?? supabase
-      console.log(`DOCUMENTS ROUTE: triggering extraction for doc ${inserted.id}`)
-      try {
-        await runDocumentExtraction(extractionClient, inserted.id)
-      } catch (e) {
-        console.error(
-          'DOCUMENTS ROUTE: runDocumentExtraction FAILED — doc',
-          inserted.id,
-          'transaction',
-          transactionId,
-          e
-        )
-        if (e instanceof Error && e.stack) {
-          console.error('DOCUMENTS ROUTE: extraction error stack', e.stack)
+    const extractionClient = getOptionalServiceSupabase() ?? supabase
+    console.log(`DOCUMENTS ROUTE: triggering text extraction for doc ${inserted.id}`)
+    try {
+      // Fire-and-forget text extraction so upload response is not delayed
+      void (async () => {
+        try {
+          const openai = new (await import('openai')).default({ apiKey: process.env.OPENAI_API_KEY! })
+          const { data: signedForExtract } = await extractionClient.storage
+            .from('transactions')
+            .createSignedUrl(storagePath, 60)
+          if (signedForExtract?.signedUrl) {
+            const res = await fetch(signedForExtract.signedUrl)
+            const buffer = Buffer.from(await res.arrayBuffer())
+            const file = await openai.files.create({
+              file: new File([buffer], 'document.pdf', { type: 'application/pdf' }),
+              purpose: 'assistants'
+            })
+            const thread = await openai.beta.threads.create({
+              messages: [{
+                role: 'user',
+                content: 'You are reviewing a Tennessee real estate transaction document. Read this PDF and provide a detailed summary including: all dates, names, addresses, dollar amounts, contingencies, deadlines, loan type, earnest money details, inspection periods, and any special stipulations. Be thorough and specific.',
+                attachments: [{ file_id: file.id, tools: [{ type: 'file_search' }] }]
+              }]
+            })
+            await openai.beta.threads.runs.createAndPoll(thread.id, {
+              assistant_id: process.env.REVA_ASSISTANT_ID_TN!
+            })
+            const messages = await openai.beta.threads.messages.list(thread.id)
+            const extractedText = messages.data
+              .filter((m: any) => m.role === 'assistant')
+              .map((m: any) => m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text.value).join(' '))
+              .join('\n')
+            await openai.files.del(file.id)
+            await extractionClient
+              .from('transaction_documents')
+              .update({ extracted_text: extractedText })
+              .eq('id', inserted.id)
+            console.log(`DOCUMENTS ROUTE: text extraction complete for doc ${inserted.id}, chars: ${extractedText.length}`)
+          }
+        } catch (extractErr) {
+          console.error('DOCUMENTS ROUTE: text extraction failed for doc', inserted.id, extractErr)
         }
+      })()
+
+      if (document_type === 'rf401_psa') {
+        await runDocumentExtraction(extractionClient, inserted.id)
       }
+    } catch (e) {
+      console.error('DOCUMENTS ROUTE: extraction FAILED — doc', inserted.id, e)
     }
 
     const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 3600)
