@@ -71,34 +71,19 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       console.log('[bundle] download ok:', filePath, 'type:', typeof fileData, 'size:', (fileData as any)?.size ?? 'unknown')
       const bytes = new Uint8Array(await fileData.arrayBuffer())
 
-      // First attempt: load with ignoreEncryption
-      let doc: PDFDocument | null = null
+      // Primary approach: embedPdf/drawPage — more tolerant of form-fillable
+      // and cross-reference issues than copyPages.
       try {
-        doc = await PDFDocument.load(bytes, { ignoreEncryption: true })
-      } catch (pdfErr) {
-        console.error('[bundle] pdf-lib load failed (attempt 1):', filePath, pdfErr)
-        // Fallback: re-fetch via a fresh signed URL and try once more
-        try {
-          const { data: signed } = await serviceSupabase.storage.from(BUCKET).createSignedUrl(filePath, 60)
-          if (signed?.signedUrl) {
-            const fallbackRes = await fetch(signed.signedUrl)
-            const fallbackBytes = new Uint8Array(await fallbackRes.arrayBuffer())
-            doc = await PDFDocument.load(fallbackBytes, { ignoreEncryption: true })
-            console.log('[bundle] pdf-lib load succeeded on fallback signed URL:', filePath)
-          }
-        } catch (fallbackErr) {
-          console.error('[bundle] pdf-lib load failed (attempt 2 / signed URL fallback):', filePath, fallbackErr)
+        const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false })
+        const embeddedPages = await mergedPdf.embedPdf(srcDoc)
+        for (const embeddedPage of embeddedPages) {
+          const { width, height } = embeddedPage.size()
+          const page = mergedPdf.addPage([width, height])
+          page.drawPage(embeddedPage)
         }
-      }
-
-      if (!doc) continue
-      try {
-        const copiedPages = await mergedPdf.copyPages(doc, doc.getPageIndices())
-        for (const page of copiedPages) {
-          mergedPdf.addPage(page)
-        }
-      } catch (copyErr) {
-        console.error('[bundle] copyPages failed:', filePath, copyErr)
+        console.log('[bundle] embedPdf ok:', filePath, `(${embeddedPages.length} pages)`)
+      } catch (embedErr) {
+        console.error('[bundle] embedPdf failed:', filePath, embedErr)
       }
     }
 
