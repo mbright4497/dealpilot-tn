@@ -26,7 +26,7 @@ export async function POST() {
   for (const doc of docs) {
     try {
       const { data: signed, error: signedErr } = await supabase.storage
-        .from('deal-documents')
+        .from('transactions')
         .createSignedUrl(doc.file_url as string, 60)
 
       if (signedErr || !signed?.signedUrl) {

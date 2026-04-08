@@ -1,13 +1,10 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request, { params }: { params: { transactionId: string } }) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
   try {
@@ -28,7 +25,7 @@ export async function GET(request: Request, { params }: { params: { transactionI
     if (!storagePath) return NextResponse.json({ ok: false, error: 'document missing storage path' }, { status: 500 })
 
     // create signed url and fetch bytes
-    const { data: signed, error: signedErr } = await supabase.storage.from('deal-documents').createSignedUrl(storagePath, 3600)
+    const { data: signed, error: signedErr } = await supabase.storage.from('transactions').createSignedUrl(storagePath, 3600)
     if (signedErr) return NextResponse.json({ ok: false, error: signedErr.message }, { status: 500 })
     const signedUrl = signed?.signedUrl
     if (!signedUrl) return NextResponse.json({ ok: false, error: 'failed to create signed url' }, { status: 500 })
