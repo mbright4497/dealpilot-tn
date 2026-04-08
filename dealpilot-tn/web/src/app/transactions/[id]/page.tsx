@@ -83,15 +83,6 @@ type TransactionDocumentRow = {
   } | null
 }
 
-type BundleDocument = {
-  id: string
-  display_name: string
-  document_type: string
-  signed_url: string
-  file_name: string
-}
-
-
 type TxRow = {
   id: number | string
   address?: string | null
@@ -1000,22 +991,18 @@ function TransactionDetailContent() {
         const json = await res.json().catch(() => ({}))
         throw new Error(String(json?.error || 'Unable to prepare package'))
       }
-      const json = await res.json()
-      const docs = Array.isArray(json?.documents) ? (json.documents as BundleDocument[]) : []
-      for (const doc of docs) {
-        await new Promise<void>((resolve) => {
-          const a = document.createElement('a')
-          a.href = doc.signed_url
-          a.download = doc.file_name || `${doc.display_name || 'document'}.pdf`
-          a.target = '_blank'
-          a.rel = 'noopener noreferrer'
-          a.style.display = 'none'
-          document.body.appendChild(a)
-          a.click()
-          setTimeout(() => { a.remove(); resolve() }, 800)
-        })
-      }
-      setToastMsg(`${docs.length} documents ready - downloading...`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'closing-package.pdf'
+      a.rel = 'noopener noreferrer'
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setToastMsg('Closing package downloaded.')
       window.setTimeout(() => setToastMsg(null), 3500)
     } catch (e: unknown) {
       window.alert(e instanceof Error ? e.message : 'Download failed.')
