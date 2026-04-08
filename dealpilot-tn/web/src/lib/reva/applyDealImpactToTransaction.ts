@@ -45,6 +45,7 @@ export async function applyDealImpactToTransaction(
   dealImpact: DealImpact,
   extracted: unknown
 ): Promise<void> {
+  console.log('APPLY_DEAL_IMPACT: service role key present:', !!process.env.SUPABASE_SERVICE_ROLE_KEY, 'url present:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
