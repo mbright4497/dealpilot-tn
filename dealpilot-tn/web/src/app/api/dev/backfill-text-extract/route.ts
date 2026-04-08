@@ -20,7 +20,7 @@ export async function POST() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!docs || docs.length === 0) return NextResponse.json({ ok: true, processed: 0 })
 
-  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
+  const { extractText } = await import('unpdf')
   const results: { id: number; name: string; status: string; chars?: number }[] = []
 
   for (const doc of docs) {
@@ -41,16 +41,7 @@ export async function POST() {
       }
 
       const buffer = Buffer.from(await res.arrayBuffer())
-      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
-      const pdf = await loadingTask.promise
-      let extractedText = ''
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i)
-        const content = await page.getTextContent()
-        extractedText += content.items
-          .map((item: any) => ('str' in item ? item.str : ''))
-          .join(' ') + '\n'
-      }
+      const { text: extractedText } = await extractText(new Uint8Array(buffer), { mergePages: true })
 
       await supabase
         .from('transaction_documents')

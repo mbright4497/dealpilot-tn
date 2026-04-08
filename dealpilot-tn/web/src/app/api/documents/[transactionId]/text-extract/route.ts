@@ -8,7 +8,7 @@ export async function GET(request: Request, { params }: { params: { transactionI
   )
 
   try {
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
+    const { extractText } = await import('unpdf')
     const transactionId = Number(params.transactionId)
     const url = new URL(request.url)
     const docId = url.searchParams.get('docId')
@@ -36,15 +36,7 @@ export async function GET(request: Request, { params }: { params: { transactionI
 
     let extractedText = ''
     try{
-      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
-      const pdf = await loadingTask.promise
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i)
-        const content = await page.getTextContent()
-        extractedText += content.items
-          .map((item: any) => ('str' in item ? item.str : ''))
-          .join(' ') + '\n'
-      }
+      ;({ text: extractedText } = await extractText(new Uint8Array(buffer), { mergePages: true }))
       // persist extracted text to transaction_documents
       await supabase
         .from('transaction_documents')
