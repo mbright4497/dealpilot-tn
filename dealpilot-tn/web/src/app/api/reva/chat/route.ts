@@ -331,9 +331,26 @@ USER QUESTION: ${enrichedMessage}
 
 Instructions: Search your knowledge base documents to answer this question. Cite the specific document and section. Use the live context above for any deal-specific questions.`
 
+    // Load deal-specific OpenAI file IDs so Vera reads actual documents
+    const attachments: { file_id: string; tools: [{ type: 'file_search' }] }[] = []
+    if (dealId) {
+      const { data: dealDocs } = await supabase
+        .from('transaction_documents')
+        .select('openai_file_id')
+        .eq('transaction_id', Number(dealId))
+        .not('openai_file_id', 'is', null)
+      if (dealDocs && dealDocs.length > 0) {
+        for (const d of dealDocs) {
+          if (d.openai_file_id) {
+            attachments.push({ file_id: d.openai_file_id, tools: [{ type: 'file_search' }] })
+          }
+        }
+      }
+    }
     await openai.beta.threads.messages.create(threadId, {
       role: 'user',
       content: fullMessage,
+      ...(attachments.length > 0 ? { attachments } : {})
     })
 
     try {

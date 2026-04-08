@@ -198,10 +198,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
               .filter((m: any) => m.role === 'assistant')
               .map((m: any) => m.content.filter((c: any) => c.type === 'text').map((c: any) => c.text.value).join(' '))
               .join('\n')
-            await openai.files.del(file.id)
+            // Keep file in OpenAI for Vera to search directly
             await extractionClient
               .from('transaction_documents')
-              .update({ extracted_text: extractedText })
+              .update({ 
+                extracted_text: extractedText,
+                openai_file_id: file.id
+              })
               .eq('id', inserted.id)
             console.log(`DOCUMENTS ROUTE: text extraction complete for doc ${inserted.id}, chars: ${extractedText.length}`)
           }
