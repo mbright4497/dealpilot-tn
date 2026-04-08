@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PDFDocument } from 'pdf-lib'
+import JSZip from 'jszip'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOptionalServiceSupabase } from '@/lib/supabase/serviceRole'
 
@@ -41,18 +41,16 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
     console.log('[bundle] rows fetched:', data.length, data.map(r => ({ id: r.id, status: r.status, file_url: r.file_url })))
 
-    const mergedPdf = await PDFDocument.create()
-
     function extractStoragePath(fileUrl: string): string {
-      // If it's already a raw path (no http), return as-is
       if (!fileUrl.startsWith('http')) return fileUrl
-      // Extract everything after /transactions/ (the bucket name)
       const marker = '/transactions/'
       const idx = fileUrl.indexOf(marker)
       if (idx === -1) return fileUrl
-      // Strip query string (signed URLs have ?token=...)
       return fileUrl.slice(idx + marker.length).split('?')[0]
     }
+
+    const zip = new JSZip()
+    let fileCount = 0
 
     for (const row of data) {
       const filePath = extractStoragePath(String(row.file_url || ''))
@@ -68,36 +66,29 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         continue
       }
 
-      console.log('[bundle] download ok:', filePath, 'type:', typeof fileData, 'size:', (fileData as any)?.size ?? 'unknown')
       const bytes = new Uint8Array(await fileData.arrayBuffer())
+      console.log('[bundle] download ok:', filePath, 'size:', bytes.length)
 
-      // Primary approach: embedPdf/drawPage — more tolerant of form-fillable
-      // and cross-reference issues than copyPages.
-      try {
-        const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false })
-        const embeddedPages = await mergedPdf.embedPdf(srcDoc)
-        for (const embeddedPage of embeddedPages) {
-          const { width, height } = embeddedPage.size()
-          const page = mergedPdf.addPage([width, height])
-          page.drawPage(embeddedPage)
-        }
-        console.log('[bundle] embedPdf ok:', filePath, `(${embeddedPages.length} pages)`)
-      } catch (embedErr) {
-        console.error('[bundle] embedPdf failed:', filePath, embedErr)
-      }
+      // Determine zip entry filename: prefer display_name, then file_name, then last path segment
+      const rawName = String(row.display_name || row.file_name || filePath.split('/').pop() || `document_${row.id}`)
+      const zipName = rawName.endsWith('.pdf') ? rawName : `${rawName}.pdf`
+
+      zip.file(zipName, bytes)
+      fileCount++
+      console.log('[bundle] added to zip:', zipName)
     }
 
-    if (mergedPdf.getPageCount() === 0) {
-      return NextResponse.json({ error: 'No PDF documents to bundle' }, { status: 404 })
+    if (fileCount === 0) {
+      return NextResponse.json({ error: 'No documents to bundle' }, { status: 404 })
     }
 
-    const mergedBytes = await mergedPdf.save()
+    const zipBytes = await zip.generateAsync({ type: 'uint8array' })
 
-    return new NextResponse(mergedBytes, {
+    return new NextResponse(zipBytes, {
       status: 200,
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment; filename="closing-package.pdf"',
+        'Content-Type': 'application/zip',
+        'Content-Disposition': 'attachment; filename="closing-package.zip"',
       },
     })
   } catch (e: any) {
