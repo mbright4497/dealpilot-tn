@@ -73,6 +73,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       const rawName = String(row.display_name || row.file_name || filePath.split('/').pop() || `document_${row.id}`)
       const zipName = rawName.endsWith('.pdf') ? rawName : `${rawName}.pdf`
 
+      const header = Buffer.from(bytes.slice(0, 10)).toString('hex')
+      console.log('[bundle] file header:', zipName, header)
       zip.file(zipName, bytes)
       fileCount++
       console.log('[bundle] added to zip:', zipName)
