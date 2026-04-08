@@ -986,10 +986,18 @@ function TransactionDetailContent() {
     if (!txId || bundleDownloading) return
     setBundleDownloading(true)
     try {
-      const res = await fetch(`/api/transactions/${txId}/documents/bundle`, { cache: 'no-store' })
+      const res = await fetch(`/api/transactions/${txId}/documents/bundle`, {
+        cache: 'no-store',
+      })
       if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error(String(json?.error || 'Unable to prepare package'))
+        let msg = 'Unable to prepare package'
+        try {
+          const j = await res.json()
+          msg = String(j?.error || msg)
+        } catch {
+          // non-JSON error body, keep default message
+        }
+        throw new Error(msg)
       }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
