@@ -39,6 +39,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!data?.length) return NextResponse.json({ error: 'No documents to bundle' }, { status: 404 })
 
+    console.log('[bundle] rows fetched:', data.length, data.map(r => ({ id: r.id, status: r.status, file_url: r.file_url })))
+
     const mergedPdf = await PDFDocument.create()
 
     function extractStoragePath(fileUrl: string): string {
@@ -68,14 +70,35 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
       console.log('[bundle] download ok:', filePath, 'type:', typeof fileData, 'size:', (fileData as any)?.size ?? 'unknown')
       const bytes = new Uint8Array(await fileData.arrayBuffer())
+
+      // First attempt: load with ignoreEncryption
+      let doc: PDFDocument | null = null
       try {
-        const doc = await PDFDocument.load(bytes, { ignoreEncryption: true })
+        doc = await PDFDocument.load(bytes, { ignoreEncryption: true })
+      } catch (pdfErr) {
+        console.error('[bundle] pdf-lib load failed (attempt 1):', filePath, pdfErr)
+        // Fallback: re-fetch via a fresh signed URL and try once more
+        try {
+          const { data: signed } = await serviceSupabase.storage.from(BUCKET).createSignedUrl(filePath, 60)
+          if (signed?.signedUrl) {
+            const fallbackRes = await fetch(signed.signedUrl)
+            const fallbackBytes = new Uint8Array(await fallbackRes.arrayBuffer())
+            doc = await PDFDocument.load(fallbackBytes, { ignoreEncryption: true })
+            console.log('[bundle] pdf-lib load succeeded on fallback signed URL:', filePath)
+          }
+        } catch (fallbackErr) {
+          console.error('[bundle] pdf-lib load failed (attempt 2 / signed URL fallback):', filePath, fallbackErr)
+        }
+      }
+
+      if (!doc) continue
+      try {
         const copiedPages = await mergedPdf.copyPages(doc, doc.getPageIndices())
         for (const page of copiedPages) {
           mergedPdf.addPage(page)
         }
-      } catch (pdfErr) {
-        console.error('[bundle] pdf-lib load failed:', filePath, pdfErr)
+      } catch (copyErr) {
+        console.error('[bundle] copyPages failed:', filePath, copyErr)
       }
     }
 
