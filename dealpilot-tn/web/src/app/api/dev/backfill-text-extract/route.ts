@@ -20,7 +20,7 @@ export async function POST() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!docs || docs.length === 0) return NextResponse.json({ ok: true, processed: 0 })
 
-  const pdfParse = (await import('pdf-parse/lib/pdf-parse.js' as any)) as (buf: Buffer) => Promise<{ text: string }>
+  const PDFParser = (await import('pdf2json')).default
   const results: { id: number; name: string; status: string; chars?: number }[] = []
 
   for (const doc of docs) {
@@ -41,8 +41,18 @@ export async function POST() {
       }
 
       const buffer = Buffer.from(await res.arrayBuffer())
-      const parsed = await pdfParse(buffer)
-      const extractedText = parsed.text || ''
+      const extractedText = await new Promise<string>((resolve, reject) => {
+        const parser = new PDFParser()
+        parser.on('pdfParser_dataReady', (data: any) => {
+          const text = (data?.Pages || [])
+            .flatMap((p: any) => p.Texts || [])
+            .map((t: any) => decodeURIComponent(t.R?.[0]?.T || ''))
+            .join(' ')
+          resolve(text)
+        })
+        parser.on('pdfParser_dataError', reject)
+        parser.parseBuffer(buffer)
+      })
 
       await supabase
         .from('transaction_documents')
