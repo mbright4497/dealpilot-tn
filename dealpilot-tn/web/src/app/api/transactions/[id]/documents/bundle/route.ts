@@ -21,6 +21,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const serviceSupabase = getOptionalServiceSupabase()
+    console.log('[bundle] serviceSupabase:', serviceSupabase ? 'client obtained' : 'NULL — SUPABASE_SERVICE_ROLE_KEY missing')
     if (!serviceSupabase) {
       return NextResponse.json({ error: 'Server storage not configured' }, { status: 500 })
     }
@@ -61,10 +62,11 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         .download(filePath)
 
       if (dlError || !fileData) {
-        console.error('[bundle] download failed:', filePath, dlError?.message)
+        console.error('[bundle] download failed:', filePath, JSON.stringify(dlError))
         continue
       }
 
+      console.log('[bundle] download ok:', filePath, 'type:', typeof fileData, 'size:', (fileData as any)?.size ?? 'unknown')
       const bytes = new Uint8Array(await fileData.arrayBuffer())
       try {
         const doc = await PDFDocument.load(bytes, { ignoreEncryption: true })
@@ -72,8 +74,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         for (const page of copiedPages) {
           mergedPdf.addPage(page)
         }
-      } catch {
-        // skip non-PDF or unreadable files
+      } catch (pdfErr) {
+        console.error('[bundle] pdf-lib load failed:', filePath, pdfErr)
       }
     }
 
