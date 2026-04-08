@@ -334,12 +334,16 @@ Instructions: Search your knowledge base documents to answer this question. Cite
     // Load deal-specific OpenAI file IDs so Vera reads actual documents
     const attachments: { file_id: string; tools: [{ type: 'file_search' }] }[] = []
     if (dealId) {
-      const { data: dealDocs } = await supabase
+      let { data: dealDocs } = await supabase
         .from('transaction_documents')
         .select('openai_file_id')
         .eq('transaction_id', Number(dealId))
         .not('openai_file_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10)
       if (dealDocs && dealDocs.length > 0) {
+        // OpenAI max 10 attachments per message — take most recent docs
+        dealDocs = dealDocs.slice(0, 10)
         for (const d of dealDocs) {
           if (d.openai_file_id) {
             attachments.push({ file_id: d.openai_file_id, tools: [{ type: 'file_search' }] })
