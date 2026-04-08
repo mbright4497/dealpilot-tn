@@ -1143,7 +1143,7 @@ function TransactionDetailContent() {
             </div>
             <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
               <div className="text-xs uppercase tracking-wide text-slate-400">Inspection period</div>
-              <div className="mt-1 text-sm font-semibold text-white">{tx?.inspection_period || '—'}</div>
+              <div className="mt-1 text-sm font-semibold text-white">{tx?.inspection_period_days ? `${tx.inspection_period_days} days` : '—'}</div>
             </div>
             <div className="rounded-lg border border-slate-700 bg-slate-900/70 p-3">
               <div className="text-xs uppercase tracking-wide text-slate-400">County</div>
