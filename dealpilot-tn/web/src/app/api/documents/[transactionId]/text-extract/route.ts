@@ -8,7 +8,6 @@ export async function GET(request: Request, { params }: { params: { transactionI
   )
 
   try {
-    const { extractText } = await import('unpdf')
     const transactionId = Number(params.transactionId)
     const url = new URL(request.url)
     const docId = url.searchParams.get('docId')
@@ -36,7 +35,27 @@ export async function GET(request: Request, { params }: { params: { transactionI
 
     let extractedText = ''
     try{
-      ;({ text: extractedText } = await extractText(new Uint8Array(buffer), { mergePages: true }))
+      const openai = new (await import('openai')).default({ apiKey: process.env.OPENAI_API_KEY! })
+      const file = await openai.files.create({
+        file: new File([buffer], 'document.pdf', { type: 'application/pdf' }),
+        purpose: 'assistants'
+      })
+      const thread = await openai.beta.threads.create({
+        messages: [{
+          role: 'user',
+          content: 'Extract and return ALL text content from this PDF document. Return only the raw text, preserving structure. No commentary.',
+          attachments: [{ file_id: file.id, tools: [{ type: 'file_search' }] }]
+        }]
+      })
+      await openai.beta.threads.runs.createAndPoll(thread.id, {
+        assistant_id: process.env.REVA_ASSISTANT_ID_TN!
+      })
+      const messages = await openai.beta.threads.messages.list(thread.id)
+      extractedText = messages.data
+        .filter(m => m.role === 'assistant')
+        .map(m => m.content.filter(c => c.type === 'text').map(c => (c as any).text.value).join(' '))
+        .join('\n')
+      await openai.files.del(file.id)
       // persist extracted text to transaction_documents
       await supabase
         .from('transaction_documents')
