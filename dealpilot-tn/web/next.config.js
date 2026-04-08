@@ -35,6 +35,7 @@ const nextConfig = {
         ignored: ['**/.next/**', '**/node_modules/**', '**/dist/**'],
       };
     }
+    config.externals = [...(Array.isArray(config.externals) ? config.externals : []), { canvas: 'canvas' }]
     return config;
   },
 };

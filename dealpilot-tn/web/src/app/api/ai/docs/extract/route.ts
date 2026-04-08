@@ -22,10 +22,15 @@ export async function POST(req: Request){
     const arrayBuffer = await fileRes.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // dynamic import pdf-parse
-    const pdf = await import('pdf-parse/lib/pdf-parse.js')
-    const textRes = await (pdf.default || pdf)(buffer as any)
-    const text = textRes.text || ''
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
+    const pdfDoc = await loadingTask.promise
+    let text = ''
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i)
+      const content = await page.getTextContent()
+      text += content.items.map((item: any) => ('str' in item ? item.str : '')).join(' ') + '\n'
+    }
 
     // build prompt (extract the requested fields only)
     const prompt = `You are a Tennessee real estate contract analyzer. Extract the following fields from the provided contract text, returning a single JSON object with these keys: property_address, buyer_name, seller_name, purchase_price, earnest_money, due_diligence_period, inspection_deadline, closing_date. For each field include a confidence score (0-1). If a field is not found, set its value to null and confidence to 0. Respond with ONLY valid JSON.`

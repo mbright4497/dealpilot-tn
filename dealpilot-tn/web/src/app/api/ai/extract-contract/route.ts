@@ -60,9 +60,14 @@ export async function POST(req: Request) {
     if (file.type === 'application/pdf') {
       const buffer = Buffer.from(await file.arrayBuffer())
       try {
-        const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default
-        const parsed = await pdfParse(buffer)
-        text = parsed.text
+        const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
+      const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
+      const pdfDoc = await loadingTask.promise
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        const page = await pdfDoc.getPage(i)
+        const content = await page.getTextContent()
+        text += content.items.map((item: any) => ('str' in item ? item.str : '')).join(' ') + '\n'
+      }
       } catch (e) {
         return NextResponse.json({ error: 'Failed to parse PDF' }, { status: 400 })
       }

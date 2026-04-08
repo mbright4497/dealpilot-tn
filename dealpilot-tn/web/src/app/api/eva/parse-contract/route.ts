@@ -13,10 +13,15 @@ export async function POST(req: Request) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Dynamically import pdf-parse at runtime to avoid build-time bundling issues
-    const pdf = await import('pdf-parse/lib/pdf-parse.js')
-    const data = await (pdf.default || pdf)(buffer as any)
-    const rawText = data.text || ''
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
+    const pdfDoc = await loadingTask.promise
+    let rawText = ''
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i)
+      const content = await page.getTextContent()
+      rawText += content.items.map((item: any) => ('str' in item ? item.str : '')).join(' ') + '\n'
+    }
 
     // Prepend line numbers so GPT can reference exact lines
     const lines = rawText.split('\n')

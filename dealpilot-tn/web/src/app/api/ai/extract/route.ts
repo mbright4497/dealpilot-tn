@@ -38,12 +38,16 @@ const ExtractionSchema = z.object({
 });
 
 async function pdfToText(buf: Buffer): Promise<{ text: string; pageCount?: number }> {
-  // pdf-parse is common and works in Node runtime
-  const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default as any;
-  const out = await pdfParse(buf);
-  const text = String(out.text ?? "").trim();
-  const pages = typeof out.numpages === "number" ? out.numpages : undefined;
-  return { text, pageCount: pages };
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs' as any)
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buf) })
+  const pdfDoc = await loadingTask.promise
+  let text = ''
+  for (let i = 1; i <= pdfDoc.numPages; i++) {
+    const page = await pdfDoc.getPage(i)
+    const content = await page.getTextContent()
+    text += content.items.map((item: any) => ('str' in item ? item.str : '')).join(' ') + '\n'
+  }
+  return { text: text.trim(), pageCount: pdfDoc.numPages }
 }
 
 export async function POST(req: Request) {
