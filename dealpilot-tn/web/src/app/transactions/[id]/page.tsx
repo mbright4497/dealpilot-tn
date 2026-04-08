@@ -96,6 +96,7 @@ type TxRow = {
   id: number | string
   address?: string | null
   client?: string | null
+  seller_name?: string | null
   type?: string | null
   status?: string | null
   phase?: string | null
@@ -476,7 +477,7 @@ function TransactionDetailContent() {
 
   const propertyAddress = tx?.address || 'Untitled property'
   const clientName = tx?.client || '—'
-  const dealType = tx?.type || '—'
+  const sellerName = tx?.seller_name || '—'
   const bindingLabel = formatDate(tx?.binding_date)
   const closingLabel = formatDate(tx?.closing_date)
   const currentDocPhase = useMemo(() => normalizePhase(tx?.phase), [tx?.phase])
@@ -3174,9 +3175,11 @@ function TransactionDetailContent() {
                 </div>
                 <div className="mt-2 text-sm text-slate-300">
                   <span className="font-medium text-slate-100">{clientName}</span>
-                  <span className="mx-2 text-slate-500">•</span>
-                  <span>{dealType}</span>
-                  <span className="mx-2 text-slate-500">•</span>
+                  <span className="text-slate-400"> (Buyer)</span>
+                  <span className="mx-2 text-slate-500">·</span>
+                  <span className="font-medium text-slate-100">{sellerName}</span>
+                  <span className="text-slate-400"> (Seller)</span>
+                  <span className="mx-2 text-slate-500">·</span>
                   <span className="text-orange-200 font-medium">#{txId}</span>
                 </div>
               </div>

@@ -198,7 +198,7 @@ export async function buildRevaContext(
       const { data: deal } = await supabase
         .from('transactions')
         .select(
-          'id, address, status, client, type, closing_date, binding_date, purchase_price, contacts, earnest_money, earnest_money_confirmed, earnest_money_holder, earnest_money_days, inspection_period_days, loan_type, county, special_stipulations, contract_data'
+          'id, address, status, client, seller_name, type, closing_date, binding_date, purchase_price, contacts, earnest_money, earnest_money_confirmed, earnest_money_holder, earnest_money_days, inspection_period_days, loan_type, county, special_stipulations, contract_data'
         )
         .eq('id', dealId)
         .single()
@@ -207,6 +207,7 @@ export async function buildRevaContext(
         lines.push(`Address: ${deal.address}`)
         lines.push(`Status: ${deal.status}`)
         lines.push(`Client: ${deal.client || 'Unknown'}`)
+        lines.push(`Seller: ${deal.seller_name || 'NOT SET'}`)
         lines.push(`Binding date: ${deal.binding_date || 'NOT SET - CRITICAL'}`)
         lines.push(`Closing date: ${deal.closing_date || 'NOT SET'}`)
         lines.push(`Purchase price: ${deal.purchase_price || 'not extracted yet'}`)
