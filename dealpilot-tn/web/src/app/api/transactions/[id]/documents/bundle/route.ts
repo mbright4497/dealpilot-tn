@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import JSZip from 'jszip'
+import ILovePDFApi from '@ilovepdf/ilovepdf-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOptionalServiceSupabase } from '@/lib/supabase/serviceRole'
 
@@ -49,48 +49,46 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       return fileUrl.slice(idx + marker.length).split('?')[0]
     }
 
-    const zip = new JSZip()
-    let fileCount = 0
-
+    // Generate signed URLs for each document
+    const signedUrls: string[] = []
     for (const row of data) {
       const filePath = extractStoragePath(String(row.file_url || ''))
       if (!filePath) continue
-
-      console.log('[bundle] downloading:', filePath)
-      const { data: fileData, error: dlError } = await serviceSupabase.storage
+      const { data: signed, error: signErr } = await serviceSupabase.storage
         .from(BUCKET)
-        .download(filePath)
-
-      if (dlError || !fileData) {
-        console.error('[bundle] download failed:', filePath, JSON.stringify(dlError))
+        .createSignedUrl(filePath, 60)
+      if (signErr || !signed?.signedUrl) {
+        console.error('[bundle] signed URL failed:', filePath, signErr?.message)
         continue
       }
-
-      const bytes = new Uint8Array(await fileData.arrayBuffer())
-      console.log('[bundle] download ok:', filePath, 'size:', bytes.length)
-
-      // Determine zip entry filename: prefer display_name, then file_name, then last path segment
-      const rawName = String(row.display_name || row.file_name || filePath.split('/').pop() || `document_${row.id}`)
-      const zipName = rawName.endsWith('.pdf') ? rawName : `${rawName}.pdf`
-
-      const header = Buffer.from(bytes.slice(0, 10)).toString('hex')
-      console.log('[bundle] file header:', zipName, header)
-      zip.file(zipName, bytes)
-      fileCount++
-      console.log('[bundle] added to zip:', zipName)
+      console.log('[bundle] signed URL ok:', filePath)
+      signedUrls.push(signed.signedUrl)
     }
 
-    if (fileCount === 0) {
+    if (signedUrls.length === 0) {
       return NextResponse.json({ error: 'No documents to bundle' }, { status: 404 })
     }
 
-    const zipBytes = await zip.generateAsync({ type: 'uint8array' })
+    // Merge via iLovePDF
+    const instance = new ILovePDFApi(
+      process.env.ILOVEPDF_PUBLIC_KEY!,
+      process.env.ILOVEPDF_SECRET_KEY!
+    )
+    const task = instance.newTask('merge')
+    await task.start()
 
-    return new NextResponse(zipBytes, {
+    for (const url of signedUrls) {
+      await task.addFile(url)
+    }
+
+    await task.process()
+    const mergedData = await task.download()
+
+    return new NextResponse(mergedData as any, {
       status: 200,
       headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': 'attachment; filename="closing-package.zip"',
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="closing-package.pdf"',
       },
     })
   } catch (e: any) {

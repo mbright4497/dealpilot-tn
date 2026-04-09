@@ -1003,7 +1003,7 @@ function TransactionDetailContent() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'closing-package.zip'
+      a.download = 'closing-package.pdf'
       a.rel = 'noopener noreferrer'
       a.style.display = 'none'
       document.body.appendChild(a)
