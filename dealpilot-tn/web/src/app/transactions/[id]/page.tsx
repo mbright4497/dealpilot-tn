@@ -330,19 +330,26 @@ function dueBadgeText(dueDate: string | null | undefined): string | null {
   return null
 }
 
+const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+
 function inferChecklistPhase(item: ChecklistItem, fallback: DocPhase): DocPhase {
-  const text = `${item.title || ''} ${item.category || ''} ${item.type || ''}`.toLowerCase()
-  if (text.includes('close') || text.includes('walkthrough') || text.includes('final')) return 'closing'
-  if (
-    text.includes('inspection')
-    || text.includes('contract')
-    || text.includes('amendment')
-    || text.includes('contingency')
-    || text.includes('earnest')
-  ) {
+  const category = String(item.category || '').toLowerCase()
+  const title = String(item.title || '').toLowerCase()
+
+  if (category === 'closing' || title.includes('closing') ||
+      title.includes('walkthrough') || title.includes('final'))
+    return 'closing'
+
+  if (category === 'listing' || category === 'intake' ||
+      category === 'pre_contract' || category === 'buyer_rep' ||
+      title.includes('listing') || title.includes('intake') ||
+      title.includes('buyer rep') || title.includes('representation'))
+    return 'pre_contract'
+
+  if (['inspection', 'title', 'financing', 'contract',
+       'disclosure', 'amendment', 'contingency', 'earnest'].includes(category))
     return 'under_contract'
-  }
-  if (text.includes('listing') || text.includes('intake') || text.includes('onboard')) return 'pre_contract'
+
   return fallback
 }
 
@@ -1617,6 +1624,12 @@ function TransactionDetailContent() {
     for (const item of checklistItemsForTab) {
       const phase = inferChecklistPhase(item, currentDocPhase)
       checklistByPhase[phase].push(item)
+    }
+
+    for (const phase of (['pre_contract', 'under_contract', 'closing'] as DocPhase[])) {
+      checklistByPhase[phase].sort((a, b) =>
+        (PRIORITY_ORDER[a.priority || 'low'] ?? 3) - (PRIORITY_ORDER[b.priority || 'low'] ?? 3)
+      )
     }
 
     const orderedPhases: DocPhase[] = [currentDocPhase, ...(['pre_contract', 'under_contract', 'closing'].filter((p) => p !== currentDocPhase) as DocPhase[])]
