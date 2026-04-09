@@ -355,6 +355,7 @@ function TransactionDetailContent() {
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null | undefined>(undefined)
   const [txDocuments, setTxDocuments] = useState<TransactionDocumentRow[]>([])
+  const [previewDoc, setPreviewDoc] = useState<TransactionDocumentRow | null>(null)
   const [docTypePick, setDocTypePick] = useState('rf401_psa')
   const [customDocName, setCustomDocName] = useState('')
   const [isExecutedToggle, setIsExecutedToggle] = useState(false)
@@ -1241,7 +1242,8 @@ function TransactionDetailContent() {
     const phaseSections: DocPhase[] = ['pre_contract', 'under_contract', 'closing']
 
     return (
-      <div className="space-y-4">
+      <div className="flex gap-4 items-start">
+      <div className={previewDoc ? 'w-1/2 space-y-4' : 'w-full space-y-4'}>
         <div className="rounded-xl border border-slate-700 bg-slate-900/30 p-4">
           <div
             {...getRootProps()}
@@ -1413,7 +1415,7 @@ function TransactionDetailContent() {
                               <button
                                 type="button"
                                 disabled={!doc?.signed_url}
-                                onClick={() => doc?.signed_url && window.open(doc.signed_url, '_blank', 'noopener,noreferrer')}
+                                onClick={() => setPreviewDoc(doc ?? null)}
                                 className="rounded-lg border border-slate-600 bg-slate-900/60 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-orange-500/40 transition disabled:opacity-40"
                               >
                                 View
@@ -1501,6 +1503,21 @@ function TransactionDetailContent() {
             </div>
           </div>
         ) : null}
+      </div>
+
+      {previewDoc && (
+        <div className="sticky top-4 h-[calc(100vh-120px)] w-1/2 flex flex-col rounded-xl border border-slate-700 bg-[#0B1530] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+            <span className="text-sm font-semibold text-white truncate">{previewDoc.display_name}</span>
+            <button onClick={() => setPreviewDoc(null)} className="text-slate-400 hover:text-white">✕</button>
+          </div>
+          <iframe
+            src={previewDoc.signed_url ?? ''}
+            className="flex-1 w-full"
+            title={previewDoc.display_name ?? 'Document'}
+          />
+        </div>
+      )}
       </div>
     )
   }
