@@ -3303,8 +3303,8 @@ function TransactionDetailContent() {
             {activeTab === 'overview' ? overviewTab() : null}
             {activeTab === 'documents' ? documentsTab() : null}
             {activeTab === 'contract' ? (
-              <div className="flex items-center justify-center h-64 text-gray-400">
-                <ContractWizard transactionId={Number(txId)} transaction={tx} />
+              <div className="fixed inset-0 z-30 bg-gray-950" style={{ top: '0', left: '0' }}>
+                <ContractWizard transactionId={Number(txId)} transaction={tx} onClose={() => setActiveTab('overview')} />
               </div>
             ) : null}
             {activeTab === 'checklist' ? checklistTab() : null}

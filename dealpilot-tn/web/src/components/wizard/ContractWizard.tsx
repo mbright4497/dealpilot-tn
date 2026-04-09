@@ -305,11 +305,12 @@ interface ChatMessage {
 interface Props {
   transactionId: number
   transaction: Record<string, any>
+  onClose?: () => void
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export default function ContractWizard({ transactionId, transaction }: Props) {
+export default function ContractWizard({ transactionId, transaction, onClose }: Props) {
   // Pre-fill answers from transaction
   const buildPrefilled = () => {
     const prefilled: Record<string, string> = {}
@@ -333,7 +334,7 @@ export default function ContractWizard({ transactionId, transaction }: Props) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: `I'm Vera. I'll guide you through writing this RF401 contract for ${transaction.address || 'this property'} step by step — just like TurboTax but for real estate. Answer each question and I'll explain everything as we go. Ask me anything at any time.`,
+      content: `I'm Vera. I'll guide you through writing the RF401 contract for ${transaction.address || 'this property'} — one question at a time, in plain English. I'll explain what each section means, why it matters, and flag anything that needs your attention. Ask me anything along the way.`,
     },
   ])
   const [chatInput, setChatInput] = useState('')
@@ -480,7 +481,17 @@ export default function ContractWizard({ transactionId, transaction }: Props) {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-full overflow-hidden rounded-xl border border-gray-800">
+    <div className="flex fixed inset-0 overflow-hidden rounded-xl border border-gray-800">
+      {onClose ? (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-lg border border-gray-700 bg-gray-900 text-gray-400 text-lg leading-none hover:border-gray-600 hover:text-white"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      ) : null}
 
       {/* LEFT — Section progress nav */}
       <div className="w-48 flex-shrink-0 border-r border-gray-800 overflow-y-auto bg-gray-950">
