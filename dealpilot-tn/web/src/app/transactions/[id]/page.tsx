@@ -21,6 +21,7 @@ import {
 import { useDropzone } from 'react-dropzone'
 import { createBrowserClient } from '@/lib/supabase-browser'
 import DocumentAirDrop from '@/components/ui/DocumentAirDrop'
+import ContractWizard from '@/components/wizard/ContractWizard'
 import {
   DOCUMENT_TYPE_OPTIONS,
 } from '@/lib/documents/transactionDocumentTypes'
@@ -380,7 +381,15 @@ function TransactionDetailContent() {
   const rowUploadInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'documents' | 'checklist' | 'inspectors' | 'deadlines' | 'contacts' | 'activity' | 'outbox'
+    | 'overview'
+    | 'documents'
+    | 'contract'
+    | 'checklist'
+    | 'inspectors'
+    | 'deadlines'
+    | 'contacts'
+    | 'activity'
+    | 'outbox'
   >('overview')
 
   const supabase = useMemo(() => createBrowserClient(), [])
@@ -3267,6 +3276,7 @@ function TransactionDetailContent() {
               [
                 { key: 'overview', label: 'Overview' },
                 { key: 'documents', label: 'Documents' },
+                { key: 'contract', label: 'Contract' },
                 { key: 'checklist', label: 'Checklist' },
                 { key: 'inspectors', label: 'Services' },
                 { key: 'deadlines', label: 'Deadlines' },
@@ -3292,6 +3302,11 @@ function TransactionDetailContent() {
           <div className="mt-4">
             {activeTab === 'overview' ? overviewTab() : null}
             {activeTab === 'documents' ? documentsTab() : null}
+            {activeTab === 'contract' ? (
+              <div className="flex items-center justify-center h-64 text-gray-400">
+                <ContractWizard transactionId={Number(txId)} transaction={tx} />
+              </div>
+            ) : null}
             {activeTab === 'checklist' ? checklistTab() : null}
             {activeTab === 'inspectors' ? inspectorsTab() : null}
             {activeTab === 'deadlines' ? deadlinesTab() : null}
