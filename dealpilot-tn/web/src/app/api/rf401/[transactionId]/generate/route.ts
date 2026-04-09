@@ -151,7 +151,7 @@ export async function GET(
   const { data: tx, error } = await supabase
     .from('transactions')
     .select(
-      'user_id, client, seller_name, address, property_city, property_zip, property_county, county, purchase_price, earnest_money, earnest_money_holder, earnest_money_days, loan_type, loan_percentage, closing_date, inspection_period_days, resolution_period_days, special_stipulations, closing_agency_buyer, closing_agency_seller, deed_names, appraisal_contingent, financing_contingency_waived, lead_based_paint'
+      'user_id, client, seller_name, address, property_city, property_zip, property_county, county, purchase_price, earnest_money, earnest_money_holder, earnest_money_days, loan_type, loan_percentage, closing_date, inspection_period_days, resolution_period_days, special_stipulations, closing_agency_buyer, closing_agency_seller, deed_names, items_remaining, items_not_remaining, leased_items, appraisal_contingent, financing_contingency_waived, lead_based_paint'
     )
     .eq('id', transactionId)
     .single()
@@ -184,9 +184,9 @@ export async function GET(
     deed_pages:                '',
     instrument_number:         '',
     garage_remotes:            '2',
-    items_remaining:           '',
-    items_not_remaining:       '',
-    leased_items:              '',
+    items_remaining:           tx.items_remaining || '',
+    items_not_remaining:       tx.items_not_remaining || '',
+    leased_items:              tx.leased_items || '',
     purchase_price_numeric:    formatCurrency(tx.purchase_price),
     purchase_price_words:      priceToWords(tx.purchase_price),
     ltv_percentage:            tx.loan_percentage ? String(tx.loan_percentage) : '',
