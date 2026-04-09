@@ -356,6 +356,7 @@ function TransactionDetailContent() {
   const [tx, setTx] = useState<TxRow | null | undefined>(undefined)
   const [txDocuments, setTxDocuments] = useState<TransactionDocumentRow[]>([])
   const [previewDoc, setPreviewDoc] = useState<TransactionDocumentRow | null>(null)
+  const [packagePreviewUrl, setPackagePreviewUrl] = useState<string | null>(null)
   const [docTypePick, setDocTypePick] = useState('rf401_psa')
   const [customDocName, setCustomDocName] = useState('')
   const [isExecutedToggle, setIsExecutedToggle] = useState(false)
@@ -1002,17 +1003,12 @@ function TransactionDetailContent() {
       }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'closing-package.pdf'
-      a.rel = 'noopener noreferrer'
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-      setToastMsg('Closing package downloaded.')
-      window.setTimeout(() => setToastMsg(null), 3500)
+      setPackagePreviewUrl(url)
+      setPreviewDoc({
+        display_name: 'Closing Package',
+        signed_url: url,
+        id: -1,
+      } as TransactionDocumentRow)
     } catch (e: unknown) {
       window.alert(e instanceof Error ? e.message : 'Download failed.')
     } finally {
@@ -1509,7 +1505,25 @@ function TransactionDetailContent() {
         <div className="sticky top-4 h-[calc(100vh-120px)] w-1/2 flex flex-col rounded-xl border border-slate-700 bg-[#0B1530] overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
             <span className="text-sm font-semibold text-white truncate">{previewDoc.display_name}</span>
-            <button onClick={() => setPreviewDoc(null)} className="text-slate-400 hover:text-white">✕</button>
+            <div className="flex items-center gap-2">
+              {previewDoc.id === -1 && packagePreviewUrl && (
+                <a
+                  href={packagePreviewUrl}
+                  download="closing-package.pdf"
+                  className="rounded px-2 py-1 text-xs font-semibold text-slate-200 border border-slate-600 hover:border-orange-500/40 transition"
+                >
+                  ⬇ Download
+                </a>
+              )}
+              <button
+                onClick={() => {
+                  if (packagePreviewUrl) URL.revokeObjectURL(packagePreviewUrl)
+                  setPackagePreviewUrl(null)
+                  setPreviewDoc(null)
+                }}
+                className="text-slate-400 hover:text-white"
+              >✕</button>
+            </div>
           </div>
           <iframe
             src={previewDoc.signed_url ?? ''}
