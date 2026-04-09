@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import ILovePDFApi from '@ilovepdf/ilovepdf-js'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getOptionalServiceSupabase } from '@/lib/supabase/serviceRole'
 
@@ -8,6 +7,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 const BUCKET = 'transactions'
+const ILOVEPDF_BASE = 'https://api.ilovepdf.com/v1'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const transactionId = Number(params.id)
@@ -49,42 +49,109 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       return fileUrl.slice(idx + marker.length).split('?')[0]
     }
 
-    // Generate signed URLs for each document
-    const signedUrls: string[] = []
+    // Step 1: Authenticate
+    const authRes = await fetch(`${ILOVEPDF_BASE}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_key: process.env.ILOVEPDF_PUBLIC_KEY }),
+    })
+    if (!authRes.ok) {
+      const err = await authRes.text()
+      console.error('[bundle] iLovePDF auth failed:', err)
+      return NextResponse.json({ error: 'iLovePDF auth failed' }, { status: 500 })
+    }
+    const { token } = await authRes.json()
+
+    // Step 2: Start merge task
+    const startRes = await fetch(`${ILOVEPDF_BASE}/start/merge`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!startRes.ok) {
+      const err = await startRes.text()
+      console.error('[bundle] iLovePDF start failed:', err)
+      return NextResponse.json({ error: 'iLovePDF start failed' }, { status: 500 })
+    }
+    const { server, task } = await startRes.json()
+
+    // Step 3: Download each file from Supabase and upload to iLovePDF
+    const uploadedFiles: { server_filename: string; filename: string }[] = []
+
     for (const row of data) {
       const filePath = extractStoragePath(String(row.file_url || ''))
       if (!filePath) continue
-      const { data: signed, error: signErr } = await serviceSupabase.storage
+
+      console.log('[bundle] downloading:', filePath)
+      const { data: fileData, error: dlError } = await serviceSupabase.storage
         .from(BUCKET)
-        .createSignedUrl(filePath, 60)
-      if (signErr || !signed?.signedUrl) {
-        console.error('[bundle] signed URL failed:', filePath, signErr?.message)
+        .download(filePath)
+
+      if (dlError || !fileData) {
+        console.error('[bundle] download failed:', filePath, JSON.stringify(dlError))
         continue
       }
-      console.log('[bundle] signed URL ok:', filePath)
-      signedUrls.push(signed.signedUrl)
+
+      const bytes = await fileData.arrayBuffer()
+      const header = Buffer.from(bytes.slice(0, 10)).toString('hex')
+      const rawName = String(row.display_name || row.file_name || filePath.split('/').pop() || `document_${row.id}`)
+      const filename = rawName.endsWith('.pdf') ? rawName : `${rawName}.pdf`
+      console.log('[bundle] file header:', filename, header)
+
+      const form = new FormData()
+      form.append('task', task)
+      form.append('file', new Blob([bytes], { type: 'application/pdf' }), filename)
+
+      const uploadRes = await fetch(`https://${server}/v1/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      })
+      if (!uploadRes.ok) {
+        const err = await uploadRes.text()
+        console.error('[bundle] iLovePDF upload failed:', filename, err)
+        continue
+      }
+      const { server_filename } = await uploadRes.json()
+      console.log('[bundle] uploaded to iLovePDF:', filename, server_filename)
+      uploadedFiles.push({ server_filename, filename })
     }
 
-    if (signedUrls.length === 0) {
+    if (uploadedFiles.length === 0) {
       return NextResponse.json({ error: 'No documents to bundle' }, { status: 404 })
     }
 
-    // Merge via iLovePDF
-    const instance = new ILovePDFApi(
-      process.env.ILOVEPDF_PUBLIC_KEY!,
-      process.env.ILOVEPDF_SECRET_KEY!
-    )
-    const task = instance.newTask('merge')
-    await task.start()
-
-    for (const url of signedUrls) {
-      await task.addFile(url)
+    // Step 4: Process (merge)
+    const processRes = await fetch(`https://${server}/v1/process`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        task,
+        tool: 'merge',
+        files: uploadedFiles,
+      }),
+    })
+    if (!processRes.ok) {
+      const err = await processRes.text()
+      console.error('[bundle] iLovePDF process failed:', err)
+      return NextResponse.json({ error: 'iLovePDF process failed' }, { status: 500 })
     }
 
-    await task.process()
-    const mergedData = await task.download()
+    // Step 5: Download merged PDF
+    const downloadRes = await fetch(`https://${server}/v1/download/${task}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!downloadRes.ok) {
+      const err = await downloadRes.text()
+      console.error('[bundle] iLovePDF download failed:', err)
+      return NextResponse.json({ error: 'iLovePDF download failed' }, { status: 500 })
+    }
 
-    return new NextResponse(mergedData as any, {
+    const mergedBytes = await downloadRes.arrayBuffer()
+    console.log('[bundle] merged PDF size:', mergedBytes.byteLength)
+
+    return new NextResponse(mergedBytes, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
