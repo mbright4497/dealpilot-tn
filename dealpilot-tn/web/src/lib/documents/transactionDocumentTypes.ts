@@ -58,6 +58,7 @@ export type TransactionDocumentType =
   | 'utility_bills'
   | 'warranty_documents'
   | 'photos'
+  | 'crs_tax_docs'
   | 'other'
 
 export const DOCUMENT_TYPE_OPTIONS: { value: TransactionDocumentType; label: string }[] = [
@@ -74,6 +75,7 @@ export const DOCUMENT_TYPE_OPTIONS: { value: TransactionDocumentType; label: str
   { value: 'utility_bills', label: 'Utility Bills' },
   { value: 'warranty_documents', label: 'Home Warranty Documents' },
   { value: 'photos', label: 'Property Photos' },
+  { value: 'crs_tax_docs', label: 'CRS Tax Documents' },
   { value: 'other', label: 'Other' },
 ]
 
