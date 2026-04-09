@@ -1624,7 +1624,7 @@ function TransactionDetailContent() {
       )
     }
 
-    const orderedPhases: DocPhase[] = [currentDocPhase, ...(['pre_contract', 'under_contract', 'closing'].filter((p) => p !== currentDocPhase) as DocPhase[])]
+    const orderedPhases: DocPhase[] = ['pre_contract', 'under_contract', 'closing']
 
     const requiredDocPct = requiredSlots.length
       ? Math.round((requiredSlots.filter((slot) => uploadedByType.has(slot.document_type)).length / requiredSlots.length) * 100)
