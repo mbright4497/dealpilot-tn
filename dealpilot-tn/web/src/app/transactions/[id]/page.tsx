@@ -43,6 +43,7 @@ type ChecklistItem = {
   title?: string
   type?: string
   category?: string
+  phase?: 'pre_contract' | 'under_contract' | 'closing' | null
   priority?: string
   due_date?: string | null
   completed?: boolean
@@ -333,23 +334,14 @@ function dueBadgeText(dueDate: string | null | undefined): string | null {
 const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 }
 
 function inferChecklistPhase(item: ChecklistItem, fallback: DocPhase): DocPhase {
+  if (item.phase === 'pre_contract' || item.phase === 'under_contract' || item.phase === 'closing') {
+    return item.phase
+  }
+  // Legacy fallback: category-based mapping
   const category = String(item.category || '').toLowerCase()
-  const title = String(item.title || '').toLowerCase()
-
-  if (category === 'closing' || title.includes('closing') ||
-      title.includes('walkthrough') || title.includes('final'))
-    return 'closing'
-
-  if (category === 'listing' || category === 'intake' ||
-      category === 'pre_contract' || category === 'buyer_rep' ||
-      title.includes('listing') || title.includes('intake') ||
-      title.includes('buyer rep') || title.includes('representation'))
-    return 'pre_contract'
-
-  if (['inspection', 'title', 'financing', 'contract',
-       'disclosure', 'amendment', 'contingency', 'earnest'].includes(category))
-    return 'under_contract'
-
+  if (category === 'closing') return 'closing'
+  if (category === 'pre_contract') return 'pre_contract'
+  if (['contract', 'financing', 'inspection', 'title'].includes(category)) return 'under_contract'
   return fallback
 }
 
