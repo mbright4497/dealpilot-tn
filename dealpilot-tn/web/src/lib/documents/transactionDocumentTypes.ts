@@ -45,55 +45,35 @@ export type TransactionDocumentType =
   | 'temp_occupancy_seller'
   | 'referral_agreement'
   | 'referring_w9'
+  | 'home_inspection_report'
+  | 'appraisal_report'
+  | 'survey'
+  | 'hoa_documents'
+  | 'septic_report'
+  | 'well_water_test'
+  | 'termite_wdi_report'
+  | 'deed'
+  | 'plat_map'
+  | 'radon_report'
+  | 'utility_bills'
+  | 'warranty_documents'
+  | 'photos'
   | 'other'
 
 export const DOCUMENT_TYPE_OPTIONS: { value: TransactionDocumentType; label: string }[] = [
-  { value: 'rf401_psa', label: 'Purchase & Sale Agreement (RF401)' },
-  { value: 'rf406_counter', label: 'Counter Offer (RF406)' },
-  { value: 'rf407_amendment', label: 'Amendment (RF407)' },
-  { value: 'fha_addendum', label: 'FHA Addendum' },
-  { value: 'va_addendum', label: 'VA Addendum' },
-  { value: 'lead_paint', label: 'Lead Paint Disclosure' },
-  { value: 'lead_paint_pamphlet', label: 'Protect Your Family from Lead Pamphlet' },
-  { value: 'property_condition', label: 'Property Condition Disclosure' },
-  { value: 'property_condition_update', label: 'Residential Property Condition Update' },
-  { value: 'rf621_buyer_rep', label: 'Buyer Rep Agreement (RF141)' },
-  { value: 'buyer_rep_amendment', label: 'Amendment to Buyer Representation Agreement' },
-  { value: 'working_with_pro', label: 'Working with a Real Estate Professional' },
-  { value: 'disclaimer_notice', label: 'Disclaimer Notice' },
-  { value: 'wire_fraud_warning', label: 'Wire Fraud Warning' },
-  { value: 'written_agreement_tour', label: 'Written Agreement Before Touring' },
-  { value: 'binder_receipt', label: 'Binder / Trust Money Receipt' },
-  { value: 'binder_request', label: 'Binder / Trust Money Request' },
-  { value: 'compensation_agreement', label: 'Compensation Agreement' },
-  { value: 'addendum', label: 'Addendum' },
-  { value: 'confirmation_agency', label: 'Confirmation of Agency (RF302)' },
-  { value: 'agency_change_notice', label: 'Notification of Change of Agency Status' },
-  { value: 'subsurface_sewage', label: 'Subsurface Sewage Disposal Disclosure' },
-  { value: 'inspection_importance', label: 'Importance of Getting a Home Inspection' },
-  { value: 'septic_importance', label: 'Importance of a Property Septic Inspection' },
-  { value: 'personal_interest', label: 'Personal Interest Disclosure and Consent' },
-  { value: 'water_waste', label: 'Water Supply and Waste Disposal Notification' },
-  { value: 'repair_proposal', label: 'Repair Proposal' },
-  { value: 'repair_amendment', label: 'Repair / Replacement Amendment' },
-  { value: 'buyer_repair_auth', label: 'Buyer Authorization for Pre-Closing Repairs' },
-  { value: 'notification', label: 'Notification Form' },
-  { value: 'fsbo_agreement', label: 'Agreement to Show Property (FSBO)' },
-  { value: 'inspection_report', label: 'Inspection Report' },
-  { value: 'termination_notice', label: 'Notice of Termination of Contract' },
-  { value: 'mutual_release', label: 'Mutual Release and Disbursement of Earnest Money' },
-  { value: 'appraisal', label: 'Appraisal Report' },
-  { value: 'title_commitment', label: 'Title Commitment' },
-  { value: 'final_walkthrough', label: 'Buyer Final Walkthrough' },
-  { value: 'closing_disclosure', label: 'Closing Disclosure' },
-  { value: 'settlement_statement', label: 'Settlement Statement' },
-  { value: 'closing_date_amendment', label: 'Closing Date Amendment' },
-  { value: 'escrow_agreement', label: 'Escrow Agreement' },
-  { value: 'termite_letter', label: 'Termite / WDI Inspection Letter' },
-  { value: 'temp_occupancy_buyer', label: 'Temporary Occupancy Agreement - Buyer Before Closing' },
-  { value: 'temp_occupancy_seller', label: 'Temporary Occupancy Agreement - Seller After Closing' },
-  { value: 'referral_agreement', label: 'Referral Agreement' },
-  { value: 'referring_w9', label: 'Referring Agent Brokerage W-9' },
+  { value: 'home_inspection_report', label: 'Home Inspection Report' },
+  { value: 'appraisal_report', label: 'Appraisal Report' },
+  { value: 'survey', label: 'Survey' },
+  { value: 'hoa_documents', label: 'HOA Documents' },
+  { value: 'septic_report', label: 'Septic / Soil Report' },
+  { value: 'well_water_test', label: 'Well / Water Test Report' },
+  { value: 'termite_wdi_report', label: 'Termite / WDI Inspection Report' },
+  { value: 'deed', label: 'Deed' },
+  { value: 'plat_map', label: 'Plat Map' },
+  { value: 'radon_report', label: 'Radon Test Report' },
+  { value: 'utility_bills', label: 'Utility Bills' },
+  { value: 'warranty_documents', label: 'Home Warranty Documents' },
+  { value: 'photos', label: 'Property Photos' },
   { value: 'other', label: 'Other' },
 ]
 
