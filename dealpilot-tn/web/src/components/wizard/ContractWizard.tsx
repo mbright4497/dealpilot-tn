@@ -223,6 +223,16 @@ const QUESTIONS: WizardQuestion[] = [
     prefillKey: 'resolution_period_days',
     required: true,
   },
+  {
+    id: 'home_warranty',
+    section: 'Section 15 — Home Warranty',
+    label: 'Home Protection Plan?',
+    veraExplains: 'A home warranty covers repair/replacement of major systems after closing. Tri-Cities standard is to waive it or have Seller fund it at closing (~$500–700). If included, specify who pays and we\'ll note the provider in Special Stipulations.',
+    type: 'select',
+    options: ['Waived', 'Include — Buyer pays', 'Include — Seller pays'],
+    required: false,
+    defaultValue: 'Waived',
+  },
 
   // ─── Section 5: Deed ───
   {
@@ -287,6 +297,7 @@ const SECTIONS = [
   'Section 4 — Closing',
   'Section 7 — Lead-Based Paint',
   'Section 8 — Inspections',
+  'Section 15 — Home Warranty',
   'Section 5 — Title',
   'Section 20 — Exhibits & Addenda',
   'Section 21 — Special Stipulations',
@@ -465,16 +476,28 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
   // ─── Done screen ───────────────────────────────────────────────────────────
   if (done) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
-        <div className="text-4xl">🎉</div>
-        <h2 className="text-xl font-semibold text-white">Contract Complete!</h2>
-        <p className="text-gray-400 text-sm max-w-sm">Your RF401 has been generated and downloaded. It will also appear in the Documents tab for broker review.</p>
-        <button
-          onClick={() => { setDone(false); setCurrentIdx(0) }}
-          className="px-4 py-2 bg-orange-500 text-black rounded-lg text-sm font-semibold"
-        >
-          Start Over
-        </button>
+      <div className="flex fixed inset-0 items-center justify-center bg-gray-950">
+        <div className="text-center space-y-4">
+          <div className="text-5xl">✅</div>
+          <h2 className="text-white text-2xl font-bold">Contract Complete!</h2>
+          <p className="text-gray-400 text-sm">Your RF401 has been generated and downloaded.</p>
+          <div className="flex gap-3 justify-center pt-2">
+            <button
+              onClick={() => { setDone(false); setCurrentIdx(0); setError(null) }}
+              className="px-5 py-2 border border-gray-700 text-gray-300 rounded-xl text-sm hover:border-gray-500 transition-colors"
+            >
+              ← Edit Answers
+            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="px-5 py-2 bg-orange-500 hover:bg-orange-400 text-black rounded-xl text-sm font-semibold transition-colors"
+              >
+                Back to Transaction
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
@@ -482,7 +505,19 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex fixed inset-0 overflow-hidden rounded-xl border border-gray-800">
-      {onClose ? (
+      {/* Back to Transaction — top left */}
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute left-3 top-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-900 text-gray-400 text-xs hover:border-gray-600 hover:text-white transition-colors"
+        >
+          ← Transaction
+        </button>
+      )}
+
+      {/* Close X — top right */}
+      {onClose && (
         <button
           type="button"
           onClick={onClose}
@@ -491,7 +526,7 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
         >
           ×
         </button>
-      ) : null}
+      )}
 
       {/* LEFT — Section progress nav */}
       <div className="w-48 flex-shrink-0 border-r border-gray-800 overflow-y-auto bg-gray-950">
