@@ -35,7 +35,6 @@ export async function POST(
     'special_stipulations',
     'items_remaining',
     'items_not_remaining',
-    'exhibits_addenda',
   ]
 
   for (const field of textFields) {
