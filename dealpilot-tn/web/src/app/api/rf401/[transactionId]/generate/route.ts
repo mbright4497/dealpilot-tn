@@ -154,8 +154,6 @@ export async function GET(
       else if (gbRaw.includes('intend')) greenbelt = 'maintain'
     }
 
-    const sellerResponseLower = str('seller_response').trim().toLowerCase()
-
     const fieldValues: Record<string, string | boolean> = {
       buyer_1_name:              tx.client || '',
       buyer_2_name:              str('buyer_2_name').trim(),
@@ -224,25 +222,6 @@ export async function GET(
       offer_exp_time:            str('offer_exp_time').trim(),
       offer_exp_day:             offerExpParts.day,
       offer_exp_month_year:      offerExpMonthYear,
-      buyer1_offer_date:         formatDateUsShort(str('buyer1_offer_date').trim() || ''),
-      buyer1_offer_time:         str('buyer1_offer_time').trim(),
-      buyer1_offer_ampm:         str('buyer1_offer_ampm').trim(),
-      buyer2_offer_date:         formatDateUsShort(str('buyer2_offer_date').trim() || ''),
-      buyer2_offer_time:         str('buyer2_offer_time').trim(),
-      buyer2_offer_ampm:         str('buyer2_offer_ampm').trim(),
-      seller_response_accepts_chk: sellerResponseLower === 'accepts',
-      seller_response_counters_chk: sellerResponseLower === 'counters',
-      seller_response_rejects_chk: sellerResponseLower === 'rejects',
-      seller1_date:              formatDateUsShort(str('seller1_date').trim() || ''),
-      seller1_time:              str('seller1_time').trim(),
-      seller1_ampm:              str('seller1_ampm').trim(),
-      seller2_date:              formatDateUsShort(str('seller2_date').trim() || ''),
-      seller2_time:              str('seller2_time').trim(),
-      seller2_ampm:              str('seller2_ampm').trim(),
-      binding_acknowledged_by:   str('binding_acknowledged_by').trim(),
-      binding_agreement_date:    formatDateUsShort(str('binding_agreement_date').trim() || ''),
-      binding_agreement_time:    str('binding_agreement_time').trim(),
-      binding_agreement_ampm:    str('binding_agreement_ampm').trim(),
       listing_firm_name:         str('listing_firm_name').trim(),
       listing_firm_address:      str('listing_firm_address').trim(),
       listing_firm_license:      str('listing_firm_license').trim(),
