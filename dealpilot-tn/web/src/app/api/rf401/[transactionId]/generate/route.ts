@@ -178,7 +178,6 @@ export async function GET(
       leased_item_to_cancel:     buyerDeclinesLeased ? cancelLeaseText : '',
       purchase_price_numeric:    formatCurrency(tx.purchase_price),
       purchase_price_words:      wordsOverride || priceToWords(tx.purchase_price),
-      proof_of_funds:            str('proof_of_funds').trim(),
       ltv_percentage:            tx.loan_percentage ? String(tx.loan_percentage) : '',
       loan_conventional_chk:     loanType === 'conventional',
       loan_fha_chk:              loanType === 'fha',

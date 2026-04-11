@@ -20,12 +20,11 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'garage_remotes',         page: 1,  x: 1117, y: 674,  type: 'text',     fontSize: 9, maxWidth: 40  },
   { fieldId: 'items_remaining',        page: 1,  x: 153,  y: 869,  type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'items_not_remaining',    page: 1,  x: 153,  y: 943,  type: 'text',     fontSize: 9, maxWidth: 900 },
-  { fieldId: 'leased_items',           page: 1,  x: 282,  y: 1000, type: 'text',     fontSize: 9, maxWidth: 600 },
+  { fieldId: 'leased_items',           page: 1,  x: 284,  y: 1018, type: 'text',     fontSize: 9, maxWidth: 600 },
   { fieldId: 'buyer_declines_leased_chk', page: 1, x: 194, y: 1085, type: 'checkbox', fontSize: 9, maxWidth: 20  },
-  { fieldId: 'leased_item_to_cancel',  page: 1,  x: 698,  y: 1120, type: 'text',     fontSize: 9, maxWidth: 420 },
+  { fieldId: 'leased_item_to_cancel',  page: 1,  x: 702,  y: 1135, type: 'text',     fontSize: 9, maxWidth: 420 },
   { fieldId: 'purchase_price_numeric', page: 1,  x: 955,  y: 1272, type: 'text',     fontSize: 9, maxWidth: 280 },
   { fieldId: 'purchase_price_words',   page: 1,  x: 153,  y: 1295, type: 'text',     fontSize: 9, maxWidth: 700 },
-  { fieldId: 'proof_of_funds',         page: 1,  x: 153,  y: 1320, type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'ltv_percentage',         page: 1,  x: 514,  y: 1446, type: 'text',     fontSize: 9, maxWidth: 60  },
 
   // ─── PAGE 2 ───
