@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   Bell,
@@ -351,6 +351,9 @@ function TransactionDetailContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const txId = params?.id ?? ''
+  /** Latest route id — compare after awaits so stale responses cannot repopulate old transaction data. */
+  const latestTxIdRef = useRef(txId)
+  latestTxIdRef.current = txId
 
   const [loading, setLoading] = useState(true)
   const [tx, setTx] = useState<TxRow | null | undefined>(undefined)
@@ -378,6 +381,7 @@ function TransactionDetailContent() {
   const [showAddressMismatchModal, setShowAddressMismatchModal] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const addressMismatchDismissed = useRef<Set<number>>(new Set())
+  const prevTxIdForResetRef = useRef<string | null>(null)
   const rowUploadInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const [activeTab, setActiveTab] = useState<
@@ -490,14 +494,17 @@ function TransactionDetailContent() {
 
   const loadPageData = useCallback(async () => {
     if (!txId) return
+    const forId = txId
     try {
-      const res = await fetch(`/api/transactions/${txId}`, { cache: 'no-store' })
+      const res = await fetch(`/api/transactions/${forId}`, { cache: 'no-store' })
+      if (latestTxIdRef.current !== forId) return
       if (res.status === 404) {
         router.push('/transactions')
         return
       }
       if (!res.ok) throw new Error(`Failed to load transaction (${res.status})`)
       const json = await res.json()
+      if (latestTxIdRef.current !== forId) return
       setTx((json?.transaction as TxRow) || null)
       setTxDocuments(
         Array.isArray(json?.transaction_documents)
@@ -505,54 +512,85 @@ function TransactionDetailContent() {
           : []
       )
     } finally {
-      setLoading(false)
+      if (latestTxIdRef.current === forId) setLoading(false)
     }
   }, [txId, router])
 
   const loadContacts = useCallback(async () => {
     if (!txId) return
+    const forId = txId
     setContactsLoading(true)
     try {
-      const res = await fetch(`/api/transactions/${txId}/contacts`, { cache: 'no-store' })
+      const res = await fetch(`/api/transactions/${forId}/contacts`, { cache: 'no-store' })
+      if (latestTxIdRef.current !== forId) return
       if (!res.ok) throw new Error(`Failed contacts load (${res.status})`)
       const json = await res.json()
+      if (latestTxIdRef.current !== forId) return
       setContacts(Array.isArray(json?.contacts) ? (json.contacts as TransactionContact[]) : [])
     } catch {
-      setContacts([])
+      if (latestTxIdRef.current === forId) setContacts([])
     } finally {
-      setContactsLoading(false)
+      if (latestTxIdRef.current === forId) setContactsLoading(false)
     }
   }, [txId])
 
   async function loadCommsHistory() {
     if (!txId) return
+    const forId = txId
     setCommHistoryLoading(true)
     try {
-      const res = await fetch(`/api/transactions/${txId}/communication-log`, { cache: 'no-store' })
+      const res = await fetch(`/api/transactions/${forId}/communication-log`, { cache: 'no-store' })
+      if (latestTxIdRef.current !== forId) return
       if (!res.ok) throw new Error(`Failed comms history (${res.status})`)
       const json = await res.json()
+      if (latestTxIdRef.current !== forId) return
       setCommsHistory(Array.isArray(json?.history) ? json.history : [])
     } catch {
-      setCommsHistory([])
+      if (latestTxIdRef.current === forId) setCommsHistory([])
     } finally {
-      setCommHistoryLoading(false)
+      if (latestTxIdRef.current === forId) setCommHistoryLoading(false)
     }
   }
 
   async function loadActivity() {
     if (!txId) return
+    const forId = txId
     setActivityLoading(true)
     try {
-      const res = await fetch(`/api/transactions/${txId}/activity`, { cache: 'no-store' })
+      const res = await fetch(`/api/transactions/${forId}/activity`, { cache: 'no-store' })
+      if (latestTxIdRef.current !== forId) return
       if (!res.ok) throw new Error(`Failed activity load (${res.status})`)
       const json = await res.json()
+      if (latestTxIdRef.current !== forId) return
       setActivityFeed(Array.isArray(json?.events) ? (json.events as ActivityItem[]) : [])
     } catch {
-      setActivityFeed([])
+      if (latestTxIdRef.current === forId) setActivityFeed([])
     } finally {
-      setActivityLoading(false)
+      if (latestTxIdRef.current === forId) setActivityLoading(false)
     }
   }
+
+  // Before paint on id change — avoids flash of previous transaction (useEffect runs too late).
+  useLayoutEffect(() => {
+    if (!txId) return
+    const prev = prevTxIdForResetRef.current
+    if (prev != null && prev !== txId) {
+      setLoading(true)
+      setTx(null)
+      setTxDocuments([])
+      setAiChecklist([])
+      setPreviewDoc(null)
+      setReviewDoc(null)
+      setAddressMismatch(null)
+      addressMismatchDismissed.current.clear()
+      setContacts([])
+      setActivityFeed([])
+      setCommsHistory([])
+      setThreadId(null)
+      setRevaMessages([])
+    }
+    prevTxIdForResetRef.current = txId
+  }, [txId])
 
   useEffect(() => {
     void loadPageData().then(() => Promise.all([loadCommsHistory(), loadContacts(), loadActivity()]))
@@ -3174,7 +3212,10 @@ function TransactionDetailContent() {
         ? 'error'
         : 'processing'
 
-  if (loading || tx === undefined) {
+  const isStaleRouteTx =
+    Boolean(txId) && tx != null && String(tx.id) !== String(txId)
+
+  if (loading || tx === undefined || isStaleRouteTx) {
     return (
       <main className="mx-auto max-w-7xl px-4 py-6">
         <div className="grid gap-6 lg:grid-cols-[70%_30%]">

@@ -261,7 +261,7 @@ Missing one causes silent field misalignment with no error thrown.
 
 | Priority | Feature | What's needed |
 |---|---|---|
-| **P0** | Transaction detail flash-of-old-content | Find state init in `transactions/[id]/page.tsx` — reset to null on `id` change before fetch resolves |
+| ✅ ~~P0~~ | ~~Transaction detail flash-of-old-content~~ | Fixed — `useLayoutEffect` resets 10+ state slices before paint; `latestTxIdRef` guards all 4 loaders so stale responses can't overwrite current deal |
 | **P1** | GHL lead nurture separation | `closing-jet-active` tag on deal create; smart list excluding tagged contacts from nurture on number 564; separate from number 427 |
 | **P1** | Vera proactive deadline nudges | `/api/cron/deadline-nudges` — for each deal with deadline within N days, Vera initiates messages to relevant parties |
 | **P1** | Vendor email auto-provision | Auto-create GHL contact for vendors on deal save if no `ghl_contact_id`; write returned ID back to JSONB |
