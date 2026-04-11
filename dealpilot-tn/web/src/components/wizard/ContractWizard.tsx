@@ -15,6 +15,7 @@ type FieldType =
   | 'date'
   | 'textarea'
   | 'checkbox'
+  | 'time'
 
 interface WizardQuestion {
   id: string
@@ -27,6 +28,11 @@ interface WizardQuestion {
   prefillKey?: string
   required?: boolean
   skipIf?: (answers: Record<string, string>) => boolean
+  yesNoLabels?: { yes: string; no: string }
+  /** When type is `time`, also render AM/PM for this answers key */
+  companionAmpmField?: string
+  textareaMaxRows?: number
+  textareaMaxLength?: number
 }
 
 const QUESTIONS: WizardQuestion[] = [
@@ -197,11 +203,20 @@ const QUESTIONS: WizardQuestion[] = [
     required: true,
   },
   {
+    id: 'proof_of_funds',
+    section: 'Section 2B — Proof of funds (RF401)',
+    label: 'If financing contingency is waived, how will the buyer provide proof of funds?',
+    veraExplains:
+      'This is required when the buyer is paying cash or waiving the financing contingency. Common answers are "bank statement" or "lender commitment letter". Must be provided within 5 days of binding agreement date.',
+    type: 'text',
+  },
+  {
     id: 'appraisal_contingent',
     section: 'Section 2C — Appraisal',
-    label: 'Is this contract contingent on appraisal?',
-    veraExplains: 'You MUST select one option — leaving both unchecked means the appraisal section is not part of the agreement. Contingent means the buyer can terminate if appraisal comes in low. Not contingent means the buyer proceeds regardless.',
+    label: 'Is this agreement contingent upon the appraised value?',
+    veraExplains: 'You MUST select one option. Contingent means the buyer can terminate if appraisal comes in low. Not contingent means the buyer proceeds regardless.',
     type: 'yesno',
+    yesNoLabels: { yes: 'Yes — contingent (§2C.2)', no: 'No — not contingent (§2C.1)' },
     prefillKey: 'appraisal_contingent',
     required: true,
     skipIf: (a) => a.loan_type === 'Cash',
@@ -235,6 +250,25 @@ const QUESTIONS: WizardQuestion[] = [
     type: 'text',
     prefillKey: 'earnest_money_holder',
     required: true,
+  },
+  {
+    id: 'earnest_money_payment_method',
+    section: 'Section 3 — Earnest Money',
+    label: 'How is earnest money being delivered?',
+    veraExplains: 'Choose how the deposit will be made. If it is a personal check, pick Check — you will not need the follow-up line on the contract.',
+    type: 'select',
+    options: ['Check', 'Wire transfer', "Cashier's check", 'Other'],
+    defaultValue: 'Check',
+    required: true,
+  },
+  {
+    id: 'earnest_money_other_method',
+    section: 'Section 3 — Earnest Money',
+    label: 'How is earnest money being paid if not by check?',
+    veraExplains:
+      'Leave blank if paying by personal check. Only fill this in if using wire transfer, cashier\'s check, or another method.',
+    type: 'text',
+    skipIf: (a) => !a.earnest_money_payment_method || a.earnest_money_payment_method === 'Check',
   },
 
   // ─── Section 4: Closing ───
@@ -275,6 +309,24 @@ const QUESTIONS: WizardQuestion[] = [
     type: 'text',
     prefillKey: 'closing_agency_seller',
   },
+  {
+    id: 'title_expenses',
+    section: 'Section 4 — Title expenses (RF401)',
+    label: 'Who pays for title expenses (title search, mortgagee\'s policy, owner\'s policy)?',
+    veraExplains:
+      'This is one of the most important lines in the contract. In Tennessee, it is common for the seller to pay for the owner\'s policy and the buyer to pay for the mortgagee\'s policy, but this is negotiable. Whatever is agreed here gets written on line 147 of the RF401. Be specific — write exactly who pays what.',
+    type: 'textarea',
+  },
+  {
+    id: 'expense_modifications',
+    section: 'Section 4 — Title expenses (RF401)',
+    label: 'Are there any modifications to the standard buyer/seller/title expense allocations?',
+    veraExplains:
+      'Most agents write "N/A" or "See line 145-147" here if they already specified title expenses above. Only use this section if there are additional cost modifications beyond what was covered in the title expenses section. Do not duplicate.',
+    type: 'textarea',
+    textareaMaxRows: 4,
+    textareaMaxLength: 2000,
+  },
 
   // ─── Section 7: Lead Paint ───
   {
@@ -309,14 +361,60 @@ const QUESTIONS: WizardQuestion[] = [
     required: true,
   },
   {
+    id: 'waive_repair_request',
+    section: 'Section 8 — Inspections',
+    label: 'Does the buyer waive the right to request repairs under §8D(3)?',
+    veraExplains: 'If yes, the corresponding box is marked on the contract. Only choose Yes if the buyer is intentionally giving up that right.',
+    type: 'yesno',
+  },
+  {
+    id: 'waive_all_inspections',
+    section: 'Section 8 — Inspections',
+    label: 'Does the buyer waive ALL inspection rights under §8E?',
+    veraExplains: 'This is stronger than waiving repair requests alone. Confirm with the buyer before selecting Yes.',
+    type: 'yesno',
+  },
+  {
     id: 'home_warranty',
     section: 'Section 15 — Home Warranty',
     label: 'Home Protection Plan?',
-    veraExplains: 'A home warranty covers repair/replacement of major systems after closing. Tri-Cities standard is to waive it or have Seller fund it at closing (~$500–700). If included, specify who pays and we\'ll note the provider in Special Stipulations.',
+    veraExplains: 'A home warranty covers repair/replacement of major systems after closing. Tri-Cities standard is to waive it or have Seller fund it at closing (~$500–700). If included, specify who pays and fill the plan details below.',
     type: 'select',
     options: ['Waived', 'Include — Buyer pays', 'Include — Seller pays'],
     required: false,
     defaultValue: 'Waived',
+  },
+  {
+    id: 'hpp_paid_by',
+    section: 'Section 15 — Home Warranty',
+    label: 'Who pays for the home protection plan?',
+    veraExplains: 'Usually Buyer or Seller as shown on the form. Match what you selected above or spell it out exactly as it should read on the contract.',
+    type: 'text',
+    skipIf: (a) => !a.home_warranty || a.home_warranty === 'Waived',
+  },
+  {
+    id: 'hpp_amount',
+    section: 'Section 15 — Home Warranty',
+    label: 'Home protection plan amount ($)',
+    veraExplains: 'Approximate plan premium or funded amount (e.g. 550.00).',
+    type: 'currency',
+    skipIf: (a) => !a.home_warranty || a.home_warranty === 'Waived',
+  },
+  {
+    id: 'hpp_provider',
+    section: 'Section 15 — Home Warranty',
+    label: 'Plan provider (company name)',
+    veraExplains: 'The warranty company (e.g. 2-10, Old Republic) as it should appear on the RF401.',
+    type: 'text',
+    skipIf: (a) => !a.home_warranty || a.home_warranty === 'Waived',
+  },
+  {
+    id: 'hpp_ordered_by',
+    section: 'Section 15 — Home Warranty',
+    label: 'Ordered by (company)',
+    veraExplains: 'Which firm or party is ordering the plan, as line 425 expects.',
+    type: 'text',
+    skipIf: (a) => !a.home_warranty || a.home_warranty === 'Waived',
   },
 
   // ─── Section 5: Deed ───
@@ -329,6 +427,20 @@ const QUESTIONS: WizardQuestion[] = [
     type: 'text',
     prefillKey: 'deed_names',
     required: true,
+  },
+  {
+    id: 'greenbelt_status',
+    section: 'Section 5 — Greenbelt (RF401)',
+    label: 'Does the greenbelt classification apply to this property?',
+    veraExplains:
+      'Greenbelt status affects property tax treatment. Choose the option that matches how the buyer will treat the classification after closing.',
+    type: 'select',
+    options: [
+      'Not applicable',
+      'Buyer intends to maintain greenbelt',
+      'Buyer does not intend to maintain greenbelt',
+    ],
+    defaultValue: 'Not applicable',
   },
 
   // ─── Section 20: Exhibits ───
@@ -368,7 +480,340 @@ const QUESTIONS: WizardQuestion[] = [
     type: 'date',
     required: true,
   },
+
+  // ─── § Signatures & Closing Info (page 11) ───
+  {
+    id: 'buyer1_offer_date',
+    section: '§ Signatures & Closing Info',
+    label: 'Buyer 1 — offer date',
+    veraExplains:
+      'These fields complete the legal record of the contract. The binding agreement date is the most critical — it starts all deadlines in the contract including the 3-day loan application deadline, 14-day insurance deadline, and inspection period. Make sure the date and time are exact.',
+    type: 'date',
+    required: true,
+  },
+  {
+    id: 'buyer1_offer_time',
+    section: '§ Signatures & Closing Info',
+    label: 'Buyer 1 — offer time',
+    veraExplains: 'Use 24-hour time if easier; pick AM or PM for the PDF line.',
+    type: 'time',
+    companionAmpmField: 'buyer1_offer_ampm',
+    required: true,
+  },
+  {
+    id: 'buyer2_offer_date',
+    section: '§ Signatures & Closing Info',
+    label: 'Buyer 2 — offer date (optional)',
+    veraExplains: 'Only if there is a second buyer signing separately.',
+    type: 'date',
+  },
+  {
+    id: 'buyer2_offer_time',
+    section: '§ Signatures & Closing Info',
+    label: 'Buyer 2 — offer time (optional)',
+    veraExplains: '',
+    type: 'time',
+    companionAmpmField: 'buyer2_offer_ampm',
+  },
+  {
+    id: 'seller_response',
+    section: '§ Signatures & Closing Info',
+    label: 'Seller response',
+    veraExplains: 'Whether the seller accepts, counters, or rejects the offer as written.',
+    type: 'select',
+    options: ['Accepts', 'Counters', 'Rejects'],
+    required: true,
+  },
+  {
+    id: 'seller1_date',
+    section: '§ Signatures & Closing Info',
+    label: 'Seller 1 — date',
+    veraExplains: 'Date of seller signature or response.',
+    type: 'date',
+    required: true,
+  },
+  {
+    id: 'seller1_time',
+    section: '§ Signatures & Closing Info',
+    label: 'Seller 1 — time',
+    veraExplains: '',
+    type: 'time',
+    companionAmpmField: 'seller1_ampm',
+    required: true,
+  },
+  {
+    id: 'seller2_date',
+    section: '§ Signatures & Closing Info',
+    label: 'Seller 2 — date (optional)',
+    veraExplains: '',
+    type: 'date',
+  },
+  {
+    id: 'seller2_time',
+    section: '§ Signatures & Closing Info',
+    label: 'Seller 2 — time (optional)',
+    veraExplains: '',
+    type: 'time',
+    companionAmpmField: 'seller2_ampm',
+  },
+  {
+    id: 'binding_acknowledged_by',
+    section: '§ Signatures & Closing Info',
+    label: 'Binding agreement — acknowledged by (name)',
+    veraExplains: 'Who is acknowledging the binding agreement (often a licensee or party).',
+    type: 'text',
+    required: true,
+  },
+  {
+    id: 'binding_agreement_date',
+    section: '§ Signatures & Closing Info',
+    label: 'Binding agreement date',
+    veraExplains: 'The binding agreement date controls contract deadlines — double-check with the fully signed contract.',
+    type: 'date',
+    required: true,
+  },
+  {
+    id: 'binding_agreement_time',
+    section: '§ Signatures & Closing Info',
+    label: 'Binding agreement time',
+    veraExplains: '',
+    type: 'time',
+    companionAmpmField: 'binding_agreement_ampm',
+    required: true,
+  },
+  {
+    id: 'listing_firm_name',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing firm — name',
+    veraExplains: 'For information purposes only (page 11).',
+    type: 'text',
+  },
+  {
+    id: 'listing_firm_address',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing firm — address',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'listing_firm_license',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing firm — license number',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'listing_firm_phone',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing firm — phone',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'listing_licensee_name',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing licensee — name',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'listing_licensee_number',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing licensee — license number',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'listing_licensee_email',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing licensee — email',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'listing_licensee_cell',
+    section: '§ Signatures & Closing Info',
+    label: 'Listing licensee — cell phone',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'buying_firm_name',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying firm — name',
+    veraExplains: 'Defaults from your profile on generate if left blank.',
+    type: 'text',
+  },
+  {
+    id: 'buying_firm_address',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying firm — address',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'buying_firm_license',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying firm — license number',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'buying_firm_phone',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying firm — phone',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'buying_licensee_name',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying licensee — name',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'buying_licensee_number',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying licensee — license number',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'buying_licensee_email',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying licensee — email',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'buying_licensee_cell',
+    section: '§ Signatures & Closing Info',
+    label: 'Buying licensee — cell phone',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'hoa_name',
+    section: '§ Signatures & Closing Info',
+    label: 'HOA / COA name',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'hoa_phone',
+    section: '§ Signatures & Closing Info',
+    label: 'HOA / COA phone',
+    veraExplains: '',
+    type: 'text',
+  },
+  {
+    id: 'hoa_email',
+    section: '§ Signatures & Closing Info',
+    label: 'HOA / COA email',
+    veraExplains: '',
+    type: 'text',
+  },
 ]
+
+function mergeTransactionIntoAnswers(transaction: Record<string, unknown>): Record<string, string> {
+  const prefilled: Record<string, string> = {}
+  const w = transaction.rf401_wizard as Record<string, unknown> | null | undefined
+  const wz = w && typeof w === 'object' && !Array.isArray(w) ? w : {}
+  const wStr = (k: string) => {
+    const v = wz[k]
+    if (v == null) return ''
+    if (typeof v === 'boolean') return v ? 'true' : 'false'
+    return String(v)
+  }
+
+  for (const q of QUESTIONS) {
+    if (q.prefillKey) {
+      const key = q.prefillKey
+      const v = transaction[key]
+      if (v != null && String(v) !== '') {
+        if (key === 'appraisal_contingent' && typeof v === 'boolean') {
+          prefilled[q.id] = v ? 'true' : 'false'
+        } else if (key === 'lead_based_paint' && typeof v === 'boolean') {
+          prefilled[q.id] = v ? 'true' : 'false'
+        } else {
+          prefilled[q.id] = String(v)
+        }
+      }
+    }
+    if (q.defaultValue !== undefined && !(q.id in prefilled)) {
+      prefilled[q.id] = q.defaultValue
+    }
+  }
+
+  if (!prefilled.rf401_6 && transaction.county != null && String(transaction.county) !== '') {
+    prefilled.rf401_6 = String(transaction.county)
+  }
+
+  if (wStr('deed_book')) prefilled.rf401_7 = wStr('deed_book')
+  if (wStr('deed_page')) prefilled.rf401_8 = wStr('deed_page')
+  if (wStr('instrument_number')) prefilled.rf401_9 = wStr('instrument_number')
+  if (wStr('further_legal_description')) prefilled.rf401_10 = wStr('further_legal_description')
+  if (wStr('garage_remotes').trim()) prefilled.rf401_11 = wStr('garage_remotes')
+  if (wz.buyer_declines_leased_assumption === true) prefilled.rf401_15 = 'true'
+  else if (wz.buyer_declines_leased_assumption === false) prefilled.rf401_15 = 'false'
+  if (wStr('leased_item_to_cancel')) prefilled.rf401_16 = wStr('leased_item_to_cancel')
+  if (wStr('purchase_price_words').trim()) prefilled.rf401_18 = wStr('purchase_price_words')
+  if (wz.possession === 'temporary_occupancy') prefilled.rf401_37 = 'Temporary occupancy agreement'
+  else if (wz.possession === 'at_closing') prefilled.rf401_37 = 'At closing'
+
+  const wizKeys: string[] = [
+    'proof_of_funds', 'exhibits_addenda', 'title_expenses', 'expense_modifications',
+    'earnest_money_payment_method', 'earnest_money_other_method', 'greenbelt_status',
+    'offer_exp_time', 'offer_exp_date', 'waive_repair_request', 'waive_all_inspections',
+    'hpp_paid_by', 'hpp_amount', 'hpp_provider', 'hpp_ordered_by',
+    'buyer_2_name', 'seller_2_name',
+    'buyer1_offer_date', 'buyer1_offer_time', 'buyer1_offer_ampm',
+    'buyer2_offer_date', 'buyer2_offer_time', 'buyer2_offer_ampm',
+    'seller_response', 'seller1_date', 'seller1_time', 'seller1_ampm',
+    'seller2_date', 'seller2_time', 'seller2_ampm',
+    'binding_acknowledged_by', 'binding_agreement_date', 'binding_agreement_time', 'binding_agreement_ampm',
+    'listing_firm_name', 'listing_firm_address', 'listing_firm_license', 'listing_firm_phone',
+    'listing_licensee_name', 'listing_licensee_number', 'listing_licensee_email', 'listing_licensee_cell',
+    'buying_firm_name', 'buying_firm_address', 'buying_firm_license', 'buying_firm_phone',
+    'buying_licensee_name', 'buying_licensee_number', 'buying_licensee_email', 'buying_licensee_cell',
+    'hoa_name', 'hoa_phone', 'hoa_email', 'property_address',
+  ]
+  for (const k of wizKeys) {
+    const val = wStr(k).trim()
+    if (val) prefilled[k] = wStr(k)
+  }
+
+  if (wStr('items_remaining').trim()) prefilled.items_remaining = wStr('items_remaining')
+  else if (transaction.items_remaining != null && String(transaction.items_remaining).trim() !== '') {
+    prefilled.items_remaining = String(transaction.items_remaining)
+  }
+  if (wStr('items_not_remaining').trim()) prefilled.items_not_remaining = wStr('items_not_remaining')
+  else if (transaction.items_not_remaining != null && String(transaction.items_not_remaining).trim() !== '') {
+    prefilled.items_not_remaining = String(transaction.items_not_remaining)
+  }
+
+  if (wStr('home_warranty').trim()) prefilled.home_warranty = wStr('home_warranty')
+  else if (typeof transaction.home_warranty === 'boolean') {
+    prefilled.home_warranty = transaction.home_warranty ? 'Include — Seller pays' : 'Waived'
+  } else if (transaction.home_warranty != null && String(transaction.home_warranty) !== '') {
+    prefilled.home_warranty = String(transaction.home_warranty)
+  }
+
+  if (prefilled.appraisal_contingent === undefined) {
+    const ac = wStr('appraisal_contingent').toLowerCase()
+    if (ac === 'true' || ac === 'yes') prefilled.appraisal_contingent = 'true'
+    else if (ac === 'false' || ac === 'no') prefilled.appraisal_contingent = 'false'
+  }
+
+  const pp = prefilled.purchase_price || (transaction.purchase_price != null ? String(transaction.purchase_price) : '')
+  if (!prefilled.rf401_18 && pp) {
+    const auto = priceToWords(pp)
+    if (auto) prefilled.rf401_18 = auto
+  }
+
+  return prefilled
+}
 
 // ─── Section list for progress nav ──────────────────────────────────────────
 
@@ -379,16 +824,20 @@ const SECTIONS = [
   'Section 1 — Personal Property',
   'Section 2 — Purchase Price',
   'Section 2 — Financing',
+  'Section 2B — Proof of funds (RF401)',
   'Section 2C — Appraisal',
   'Section 3 — Earnest Money',
   'Section 4 — Closing',
+  'Section 4 — Title expenses (RF401)',
   'Section 7 — Lead-Based Paint',
   'Section 8 — Inspections',
   'Section 15 — Home Warranty',
   'Section 5 — Title',
+  'Section 5 — Greenbelt (RF401)',
   'Section 20 — Exhibits & Addenda',
   'Section 21 — Special Stipulations',
   'Section 22 — Time Limit of Offer',
+  '§ Signatures & Closing Info',
 ]
 
 // ─── Chat message type ───────────────────────────────────────────────────────
@@ -411,47 +860,9 @@ interface Props {
 export default function ContractWizard({ transactionId, transaction, onClose }: Props) {
   const priceWordsTouchedRef = useRef(false)
 
-  // Pre-fill answers from transaction
-  const buildPrefilled = () => {
-    const prefilled: Record<string, string> = {}
-    for (const q of QUESTIONS) {
-      if (q.prefillKey && transaction[q.prefillKey] != null && String(transaction[q.prefillKey]) !== '') {
-        prefilled[q.id] = String(transaction[q.prefillKey])
-      }
-      if (q.defaultValue && !prefilled[q.id]) {
-        prefilled[q.id] = q.defaultValue
-      }
-    }
-    if (!prefilled.rf401_6 && transaction.county != null && String(transaction.county) !== '') {
-      prefilled.rf401_6 = String(transaction.county)
-    }
-    const w = transaction.rf401_wizard as Record<string, unknown> | null | undefined
-    if (w && typeof w === 'object') {
-      if (w.deed_book != null) prefilled.rf401_7 = String(w.deed_book)
-      if (w.deed_page != null) prefilled.rf401_8 = String(w.deed_page)
-      if (w.instrument_number != null) prefilled.rf401_9 = String(w.instrument_number)
-      if (w.further_legal_description != null) prefilled.rf401_10 = String(w.further_legal_description)
-      if (w.garage_remotes != null && String(w.garage_remotes).trim() !== '') {
-        prefilled.rf401_11 = String(w.garage_remotes)
-      }
-      if (w.buyer_declines_leased_assumption === true) prefilled.rf401_15 = 'true'
-      else if (w.buyer_declines_leased_assumption === false) prefilled.rf401_15 = 'false'
-      if (w.leased_item_to_cancel != null) prefilled.rf401_16 = String(w.leased_item_to_cancel)
-      if (w.purchase_price_words != null && String(w.purchase_price_words).trim() !== '') {
-        prefilled.rf401_18 = String(w.purchase_price_words)
-      }
-      if (w.possession === 'temporary_occupancy') prefilled.rf401_37 = 'Temporary occupancy agreement'
-      else if (w.possession === 'at_closing') prefilled.rf401_37 = 'At closing'
-    }
-    const pp = prefilled.purchase_price || (transaction.purchase_price != null ? String(transaction.purchase_price) : '')
-    if (!prefilled.rf401_18 && pp) {
-      const auto = priceToWords(pp)
-      if (auto) prefilled.rf401_18 = auto
-    }
-    return prefilled
-  }
-
-  const [answers, setAnswers] = useState<Record<string, string>>(buildPrefilled)
+  const [answers, setAnswers] = useState<Record<string, string>>(() =>
+    mergeTransactionIntoAnswers(transaction)
+  )
   const [currentIdx, setCurrentIdx] = useState(0)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -484,6 +895,33 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/transactions/${transactionId}`)
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (cancelled || !data?.transaction) return
+        setAnswers(mergeTransactionIntoAnswers(data.transaction as Record<string, unknown>))
+      } catch {
+        /* keep answers from props */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [transactionId])
+
+  useEffect(() => {
+    if (!currentQ?.companionAmpmField) return
+    const ampmKey = currentQ.companionAmpmField
+    setAnswers(prev => {
+      if (prev[ampmKey]) return prev
+      return { ...prev, [ampmKey]: 'AM' }
+    })
+  }, [currentQ?.id, currentQ?.companionAmpmField, currentIdx])
+
   const lastPurchasePriceRef = useRef(answers.purchase_price ?? '')
   useEffect(() => {
     const p = answers.purchase_price ?? ''
@@ -513,9 +951,16 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
 
   function handleNext() {
     if (!currentQ) return
-    if (currentQ.required && !currentAnswer.trim()) {
-      setError(`${currentQ.label} is required.`)
-      return
+    if (currentQ.required) {
+      if (currentQ.type === 'time') {
+        if (!currentAnswer.trim()) {
+          setError(`${currentQ.label} is required.`)
+          return
+        }
+      } else if (!currentAnswer.trim()) {
+        setError(`${currentQ.label} is required.`)
+        return
+      }
     }
     setError(null)
     if (currentIdx < activeQuestions.length - 1) {
@@ -599,7 +1044,7 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
   }
 
   function speakExplanation() {
-    if (!currentQ) return
+    if (!currentQ || !currentQ.veraExplains.trim()) return
     if (speaking) { stopSpeaking(); setSpeaking(false); return }
     speak(currentQ.veraExplains, 'friendly_tn', () => setSpeaking(true), () => setSpeaking(false))
   }
@@ -721,34 +1166,45 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
               </div>
 
               {/* Vera's explanation */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 mb-5 flex items-start gap-2">
-                <img src="/avatar-pilot.png" alt="Vera" className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" />
-                <p className="text-gray-300 text-sm leading-relaxed">{currentQ.veraExplains}</p>
-                <button
-                  onClick={speakExplanation}
-                  className="flex-shrink-0 text-gray-500 hover:text-orange-400 transition-colors"
-                  title="Hear Vera explain this"
-                >
-                  {speaking ? '🔇' : '🔊'}
-                </button>
-              </div>
+              {currentQ.veraExplains.trim() !== '' && (
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 mb-5 flex items-start gap-2">
+                  <img src="/avatar-pilot.png" alt="Vera" className="w-6 h-6 rounded-full flex-shrink-0 mt-0.5" />
+                  <p className="text-gray-300 text-sm leading-relaxed">{currentQ.veraExplains}</p>
+                  <button
+                    type="button"
+                    onClick={speakExplanation}
+                    className="flex-shrink-0 text-gray-500 hover:text-orange-400 transition-colors"
+                    title="Hear Vera explain this"
+                  >
+                    {speaking ? '🔇' : '🔊'}
+                  </button>
+                </div>
+              )}
 
               {/* Input */}
               {currentQ.type === 'yesno' && (
-                <div className="flex gap-3">
-                  {['Yes', 'No'].map(opt => (
-                    <button
-                      key={opt}
-                      onClick={() => handleAnswer(opt === 'Yes' ? 'true' : 'false')}
-                      className={`px-6 py-3 rounded-xl text-sm font-semibold border transition-all ${
-                        currentAnswer === (opt === 'Yes' ? 'true' : 'false')
-                          ? 'bg-orange-500 border-orange-500 text-black'
-                          : 'border-gray-700 text-gray-300 hover:border-orange-500/50'
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-3">
+                  {(['Yes', 'No'] as const).map(opt => {
+                    const val = opt === 'Yes' ? 'true' : 'false'
+                    const label =
+                      opt === 'Yes'
+                        ? (currentQ.yesNoLabels?.yes ?? 'Yes')
+                        : (currentQ.yesNoLabels?.no ?? 'No')
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => handleAnswer(val)}
+                        className={`px-4 py-3 rounded-xl text-sm font-semibold border transition-all text-left max-w-full ${
+                          currentAnswer === val
+                            ? 'bg-orange-500 border-orange-500 text-black'
+                            : 'border-gray-700 text-gray-300 hover:border-orange-500/50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
 
@@ -793,6 +1249,27 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
                 />
               )}
 
+              {currentQ.type === 'time' && currentQ.companionAmpmField && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="time"
+                    value={currentAnswer}
+                    onChange={e => handleAnswer(e.target.value)}
+                    className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-orange-500/50"
+                  />
+                  <select
+                    value={answers[currentQ.companionAmpmField] || 'AM'}
+                    onChange={e =>
+                      setAnswers(prev => ({ ...prev, [currentQ.companionAmpmField!]: e.target.value }))
+                    }
+                    className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-orange-500/50"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              )}
+
               {currentQ.type === 'textarea' && (
                 <textarea
                   value={currentAnswer}
@@ -800,7 +1277,8 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
                     if (currentQ.id === 'rf401_18') priceWordsTouchedRef.current = true
                     handleAnswer(e.target.value)
                   }}
-                  rows={4}
+                  rows={currentQ.textareaMaxRows ?? 4}
+                  maxLength={currentQ.textareaMaxLength}
                   onKeyDown={e => e.key === 'Enter' && e.ctrlKey && handleNext()}
                   className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-orange-500/50 placeholder-gray-600 resize-y min-h-[100px]"
                   placeholder={currentQ.id === 'rf401_18' ? 'e.g. Two Hundred Fifty Thousand Dollars' : ''}

@@ -3,6 +3,11 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
+function S(answers: Record<string, unknown>, id: string): string {
+  const v = answers[id]
+  return v != null ? String(v) : ''
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { transactionId: string } }
@@ -49,22 +54,85 @@ export async function POST(
     updates.deed_names = String(answers.rf401_40).trim()
   }
 
+  const loanTypeStr = answers.loan_type != null ? String(answers.loan_type).toLowerCase() : ''
+  if (loanTypeStr === 'cash') {
+    updates.financing_contingency_waived = true
+  }
+
   const rf401Wizard: Record<string, unknown> = {
-    deed_book: answers.rf401_7 != null ? String(answers.rf401_7) : '',
-    deed_page: answers.rf401_8 != null ? String(answers.rf401_8) : '',
-    instrument_number: answers.rf401_9 != null ? String(answers.rf401_9) : '',
-    further_legal_description: answers.rf401_10 != null ? String(answers.rf401_10) : '',
+    deed_book: S(answers, 'rf401_7'),
+    deed_page: S(answers, 'rf401_8'),
+    instrument_number: S(answers, 'rf401_9'),
+    further_legal_description: S(answers, 'rf401_10'),
     garage_remotes:
       answers.rf401_11 != null && String(answers.rf401_11).trim() !== ''
         ? String(answers.rf401_11).trim()
         : '2',
     buyer_declines_leased_assumption: answers.rf401_15 === 'true',
-    leased_item_to_cancel: answers.rf401_16 != null ? String(answers.rf401_16) : '',
-    purchase_price_words: answers.rf401_18 != null ? String(answers.rf401_18) : '',
+    leased_item_to_cancel: S(answers, 'rf401_16'),
+    purchase_price_words: S(answers, 'rf401_18'),
     possession:
       answers.rf401_37 === 'Temporary occupancy agreement'
         ? 'temporary_occupancy'
         : 'at_closing',
+    items_remaining: S(answers, 'items_remaining'),
+    items_not_remaining: S(answers, 'items_not_remaining'),
+    property_address: S(answers, 'property_address'),
+    exhibits_addenda: S(answers, 'exhibits_addenda'),
+    offer_exp_time: S(answers, 'offer_exp_time'),
+    offer_exp_date: S(answers, 'offer_exp_date'),
+    proof_of_funds: S(answers, 'proof_of_funds'),
+    title_expenses: S(answers, 'title_expenses'),
+    expense_modifications: S(answers, 'expense_modifications'),
+    earnest_money_payment_method: S(answers, 'earnest_money_payment_method'),
+    earnest_money_other_method: S(answers, 'earnest_money_other_method'),
+    greenbelt_status: S(answers, 'greenbelt_status'),
+    waive_repair_request: S(answers, 'waive_repair_request'),
+    waive_all_inspections: S(answers, 'waive_all_inspections'),
+    hpp_paid_by: S(answers, 'hpp_paid_by'),
+    hpp_amount: S(answers, 'hpp_amount'),
+    hpp_provider: S(answers, 'hpp_provider'),
+    hpp_ordered_by: S(answers, 'hpp_ordered_by'),
+    home_warranty: S(answers, 'home_warranty'),
+    appraisal_contingent: S(answers, 'appraisal_contingent'),
+    buyer_2_name: S(answers, 'buyer_2_name'),
+    seller_2_name: S(answers, 'seller_2_name'),
+    buyer1_offer_date: S(answers, 'buyer1_offer_date'),
+    buyer1_offer_time: S(answers, 'buyer1_offer_time'),
+    buyer1_offer_ampm: S(answers, 'buyer1_offer_ampm'),
+    buyer2_offer_date: S(answers, 'buyer2_offer_date'),
+    buyer2_offer_time: S(answers, 'buyer2_offer_time'),
+    buyer2_offer_ampm: S(answers, 'buyer2_offer_ampm'),
+    seller_response: S(answers, 'seller_response'),
+    seller1_date: S(answers, 'seller1_date'),
+    seller1_time: S(answers, 'seller1_time'),
+    seller1_ampm: S(answers, 'seller1_ampm'),
+    seller2_date: S(answers, 'seller2_date'),
+    seller2_time: S(answers, 'seller2_time'),
+    seller2_ampm: S(answers, 'seller2_ampm'),
+    binding_acknowledged_by: S(answers, 'binding_acknowledged_by'),
+    binding_agreement_date: S(answers, 'binding_agreement_date'),
+    binding_agreement_time: S(answers, 'binding_agreement_time'),
+    binding_agreement_ampm: S(answers, 'binding_agreement_ampm'),
+    listing_firm_name: S(answers, 'listing_firm_name'),
+    listing_firm_address: S(answers, 'listing_firm_address'),
+    listing_firm_license: S(answers, 'listing_firm_license'),
+    listing_firm_phone: S(answers, 'listing_firm_phone'),
+    listing_licensee_name: S(answers, 'listing_licensee_name'),
+    listing_licensee_number: S(answers, 'listing_licensee_number'),
+    listing_licensee_email: S(answers, 'listing_licensee_email'),
+    listing_licensee_cell: S(answers, 'listing_licensee_cell'),
+    buying_firm_name: S(answers, 'buying_firm_name'),
+    buying_firm_address: S(answers, 'buying_firm_address'),
+    buying_firm_license: S(answers, 'buying_firm_license'),
+    buying_firm_phone: S(answers, 'buying_firm_phone'),
+    buying_licensee_name: S(answers, 'buying_licensee_name'),
+    buying_licensee_number: S(answers, 'buying_licensee_number'),
+    buying_licensee_email: S(answers, 'buying_licensee_email'),
+    buying_licensee_cell: S(answers, 'buying_licensee_cell'),
+    hoa_name: S(answers, 'hoa_name'),
+    hoa_phone: S(answers, 'hoa_phone'),
+    hoa_email: S(answers, 'hoa_email'),
   }
   updates.rf401_wizard = rf401Wizard
 
@@ -97,7 +165,7 @@ export async function POST(
     const n = parseInt(answers.resolution_period_days, 10)
     if (!isNaN(n)) updates.resolution_period_days = n
   }
-  if (answers.appraisal_contingent != null) {
+  if (answers.appraisal_contingent != null && String(answers.appraisal_contingent) !== '') {
     updates.appraisal_contingent = answers.appraisal_contingent === 'true'
   }
   if (answers.lead_based_paint != null) {

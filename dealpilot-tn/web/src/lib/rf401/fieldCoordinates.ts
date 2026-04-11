@@ -8,7 +8,7 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'buyer_2_name',           page: 1,  x: 586,  y: 358,  type: 'text',     fontSize: 9, maxWidth: 380 },
   { fieldId: 'seller_1_name',          page: 1,  x: 316,  y: 384,  type: 'text',     fontSize: 9, maxWidth: 260 },
   { fieldId: 'seller_2_name',          page: 1,  x: 694,  y: 386,  type: 'text',     fontSize: 9, maxWidth: 380 },
-  { fieldId: 'property_address',       page: 1,  x: 418,  y: 432,  type: 'text',     fontSize: 9, maxWidth: 600 },
+  { fieldId: 'property_address',       page: 1,  x: 310,  y: 440,  type: 'text',     fontSize: 9, maxWidth: 600 },
   { fieldId: 'property_city',          page: 1,  x: 249,  y: 457,  type: 'text',     fontSize: 9, maxWidth: 280 },
   { fieldId: 'property_zip',           page: 1,  x: 846,  y: 457,  type: 'text',     fontSize: 9, maxWidth: 120 },
   // Register of Deeds row + instrument + further description — calibrated from rf401-blank.pdf bbox (150dpi space)
@@ -17,14 +17,15 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'deed_pages',             page: 1,  x: 992,  y: 460,  type: 'text',     fontSize: 9, maxWidth: 100 },
   { fieldId: 'instrument_number',      page: 1,  x: 216,  y: 485,  type: 'text',     fontSize: 9, maxWidth: 400 },
   { fieldId: 'further_legal_description', page: 1, x: 153, y: 508, type: 'text',     fontSize: 9, maxWidth: 900 },
-  { fieldId: 'garage_remotes',         page: 1,  x: 1138, y: 656,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  { fieldId: 'garage_remotes',         page: 1,  x: 1155, y: 650,  type: 'text',     fontSize: 9, maxWidth: 40  },
   { fieldId: 'items_remaining',        page: 1,  x: 153,  y: 869,  type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'items_not_remaining',    page: 1,  x: 153,  y: 943,  type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'leased_items',           page: 1,  x: 282,  y: 1000, type: 'text',     fontSize: 9, maxWidth: 600 },
   { fieldId: 'buyer_declines_leased_chk', page: 1, x: 188, y: 1072, type: 'checkbox', fontSize: 9, maxWidth: 20  },
   { fieldId: 'leased_item_to_cancel',  page: 1,  x: 698,  y: 1120, type: 'text',     fontSize: 9, maxWidth: 420 },
-  { fieldId: 'purchase_price_numeric', page: 1,  x: 955,  y: 1255, type: 'text',     fontSize: 9, maxWidth: 280 },
+  { fieldId: 'purchase_price_numeric', page: 1,  x: 990,  y: 1255, type: 'text',     fontSize: 9, maxWidth: 280 },
   { fieldId: 'purchase_price_words',   page: 1,  x: 153,  y: 1295, type: 'text',     fontSize: 9, maxWidth: 700 },
+  { fieldId: 'proof_of_funds',         page: 1,  x: 153,  y: 1320, type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'ltv_percentage',         page: 1,  x: 514,  y: 1446, type: 'text',     fontSize: 9, maxWidth: 60  },
 
   // ─── PAGE 2 ───
@@ -36,10 +37,15 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'appraisal_not_chk',      page: 2,  x: 195,  y: 1479, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 3 ───
-  { fieldId: 'appraisal_contingent_chk', page: 3, x: 194, y: 178,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
-  { fieldId: 'title_expenses',          page: 3,  x: 231,  y: 1178, type: 'text',     fontSize: 9, maxWidth: 900 },
-  { fieldId: 'closing_cost_mod',        page: 3,  x: 150,  y: 1347, type: 'text',     fontSize: 9, maxWidth: 900 },
-  { fieldId: 'closing_agency_buyer',    page: 3,  x: 600,  y: 1444, type: 'text',     fontSize: 9, maxWidth: 500 },
+  { fieldId: 'appraisal_2c_no_chk',    page: 3,  x: 188,  y: 442,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'appraisal_2c_yes_chk',   page: 3,  x: 188,  y: 480,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'title_expenses',         page: 3,  x: 153,  y: 1080, type: 'text',     fontSize: 9, maxWidth: 900 },
+  { fieldId: 'expense_mod_line1',      page: 3,  x: 153,  y: 1110, type: 'text',     fontSize: 9, maxWidth: 900 },
+  { fieldId: 'expense_mod_line2',      page: 3,  x: 153,  y: 1128, type: 'text',     fontSize: 9, maxWidth: 900 },
+  { fieldId: 'expense_mod_line3',      page: 3,  x: 153,  y: 1146, type: 'text',     fontSize: 9, maxWidth: 900 },
+  { fieldId: 'expense_mod_line4',      page: 3,  x: 153,  y: 1164, type: 'text',     fontSize: 9, maxWidth: 900 },
+  { fieldId: 'closing_agency_buyer',   page: 3,  x: 600,  y: 1444, type: 'text',     fontSize: 9, maxWidth: 500 },
+  { fieldId: 'earnest_money_other_method', page: 3, x: 153, y: 1340, type: 'text',   fontSize: 9, maxWidth: 900 },
 
   // ─── PAGE 4 ───
   { fieldId: 'closing_agency_seller',   page: 4,  x: 603,  y: 131,  type: 'text',     fontSize: 9, maxWidth: 500 },
@@ -54,6 +60,8 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
 
   // ─── PAGE 5 ───
   { fieldId: 'deed_names',             page: 5,  x: 452,  y: 1248, type: 'text',     fontSize: 9, maxWidth: 500 },
+  { fieldId: 'greenbelt_maintain_chk', page: 5,  x: 188,  y: 450,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'greenbelt_not_maintain_chk', page: 5, x: 188, y: 530, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 6 ───
   { fieldId: 'lbp_not_apply_chk',      page: 6,  x: 156,  y: 306,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
@@ -63,8 +71,14 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   // ─── PAGE 7 ───
   { fieldId: 'resolution_period_days', page: 7,  x: 886,  y: 206,  type: 'text',     fontSize: 9, maxWidth: 60  },
   { fieldId: 'final_inspection_days',  page: 7,  x: 492,  y: 1014, type: 'text',     fontSize: 9, maxWidth: 60  },
+  { fieldId: 'waive_repair_request_chk', page: 7, x: 188, y: 980, type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'waive_all_inspections_chk', page: 7, x: 188, y: 1058, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 8 ───
+  { fieldId: 'hpp_paid_by',            page: 8,  x: 390,  y: 1080, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'hpp_amount',             page: 8,  x: 820,  y: 1080, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'hpp_provider',           page: 8,  x: 540,  y: 1098, type: 'text',     fontSize: 9, maxWidth: 400 },
+  { fieldId: 'hpp_ordered_by',         page: 8,  x: 350,  y: 1116, type: 'text',     fontSize: 9, maxWidth: 500 },
   { fieldId: 'hpp_waived_chk',         page: 8,  x: 157,  y: 1401, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 10 ───
@@ -74,7 +88,32 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'offer_exp_day',          page: 10, x: 690,  y: 1334, type: 'text',     fontSize: 9, maxWidth: 60  },
   { fieldId: 'offer_exp_month_year',   page: 10, x: 823,  y: 1334, type: 'text',     fontSize: 9, maxWidth: 200 },
 
-  // ─── PAGE 11 ───
+  // ─── PAGE 11 — signatures & firm info ───
+  { fieldId: 'buyer1_offer_date',      page: 11, x: 153,  y: 200,  type: 'text',     fontSize: 9, maxWidth: 120 },
+  { fieldId: 'buyer1_offer_time',      page: 11, x: 340,  y: 200,  type: 'text',     fontSize: 9, maxWidth: 80  },
+  { fieldId: 'buyer1_offer_ampm',      page: 11, x: 500,  y: 200,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  { fieldId: 'buyer2_offer_date',      page: 11, x: 153,  y: 232,  type: 'text',     fontSize: 9, maxWidth: 120 },
+  { fieldId: 'buyer2_offer_time',      page: 11, x: 340,  y: 232,  type: 'text',     fontSize: 9, maxWidth: 80  },
+  { fieldId: 'buyer2_offer_ampm',      page: 11, x: 500,  y: 232,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  { fieldId: 'seller_response',        page: 11, x: 280,  y: 288,  type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'seller1_date',           page: 11, x: 153,  y: 330,  type: 'text',     fontSize: 9, maxWidth: 120 },
+  { fieldId: 'seller1_time',           page: 11, x: 340,  y: 330,  type: 'text',     fontSize: 9, maxWidth: 80  },
+  { fieldId: 'seller1_ampm',           page: 11, x: 500,  y: 330,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  { fieldId: 'seller2_date',           page: 11, x: 153,  y: 362,  type: 'text',     fontSize: 9, maxWidth: 120 },
+  { fieldId: 'seller2_time',           page: 11, x: 340,  y: 362,  type: 'text',     fontSize: 9, maxWidth: 80  },
+  { fieldId: 'seller2_ampm',           page: 11, x: 500,  y: 362,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  { fieldId: 'binding_acknowledged_by', page: 11, x: 153,  y: 420,  type: 'text',     fontSize: 9, maxWidth: 400 },
+  { fieldId: 'binding_agreement_date',  page: 11, x: 153,  y: 452,  type: 'text',     fontSize: 9, maxWidth: 120 },
+  { fieldId: 'binding_agreement_time',  page: 11, x: 340,  y: 452,  type: 'text',     fontSize: 9, maxWidth: 80  },
+  { fieldId: 'binding_agreement_ampm',  page: 11, x: 500,  y: 452,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  { fieldId: 'listing_firm_name',      page: 11, x: 153,  y: 1043, type: 'text',     fontSize: 9, maxWidth: 520 },
+  { fieldId: 'listing_firm_address',   page: 11, x: 153,  y: 1066, type: 'text',     fontSize: 9, maxWidth: 520 },
+  { fieldId: 'listing_firm_license',   page: 11, x: 153,  y: 1090, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'listing_firm_phone',     page: 11, x: 153,  y: 1114, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'listing_licensee_name',  page: 11, x: 153,  y: 1138, type: 'text',     fontSize: 9, maxWidth: 520 },
+  { fieldId: 'listing_licensee_number', page: 11, x: 153, y: 1163, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'listing_licensee_email', page: 11, x: 153,  y: 1186, type: 'text',     fontSize: 9, maxWidth: 520 },
+  { fieldId: 'listing_licensee_cell',  page: 11, x: 153,  y: 1210, type: 'text',     fontSize: 9, maxWidth: 200 },
   { fieldId: 'buying_firm_name',       page: 11, x: 757,  y: 1043, type: 'text',     fontSize: 9, maxWidth: 400 },
   { fieldId: 'buying_firm_address',    page: 11, x: 831,  y: 1066, type: 'text',     fontSize: 9, maxWidth: 400 },
   { fieldId: 'buying_firm_license',    page: 11, x: 799,  y: 1090, type: 'text',     fontSize: 9, maxWidth: 200 },
@@ -82,4 +121,8 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'buying_licensee_name',   page: 11, x: 791,  y: 1138, type: 'text',     fontSize: 9, maxWidth: 400 },
   { fieldId: 'buying_licensee_number', page: 11, x: 869,  y: 1163, type: 'text',     fontSize: 9, maxWidth: 200 },
   { fieldId: 'buying_licensee_email',  page: 11, x: 778,  y: 1186, type: 'text',     fontSize: 9, maxWidth: 400 },
+  { fieldId: 'buying_licensee_cell',   page: 11, x: 778,  y: 1210, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'hoa_name',               page: 11, x: 153,  y: 1275, type: 'text',     fontSize: 9, maxWidth: 360 },
+  { fieldId: 'hoa_phone',              page: 11, x: 520,  y: 1275, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'hoa_email',              page: 11, x: 153,  y: 1298, type: 'text',     fontSize: 9, maxWidth: 520 },
 ]
