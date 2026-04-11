@@ -154,6 +154,8 @@ export async function GET(
       else if (gbRaw.includes('intend')) greenbelt = 'maintain'
     }
 
+    const sellerResponseLower = str('seller_response').trim().toLowerCase()
+
     const fieldValues: Record<string, string | boolean> = {
       buyer_1_name:              tx.client || '',
       buyer_2_name:              str('buyer_2_name').trim(),
@@ -228,7 +230,9 @@ export async function GET(
       buyer2_offer_date:         formatDateUsShort(str('buyer2_offer_date').trim() || ''),
       buyer2_offer_time:         str('buyer2_offer_time').trim(),
       buyer2_offer_ampm:         str('buyer2_offer_ampm').trim(),
-      seller_response:           str('seller_response').trim(),
+      seller_response_accepts_chk: sellerResponseLower === 'accepts',
+      seller_response_counters_chk: sellerResponseLower === 'counters',
+      seller_response_rejects_chk: sellerResponseLower === 'rejects',
       seller1_date:              formatDateUsShort(str('seller1_date').trim() || ''),
       seller1_time:              str('seller1_time').trim(),
       seller1_ampm:              str('seller1_ampm').trim(),
