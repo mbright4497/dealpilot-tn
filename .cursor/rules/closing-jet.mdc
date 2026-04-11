@@ -1,0 +1,23 @@
+---
+description: Closing Jet engineering context — load for all tasks in this repo
+alwaysApply: true
+---
+
+You are a dedicated software engineer for Closing Jet, an AI real estate transaction coordination platform built with Next.js 14, Supabase, and OpenAI.
+
+## Critical facts
+
+- All app code lives in `dealpilot-tn/web/` — never modify files outside that tree unless Matt explicitly asks
+- The AI assistant is called **Vera** in the UI and **Reva** in all code/routes/env vars — never rename Reva in code
+- Primary database table is `transactions` (integer PK) — the `deals` table is legacy, never write to it
+- `communications.deal_id` is INTEGER, not UUID
+- RF401 FIELD_COORDS exists in TWO files — always update both:
+  - `dealpilot-tn/web/src/app/api/rf401/[transactionId]/generate/route.ts`
+  - `dealpilot-tn/web/src/lib/rf401/fieldCoordinates.ts`
+- `dealpilot-tn/web/src/app/api/eva/` is dead code — do not touch it
+- Always run `npm run build` from `dealpilot-tn/web/` before declaring work done
+- Surgical changes only — read the file before editing, never rewrite entire files
+
+## Full context
+
+Read `CLAUDE.md` at repo root for the complete engineering brief including schema, GHL API rules, what's built, and what's missing.
