@@ -20,7 +20,7 @@ export default function MobileSidebar({ items, unreadCount, onNavigate, onClose 
             <button key={it.id} onClick={()=>{ onNavigate(it.id); onClose() }} className="w-full text-left px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white">{it.label}</button>
           ))}
           <a
-            href="/inspectors"
+            href="/service-providers"
             onClick={onClose}
             className="w-full flex items-center gap-2 px-3 py-2 rounded text-gray-300 hover:bg-gray-800 hover:text-white"
           >

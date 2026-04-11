@@ -10,7 +10,7 @@ import SidebarUserFooter from '@/components/SidebarUserFooter'
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', href: '/' },
   { id: 'transactions', label: 'Transactions', href: '/transactions' },
-  { id: 'inspectors', label: 'Service Providers', href: '/inspectors' },
+  { id: 'service-providers', label: 'Service Providers', href: '/service-providers' },
   { id: 'ai', label: 'AI Assistant', href: '/ai' },
   { id: 'communications', label: 'Communications', href: '/communications' },
   { id: 'settings', label: 'Settings', href: '/settings' },
@@ -64,8 +64,8 @@ function matchesRoute(pathname: string, href: string) {
   if (href === '/transactions') {
     return pathname.startsWith('/transactions')
   }
-  if (href === '/inspectors') {
-    return pathname.startsWith('/inspectors')
+  if (href === '/service-providers') {
+    return pathname.startsWith('/service-providers')
   }
   if (href === '/ai') {
     return pathname.startsWith('/ai')
@@ -121,7 +121,7 @@ export default function Sidebar() {
                 active ? 'bg-gray-800 text-orange-400' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
               }`}
             >
-              {item.id === 'inspectors' ? <ClipboardList size={18} strokeWidth={2} /> : <NavIcon name={item.id} />}
+              {item.id === 'service-providers' ? <ClipboardList size={18} strokeWidth={2} /> : <NavIcon name={item.id} />}
               {item.label}
               {item.id === 'communications' && unreadCount > 0 && (
                 <span className="ml-auto inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-red-600 text-white text-xs font-semibold">
