@@ -58,6 +58,11 @@ const sectionFields: Record<SectionName, FieldDefinition[]> = {
     { key: 'hoa_fees', label: 'HOA fees', type: 'text' },
     { key: 'public_water_notes', label: 'Public water notes', type: 'text' },
     { key: 'public_sewer_notes', label: 'Public sewer notes', type: 'text' },
+    { key: 'final_inspection_days', label: 'Final inspection days', type: 'number' },
+    { key: 'offer_expiration_date', label: 'Offer expiration date', type: 'date' },
+    { key: 'hoa_name', label: 'HOA name', type: 'text' },
+    { key: 'hoa_phone', label: 'HOA phone', type: 'text' },
+    { key: 'hoa_email', label: 'HOA email', type: 'text' },
   ],
 }
 
@@ -114,6 +119,11 @@ export interface Section3to6Data {
   hoa_fees: string
   public_water_notes: string
   public_sewer_notes: string
+  final_inspection_days: number | null
+  offer_expiration_date: string | null
+  hoa_name: string
+  hoa_phone: string
+  hoa_email: string
 }
 
 export interface RookWizardData {
@@ -196,6 +206,11 @@ function defaultSection3(): Section3to6Data {
     hoa_fees: defaultString(),
     public_water_notes: defaultString(),
     public_sewer_notes: defaultString(),
+    final_inspection_days: null,
+    offer_expiration_date: null,
+    hoa_name: defaultString(),
+    hoa_phone: defaultString(),
+    hoa_email: defaultString(),
   }
 }
 

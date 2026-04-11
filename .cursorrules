@@ -1,0 +1,11 @@
+Open CLAUDE.md at the repo root before every task and treat it as ground truth for this project.
+
+Never assume file contents — always read the file first.
+
+Never touch RookWizard.tsx or /api/rookwizard/ routes (in this repo: dealpilot-tn/web/src/components/RookWizard.tsx and dealpilot-tn/web/src/app/api/rookwizard/).
+
+Always update both RF401 coordinate sources together: dealpilot-tn/web/src/lib/rf401/fieldCoordinates.ts and dealpilot-tn/web/src/app/api/rf401/[transactionId]/generate/route.ts.
+
+Run npm run build from dealpilot-tn/web/ before confirming any change is done.
+
+git add -A always. Never use path-specific adds.
