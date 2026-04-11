@@ -74,11 +74,12 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'waive_all_inspections_chk', page: 7, x: 188, y: 1058, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 8 ───
-  { fieldId: 'hpp_paid_by',            page: 8,  x: 401,  y: 1330, type: 'text',     fontSize: 9, maxWidth: 200 },
-  { fieldId: 'hpp_amount',             page: 8,  x: 768,  y: 1330, type: 'text',     fontSize: 9, maxWidth: 200 },
-  { fieldId: 'hpp_provider',           page: 8,  x: 490,  y: 1348, type: 'text',     fontSize: 9, maxWidth: 400 },
-  { fieldId: 'hpp_ordered_by',         page: 8,  x: 300,  y: 1366, type: 'text',     fontSize: 9, maxWidth: 500 },
-  { fieldId: 'hpp_waived_chk',         page: 8,  x: 188,  y: 1383, type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'hpp_paid_by',            page: 8,  x: 403,  y: 1328, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'hpp_amount',             page: 8,  x: 792,  y: 1329, type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'hpp_provider',           page: 8,  x: 658,  y: 1352, type: 'text',     fontSize: 9, maxWidth: 400 },
+  { fieldId: 'hpp_ordered_by',         page: 8,  x: 300,  y: 1376, type: 'text',     fontSize: 9, maxWidth: 500 },
+  { fieldId: 'hpp_waived_chk',         page: 8,  x: 157,  y: 1402, type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'hpp_yes_chk',            page: 8,  x: 157,  y: 1325, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 10 ───
   { fieldId: 'exhibits_addenda',       page: 10, x: 313,  y: 721,  type: 'text',     fontSize: 9, maxWidth: 900 },

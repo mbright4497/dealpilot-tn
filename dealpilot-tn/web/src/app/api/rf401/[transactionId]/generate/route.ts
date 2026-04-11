@@ -214,6 +214,7 @@ export async function GET(
       waive_repair_request_chk:  boolWiz('waive_repair_request'),
       waive_all_inspections_chk: boolWiz('waive_all_inspections'),
       hpp_waived_chk:            hppWaived,
+      hpp_yes_chk:               !hppWaived,
       hpp_paid_by:               hppWaived ? '' : (str('hpp_paid_by').trim() || (hwLower.includes('seller') ? 'Seller' : hwLower.includes('buyer') ? 'Buyer' : '')),
       hpp_amount:                hppWaived ? '' : str('hpp_amount').trim(),
       hpp_provider:              hppWaived ? '' : str('hpp_provider').trim(),
