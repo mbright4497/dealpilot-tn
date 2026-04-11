@@ -123,8 +123,9 @@ web/app/
     service-providers/  ← vendor contact management
     eva/                ← ⚠️ DEAD CODE — do not touch, do not delete yet
   dashboard/
+  service-providers/  ← standalone cross-deal service providers page (replaces /inspectors in nav)
+  inspectors/         ← provider directory CRUD — still exists, linked from service-providers page
   transactions/[id]/    ← detail page: overview, checklist, docs, comms, vera tabs
-  deadlines/
   communications/
   assistant/            ← standalone Vera chat
   contract-wizard/      ← TurboTax-style RF401 guide with embedded Vera chat
