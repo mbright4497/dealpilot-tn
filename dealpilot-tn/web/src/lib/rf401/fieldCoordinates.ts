@@ -11,16 +11,20 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'property_address',       page: 1,  x: 418,  y: 432,  type: 'text',     fontSize: 9, maxWidth: 600 },
   { fieldId: 'property_city',          page: 1,  x: 249,  y: 457,  type: 'text',     fontSize: 9, maxWidth: 280 },
   { fieldId: 'property_zip',           page: 1,  x: 846,  y: 457,  type: 'text',     fontSize: 9, maxWidth: 120 },
-  { fieldId: 'property_county',        page: 1,  x: 152,  y: 480,  type: 'text',     fontSize: 9, maxWidth: 200 },
-  { fieldId: 'deed_book',              page: 1,  x: 763,  y: 480,  type: 'text',     fontSize: 9, maxWidth: 100 },
-  { fieldId: 'deed_pages',             page: 1,  x: 992,  y: 480,  type: 'text',     fontSize: 9, maxWidth: 100 },
-  { fieldId: 'instrument_number',      page: 1,  x: 216,  y: 503,  type: 'text',     fontSize: 9, maxWidth: 400 },
-  { fieldId: 'garage_remotes',         page: 1,  x: 1114, y: 673,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  // Register of Deeds row + instrument + further description — calibrated from rf401-blank.pdf bbox (150dpi space)
+  { fieldId: 'property_county',        page: 1,  x: 152,  y: 460,  type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'deed_book',              page: 1,  x: 763,  y: 460,  type: 'text',     fontSize: 9, maxWidth: 100 },
+  { fieldId: 'deed_pages',             page: 1,  x: 992,  y: 460,  type: 'text',     fontSize: 9, maxWidth: 100 },
+  { fieldId: 'instrument_number',      page: 1,  x: 216,  y: 485,  type: 'text',     fontSize: 9, maxWidth: 400 },
+  { fieldId: 'further_legal_description', page: 1, x: 153, y: 508, type: 'text',     fontSize: 9, maxWidth: 900 },
+  { fieldId: 'garage_remotes',         page: 1,  x: 1138, y: 656,  type: 'text',     fontSize: 9, maxWidth: 40  },
   { fieldId: 'items_remaining',        page: 1,  x: 153,  y: 869,  type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'items_not_remaining',    page: 1,  x: 153,  y: 943,  type: 'text',     fontSize: 9, maxWidth: 900 },
-  { fieldId: 'leased_items',           page: 1,  x: 282,  y: 1018, type: 'text',     fontSize: 9, maxWidth: 600 },
-  { fieldId: 'purchase_price_numeric', page: 1,  x: 955,  y: 1272, type: 'text',     fontSize: 9, maxWidth: 280 },
-  { fieldId: 'purchase_price_words',   page: 1,  x: 153,  y: 1295, type: 'text',     fontSize: 9, maxWidth: 700 },
+  { fieldId: 'leased_items',           page: 1,  x: 282,  y: 1000, type: 'text',     fontSize: 9, maxWidth: 600 },
+  { fieldId: 'buyer_declines_leased_chk', page: 1, x: 188, y: 1072, type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'leased_item_to_cancel',  page: 1,  x: 698,  y: 1120, type: 'text',     fontSize: 9, maxWidth: 420 },
+  { fieldId: 'purchase_price_numeric', page: 1,  x: 955,  y: 1255, type: 'text',     fontSize: 9, maxWidth: 280 },
+  { fieldId: 'purchase_price_words',   page: 1,  x: 153,  y: 1279, type: 'text',     fontSize: 9, maxWidth: 700 },
   { fieldId: 'ltv_percentage',         page: 1,  x: 514,  y: 1446, type: 'text',     fontSize: 9, maxWidth: 60  },
 
   // ─── PAGE 2 ───
@@ -46,10 +50,10 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
   { fieldId: 'closing_day',             page: 4,  x: 1030, y: 1024, type: 'text',     fontSize: 9, maxWidth: 60  },
   { fieldId: 'closing_month',           page: 4,  x: 191,  y: 1050, type: 'text',     fontSize: 9, maxWidth: 200 },
   { fieldId: 'closing_year',            page: 4,  x: 465,  y: 1050, type: 'text',     fontSize: 9, maxWidth: 80  },
-  { fieldId: 'possession_at_closing_chk', page: 4, x: 232, y: 1192, type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'possession_at_closing_chk', page: 4, x: 225, y: 1180, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 5 ───
-  { fieldId: 'deed_names',             page: 5,  x: 452,  y: 1246, type: 'text',     fontSize: 9, maxWidth: 500 },
+  { fieldId: 'deed_names',             page: 5,  x: 452,  y: 1228, type: 'text',     fontSize: 9, maxWidth: 500 },
 
   // ─── PAGE 6 ───
   { fieldId: 'lbp_not_apply_chk',      page: 6,  x: 156,  y: 306,  type: 'checkbox', fontSize: 9, maxWidth: 20  },

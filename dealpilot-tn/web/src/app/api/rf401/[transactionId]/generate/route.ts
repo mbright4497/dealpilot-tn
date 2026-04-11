@@ -42,16 +42,19 @@ const FIELD_COORDS: FieldEntry[] = [
   { fieldId: 'property_address',       page: 1,  x: 418,  y: 432,  type: 'text',     fontSize: 9, maxWidth: 600 },
   { fieldId: 'property_city',          page: 1,  x: 249,  y: 457,  type: 'text',     fontSize: 9, maxWidth: 280 },
   { fieldId: 'property_zip',           page: 1,  x: 846,  y: 457,  type: 'text',     fontSize: 9, maxWidth: 120 },
-  { fieldId: 'property_county',        page: 1,  x: 152,  y: 480,  type: 'text',     fontSize: 9, maxWidth: 200 },
-  { fieldId: 'deed_book',              page: 1,  x: 763,  y: 480,  type: 'text',     fontSize: 9, maxWidth: 100 },
-  { fieldId: 'deed_pages',             page: 1,  x: 992,  y: 480,  type: 'text',     fontSize: 9, maxWidth: 100 },
-  { fieldId: 'instrument_number',      page: 1,  x: 216,  y: 503,  type: 'text',     fontSize: 9, maxWidth: 400 },
-  { fieldId: 'garage_remotes',         page: 1,  x: 1114, y: 673,  type: 'text',     fontSize: 9, maxWidth: 40  },
+  { fieldId: 'property_county',        page: 1,  x: 152,  y: 460,  type: 'text',     fontSize: 9, maxWidth: 200 },
+  { fieldId: 'deed_book',              page: 1,  x: 763,  y: 460,  type: 'text',     fontSize: 9, maxWidth: 100 },
+  { fieldId: 'deed_pages',             page: 1,  x: 992,  y: 460,  type: 'text',     fontSize: 9, maxWidth: 100 },
+  { fieldId: 'instrument_number',      page: 1,  x: 216,  y: 485,  type: 'text',     fontSize: 9, maxWidth: 400 },
+  { fieldId: 'further_legal_description', page: 1, x: 153, y: 508, type: 'text',     fontSize: 9, maxWidth: 900 },
+  { fieldId: 'garage_remotes',         page: 1,  x: 1138, y: 656,  type: 'text',     fontSize: 9, maxWidth: 40  },
   { fieldId: 'items_remaining',        page: 1,  x: 153,  y: 869,  type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'items_not_remaining',    page: 1,  x: 153,  y: 943,  type: 'text',     fontSize: 9, maxWidth: 900 },
-  { fieldId: 'leased_items',           page: 1,  x: 282,  y: 1018, type: 'text',     fontSize: 9, maxWidth: 600 },
-  { fieldId: 'purchase_price_numeric', page: 1,  x: 955,  y: 1272, type: 'text',     fontSize: 9, maxWidth: 280 },
-  { fieldId: 'purchase_price_words',   page: 1,  x: 153,  y: 1295, type: 'text',     fontSize: 9, maxWidth: 700 },
+  { fieldId: 'leased_items',           page: 1,  x: 282,  y: 1000, type: 'text',     fontSize: 9, maxWidth: 600 },
+  { fieldId: 'buyer_declines_leased_chk', page: 1, x: 188, y: 1072, type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'leased_item_to_cancel',  page: 1,  x: 698,  y: 1120, type: 'text',     fontSize: 9, maxWidth: 420 },
+  { fieldId: 'purchase_price_numeric', page: 1,  x: 955,  y: 1255, type: 'text',     fontSize: 9, maxWidth: 280 },
+  { fieldId: 'purchase_price_words',   page: 1,  x: 153,  y: 1279, type: 'text',     fontSize: 9, maxWidth: 700 },
   { fieldId: 'ltv_percentage',         page: 1,  x: 514,  y: 1446, type: 'text',     fontSize: 9, maxWidth: 60  },
 
   // ─── PAGE 2 ───
@@ -77,10 +80,10 @@ const FIELD_COORDS: FieldEntry[] = [
   { fieldId: 'closing_day',             page: 4,  x: 1030, y: 1024, type: 'text',     fontSize: 9, maxWidth: 60  },
   { fieldId: 'closing_month',           page: 4,  x: 191,  y: 1050, type: 'text',     fontSize: 9, maxWidth: 200 },
   { fieldId: 'closing_year',            page: 4,  x: 465,  y: 1050, type: 'text',     fontSize: 9, maxWidth: 80  },
-  { fieldId: 'possession_at_closing_chk', page: 4, x: 232, y: 1192, type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'possession_at_closing_chk', page: 4, x: 225, y: 1180, type: 'checkbox', fontSize: 9, maxWidth: 20  },
 
   // ─── PAGE 5 ───
-  { fieldId: 'deed_names',             page: 5,  x: 452,  y: 1246, type: 'text',     fontSize: 9, maxWidth: 500 },
+  { fieldId: 'deed_names',             page: 5,  x: 452,  y: 1228, type: 'text',     fontSize: 9, maxWidth: 500 },
 
   // ─── PAGE 6 ───
   { fieldId: 'lbp_not_apply_chk',      page: 6,  x: 156,  y: 306,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
@@ -159,24 +162,29 @@ export async function GET(
       : {}
 
   const str = (k: string) => (typeof wiz[k] === 'string' ? (wiz[k] as string) : '')
-  const wordsOverride = str('purchase_price_words').trim()
-  const possession = str('possession')
+  const strRf = (n: number) => str(`rf401_${n}`).trim()
+
+  const wordsOverride =
+    str('purchase_price_words').trim() || strRf(18)
+  const possessionRaw = str('possession').trim()
+  const possessionFromRf37 =
+    strRf(37) === 'Temporary occupancy agreement' ? 'temporary_occupancy' : ''
+  const possession = possessionRaw || possessionFromRf37 || 'at_closing'
   const atClosing = possession !== 'temporary_occupancy'
 
-  const furtherLegal = str('further_legal_description').trim()
+  const furtherLegal =
+    str('further_legal_description').trim() || strRf(10)
   const stipBase = tx.special_stipulations || ''
-  const stipWithLegal = furtherLegal
-    ? [stipBase, `Further legal description: ${furtherLegal}`].filter(Boolean).join('\n\n')
-    : stipBase
+  // Line 10 on the PDF carries further legal description; avoid duplicating in Section 20 stipulations.
+  const stipWithLegal = stipBase
 
-  let leasedLine = tx.leased_items || ''
-  if (wiz.buyer_declines_leased_assumption === true) {
-    const cancel = str('leased_item_to_cancel').trim()
-    const clause = cancel
-      ? `Buyer does not wish to assume leased item(s). Item(s) to be cancelled: ${cancel}.`
-      : 'Buyer does not wish to assume leased item(s).'
-    leasedLine = [leasedLine, clause].filter(Boolean).join(' ')
-  }
+  const buyerDeclinesLeased =
+    wiz.buyer_declines_leased_assumption === true || strRf(15) === 'true'
+
+  const cancelLeaseText =
+    str('leased_item_to_cancel').trim() || strRf(16)
+
+  const leasedLine = tx.leased_items || ''
 
   const fieldValues: Record<string, string | boolean> = {
     buyer_1_name:              tx.client || '',
@@ -186,14 +194,18 @@ export async function GET(
     property_address:          tx.address || '',
     property_city:             tx.property_city || '',
     property_zip:              tx.property_zip || '',
-    property_county:           tx.property_county || tx.county || '',
-    deed_book:                 str('deed_book'),
-    deed_pages:                str('deed_page'),
-    instrument_number:         str('instrument_number'),
-    garage_remotes:            str('garage_remotes') || '2',
+    property_county:
+      (tx.property_county || tx.county || '').trim() || strRf(6),
+    deed_book:                 str('deed_book').trim() || strRf(7),
+    deed_pages:                str('deed_page').trim() || str('deed_pages').trim() || strRf(8),
+    instrument_number:         str('instrument_number').trim() || strRf(9),
+    further_legal_description: furtherLegal,
+    garage_remotes:            str('garage_remotes').trim() || strRf(11) || '2',
     items_remaining:           tx.items_remaining || '',
     items_not_remaining:       tx.items_not_remaining || '',
     leased_items:              leasedLine,
+    buyer_declines_leased_chk: buyerDeclinesLeased,
+    leased_item_to_cancel:     buyerDeclinesLeased ? cancelLeaseText : '',
     purchase_price_numeric:    formatCurrency(tx.purchase_price),
     purchase_price_words:      wordsOverride || priceToWords(tx.purchase_price),
     ltv_percentage:            tx.loan_percentage ? String(tx.loan_percentage) : '',
@@ -215,7 +227,8 @@ export async function GET(
     closing_month:             closingDate.month,
     closing_year:              closingDate.year,
     possession_at_closing_chk: atClosing,
-    deed_names:                tx.deed_names || tx.client || '',
+    deed_names:
+      (tx.deed_names || tx.client || '').trim() || strRf(40),
     lbp_not_apply_chk:         tx.lead_based_paint !== true,
     lbp_applies_chk:           tx.lead_based_paint === true,
     inspection_period_days:    tx.inspection_period_days ? String(tx.inspection_period_days) : '15',
