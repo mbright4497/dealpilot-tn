@@ -184,7 +184,6 @@ export async function GET(
       financing_waived_chk:      tx.financing_contingency_waived === true || isCash,
       appraisal_not_chk:         !isCash && appraisalContingent === false,
       appraisal_2c_yes_chk:      !isCash && appraisalContingent === true,
-      appraisal_2c_no_chk:       !isCash && appraisalContingent === false,
       title_expenses:            str('title_expenses').trim(),
       expense_mod_line1:         expenseModLines[0] || '',
       expense_mod_line2:         expenseModLines[1] || '',
