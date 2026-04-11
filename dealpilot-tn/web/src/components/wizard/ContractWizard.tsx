@@ -2,10 +2,19 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { speak, stopSpeaking } from '@/lib/voice-engine'
+import { priceToWords } from '@/lib/rf401/priceToWords'
 
 // ─── Question definitions ───────────────────────────────────────────────────
 
-type FieldType = 'text' | 'number' | 'select' | 'yesno' | 'currency' | 'date'
+type FieldType =
+  | 'text'
+  | 'number'
+  | 'select'
+  | 'yesno'
+  | 'currency'
+  | 'date'
+  | 'textarea'
+  | 'checkbox'
 
 interface WizardQuestion {
   id: string
@@ -50,14 +59,45 @@ const QUESTIONS: WizardQuestion[] = [
     required: true,
   },
   {
-    id: 'property_county',
-    section: 'Section 1 — Property',
-    label: 'What county is the property in?',
-    veraExplains: 'In the Tri-Cities area this is typically Washington, Sullivan, or Carter County. This determines which Register of Deeds office handles the deed.',
-    type: 'select',
-    options: ['Washington', 'Sullivan', 'Carter', 'Unicoi', 'Johnson', 'Hawkins', 'Other'],
-    prefillKey: 'county',
+    id: 'rf401_6',
+    section: 'Section 1 — Legal description (RF401)',
+    label: 'County (Register of Deeds) — RF401 line 6',
+    veraExplains:
+      'Enter the county as it should appear on the deed and in the Register of Deeds index (e.g. Washington, Sullivan). This must match where the prior deed was recorded.',
+    type: 'text',
+    prefillKey: 'property_county',
     required: true,
+  },
+  {
+    id: 'rf401_7',
+    section: 'Section 1 — Legal description (RF401)',
+    label: 'Deed book number — RF401 line 7',
+    veraExplains:
+      'From the seller’s vesting deed: the deed book (or instrument book) where the current deed was recorded. Your title search or the county Register of Deeds site shows this.',
+    type: 'text',
+  },
+  {
+    id: 'rf401_8',
+    section: 'Section 1 — Legal description (RF401)',
+    label: 'Page number — RF401 line 8',
+    veraExplains: 'The page number in that deed book where the deed begins. If your county uses instrument numbers only, you can leave this blank after confirming with title.',
+    type: 'text',
+  },
+  {
+    id: 'rf401_9',
+    section: 'Section 1 — Legal description (RF401)',
+    label: 'Instrument number — RF401 line 9',
+    veraExplains:
+      'Some counties index by instrument / reception number instead of book and page. Use the official recording reference from the prior deed or title commitment.',
+    type: 'text',
+  },
+  {
+    id: 'rf401_10',
+    section: 'Section 1 — Legal description (RF401)',
+    label: 'Further legal description — RF401 line 10',
+    veraExplains:
+      'Add any continuation of the legal description, metes-and-bounds, lot/block, subdivision name, or reference to a plat recorded of record. Must match title and the seller’s deed.',
+    type: 'textarea',
   },
   {
     id: 'buyer_1_name',
@@ -78,6 +118,15 @@ const QUESTIONS: WizardQuestion[] = [
     required: true,
   },
   {
+    id: 'rf401_11',
+    section: 'Section 1 — Personal Property',
+    label: 'Garage door remote count — RF401 line 11',
+    veraExplains:
+      'RF401 expects a minimum number of garage door transmitters/remotes to convey. Tri-Cities practice is often two; confirm with the seller if the home has fewer or none.',
+    type: 'number',
+    defaultValue: '2',
+  },
+  {
     id: 'items_remaining',
     section: 'Section 1 — Personal Property',
     label: 'What items STAY with the property at no cost to buyer? (Section B)',
@@ -91,16 +140,41 @@ const QUESTIONS: WizardQuestion[] = [
     veraExplains: 'List anything the seller is taking that a buyer might assume stays — like a mounted TV, a specific light fixture, or a garage shelving unit. Cross-check with the seller\'s disclosure (RF201).',
     type: 'text',
   },
+  {
+    id: 'rf401_15',
+    section: 'Section 1 — Personal Property',
+    label: 'Buyer does not wish to assume leased item(s) — RF401 line 15',
+    veraExplains:
+      'Check this if the buyer is not taking over a leased item that might otherwise run with the property (e.g. solar lease, security equipment). Uncheck if the buyer will assume existing leases as written.',
+    type: 'checkbox',
+  },
+  {
+    id: 'rf401_16',
+    section: 'Section 1 — Personal Property',
+    label: 'Leased item to be cancelled — RF401 line 16',
+    veraExplains:
+      'If the buyer is not assuming a lease, identify the leased item or service and how it will be cancelled or paid off before or at closing. Be specific — vague language is hard to enforce.',
+    type: 'text',
+    skipIf: (a) => a.rf401_15 !== 'true',
+  },
 
   // ─── Section 2: Financing ───
   {
     id: 'purchase_price',
     section: 'Section 2 — Purchase Price',
-    label: 'What is the purchase price?',
+    label: 'Purchase price (numeric) — RF401 line 17',
     veraExplains: 'Enter the full agreed purchase price. This number drives everything — LTV calculation, earnest money percentage, seller concession limits.',
     type: 'currency',
     prefillKey: 'purchase_price',
     required: true,
+  },
+  {
+    id: 'rf401_18',
+    section: 'Section 2 — Purchase Price',
+    label: 'Purchase price in words — RF401 line 18',
+    veraExplains:
+      'This line must spell out the whole-dollar amount. We pre-fill it from line 17; edit if your broker or title company needs a specific format (e.g. “No/100”).',
+    type: 'textarea',
   },
   {
     id: 'loan_type',
@@ -174,6 +248,17 @@ const QUESTIONS: WizardQuestion[] = [
     required: true,
   },
   {
+    id: 'rf401_37',
+    section: 'Section 4 — Closing',
+    label: 'Possession — RF401 line 37',
+    veraExplains:
+      'Choose whether the buyer gets possession at closing or under a separate Temporary Occupancy Agreement (RF635). Seller rent-back or post-closing possession must be documented — do not rely on a verbal agreement.',
+    type: 'select',
+    options: ['At closing', 'Temporary occupancy agreement'],
+    required: true,
+    defaultValue: 'At closing',
+  },
+  {
     id: 'closing_agency_buyer',
     section: 'Section 4 — Closing',
     label: 'What is the buyer\'s closing agency?',
@@ -236,10 +321,11 @@ const QUESTIONS: WizardQuestion[] = [
 
   // ─── Section 5: Deed ───
   {
-    id: 'deed_names',
+    id: 'rf401_40',
     section: 'Section 5 — Title',
-    label: 'Whose name(s) go on the deed?',
-    veraExplains: 'This is how the buyer will hold title. It\'s the buyer\'s responsibility to consult the closing agency or attorney before closing on how they want to hold title. Common options: sole ownership, joint tenancy with right of survivorship, tenants in common. Ask your closing attorney.',
+    label: 'Name(s) on deed — RF401 line 40',
+    veraExplains:
+      'This is how the buyer will hold title. It is the buyer’s responsibility to confirm vesting with the closing attorney or title company before closing. Common options: sole ownership, joint tenancy with right of survivorship, tenants in common.',
     type: 'text',
     prefillKey: 'deed_names',
     required: true,
@@ -288,6 +374,7 @@ const QUESTIONS: WizardQuestion[] = [
 
 const SECTIONS = [
   'Section 1 — Property',
+  'Section 1 — Legal description (RF401)',
   'Section 1 — Parties',
   'Section 1 — Personal Property',
   'Section 2 — Purchase Price',
@@ -322,16 +409,44 @@ interface Props {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function ContractWizard({ transactionId, transaction, onClose }: Props) {
+  const priceWordsTouchedRef = useRef(false)
+
   // Pre-fill answers from transaction
   const buildPrefilled = () => {
     const prefilled: Record<string, string> = {}
     for (const q of QUESTIONS) {
-      if (q.prefillKey && transaction[q.prefillKey] != null) {
+      if (q.prefillKey && transaction[q.prefillKey] != null && String(transaction[q.prefillKey]) !== '') {
         prefilled[q.id] = String(transaction[q.prefillKey])
       }
       if (q.defaultValue && !prefilled[q.id]) {
         prefilled[q.id] = q.defaultValue
       }
+    }
+    if (!prefilled.rf401_6 && transaction.county != null && String(transaction.county) !== '') {
+      prefilled.rf401_6 = String(transaction.county)
+    }
+    const w = transaction.rf401_wizard as Record<string, unknown> | null | undefined
+    if (w && typeof w === 'object') {
+      if (w.deed_book != null) prefilled.rf401_7 = String(w.deed_book)
+      if (w.deed_page != null) prefilled.rf401_8 = String(w.deed_page)
+      if (w.instrument_number != null) prefilled.rf401_9 = String(w.instrument_number)
+      if (w.further_legal_description != null) prefilled.rf401_10 = String(w.further_legal_description)
+      if (w.garage_remotes != null && String(w.garage_remotes).trim() !== '') {
+        prefilled.rf401_11 = String(w.garage_remotes)
+      }
+      if (w.buyer_declines_leased_assumption === true) prefilled.rf401_15 = 'true'
+      else if (w.buyer_declines_leased_assumption === false) prefilled.rf401_15 = 'false'
+      if (w.leased_item_to_cancel != null) prefilled.rf401_16 = String(w.leased_item_to_cancel)
+      if (w.purchase_price_words != null && String(w.purchase_price_words).trim() !== '') {
+        prefilled.rf401_18 = String(w.purchase_price_words)
+      }
+      if (w.possession === 'temporary_occupancy') prefilled.rf401_37 = 'Temporary occupancy agreement'
+      else if (w.possession === 'at_closing') prefilled.rf401_37 = 'At closing'
+    }
+    const pp = prefilled.purchase_price || (transaction.purchase_price != null ? String(transaction.purchase_price) : '')
+    if (!prefilled.rf401_18 && pp) {
+      const auto = priceToWords(pp)
+      if (auto) prefilled.rf401_18 = auto
     }
     return prefilled
   }
@@ -368,6 +483,22 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
+
+  const lastPurchasePriceRef = useRef(answers.purchase_price ?? '')
+  useEffect(() => {
+    const p = answers.purchase_price ?? ''
+    if (p !== lastPurchasePriceRef.current) {
+      lastPurchasePriceRef.current = p
+      priceWordsTouchedRef.current = false
+    }
+  }, [answers.purchase_price])
+
+  useEffect(() => {
+    if (priceWordsTouchedRef.current) return
+    const w = priceToWords(answers.purchase_price)
+    if (!w) return
+    setAnswers(prev => (prev.rf401_18 === w ? prev : { ...prev, rf401_18: w }))
+  }, [answers.purchase_price])
 
   // Auto-speak Vera's explanation when question changes
   useEffect(() => {
@@ -639,18 +770,55 @@ export default function ContractWizard({ transactionId, transaction, onClose }: 
                 </div>
               )}
 
-              {(currentQ.type === 'text' || currentQ.type === 'number' || currentQ.type === 'currency') && (
+              {(currentQ.type === 'text' || currentQ.type === 'currency') && (
                 <input
-                  type={currentQ.type === 'number' || currentQ.type === 'currency' ? 'text' : 'text'}
+                  type="text"
                   value={currentAnswer}
                   onChange={e => handleAnswer(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleNext()}
-                  placeholder={
-                    currentQ.type === 'currency' ? '$0.00' :
-                    currentQ.type === 'number' ? '0' : ''
-                  }
+                  placeholder={currentQ.type === 'currency' ? '$0.00' : ''}
                   className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-orange-500/50 placeholder-gray-600"
                 />
+              )}
+
+              {currentQ.type === 'number' && (
+                <input
+                  type="number"
+                  min={0}
+                  value={currentAnswer}
+                  onChange={e => handleAnswer(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleNext()}
+                  placeholder="0"
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-orange-500/50 placeholder-gray-600"
+                />
+              )}
+
+              {currentQ.type === 'textarea' && (
+                <textarea
+                  value={currentAnswer}
+                  onChange={e => {
+                    if (currentQ.id === 'rf401_18') priceWordsTouchedRef.current = true
+                    handleAnswer(e.target.value)
+                  }}
+                  rows={4}
+                  onKeyDown={e => e.key === 'Enter' && e.ctrlKey && handleNext()}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-orange-500/50 placeholder-gray-600 resize-y min-h-[100px]"
+                  placeholder={currentQ.id === 'rf401_18' ? 'e.g. Two Hundred Fifty Thousand Dollars' : ''}
+                />
+              )}
+
+              {currentQ.type === 'checkbox' && (
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={currentAnswer === 'true'}
+                    onChange={e => handleAnswer(e.target.checked ? 'true' : 'false')}
+                    className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-900 text-orange-500 focus:ring-orange-500/40"
+                  />
+                  <span className="text-gray-300 text-sm leading-relaxed group-hover:text-white transition-colors">
+                    Yes — the buyer does not wish to assume the leased item(s) described in the contract.
+                  </span>
+                </label>
               )}
 
               {currentQ.type === 'date' && (

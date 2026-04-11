@@ -27,11 +27,9 @@ export async function POST(
   const textFields = [
     'property_city',
     'property_zip',
-    'property_county',
     'earnest_money_holder',
     'closing_agency_buyer',
     'closing_agency_seller',
-    'deed_names',
     'special_stipulations',
     'items_remaining',
     'items_not_remaining',
@@ -43,6 +41,32 @@ export async function POST(
       updates[field] = answers[field]
     }
   }
+
+  if (answers.rf401_6 != null && String(answers.rf401_6).trim() !== '') {
+    updates.property_county = String(answers.rf401_6).trim()
+  }
+  if (answers.rf401_40 != null && String(answers.rf401_40).trim() !== '') {
+    updates.deed_names = String(answers.rf401_40).trim()
+  }
+
+  const rf401Wizard: Record<string, unknown> = {
+    deed_book: answers.rf401_7 != null ? String(answers.rf401_7) : '',
+    deed_page: answers.rf401_8 != null ? String(answers.rf401_8) : '',
+    instrument_number: answers.rf401_9 != null ? String(answers.rf401_9) : '',
+    further_legal_description: answers.rf401_10 != null ? String(answers.rf401_10) : '',
+    garage_remotes:
+      answers.rf401_11 != null && String(answers.rf401_11).trim() !== ''
+        ? String(answers.rf401_11).trim()
+        : '2',
+    buyer_declines_leased_assumption: answers.rf401_15 === 'true',
+    leased_item_to_cancel: answers.rf401_16 != null ? String(answers.rf401_16) : '',
+    purchase_price_words: answers.rf401_18 != null ? String(answers.rf401_18) : '',
+    possession:
+      answers.rf401_37 === 'Temporary occupancy agreement'
+        ? 'temporary_occupancy'
+        : 'at_closing',
+  }
+  updates.rf401_wizard = rf401Wizard
 
   if (answers.buyer_1_name) updates.client = answers.buyer_1_name
   if (answers.seller_1_name) updates.seller_name = answers.seller_1_name
@@ -78,10 +102,6 @@ export async function POST(
   }
   if (answers.lead_based_paint != null) {
     updates.lead_based_paint = answers.lead_based_paint === 'true'
-  }
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ success: true })
   }
 
   const { error } = await supabase

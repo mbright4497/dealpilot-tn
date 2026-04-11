@@ -3,33 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import fs from 'fs'
 import path from 'path'
+import { priceToWords } from '@/lib/rf401/priceToWords'
 
 const SCALE = 72 / 150 // PDF points per pixel at 150 DPI
-
-function numberToWords(n: number): string {
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
-  if (n === 0) return 'Zero'
-  if (n < 20) return ones[n]
-  if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '')
-  if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + numberToWords(n % 100) : '')
-  if (n < 1000000) return numberToWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + numberToWords(n % 1000) : '')
-  return numberToWords(Math.floor(n / 1000000)) + ' Million' + (n % 1000000 ? ' ' + numberToWords(n % 1000000) : '')
-}
 
 function formatCurrency(val: string | number | null): string {
   if (!val) return ''
   const n = typeof val === 'string' ? parseFloat(val.replace(/[^0-9.]/g, '')) : val
   return isNaN(n) ? '' : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function priceToWords(val: string | number | null): string {
-  if (!val) return ''
-  const n = typeof val === 'string' ? parseFloat(val.replace(/[^0-9.]/g, '')) : val
-  if (isNaN(n)) return ''
-  const dollars = Math.floor(n)
-  return numberToWords(dollars) + ' Dollars'
 }
 
 function formatDate(val: string | null): { day: string; month: string; year: string } {
@@ -151,7 +132,7 @@ export async function GET(
   const { data: tx, error } = await supabase
     .from('transactions')
     .select(
-      'user_id, client, seller_name, address, property_city, property_zip, property_county, county, purchase_price, earnest_money, earnest_money_holder, earnest_money_days, loan_type, loan_percentage, closing_date, inspection_period_days, resolution_period_days, special_stipulations, closing_agency_buyer, closing_agency_seller, deed_names, items_remaining, items_not_remaining, leased_items, appraisal_contingent, financing_contingency_waived, lead_based_paint'
+      'user_id, client, seller_name, address, property_city, property_zip, property_county, county, purchase_price, earnest_money, earnest_money_holder, earnest_money_days, loan_type, loan_percentage, closing_date, inspection_period_days, resolution_period_days, special_stipulations, closing_agency_buyer, closing_agency_seller, deed_names, items_remaining, items_not_remaining, leased_items, appraisal_contingent, financing_contingency_waived, lead_based_paint, rf401_wizard'
     )
     .eq('id', transactionId)
     .single()
@@ -171,6 +152,32 @@ export async function GET(
   const loanType: string = (tx.loan_type || '').toLowerCase()
   const isCash = loanType === 'cash'
 
+  const wizRaw = (tx as { rf401_wizard?: unknown }).rf401_wizard
+  const wiz =
+    typeof wizRaw === 'object' && wizRaw !== null && !Array.isArray(wizRaw)
+      ? (wizRaw as Record<string, unknown>)
+      : {}
+
+  const str = (k: string) => (typeof wiz[k] === 'string' ? (wiz[k] as string) : '')
+  const wordsOverride = str('purchase_price_words').trim()
+  const possession = str('possession')
+  const atClosing = possession !== 'temporary_occupancy'
+
+  const furtherLegal = str('further_legal_description').trim()
+  const stipBase = tx.special_stipulations || ''
+  const stipWithLegal = furtherLegal
+    ? [stipBase, `Further legal description: ${furtherLegal}`].filter(Boolean).join('\n\n')
+    : stipBase
+
+  let leasedLine = tx.leased_items || ''
+  if (wiz.buyer_declines_leased_assumption === true) {
+    const cancel = str('leased_item_to_cancel').trim()
+    const clause = cancel
+      ? `Buyer does not wish to assume leased item(s). Item(s) to be cancelled: ${cancel}.`
+      : 'Buyer does not wish to assume leased item(s).'
+    leasedLine = [leasedLine, clause].filter(Boolean).join(' ')
+  }
+
   const fieldValues: Record<string, string | boolean> = {
     buyer_1_name:              tx.client || '',
     buyer_2_name:              '',
@@ -180,22 +187,22 @@ export async function GET(
     property_city:             tx.property_city || '',
     property_zip:              tx.property_zip || '',
     property_county:           tx.property_county || tx.county || '',
-    deed_book:                 '',
-    deed_pages:                '',
-    instrument_number:         '',
-    garage_remotes:            '2',
+    deed_book:                 str('deed_book'),
+    deed_pages:                str('deed_page'),
+    instrument_number:         str('instrument_number'),
+    garage_remotes:            str('garage_remotes') || '2',
     items_remaining:           tx.items_remaining || '',
     items_not_remaining:       tx.items_not_remaining || '',
-    leased_items:              tx.leased_items || '',
+    leased_items:              leasedLine,
     purchase_price_numeric:    formatCurrency(tx.purchase_price),
-    purchase_price_words:      priceToWords(tx.purchase_price),
+    purchase_price_words:      wordsOverride || priceToWords(tx.purchase_price),
     ltv_percentage:            tx.loan_percentage ? String(tx.loan_percentage) : '',
     loan_conventional_chk:     loanType === 'conventional',
     loan_fha_chk:              loanType === 'fha',
     loan_va_chk:               loanType === 'va',
     loan_usda_chk:             loanType === 'usda' || loanType === 'rural development',
     financing_waived_chk:      tx.financing_contingency_waived === true || isCash,
-    appraisal_not_chk:         tx.appraisal_contingent === false,
+    appraisal_not_chk:          tx.appraisal_contingent === false,
     appraisal_contingent_chk:  tx.appraisal_contingent === true,
     closing_cost_mod:          '',
     closing_agency_buyer:      tx.closing_agency_buyer || '',
@@ -207,7 +214,7 @@ export async function GET(
     closing_day:               closingDate.day,
     closing_month:             closingDate.month,
     closing_year:              closingDate.year,
-    possession_at_closing_chk: true,
+    possession_at_closing_chk: atClosing,
     deed_names:                tx.deed_names || tx.client || '',
     lbp_not_apply_chk:         tx.lead_based_paint !== true,
     lbp_applies_chk:           tx.lead_based_paint === true,
@@ -215,7 +222,7 @@ export async function GET(
     resolution_period_days:    tx.resolution_period_days ? String(tx.resolution_period_days) : '3',
     hpp_waived_chk:            true,
     exhibits_addenda:          '',
-    special_stipulations:      tx.special_stipulations || '',
+    special_stipulations:      stipWithLegal,
     offer_exp_time:            '',
     offer_exp_day:             '',
     offer_exp_month_year:      '',
