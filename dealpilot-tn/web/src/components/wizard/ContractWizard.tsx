@@ -203,14 +203,6 @@ const QUESTIONS: WizardQuestion[] = [
     required: true,
   },
   {
-    id: 'proof_of_funds',
-    section: 'Section 2B — Proof of funds (RF401)',
-    label: 'If financing contingency is waived, how will the buyer provide proof of funds?',
-    veraExplains:
-      'This is required when the buyer is paying cash or waiving the financing contingency. Common answers are "bank statement" or "lender commitment letter". Must be provided within 5 days of binding agreement date.',
-    type: 'text',
-  },
-  {
     id: 'appraisal_contingent',
     section: 'Section 2C — Appraisal',
     label: 'Is this agreement contingent upon the appraised value?',
@@ -824,7 +816,6 @@ const SECTIONS = [
   'Section 1 — Personal Property',
   'Section 2 — Purchase Price',
   'Section 2 — Financing',
-  'Section 2B — Proof of funds (RF401)',
   'Section 2C — Appraisal',
   'Section 3 — Earnest Money',
   'Section 4 — Closing',
