@@ -37,7 +37,7 @@ export const FIELD_COORDS: PDFFieldCoord[] = [
 
   // ─── PAGE 3 ───
   { fieldId: 'appraisal_2c_no_chk',    page: 3,  x: 188,  y: 442,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
-  { fieldId: 'appraisal_2c_yes_chk',   page: 3,  x: 193,  y: 176,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
+  { fieldId: 'appraisal_2c_yes_chk',   page: 3,  x: 193,  y: 488,  type: 'checkbox', fontSize: 9, maxWidth: 20  },
   { fieldId: 'title_expenses',         page: 3,  x: 228,  y: 1177, type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'expense_mod_line1',      page: 3,  x: 153,  y: 1348, type: 'text',     fontSize: 9, maxWidth: 900 },
   { fieldId: 'expense_mod_line2',      page: 3,  x: 153,  y: 1366, type: 'text',     fontSize: 9, maxWidth: 900 },
