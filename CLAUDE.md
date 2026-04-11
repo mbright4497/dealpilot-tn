@@ -40,6 +40,9 @@ This is a **monorepo**. The Next.js app lives in `web/` — everything else is a
 
 ## 2. Local Development
 
+> **Path note:** From repo root, all web files are under `dealpilot-tn/web/`, not `web/` directly.
+> Git commands from root use `dealpilot-tn/web/src/...` paths.
+
 ```bash
 cd dealpilot-tn/web
 npm install
