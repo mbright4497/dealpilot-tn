@@ -61,7 +61,7 @@ export default function MissionControl(){
       </aside>
 
       {/* Main area */}
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 bg-white text-gray-900">
         <header className="mb-6">
           <h1 className="text-2xl font-bold">{active}</h1>
           <p className="text-gray-400">Overview of {active.toLowerCase()}</p>
