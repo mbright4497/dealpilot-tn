@@ -9,7 +9,7 @@
  *   body_text TEXT,
  *   message_id TEXT,
  *   transaction_id INTEGER REFERENCES transactions(id),
- *   contact_id INTEGER,
+ *   contact_id UUID, -- JSONB contact id from transactions.contacts[].id
  *   status TEXT NOT NULL DEFAULT 'received', -- received, matched, unmatched, responded, replied, error
  *   vera_response TEXT,
  *   error_message TEXT,
@@ -23,8 +23,7 @@
  * -- Persist Vera thread per transaction (if this column is not already present):
  * ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS openai_thread_id TEXT;
  *
- * Note: public.transaction_contacts.id is UUID in this codebase; leave contact_id NULL in inserts
- * or change contact_id to UUID in inbound_email_log if you need to store it.
+ * Note: contact_id stores the UUID from transactions.contacts[].id (JSONB contact id).
  */
 
 import OpenAI from 'openai'
@@ -44,22 +43,21 @@ type InboundEmailBody = {
   date?: string
 }
 
-type TxJoinRow = {
+type TransactionContactsRow = {
   id: number
   address: string | null
   user_id: string
   status: string | null
-  updated_at: string
   openai_thread_id: string | null
+  contacts: unknown
 }
 
-type ContactMatchRow = {
-  id: string
-  name: string
-  role: string
-  email: string | null
-  transaction_id: number
-  transactions: TxJoinRow
+type JsonbContact = {
+  id?: string
+  name?: string
+  role?: string
+  email?: string | null
+  ghl_contact_id?: string | null
 }
 
 const styleInstructions: Record<string, string> = {
@@ -154,47 +152,36 @@ export async function POST(request: Request) {
       auth: { persistSession: false },
     })
 
-    const { data: rawRows, error: matchError } = await supabase
-      .from('transaction_contacts')
-      .select(
-        `
-        id,
-        name,
-        role,
-        email,
-        transaction_id,
-        transactions!inner (
-          id,
-          address,
-          user_id,
-          status,
-          updated_at,
-          openai_thread_id
-        )
-      `
-      )
-      .ilike('email', fromEmail)
+    const { data: transactions, error: matchError } = await supabase
+      .from('transactions')
+      .select('id, address, status, user_id, openai_thread_id, contacts')
+      .not('status', 'in', '("closed","cancelled","withdrawn")')
+      .not('contacts', 'is', null)
+      .order('updated_at', { ascending: false })
 
     if (matchError) {
       console.error('inbound/email: contact match query failed', matchError)
       return Response.json({ success: false, error: 'Internal error' })
     }
 
-    const excluded = new Set(['closed', 'cancelled', 'withdrawn'])
-    const candidates = ((rawRows || []) as unknown as ContactMatchRow[])
-      .filter((r) => {
-        const st = String(r.transactions?.status || '').toLowerCase()
-        return r.transactions && !excluded.has(st)
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.transactions.updated_at).getTime() -
-          new Date(a.transactions.updated_at).getTime()
+    let matchedTransaction: TransactionContactsRow | null = null
+    let matchedContact: JsonbContact | null = null
+
+    for (const txn of (transactions || []) as TransactionContactsRow[]) {
+      const contacts = txn.contacts as unknown
+      if (!Array.isArray(contacts)) continue
+      const contact = contacts.find(
+        (c: JsonbContact) =>
+          c.email && String(c.email).toLowerCase() === fromEmail
       )
+      if (contact) {
+        matchedTransaction = txn
+        matchedContact = contact
+        break
+      }
+    }
 
-    const match = candidates[0]
-
-    if (!match) {
+    if (!matchedTransaction || !matchedContact) {
       const { error: logErr } = await supabase.from('inbound_email_log').insert({
         from_email: fromEmail,
         from_name: body.from_name || null,
@@ -217,7 +204,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const tx = match.transactions
+    const tx = matchedTransaction
     const propertyAddress = (tx.address || '').trim() || 'Unknown property'
     const agentUserId = tx.user_id
     const transactionId = tx.id
@@ -231,7 +218,7 @@ export async function POST(request: Request) {
         body_text: bodyPlain || null,
         message_id: body.message_id || null,
         transaction_id: transactionId,
-        contact_id: null,
+        contact_id: matchedContact.id ?? null,
         status: 'matched',
         vera_response: null,
         error_message: null,
@@ -319,7 +306,7 @@ export async function POST(request: Request) {
 
 `
 
-    const inboundBlock = `Message from ${match.name} (${match.role}) on ${propertyAddress}:
+    const inboundBlock = `Message from ${matchedContact.name} (${matchedContact.role}) on ${propertyAddress}:
 Subject: ${subject}
 ${body.date ? `Date: ${body.date}\n` : ''}
 ${bodyPlain || '(no plain text body)'}`
@@ -434,78 +421,91 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
     let ghlSent = false
     try {
       const ghlKey = (process.env.GHL_API_KEY || '').trim()
-      const recipientEmail = String(match.email || fromEmailRaw).trim().toLowerCase()
+      const recipientEmail = String(matchedContact.email || fromEmailRaw)
+        .trim()
+        .toLowerCase()
+      const ghlContactIdFromDeal = String(
+        matchedContact.ghl_contact_id || ''
+      ).trim()
 
       if (!ghlKey) {
         console.warn('inbound/email: GHL_API_KEY not configured; skipping GHL email send')
       } else if (!recipientEmail) {
         console.warn('inbound/email: no recipient email for GHL send')
       } else {
-        const lookupUrl = `https://services.leadconnectorhq.com/contacts/lookup/email/${encodeURIComponent(recipientEmail)}`
-        const lookupRes = await fetch(lookupUrl, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${ghlKey}`,
-            Version: '2021-07-28',
-            Accept: 'application/json',
-          },
-        })
+        let ghlContactId = ghlContactIdFromDeal
 
-        if (!lookupRes.ok) {
-          if (lookupRes.status === 404) {
-            console.warn('inbound/email: GHL contact not found for sender email')
+        if (!ghlContactId) {
+          const lookupUrl = `https://services.leadconnectorhq.com/contacts/lookup/email/${encodeURIComponent(recipientEmail)}`
+          const lookupRes = await fetch(lookupUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${ghlKey}`,
+              Version: '2021-07-28',
+              Accept: 'application/json',
+            },
+          })
+
+          if (!lookupRes.ok) {
+            if (lookupRes.status === 404) {
+              console.warn('inbound/email: GHL contact not found for sender email')
+            } else {
+              console.error('inbound/email: GHL contact lookup failed', {
+                status: lookupRes.status,
+              })
+            }
           } else {
-            console.error('inbound/email: GHL contact lookup failed', {
-              status: lookupRes.status,
-            })
+            const lookupJson = (await lookupRes.json().catch(() => ({}))) as {
+              contact?: { id?: string }
+              id?: string
+            }
+            ghlContactId = String(
+              lookupJson?.contact?.id || lookupJson?.id || ''
+            ).trim()
+          }
+        }
+
+        if (!ghlContactId) {
+          if (!ghlContactIdFromDeal) {
+            console.warn('inbound/email: GHL lookup returned no contact id')
           }
         } else {
-          const lookupJson = (await lookupRes.json().catch(() => ({}))) as {
-            contact?: { id?: string }
-            id?: string
-          }
-          const ghlContactId = String(lookupJson?.contact?.id || lookupJson?.id || '').trim()
+          const htmlBody = veraPlainTextToEmailHtml(veraResponse)
+          const ghlLoc = (process.env.GHL_LOCATION_ID || '').trim()
+          const sendRes = await fetch(
+            'https://services.leadconnectorhq.com/conversations/messages',
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${ghlKey}`,
+                Version: '2021-07-28',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                type: 'Email',
+                contactId: ghlContactId,
+                message: htmlBody,
+                subject: replySubject,
+                emailFrom: 'vera@ihomehq.com',
+                html: htmlBody,
+                ...(ghlLoc ? { locationId: ghlLoc } : {}),
+              }),
+            }
+          )
 
-          if (!ghlContactId) {
-            console.warn('inbound/email: GHL lookup returned no contact id')
+          if (!sendRes.ok) {
+            console.error('inbound/email: GHL email send failed', {
+              status: sendRes.status,
+            })
           } else {
-            const htmlBody = veraPlainTextToEmailHtml(veraResponse)
-            const ghlLoc = (process.env.GHL_LOCATION_ID || '').trim()
-            const sendRes = await fetch(
-              'https://services.leadconnectorhq.com/conversations/messages',
-              {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${ghlKey}`,
-                  Version: '2021-07-28',
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  type: 'Email',
-                  contactId: ghlContactId,
-                  message: htmlBody,
-                  subject: replySubject,
-                  emailFrom: 'vera@ihomehq.com',
-                  html: htmlBody,
-                  ...(ghlLoc ? { locationId: ghlLoc } : {}),
-                }),
-              }
-            )
-
-            if (!sendRes.ok) {
-              console.error('inbound/email: GHL email send failed', {
-                status: sendRes.status,
-              })
-            } else {
-              ghlSent = true
-              if (logId != null) {
-                const { error: repliedErr } = await supabase
-                  .from('inbound_email_log')
-                  .update({ status: 'replied' })
-                  .eq('id', logId)
-                if (repliedErr) {
-                  console.error('inbound/email: log update to replied failed', repliedErr)
-                }
+            ghlSent = true
+            if (logId != null) {
+              const { error: repliedErr } = await supabase
+                .from('inbound_email_log')
+                .update({ status: 'replied' })
+                .eq('id', logId)
+              if (repliedErr) {
+                console.error('inbound/email: log update to replied failed', repliedErr)
               }
             }
           }
@@ -519,9 +519,9 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       success: true,
       matched: true,
       transaction_id: transactionId,
-      contact_name: match.name,
-      contact_role: match.role,
-      contact_email: match.email || fromEmailRaw,
+      contact_name: matchedContact.name,
+      contact_role: matchedContact.role,
+      contact_email: matchedContact.email || fromEmailRaw,
       vera_response: veraResponse,
       subject: replySubject,
       ghl_sent: ghlSent,
