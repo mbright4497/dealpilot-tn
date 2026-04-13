@@ -128,7 +128,31 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as Partial<InboundEmailBody>
+    let body: any
+    const contentType = request.headers.get('content-type') || ''
+
+    if (contentType.includes('application/json')) {
+      body = await request.json()
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+      const formData = await request.formData()
+      body = Object.fromEntries(formData.entries())
+    } else {
+      // Try JSON as fallback
+      body = await request.json()
+    }
+
+    {
+      const { from_email, from_name, subject, body_text, body_html, date } = body
+      Object.assign(body, {
+        from_email,
+        from_name,
+        subject: String(subject || '').trim(),
+        body_text,
+        body_html,
+        date,
+      })
+    }
+
     const fromEmailRaw = String(body.from_email || '').trim()
     const fromEmail = fromEmailRaw.toLowerCase()
     const subject = String(body.subject || '').trim()
