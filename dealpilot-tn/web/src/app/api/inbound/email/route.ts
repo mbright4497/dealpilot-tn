@@ -28,7 +28,70 @@
 
 import OpenAI from 'openai'
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildRevaContext } from '@/lib/reva/buildRevaContext'
+
+type InboundLogFallbackRow = {
+  status: string
+  requireVeraNull?: boolean
+  requireErrorNull?: boolean
+}
+
+/** When insert returns no id, patch by latest row for this deal + sender (see fallbackRow). */
+async function patchInboundEmailLogRow(
+  supabase: SupabaseClient,
+  logId: number | undefined,
+  patch: {
+    status?: string
+    vera_response?: string | null
+    error_message?: string | null
+  },
+  fallback: { transactionId: number; fromEmail: string },
+  fallbackRow: InboundLogFallbackRow = {
+    status: 'matched',
+    requireVeraNull: true,
+    requireErrorNull: true,
+  }
+): Promise<void> {
+  if (logId != null) {
+    const { error } = await supabase
+      .from('inbound_email_log')
+      .update(patch)
+      .eq('id', logId)
+    if (error) {
+      console.error('inbound/email: log patch by id failed', error)
+    }
+    return
+  }
+  let q = supabase
+    .from('inbound_email_log')
+    .select('id')
+    .eq('transaction_id', fallback.transactionId)
+    .eq('from_email', fallback.fromEmail)
+    .eq('status', fallbackRow.status)
+  if (fallbackRow.requireVeraNull) {
+    q = q.is('vera_response', null)
+  }
+  if (fallbackRow.requireErrorNull) {
+    q = q.is('error_message', null)
+  }
+  const { data: row, error: selErr } = await q
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (selErr) {
+    console.error('inbound/email: log fallback lookup failed', selErr)
+    return
+  }
+  if (row?.id == null) return
+  const { error } = await supabase
+    .from('inbound_email_log')
+    .update(patch)
+    .eq('id', row.id)
+  if (error) {
+    console.error('inbound/email: log patch by fallback id failed', error)
+  }
+}
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -247,7 +310,7 @@ export async function POST(request: Request) {
       contactEmail,
     })
 
-    const { data: logInsert, error: logInsertErr } = await supabase
+    const { data: logRows, error: logInsertErr } = await supabase
       .from('inbound_email_log')
       .insert({
         from_email: fromEmail,
@@ -262,16 +325,44 @@ export async function POST(request: Request) {
         error_message: null,
       })
       .select('id')
-      .single()
 
     if (logInsertErr) {
       console.error('inbound/email: matched log insert failed', logInsertErr)
     }
-    const logId = logInsert?.id as number | undefined
 
-    const openaiKey = process.env.OPENAI_API_KEY
-    const assistantId =
-      process.env.OPENAI_ASSISTANT_ID || process.env.REVA_ASSISTANT_ID_TN
+    let logId =
+      logRows && logRows.length > 0
+        ? (logRows[0].id as number | undefined)
+        : undefined
+
+    // Avoid picking a stale row if insert failed outright
+    if (logId == null && !logInsertErr) {
+      const { data: logFallback, error: logFbErr } = await supabase
+        .from('inbound_email_log')
+        .select('id')
+        .eq('transaction_id', transactionId)
+        .eq('from_email', fromEmail)
+        .eq('status', 'matched')
+        .is('vera_response', null)
+        .is('error_message', null)
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (logFbErr) {
+        console.error('inbound/email: inbound log id fallback query failed', logFbErr)
+      } else if (logFallback?.id != null) {
+        logId = logFallback.id as number
+        console.log('[inbound-email] resolved log id via fallback after insert')
+      }
+    }
+
+    console.log('[inbound-email] log row id for this request:', logId ?? 'none')
+
+    const openaiKey = (process.env.OPENAI_API_KEY || '').trim()
+    const assistantId = (
+      (process.env.OPENAI_ASSISTANT_ID || '').trim() ||
+      (process.env.REVA_ASSISTANT_ID_TN || '').trim()
+    )
     const assistantEnvSource = process.env.OPENAI_ASSISTANT_ID
       ? 'OPENAI_ASSISTANT_ID'
       : process.env.REVA_ASSISTANT_ID_TN
@@ -285,17 +376,19 @@ export async function POST(request: Request) {
     })
     if (!openaiKey || !assistantId) {
       console.error('inbound/email: OpenAI assistant or API key not configured')
-      if (logId != null) {
-        await supabase
-          .from('inbound_email_log')
-          .update({
-            status: 'error',
-            error_message: 'OpenAI not configured',
-          })
-          .eq('id', logId)
-      }
+      console.log(
+        '[inbound-email] early exit: OpenAI not configured — patching inbound_email_log'
+      )
+      await patchInboundEmailLogRow(
+        supabase,
+        logId,
+        { status: 'error', error_message: 'OpenAI not configured' },
+        { transactionId, fromEmail }
+      )
       return Response.json({ success: false, error: 'Internal error' })
     }
+
+    console.log('[inbound-email] OpenAI env OK; continuing to thread lookup')
 
     const openai = new OpenAI({ apiKey: openaiKey })
 
@@ -420,15 +513,12 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       status !== 'expired'
     ) {
       if (Date.now() - startTime > 45000) {
-        if (logId != null) {
-          await supabase
-            .from('inbound_email_log')
-            .update({
-              status: 'error',
-              error_message: 'Assistant run timed out',
-            })
-            .eq('id', logId)
-        }
+        await patchInboundEmailLogRow(
+          supabase,
+          logId,
+          { status: 'error', error_message: 'Assistant run timed out' },
+          { transactionId, fromEmail }
+        )
         return Response.json({ success: false, error: 'Internal error' })
       }
       await new Promise((r) => setTimeout(r, 1500))
@@ -437,15 +527,15 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
     }
 
     if (status !== 'completed') {
-      if (logId != null) {
-        await supabase
-          .from('inbound_email_log')
-          .update({
-            status: 'error',
-            error_message: `Run ended with status ${status}`,
-          })
-          .eq('id', logId)
-      }
+      await patchInboundEmailLogRow(
+        supabase,
+        logId,
+        {
+          status: 'error',
+          error_message: `Run ended with status ${status}`,
+        },
+        { transactionId, fromEmail }
+      )
       return Response.json({ success: false, error: 'Internal error' })
     }
 
@@ -469,18 +559,12 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
 
     const replySubject = `Re: ${propertyAddress}`
 
-    if (logId != null) {
-      const { error: logUpdErr } = await supabase
-        .from('inbound_email_log')
-        .update({
-          status: 'responded',
-          vera_response: veraResponse,
-        })
-        .eq('id', logId)
-      if (logUpdErr) {
-        console.error('inbound/email: log update failed', logUpdErr)
-      }
-    }
+    await patchInboundEmailLogRow(
+      supabase,
+      logId,
+      { status: 'responded', vera_response: veraResponse },
+      { transactionId, fromEmail }
+    )
 
     let ghlSent = false
     try {
@@ -563,15 +647,17 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
             })
           } else {
             ghlSent = true
-            if (logId != null) {
-              const { error: repliedErr } = await supabase
-                .from('inbound_email_log')
-                .update({ status: 'replied' })
-                .eq('id', logId)
-              if (repliedErr) {
-                console.error('inbound/email: log update to replied failed', repliedErr)
+            await patchInboundEmailLogRow(
+              supabase,
+              logId,
+              { status: 'replied' },
+              { transactionId, fromEmail },
+              {
+                status: 'responded',
+                requireVeraNull: false,
+                requireErrorNull: false,
               }
-            }
+            )
           }
         }
       }
