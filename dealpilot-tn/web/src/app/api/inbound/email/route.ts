@@ -153,6 +153,12 @@ export async function POST(request: Request) {
       })
     }
 
+    console.log('[inbound-email] body parsed:', {
+      from_email: body.from_email,
+      subject: body.subject,
+      bodyLength: body.body_text?.length,
+    })
+
     const fromEmailRaw = String(body.from_email || '').trim()
     const fromEmail = fromEmailRaw.toLowerCase()
     const subject = String(body.subject || '').trim()
@@ -232,6 +238,14 @@ export async function POST(request: Request) {
     const propertyAddress = (tx.address || '').trim() || 'Unknown property'
     const agentUserId = tx.user_id
     const transactionId = tx.id
+    const contactName = matchedContact.name
+    const contactEmail = matchedContact.email
+
+    console.log('[inbound-email] matched:', {
+      transactionId,
+      contactName,
+      contactEmail,
+    })
 
     const { data: logInsert, error: logInsertErr } = await supabase
       .from('inbound_email_log')
@@ -258,6 +272,17 @@ export async function POST(request: Request) {
     const openaiKey = process.env.OPENAI_API_KEY
     const assistantId =
       process.env.OPENAI_ASSISTANT_ID || process.env.REVA_ASSISTANT_ID_TN
+    const assistantEnvSource = process.env.OPENAI_ASSISTANT_ID
+      ? 'OPENAI_ASSISTANT_ID'
+      : process.env.REVA_ASSISTANT_ID_TN
+        ? 'REVA_ASSISTANT_ID_TN'
+        : 'none'
+    console.log('[inbound-email] assistant env:', {
+      assistantEnvSource,
+      assistantId: assistantId || null,
+      OPENAI_ASSISTANT_ID_set: Boolean(process.env.OPENAI_ASSISTANT_ID),
+      REVA_ASSISTANT_ID_TN_set: Boolean(process.env.REVA_ASSISTANT_ID_TN),
+    })
     if (!openaiKey || !assistantId) {
       console.error('inbound/email: OpenAI assistant or API key not configured')
       if (logId != null) {
@@ -274,6 +299,11 @@ export async function POST(request: Request) {
 
     const openai = new OpenAI({ apiKey: openaiKey })
 
+    console.log(
+      '[inbound-email] looking up thread for transaction:',
+      transactionId
+    )
+
     let threadId = tx.openai_thread_id?.trim() || null
     if (!threadId) {
       const threadObj = await openai.beta.threads.create()
@@ -286,6 +316,8 @@ export async function POST(request: Request) {
         console.error('inbound/email: failed to persist openai_thread_id', thrUpdErr)
       }
     }
+
+    console.log('[inbound-email] thread:', threadId)
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -373,6 +405,8 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       ...(attachments.length > 0 ? { attachments } : {}),
     })
 
+    console.log('[inbound-email] running assistant...')
+
     const run = await openai.beta.threads.runs.create(threadId, {
       assistant_id: assistantId,
     })
@@ -421,6 +455,12 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       .filter((c: { type: string }) => c.type === 'text')
       .map((c: { text?: { value?: string } }) => c.text?.value || '')
       .join('\n')
+
+    const response = rawReply
+    console.log(
+      '[inbound-email] assistant response length:',
+      response?.length
+    )
 
     const { cleanedReply } = extractActionBlock(rawReply || '')
     const veraResponse = stripCitations(
@@ -535,7 +575,11 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
           }
         }
       }
-    } catch {
+    } catch (error) {
+      console.error(
+        '[inbound-email] ERROR:',
+        error instanceof Error ? error.message : String(error)
+      )
       console.error('inbound/email: GHL outbound email error')
     }
 
@@ -550,7 +594,11 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       subject: replySubject,
       ghl_sent: ghlSent,
     })
-  } catch {
+  } catch (error) {
+    console.error(
+      '[inbound-email] ERROR:',
+      error instanceof Error ? error.message : String(error)
+    )
     console.error('inbound/email: unhandled error')
     return Response.json({ success: false, error: 'Internal error' })
   }
