@@ -10,7 +10,7 @@
  *   message_id TEXT,
  *   transaction_id INTEGER REFERENCES transactions(id),
  *   contact_id INTEGER,
- *   status TEXT NOT NULL DEFAULT 'received', -- received, matched, unmatched, responded, error
+ *   status TEXT NOT NULL DEFAULT 'received', -- received, matched, unmatched, responded, replied, error
  *   vera_response TEXT,
  *   error_message TEXT,
  *   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -106,6 +106,22 @@ function verifyBearer(request: Request): boolean {
   if (!expected) return false
   const auth = request.headers.get('authorization') || ''
   return auth === `Bearer ${expected}`
+}
+
+function escapeHtmlForEmail(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** Plain-text Vera reply → simple HTML for GHL (newlines → br, minimal wrapper). */
+function veraPlainTextToEmailHtml(plain: string): string {
+  const normalized = plain.replace(/\r\n/g, '\n')
+  const escaped = escapeHtmlForEmail(normalized)
+  const withBreaks = escaped.split('\n').join('<br>')
+  return `<div style="font-family:system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;color:#111">${withBreaks}</div>`
 }
 
 export async function POST(request: Request) {
@@ -400,6 +416,8 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       cleanedReply || 'I could not find an answer. Please try again.'
     )
 
+    const replySubject = `Re: ${propertyAddress}`
+
     if (logId != null) {
       const { error: logUpdErr } = await supabase
         .from('inbound_email_log')
@@ -413,7 +431,89 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       }
     }
 
-    const replySubject = `Re: ${propertyAddress}`
+    let ghlSent = false
+    try {
+      const ghlKey = (process.env.GHL_API_KEY || '').trim()
+      const recipientEmail = String(match.email || fromEmailRaw).trim().toLowerCase()
+
+      if (!ghlKey) {
+        console.warn('inbound/email: GHL_API_KEY not configured; skipping GHL email send')
+      } else if (!recipientEmail) {
+        console.warn('inbound/email: no recipient email for GHL send')
+      } else {
+        const lookupUrl = `https://services.leadconnectorhq.com/contacts/lookup/email/${encodeURIComponent(recipientEmail)}`
+        const lookupRes = await fetch(lookupUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${ghlKey}`,
+            Version: '2021-07-28',
+            Accept: 'application/json',
+          },
+        })
+
+        if (!lookupRes.ok) {
+          if (lookupRes.status === 404) {
+            console.warn('inbound/email: GHL contact not found for sender email')
+          } else {
+            console.error('inbound/email: GHL contact lookup failed', {
+              status: lookupRes.status,
+            })
+          }
+        } else {
+          const lookupJson = (await lookupRes.json().catch(() => ({}))) as {
+            contact?: { id?: string }
+            id?: string
+          }
+          const ghlContactId = String(lookupJson?.contact?.id || lookupJson?.id || '').trim()
+
+          if (!ghlContactId) {
+            console.warn('inbound/email: GHL lookup returned no contact id')
+          } else {
+            const htmlBody = veraPlainTextToEmailHtml(veraResponse)
+            const ghlLoc = (process.env.GHL_LOCATION_ID || '').trim()
+            const sendRes = await fetch(
+              'https://services.leadconnectorhq.com/conversations/messages',
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${ghlKey}`,
+                  Version: '2021-07-28',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  type: 'Email',
+                  contactId: ghlContactId,
+                  message: htmlBody,
+                  subject: replySubject,
+                  emailFrom: 'vera@ihomehq.com',
+                  html: htmlBody,
+                  ...(ghlLoc ? { locationId: ghlLoc } : {}),
+                }),
+              }
+            )
+
+            if (!sendRes.ok) {
+              console.error('inbound/email: GHL email send failed', {
+                status: sendRes.status,
+              })
+            } else {
+              ghlSent = true
+              if (logId != null) {
+                const { error: repliedErr } = await supabase
+                  .from('inbound_email_log')
+                  .update({ status: 'replied' })
+                  .eq('id', logId)
+                if (repliedErr) {
+                  console.error('inbound/email: log update to replied failed', repliedErr)
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      console.error('inbound/email: GHL outbound email error')
+    }
 
     return Response.json({
       success: true,
@@ -424,6 +524,7 @@ Instructions: Search your knowledge base where relevant. Use the live context fo
       contact_email: match.email || fromEmailRaw,
       vera_response: veraResponse,
       subject: replySubject,
+      ghl_sent: ghlSent,
     })
   } catch {
     console.error('inbound/email: unhandled error')
