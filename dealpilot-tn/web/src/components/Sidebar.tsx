@@ -105,7 +105,7 @@ export default function Sidebar() {
     <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
       <div className="p-4">
         <ClosingPilotLogo size="sm" />
-        <p className="text-gray-400 text-[10px] mt-1 ml-[30px]">Tri-Cities Transaction Coordinator</p>
+        <p className="text-gray-400 text-[10px] mt-1 ml-[30px]">Tennessee Transaction Coordinator</p>
       </div>
       <nav className="flex-1 px-3 py-2 space-y-1">
         {NAV_ITEMS.map(item => {

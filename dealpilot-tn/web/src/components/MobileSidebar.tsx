@@ -11,7 +11,7 @@ export default function MobileSidebar({ items, unreadCount, onNavigate, onClose 
       <div className="absolute left-0 top-0 bottom-0 w-64 bg-dp-sidebar p-4 transform transition-transform duration-300">
         <div className="p-4">
           <ClosingPilotLogo size="sm" />
-          <p className="text-gray-400 text-[10px] mt-1 ml-[30px]">Tri-Cities Transaction Coordinator</p>
+          <p className="text-gray-400 text-[10px] mt-1 ml-[30px]">Tennessee Transaction Coordinator</p>
         </div>
         <nav className="mt-4 space-y-2">
           {items.map(it=> (
