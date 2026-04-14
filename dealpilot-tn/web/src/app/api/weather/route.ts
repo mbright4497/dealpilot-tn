@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { DEFAULT_ZIP, fetchWeatherForZip } from '@/lib/weather/openMeteo'
+import { DEFAULT_ZIP, fetchWeatherForecast, fetchWeatherForZip } from '@/lib/weather/openMeteo'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,9 +49,13 @@ export async function GET() {
       }
     }
 
-    const weather = await fetchWeatherForZip(zip)
+    let weather = await fetchWeatherForecast()
     if (!weather) {
-      return Response.json({ weather: null, zip })
+      const fallback = await fetchWeatherForZip(zip)
+      if (!fallback) {
+        return Response.json({ weather: null, zip })
+      }
+      weather = { locationLabel: fallback.locationLabel, current: fallback, daily: [] }
     }
     return Response.json({ weather, zip })
   } catch (err) {

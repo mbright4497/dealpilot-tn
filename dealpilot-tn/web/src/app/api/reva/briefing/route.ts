@@ -2,9 +2,33 @@ import OpenAI from 'openai'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { buildRevaContext } from '@/lib/reva/buildRevaContext'
-import { DEFAULT_ZIP, fetchWeatherForZip } from '@/lib/weather/openMeteo'
+import {
+  DEFAULT_ZIP,
+  type WeatherForecast,
+  fetchWeatherForecast,
+  fetchWeatherForZip,
+} from '@/lib/weather/openMeteo'
 
 export const maxDuration = 60
+
+function formatBriefingWeatherBlock(fc: WeatherForecast): string {
+  const c = fc.current
+  const lines: string[] = [
+    `Weather — ${fc.locationLabel}:`,
+    `Today: ${c.tempF}°F, ${c.condition}, Wind ${c.windMph}mph`,
+    '10-Day Forecast:',
+  ]
+  for (const d of fc.daily) {
+    const shortDate = new Date(`${d.date}T12:00:00`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    })
+    lines.push(
+      `- ${d.dayOfWeek} ${shortDate}: High ${d.highF}°F / Low ${d.lowF}°F, ${d.condition}, ${d.precipChance}% rain, Wind ${d.windMaxMph}mph`,
+    )
+  }
+  return lines.join('\n')
+}
 
 function stripCitations(text: string): string {
   return text
@@ -94,10 +118,21 @@ export async function POST() {
     const today = now.toISOString().split('T')[0]
 
     let weatherBlock = ''
-    const wx = await fetchWeatherForZip(zipForWeather)
-    if (wx) {
-      weatherBlock = `Current weather in agent's area: ${wx.tempF}°F, ${wx.condition}
+    let forecast: WeatherForecast | null = await fetchWeatherForecast()
+    if (!forecast) {
+      const wxFallback = await fetchWeatherForZip(zipForWeather)
+      if (wxFallback) {
+        forecast = { locationLabel: wxFallback.locationLabel, current: wxFallback, daily: [] }
+      }
+    }
+    if (forecast) {
+      if (forecast.daily.length > 0) {
+        weatherBlock = formatBriefingWeatherBlock(forecast)
+      } else {
+        const wx = forecast.current
+        weatherBlock = `Current weather in agent's area: ${wx.tempF}°F, ${wx.condition}
 Reference location for small talk: ${wx.locationLabel}.`
+      }
     }
 
     const systemPrompt = `You are Vera, an expert Tennessee real estate transaction coordinator AI powered by GPT-4o with full access to TN real estate law via your vector store.
@@ -118,7 +153,7 @@ BRIEFING RULES:
 - Under 150 words. No generic filler. Be specific with addresses and numbers.
 - If no active transactions, give a warm onboarding welcome under 100 words.
 
-${weatherBlock ? `Weather: ${weatherBlock}\n` : ''}
+${weatherBlock ? `${weatherBlock}\n\n` : ''}
 ${context}`
 
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -173,8 +208,13 @@ ${context}`
     return Response.json({
       briefing: stripCitations(completion.choices[0].message.content ?? ''),
       dealHealth,
-      weather: wx
-        ? { tempF: wx.tempF, condition: wx.condition, location: wx.locationLabel }
+      weather: forecast
+        ? {
+            tempF: forecast.current.tempF,
+            condition: forecast.current.condition,
+            location: forecast.current.locationLabel,
+            daily: forecast.daily,
+          }
         : null,
     })
   } catch (err) {

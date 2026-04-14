@@ -40,7 +40,7 @@ import DealPickerModal from '@/components/DealPickerModal'
 import RookWizard from '@/components/RookWizard'
 import DriveMode from '@/components/reva/DriveMode'
 import { DashboardWeatherCard } from '@/components/dashboard/DashboardWeatherCard'
-import type { WeatherSnapshot } from '@/lib/weather/openMeteo'
+import type { WeatherForecast } from '@/lib/weather/openMeteo'
 import { signOutAndRedirectToLogin } from '@/lib/auth-client'
 import MobileSidebar from '@/components/MobileSidebar'
 
@@ -129,7 +129,7 @@ function ChatPageInner() {
   // Command Center state
   const [briefing, setBriefing] = useState<string|null>(null)
   const [dealHealth, setDealHealth] = useState<RevaDealHealth[]>([])
-  const [dashboardWeather, setDashboardWeather] = useState<WeatherSnapshot | null>(null)
+  const [dashboardWeather, setDashboardWeather] = useState<WeatherForecast | null>(null)
   const [actions, setActions] = useState<any[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
@@ -659,7 +659,7 @@ function ChatPageInner() {
 
  {/* Briefing / Conversational area */}
  <div className="mt-6 max-w-3xl w-full">
-   {dashboardWeather && <DashboardWeatherCard weather={dashboardWeather} />}
+   {dashboardWeather && <DashboardWeatherCard weather={dashboardWeather.current} />}
    <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
      {(chatMessages.length === 0) && (
        <div>

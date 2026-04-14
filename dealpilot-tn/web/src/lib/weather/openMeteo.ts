@@ -100,6 +100,136 @@ export type WeatherSnapshot = {
   dateLine: string
 }
 
+/** Tri-Cities Regional Airport — fixed point for regional forecast (no geocoding). */
+export const TRI_CITIES_AIRPORT_LAT = 36.4752
+export const TRI_CITIES_AIRPORT_LON = -82.4074
+export const TRI_CITIES_FORECAST_LABEL = 'Tri-Cities, TN'
+
+export type DayForecast = {
+  date: string // "2026-04-15"
+  dayOfWeek: string // "Tuesday"
+  highF: number
+  lowF: number
+  weathercode: number
+  condition: string
+  emoji: string
+  precipChance: number // percentage 0-100
+  windMaxMph: number
+}
+
+export type WeatherForecast = {
+  locationLabel: string
+  current: WeatherSnapshot
+  daily: DayForecast[] // 10 days
+}
+
+function buildWeatherSnapshotFromCurrent(
+  locationLabel: string,
+  cur: { temperature_2m?: number; weathercode?: number; windspeed_10m?: number } | undefined
+): WeatherSnapshot | null {
+  if (!cur || cur.temperature_2m == null || cur.weathercode == null) return null
+  const weathercode = Number(cur.weathercode)
+  const now = new Date()
+  const dateLine = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+  return {
+    locationLabel,
+    tempF: Math.round(cur.temperature_2m),
+    weathercode,
+    condition: weatherCodeToCondition(weathercode),
+    emoji: weatherCodeToEmoji(weathercode),
+    windMph: Math.round(cur.windspeed_10m ?? 0),
+    dateLine,
+  }
+}
+
+export async function fetchWeatherForecast(): Promise<WeatherForecast | null> {
+  const params = new URLSearchParams({
+    latitude: String(TRI_CITIES_AIRPORT_LAT),
+    longitude: String(TRI_CITIES_AIRPORT_LON),
+    current: 'temperature_2m,weathercode,windspeed_10m',
+    daily:
+      'temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,windspeed_10m_max',
+    temperature_unit: 'fahrenheit',
+    windspeed_unit: 'mph',
+    forecast_days: '10',
+    timezone: 'America/New_York',
+  })
+  const wxUrl = `https://api.open-meteo.com/v1/forecast?${params.toString()}`
+
+  let wxRes: Response
+  try {
+    wxRes = await fetch(wxUrl)
+  } catch {
+    return null
+  }
+  if (!wxRes.ok) return null
+
+  let wx: {
+    current?: { temperature_2m?: number; weathercode?: number; windspeed_10m?: number }
+    daily?: {
+      time?: string[]
+      temperature_2m_max?: Array<number | null>
+      temperature_2m_min?: Array<number | null>
+      weathercode?: Array<number | null>
+      precipitation_probability_max?: Array<number | null>
+      windspeed_10m_max?: Array<number | null>
+    }
+  }
+  try {
+    wx = (await wxRes.json()) as typeof wx
+  } catch {
+    return null
+  }
+
+  const current = buildWeatherSnapshotFromCurrent(TRI_CITIES_FORECAST_LABEL, wx.current)
+  if (!current) return null
+
+  const dailyRaw = wx.daily
+  const times = dailyRaw?.time
+  if (!dailyRaw || !Array.isArray(times) || times.length === 0) return null
+
+  const maxT = dailyRaw.temperature_2m_max ?? []
+  const minT = dailyRaw.temperature_2m_min ?? []
+  const codes = dailyRaw.weathercode ?? []
+  const precips = dailyRaw.precipitation_probability_max ?? []
+  const winds = dailyRaw.windspeed_10m_max ?? []
+
+  const daily: DayForecast[] = []
+  for (let i = 0; i < times.length; i++) {
+    const date = times[i]
+    if (typeof date !== 'string') return null
+    const hi = maxT[i]
+    const lo = minT[i]
+    const wc = codes[i]
+    if (hi == null || lo == null || wc == null) return null
+    const weathercode = Number(wc)
+    const dayAnchor = new Date(`${date}T12:00:00`)
+    const dayOfWeek = dayAnchor.toLocaleDateString('en-US', { weekday: 'long' })
+    const precipRaw = precips[i]
+    const windRaw = winds[i]
+    daily.push({
+      date,
+      dayOfWeek,
+      highF: Math.round(Number(hi)),
+      lowF: Math.round(Number(lo)),
+      weathercode,
+      condition: weatherCodeToCondition(weathercode),
+      emoji: weatherCodeToEmoji(weathercode),
+      precipChance: Math.min(100, Math.max(0, Math.round(Number(precipRaw ?? 0)))),
+      windMaxMph: Math.round(Number(windRaw ?? 0)),
+    })
+  }
+
+  if (daily.length === 0) return null
+
+  return {
+    locationLabel: TRI_CITIES_FORECAST_LABEL,
+    current,
+    daily,
+  }
+}
+
 export async function fetchWeatherForZip(zip: string): Promise<WeatherSnapshot | null> {
   const z = (zip || DEFAULT_ZIP).trim() || DEFAULT_ZIP
   const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(z)}&count=1&language=en&format=json`
@@ -140,20 +270,5 @@ export async function fetchWeatherForZip(zip: string): Promise<WeatherSnapshot |
   const wx = (await wxRes.json()) as {
     current?: { temperature_2m?: number; weathercode?: number; windspeed_10m?: number }
   }
-  const cur = wx.current
-  if (!cur || cur.temperature_2m == null || cur.weathercode == null) return null
-
-  const weathercode = Number(cur.weathercode)
-  const now = new Date()
-  const dateLine = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-
-  return {
-    locationLabel,
-    tempF: Math.round(cur.temperature_2m),
-    weathercode,
-    condition: weatherCodeToCondition(weathercode),
-    emoji: weatherCodeToEmoji(weathercode),
-    windMph: Math.round(cur.windspeed_10m ?? 0),
-    dateLine,
-  }
+  return buildWeatherSnapshotFromCurrent(locationLabel, wx.current)
 }
