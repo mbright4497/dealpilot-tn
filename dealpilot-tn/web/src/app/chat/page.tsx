@@ -659,7 +659,9 @@ function ChatPageInner() {
 
  {/* Briefing / Conversational area */}
  <div className="mt-6 max-w-3xl w-full">
-   {dashboardWeather && <DashboardWeatherCard weather={dashboardWeather.current} />}
+   {dashboardWeather && (
+            <DashboardWeatherCard weather={dashboardWeather.current} daily={dashboardWeather.daily} />
+          )}
    <div className="bg-[#071827] rounded-xl p-6 block text-left max-h-[280px] overflow-y-auto">
      {(chatMessages.length === 0) && (
        <div>
