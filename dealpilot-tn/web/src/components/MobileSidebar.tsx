@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
 import { ClipboardList } from 'lucide-react'
+import ClosingPilotLogo from '@/components/ClosingPilotLogo'
 import { signOutAndRedirectToLogin } from '@/lib/auth-client'
 
 export default function MobileSidebar({ items, unreadCount, onNavigate, onClose }:{ items:{id:string,label:string}[], unreadCount:number, onNavigate:(id:string)=>void, onClose:()=>void }){
@@ -8,12 +9,9 @@ export default function MobileSidebar({ items, unreadCount, onNavigate, onClose 
     <div className="fixed inset-0 z-50 md:hidden">
       <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
       <div className="absolute left-0 top-0 bottom-0 w-64 bg-dp-sidebar p-4 transform transition-transform duration-300">
-        <div className="p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm">CP</div>
-          <div>
-            <h2 className="text-white font-semibold text-sm leading-tight">Closing Jet TN</h2>
-            <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
-          </div>
+        <div className="p-4">
+          <ClosingPilotLogo size="sm" />
+          <p className="text-gray-400 text-[10px] mt-1 ml-[30px]">Tri-Cities Transaction Coordinator</p>
         </div>
         <nav className="mt-4 space-y-2">
           {items.map(it=> (
