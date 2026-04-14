@@ -103,12 +103,9 @@ export default function Sidebar() {
 
   return (
     <aside className="w-60 bg-dp-sidebar flex flex-col border-r border-gray-800 hidden md:flex">
-      <div className="p-4 flex items-center gap-3">
+      <div className="p-4">
         <ClosingPilotLogo size="sm" />
-        <div>
-          <h2 className="text-white font-semibold text-sm leading-tight">Closing Jet TN</h2>
-          <p className="text-gray-400 text-xs">Tri-Cities Transaction Coordinator</p>
-        </div>
+        <p className="text-gray-400 text-[10px] mt-1 ml-[30px]">Tri-Cities Transaction Coordinator</p>
       </div>
       <nav className="flex-1 px-3 py-2 space-y-1">
         {NAV_ITEMS.map(item => {
