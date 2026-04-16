@@ -435,6 +435,8 @@ function TransactionDetailContent() {
   })
   const [assignInspectorSaving, setAssignInspectorSaving] = useState(false)
   const [inspectorPatchBusy, setInspectorPatchBusy] = useState<string | null>(null)
+  const [txInspectorsAvailable, setTxInspectorsAvailable] = useState<any[]>([])
+  const [quickAssignBusyId, setQuickAssignBusyId] = useState<string | null>(null)
 
   const summary = useMemo(() => (tx?.ai_summary ?? null) as AiSummary, [tx])
 
@@ -534,6 +536,25 @@ function TransactionDetailContent() {
     }
   }, [txId])
 
+  const refreshTransactionServices = useCallback(async () => {
+    if (!txId) return
+    const forId = txId
+    try {
+      const res = await fetch(`/api/transactions/${forId}/services`, { cache: 'no-store' })
+      if (latestTxIdRef.current !== forId) return
+      if (!res.ok) return
+      const j = await res.json()
+      if (latestTxIdRef.current !== forId) return
+      setTxInspectors(Array.isArray(j.assigned) ? j.assigned : [])
+      setTxInspectorsAvailable(Array.isArray(j.available) ? j.available : [])
+    } catch {
+      if (latestTxIdRef.current === forId) {
+        setTxInspectors([])
+        setTxInspectorsAvailable([])
+      }
+    }
+  }, [txId])
+
   async function loadCommsHistory() {
     if (!txId) return
     const forId = txId
@@ -588,6 +609,8 @@ function TransactionDetailContent() {
       setCommsHistory([])
       setThreadId(null)
       setRevaMessages([])
+      setTxInspectors([])
+      setTxInspectorsAvailable([])
     }
     prevTxIdForResetRef.current = txId
   }, [txId])
@@ -600,21 +623,13 @@ function TransactionDetailContent() {
     if (activeTab !== 'inspectors' || !txId) return
     let cancelled = false
     setTxInspectorsLoading(true)
-    fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((j) => {
-        if (!cancelled) setTxInspectors(Array.isArray(j.inspectors) ? j.inspectors : [])
-      })
-      .catch(() => {
-        if (!cancelled) setTxInspectors([])
-      })
-      .finally(() => {
-        if (!cancelled) setTxInspectorsLoading(false)
-      })
+    void refreshTransactionServices().finally(() => {
+      if (!cancelled) setTxInspectorsLoading(false)
+    })
     return () => {
       cancelled = true
     }
-  }, [activeTab, txId])
+  }, [activeTab, txId, refreshTransactionServices])
 
   useEffect(() => {
     if (activeTab !== 'outbox' || !txId) return
@@ -2089,9 +2104,7 @@ function TransactionDetailContent() {
           return
         }
         setShowAssignInspectorModal(false)
-        const r2 = await fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
-        const j2 = await r2.json()
-        setTxInspectors(Array.isArray(j2.inspectors) ? j2.inspectors : [])
+        await refreshTransactionServices()
       } finally {
         setAssignInspectorSaving(false)
       }
@@ -2111,16 +2124,13 @@ function TransactionDetailContent() {
           window.alert(j?.error || 'Update failed')
           return
         }
-        const r2 = await fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
-        const j2 = await r2.json()
-        setTxInspectors(Array.isArray(j2.inspectors) ? j2.inspectors : [])
+        await refreshTransactionServices()
       } finally {
         setInspectorPatchBusy(null)
       }
     }
 
     async function deleteAssignment(id: string, name: string) {
-      console.log('[deleteAssignment] called with id:', id, 'name:', name)
       if (!txId) return
       if (!window.confirm(`Remove ${name} from this transaction?`)) return
       setInspectorPatchBusy(id)
@@ -2135,11 +2145,29 @@ function TransactionDetailContent() {
           window.alert(j?.error || 'Could not remove')
           return
         }
-        const r2 = await fetch(`/api/transactions/${txId}/inspectors`, { cache: 'no-store' })
-        const j2 = await r2.json()
-        setTxInspectors(Array.isArray(j2.inspectors) ? j2.inspectors : [])
+        await refreshTransactionServices()
       } finally {
         setInspectorPatchBusy(null)
+      }
+    }
+
+    async function quickAssign(providerId: string) {
+      if (!txId) return
+      setQuickAssignBusyId(providerId)
+      try {
+        const res = await fetch(`/api/transactions/${txId}/inspectors`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ inspector_id: providerId, inspection_type: 'home' }),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          window.alert(j?.error || 'Could not assign')
+          return
+        }
+        await refreshTransactionServices()
+      } finally {
+        setQuickAssignBusyId(null)
       }
     }
 
@@ -2174,7 +2202,6 @@ function TransactionDetailContent() {
                 const bm = String(insp?.booking_method || 'call').toLowerCase()
                 const st = String(row.status || 'pending').toLowerCase()
                 const busy = inspectorPatchBusy === row.id
-                console.log('[inspectorCard] row.id:', row.id, 'row keys:', Object.keys(row))
 
                 let statusBadge = 'border-amber-500/40 bg-amber-500/15 text-amber-100'
                 let statusLabel = 'Pending'
@@ -2279,6 +2306,48 @@ function TransactionDetailContent() {
               })}
             </div>
           )}
+
+          {!txInspectorsLoading && txInspectorsAvailable.length > 0 ? (
+            <div className="mt-8 border-t border-slate-700 pt-6">
+              <h3 className="mb-4 text-lg font-medium text-slate-300">Quick assign from directory</h3>
+              <div className="grid gap-4">
+                {groupDirectoryForSelect(txInspectorsAvailable).map((g) => (
+                  <div key={g.key}>
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {g.label}
+                    </div>
+                    <div className="space-y-3">
+                      {g.items.map((provider) => {
+                        const pid = String(provider.id ?? '')
+                        const qaBusy = quickAssignBusyId === pid
+                        return (
+                          <div
+                            key={pid}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-950/40 p-4"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-white">{String(provider.name || '')}</div>
+                              {provider.company ? (
+                                <div className="text-sm text-slate-400">{String(provider.company)}</div>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              disabled={qaBusy}
+                              onClick={() => void quickAssign(pid)}
+                              className="shrink-0 rounded-lg bg-orange-500 px-3 py-1.5 text-sm font-semibold text-black hover:bg-orange-600 disabled:opacity-60"
+                            >
+                              {qaBusy ? '…' : 'Assign'}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {showAssignInspectorModal ? (
