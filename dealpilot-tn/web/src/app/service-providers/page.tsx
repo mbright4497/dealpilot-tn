@@ -1,230 +1,218 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Mail, Phone, Star, Tag } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 
-const CATEGORY_ORDER = [
-  'inspector',
-  'contractor',
-  'lender',
-  'title_company',
-  'attorney',
-  'other',
-] as const
-
-const CATEGORY_LABELS: Record<(typeof CATEGORY_ORDER)[number], string> = {
-  inspector: 'Inspector',
-  contractor: 'Contractor',
-  lender: 'Lender',
-  title_company: 'Title Company',
-  attorney: 'Attorney',
-  other: 'Other',
-}
-
-const INSPECTION_TYPE_OPTIONS = [
-  { value: 'home', label: 'Home' },
-  { value: 'wdi', label: 'WDI' },
-  { value: 'septic', label: 'Septic' },
-  { value: 'well', label: 'Well' },
-  { value: 'mold', label: 'Mold' },
-  { value: 'radon', label: 'Radon' },
-] as const
-
-type InspectorEmbed = {
-  id?: string
-  name?: string | null
-  company?: string | null
-  phone?: string | null
-  email?: string | null
-  category?: string | null
-  booking_method?: string | null
-} | null
-
-type TransactionEmbed = { id?: number; address?: string | null } | null
-
-type AssignmentRow = {
+interface ServiceProvider {
   id: string
-  transaction_id: number
-  inspection_type?: string | null
-  scheduled_at?: string | null
-  status?: string | null
-  inspectors?: InspectorEmbed | InspectorEmbed[]
-  transactions?: TransactionEmbed | TransactionEmbed[]
+  name: string
+  company: string | null
+  phone: string | null
+  email: string | null
+  category: string
+  preferred: boolean
+  booking_method: string | null
+  booking_url: string | null
+  specialties: string[] | null
+  notes: string | null
+  active: boolean
 }
 
-function normalizeCategory(c: string | null | undefined): (typeof CATEGORY_ORDER)[number] {
-  const v = (c || 'other').toLowerCase()
-  if ((CATEGORY_ORDER as readonly string[]).includes(v)) return v as (typeof CATEGORY_ORDER)[number]
-  return 'other'
-}
+const categories = [
+  { value: 'all', label: 'All Providers' },
+  { value: 'inspector', label: 'Inspectors' },
+  { value: 'title_company', label: 'Title Companies' },
+  { value: 'lender', label: 'Lenders' },
+  { value: 'appraiser', label: 'Appraisers' },
+  { value: 'surveyor', label: 'Surveyors' },
+  { value: 'attorney', label: 'Attorneys' },
+]
 
-function pickInspector(row: AssignmentRow): Record<string, unknown> | null {
-  const raw = row.inspectors
-  if (!raw) return null
-  const one = Array.isArray(raw) ? raw[0] : raw
-  return one && typeof one === 'object' ? (one as Record<string, unknown>) : null
-}
-
-function pickTransaction(row: AssignmentRow): { id: number; address: string } | null {
-  const raw = row.transactions
-  if (!raw) return null
-  const one = Array.isArray(raw) ? raw[0] : raw
-  if (!one || typeof one !== 'object') return null
-  const id = (one as { id?: number }).id
-  const address = (one as { address?: string | null }).address
-  if (typeof id !== 'number') return null
-  return { id, address: address != null ? String(address) : '—' }
-}
-
-function inspectionLabel(v: string | null | undefined): string {
-  const key = String(v || 'home').toLowerCase()
-  const found = INSPECTION_TYPE_OPTIONS.find((o) => o.value === key)
-  return found?.label || key
-}
-
-function statusBadge(st: string | null | undefined): { cls: string; label: string } {
-  const s = String(st || 'pending').toLowerCase()
-  if (s === 'scheduled') {
-    return { cls: 'border-sky-500/40 bg-sky-500/15 text-sky-100', label: 'Scheduled' }
-  }
-  if (s === 'completed') {
-    return { cls: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-100', label: 'Completed' }
-  }
-  return { cls: 'border-amber-500/40 bg-amber-500/15 text-amber-100', label: 'Pending' }
+function categoryTitle(key: string): string {
+  const found = categories.find((c) => c.value === key)
+  if (found && found.value !== 'all') return found.label
+  return key.replace(/_/g, ' ')
 }
 
 export default function ServiceProvidersPage() {
-  const [assignments, setAssignments] = useState<AssignmentRow[]>([])
+  const [providers, setProviders] = useState<ServiceProvider[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const fetchProviders = useCallback(async () => {
     try {
-      const res = await fetch('/api/service-providers', { cache: 'no-store' })
-      const json = await res.json()
-      setAssignments(Array.isArray(json?.assignments) ? json.assignments : [])
+      setLoading(true)
+      setError(null)
+
+      const params = new URLSearchParams()
+      if (selectedCategory !== 'all') {
+        params.set('category', selectedCategory)
+      }
+
+      const response = await fetch(`/api/service-providers?${params}`, { cache: 'no-store' })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setProviders(data.providers || [])
+    } catch (err) {
+      console.error('Fetch providers error')
+      setError(err instanceof Error ? err.message : 'Failed to load providers')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedCategory])
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void fetchProviders()
+  }, [fetchProviders])
 
-  const sections = useMemo(() => {
-    const groups = new Map<(typeof CATEGORY_ORDER)[number], AssignmentRow[]>()
-    for (const row of assignments) {
-      const insp = pickInspector(row)
-      const cat = normalizeCategory(typeof insp?.category === 'string' ? insp.category : null)
-      if (!groups.has(cat)) groups.set(cat, [])
-      groups.get(cat)!.push(row)
-    }
-    const sortRows = (a: AssignmentRow, b: AssignmentRow) => {
-      const ta = pickTransaction(a)?.address || ''
-      const tb = pickTransaction(b)?.address || ''
-      return ta.localeCompare(tb, undefined, { sensitivity: 'base' })
-    }
-    return CATEGORY_ORDER.filter((k) => groups.has(k)).map((k) => ({
-      key: k,
-      label: CATEGORY_LABELS[k],
-      rows: groups.get(k)!.sort(sortRows),
-    }))
-  }, [assignments])
+  const groupedProviders = providers.reduce(
+    (acc, provider) => {
+      const cat = provider.category || 'other'
+      if (!acc[cat]) {
+        acc[cat] = []
+      }
+      acc[cat].push(provider)
+      return acc
+    },
+    {} as Record<string, ServiceProvider[]>
+  )
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <h1 className="mb-6 text-2xl font-bold text-white">Service Providers</h1>
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-gray-400">Loading providers…</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <h1 className="mb-6 text-2xl font-bold text-white">Service Providers</h1>
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4">
+          <div className="text-red-200">Error: {error}</div>
+          <button
+            type="button"
+            onClick={() => void fetchProviders()}
+            className="mt-2 text-red-300 hover:text-red-100"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6">
+    <div className="p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Service Providers</h1>
-          <p className="mt-1 text-sm text-gray-400">
-            Providers assigned across your transactions, grouped by role.
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold text-white">Service Providers</h1>
+        <Link
+          href="/inspectors"
+          className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+        >
+          Add provider
+        </Link>
+      </div>
+
+      <div className="mb-6">
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/inspectors"
-            className="rounded-lg border border-slate-600 bg-slate-800/80 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-orange-500/40"
-          >
-            Manage directory
-          </Link>
+          {categories.map((category) => (
+            <button
+              key={category.value}
+              type="button"
+              onClick={() => setSelectedCategory(category.value)}
+              className={`rounded-full px-3 py-1 text-sm ${
+                selectedCategory === category.value
+                  ? 'bg-orange-500 text-white'
+                  : 'border border-slate-600 bg-slate-800/80 text-slate-200 hover:border-slate-500'
+              }`}
+            >
+              {category.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
-      ) : assignments.length === 0 ? (
-        <div className="rounded-xl border border-gray-700 bg-gray-900/40 px-6 py-12 text-center text-slate-400">
-          <p>No service providers assigned on any deal yet.</p>
-          <p className="mt-2 text-sm">
-            Open a transaction, use the <span className="text-slate-300">Services</span> tab, or{' '}
-            <Link href="/inspectors" className="text-orange-400 hover:underline">
-              add providers to your directory
-            </Link>{' '}
-            first.
-          </p>
+      {providers.length === 0 ? (
+        <div className="py-12 text-center">
+          <div className="mb-4 text-slate-400">No service providers found</div>
+          <Link
+            href="/inspectors"
+            className="inline-block rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            Add your first provider
+          </Link>
         </div>
       ) : (
-        <div className="space-y-10">
-          {sections.map((sec) => (
-            <section key={sec.key}>
-              <h2 className="mb-4 text-lg font-semibold text-white">{sec.label}</h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {sec.rows.map((row) => {
-                  const insp = pickInspector(row)
-                  const tx = pickTransaction(row)
-                  const name = insp?.name != null ? String(insp.name) : 'Service provider'
-                  const company = insp?.company != null ? String(insp.company) : ''
-                  const phone = insp?.phone != null ? String(insp.phone) : ''
-                  const email = insp?.email != null ? String(insp.email) : ''
-                  const badge = statusBadge(row.status)
-                  return (
-                    <div
-                      key={row.id}
-                      className="rounded-xl border border-slate-700 bg-slate-900/40 p-4 shadow-sm"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-base font-semibold text-white">{name}</div>
-                          {company ? <div className="text-sm text-slate-400">{company}</div> : null}
-                          {phone ? <div className="mt-1 text-sm text-slate-300">{phone}</div> : null}
-                          {email ? <div className="mt-0.5 truncate text-sm text-slate-400">{email}</div> : null}
-                        </div>
-                        <span
-                          className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${badge.cls}`}
-                        >
-                          {badge.label}
-                        </span>
-                      </div>
-                      <div className="mt-3 space-y-1 text-xs text-slate-500">
-                        <div>
-                          Service type:{' '}
-                          <span className="font-medium text-slate-300">
-                            {inspectionLabel(row.inspection_type)}
-                          </span>
-                        </div>
-                        {tx ? (
-                          <div>
-                            Deal:{' '}
-                            <Link
-                              href={`/transactions/${tx.id}`}
-                              className="font-medium text-orange-400 hover:underline"
-                            >
-                              {tx.address}
-                            </Link>
-                          </div>
-                        ) : (
-                          <div className="text-slate-500">Deal: —</div>
-                        )}
-                      </div>
+        <div className="space-y-8">
+          {Object.entries(groupedProviders).map(([categoryKey, categoryProviders]) => (
+            <div key={categoryKey} className="space-y-4">
+              <h3 className="text-lg font-medium capitalize text-slate-100">
+                {categoryTitle(categoryKey)} ({categoryProviders.length})
+              </h3>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {categoryProviders.map((provider) => (
+                  <div
+                    key={provider.id}
+                    className="rounded-xl border border-slate-700 bg-slate-900/40 p-4 shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <h4 className="font-medium text-white">{provider.name}</h4>
+                      {provider.preferred ? (
+                        <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
+                      ) : null}
                     </div>
-                  )
-                })}
+
+                    {provider.company ? (
+                      <p className="mb-2 text-sm text-slate-400">{provider.company}</p>
+                    ) : null}
+
+                    <div className="space-y-1 text-sm text-slate-300">
+                      {provider.phone ? (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
+                          <span>{provider.phone}</span>
+                        </div>
+                      ) : null}
+                      {provider.email ? (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
+                          <span className="truncate">{provider.email}</span>
+                        </div>
+                      ) : null}
+                      {provider.specialties && provider.specialties.length > 0 ? (
+                        <div className="flex items-start gap-2">
+                          <Tag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden />
+                          <span>{provider.specialties.join(', ')}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </section>
+            </div>
           ))}
         </div>
       )}
-    </main>
+
+      <p className="mt-8 text-center text-sm text-slate-500">
+        Edit, delete, or add details in the{' '}
+        <Link href="/inspectors" className="text-orange-400 hover:underline">
+          provider directory
+        </Link>
+        .
+      </p>
+    </div>
   )
 }
