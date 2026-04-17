@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { assignInspectorToTransaction } from '@/lib/assignTransactionInspector'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import {
   assertTransactionOwnedByUser,
@@ -99,72 +100,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const inspectorId = typeof body.inspector_id === 'string' ? body.inspector_id.trim() : ''
     if (!inspectorId) return NextResponse.json({ error: 'inspector_id is required' }, { status: 400 })
 
-    const { data: insp, error: inspErr } = await supabase
-      .from('inspectors')
-      .select('id')
-      .eq('id', inspectorId)
-      .eq('user_id', user.id)
-      .maybeSingle()
+    const result = await assignInspectorToTransaction(supabase, transactionId, user.id, inspectorId, body, {
+      rejectIfDuplicate: false,
+      returnWithInspectorJoin: false,
+    })
 
-    if (inspErr) return NextResponse.json({ error: inspErr.message }, { status: 500 })
-    if (!insp) return NextResponse.json({ error: 'Service provider not found' }, { status: 404 })
-
-    const inspectionType =
-      typeof body.inspection_type === 'string' && body.inspection_type.trim()
-        ? body.inspection_type.trim()
-        : 'home'
-
-    const row = {
-      transaction_id: transactionId,
-      inspector_id: inspectorId,
-      user_id: user.id,
-      inspection_type: inspectionType,
-      scheduled_at: body.scheduled_at ?? null,
-      notes: typeof body.notes === 'string' ? body.notes : null,
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
-    const { data, error } = await supabase.from('transaction_inspectors').insert(row).select().single()
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    // Sync service provider into transactions.contacts JSONB so Vera can find them
-    try {
-      const { data: tx } = await supabase
-        .from('transactions')
-        .select('contacts')
-        .eq('id', transactionId)
-        .single()
-
-      const contacts: Record<string, unknown>[] = Array.isArray(tx?.contacts) ? tx.contacts : []
-
-      // Fetch full inspector details
-      const { data: inspDetails } = await supabase
-        .from('inspectors')
-        .select('name, company, phone, email, category')
-        .eq('id', inspectorId)
-        .single()
-
-      if (inspDetails) {
-        // Remove any existing contact with same category/role
-        const filtered = contacts.filter((c) => c.role !== inspDetails.category)
-        filtered.push({
-          id: `inspector-${inspectorId}`,
-          name: inspDetails.company || inspDetails.name,
-          role: inspDetails.category,
-          phone: inspDetails.phone || '',
-          email: inspDetails.email || '',
-          ghl_contact_id: '',
-        })
-        await supabase
-          .from('transactions')
-          .update({ contacts: filtered })
-          .eq('id', transactionId)
-          .eq('user_id', user.id)
-      }
-    } catch (syncErr) {
-      console.warn('[inspectors/POST] failed to sync contact to JSONB:', syncErr)
-    }
-
-    return NextResponse.json({ assignment: data }, { status: 201 })
+    return NextResponse.json({ assignment: result.assignment }, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Could not assign inspector'
     return NextResponse.json({ error: msg }, { status: 500 })

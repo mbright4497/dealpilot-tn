@@ -2093,7 +2093,7 @@ function TransactionDetailContent() {
           const d = new Date(assignInspectorForm.scheduled_at)
           if (!Number.isNaN(d.getTime())) payload.scheduled_at = d.toISOString()
         }
-        const res = await fetch(`/api/transactions/${txId}/inspectors`, {
+        const res = await fetch(`/api/transactions/${txId}/services`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -2155,7 +2155,7 @@ function TransactionDetailContent() {
       if (!txId) return
       setQuickAssignBusyId(providerId)
       try {
-        const res = await fetch(`/api/transactions/${txId}/inspectors`, {
+        const res = await fetch(`/api/transactions/${txId}/services`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ inspector_id: providerId, inspection_type: 'home' }),
