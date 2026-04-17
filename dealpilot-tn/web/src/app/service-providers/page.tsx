@@ -115,8 +115,8 @@ export default function ServiceProvidersPage() {
     {} as Record<string, ServiceProvider[]>
   )
 
-  // Omit while initial loading:true so console sequence matches /service-providers happy path (useEffect runs after paint).
-  if (!loading || error) {
+  // Omit while loading:true so the first paint matches the diagnostic sequence (fetch runs after useEffect).
+  if (!loading) {
     console.log('🎨 [ServiceProvidersPage] branch:', { loading, providersCount: providers.length, error })
   }
 
