@@ -42,7 +42,7 @@ export default function ServiceProvidersPage() {
   const [error, setError] = useState<string | null>(null)
 
   // DEBUG(service-providers): remove after blank-main investigation — no PII (no names/phones/emails in logs)
-  console.log('[ServiceProvidersPage] render', {
+  console.log('🎯 [ServiceProvidersPage] render:', {
     providersCount: providers.length,
     loading,
     error,
@@ -51,7 +51,7 @@ export default function ServiceProvidersPage() {
   })
 
   const fetchProviders = async () => {
-    console.log('[ServiceProvidersPage] fetchProviders called')
+    console.log('🔄 fetchProviders called')
     try {
       setLoading(true)
       setError(null)
@@ -67,9 +67,9 @@ export default function ServiceProvidersPage() {
 
       // Cold navigations can hit before Supabase session cookies are readable server-side; retry 401s.
       while (true) {
-        console.log('[ServiceProvidersPage] fetch request', { url, retries })
+        console.log('📡 fetch request:', { url, retries })
         const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin' })
-        console.log('[ServiceProvidersPage] fetch response', { status: response.status, ok: response.ok })
+        console.log('📡 fetch response:', { status: response.status, ok: response.ok })
 
         if (response.status === 401 && retries < maxRetries) {
           retries += 1
@@ -83,7 +83,7 @@ export default function ServiceProvidersPage() {
 
         const data = await response.json()
         const list = Array.isArray(data.providers) ? data.providers : []
-        console.log('[ServiceProvidersPage] API parsed', {
+        console.log('✅ API parsed:', {
           providerCount: list.length,
           topLevelKeys: data && typeof data === 'object' ? Object.keys(data as object) : [],
         })
@@ -91,11 +91,11 @@ export default function ServiceProvidersPage() {
         break
       }
     } catch (err) {
-      console.error('[ServiceProvidersPage] fetchProviders error', err)
+      console.error('❌ fetchProviders error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load providers')
     } finally {
       setLoading(false)
-      console.log('[ServiceProvidersPage] fetchProviders completed')
+      console.log('✅ fetchProviders completed')
     }
   }
 
@@ -115,7 +115,10 @@ export default function ServiceProvidersPage() {
     {} as Record<string, ServiceProvider[]>
   )
 
-  console.log('[ServiceProvidersPage] branch', { loading, providersCount: providers.length, error })
+  // Omit while initial loading:true so console sequence matches /service-providers happy path (useEffect runs after paint).
+  if (!loading || error) {
+    console.log('🎨 [ServiceProvidersPage] branch:', { loading, providersCount: providers.length, error })
+  }
 
   if (loading) {
     return (
