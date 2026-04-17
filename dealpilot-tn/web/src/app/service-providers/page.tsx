@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Mail, Phone, Star, Tag } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface ServiceProvider {
   id: string
@@ -41,7 +41,7 @@ export default function ServiceProvidersPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [error, setError] = useState<string | null>(null)
 
-  const fetchProviders = useCallback(async () => {
+  const fetchProviders = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -79,11 +79,11 @@ export default function ServiceProvidersPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedCategory])
+  }
 
   useEffect(() => {
     void fetchProviders()
-  }, [fetchProviders])
+  }, [selectedCategory])
 
   const groupedProviders = providers.reduce(
     (acc, provider) => {
