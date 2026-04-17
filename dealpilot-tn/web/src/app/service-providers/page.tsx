@@ -51,14 +51,28 @@ export default function ServiceProvidersPage() {
         params.set('category', selectedCategory)
       }
 
-      const response = await fetch(`/api/service-providers?${params}`, { cache: 'no-store' })
+      const url = `/api/service-providers?${params}`
+      const maxRetries = 3
+      let retries = 0
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`)
+      // Cold navigations can hit before Supabase session cookies are readable server-side; retry 401s.
+      while (true) {
+        const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin' })
+
+        if (response.status === 401 && retries < maxRetries) {
+          retries += 1
+          await new Promise((r) => setTimeout(r, 500))
+          continue
+        }
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch: ${response.status}`)
+        }
+
+        const data = await response.json()
+        setProviders(data.providers || [])
+        break
       }
-
-      const data = await response.json()
-      setProviders(data.providers || [])
     } catch (err) {
       console.error('Fetch providers error')
       setError(err instanceof Error ? err.message : 'Failed to load providers')
