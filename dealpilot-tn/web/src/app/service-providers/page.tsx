@@ -122,7 +122,7 @@ export default function ServiceProvidersPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div className="min-h-screen bg-slate-900 p-6 text-white">
         <h1 className="mb-6 text-2xl font-bold text-white">Service Providers</h1>
         <div className="flex h-64 items-center justify-center">
           <div className="text-gray-400">Loading providers…</div>
@@ -133,7 +133,7 @@ export default function ServiceProvidersPage() {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="min-h-screen bg-slate-900 p-6 text-white">
         <h1 className="mb-6 text-2xl font-bold text-white">Service Providers</h1>
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4">
           <div className="text-red-200">Error: {error}</div>
@@ -150,7 +150,7 @@ export default function ServiceProvidersPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-slate-900 p-6 text-white">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-white">Service Providers</h1>
         <Link
